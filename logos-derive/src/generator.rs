@@ -1,7 +1,19 @@
 use syn::Ident;
-use quote::quote;
 use proc_macro2::TokenStream;
+use quote::{quote, ToTokens};
 use tree::Node;
+use regex::Pattern;
+
+impl ToTokens for Pattern {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Pattern::Byte(byte) => tokens.extend(quote! { #byte }),
+            Pattern::Range(from, to) => tokens.extend(quote! { #from...#to }),
+            Pattern::Repeat(ref pat) => pat.to_tokens(tokens),
+            Pattern::Alternative(ref pat) => tokens.extend(quote! { #( #pat )|* }),
+        }
+    }
+}
 
 pub trait Generator {
     fn print(node: &Node, name: &Ident) -> TokenStream;
@@ -25,20 +37,20 @@ pub trait Generator {
             };
         }
 
-        if node.token.is_some() {
+        if node.token.is_some() || !node.pattern.is_byte() {
             options += 1;
         }
 
         match options {
             1 => {
                 node = node.consequents.iter().next().unwrap();
-                let byte = node.byte;
+                let byte = &node.pattern;
 
                 let mut test = quote! { lex.next() == #byte };
 
-                while node.consequents.len() == 1 && node.token.is_none() {
+                while node.consequents.len() == 1 && node.token.is_none() && node.pattern.is_byte() {
                     node = node.consequents.iter().next().unwrap();
-                    let byte = node.byte;
+                    let byte = &node.pattern;
 
                     test.extend(quote! { && lex.next() == #byte });
                 }
@@ -53,10 +65,10 @@ pub trait Generator {
             }
             _ => {
                 let branches: TokenStream = node.consequents.iter().map(|node| {
-                    let byte = node.byte;
+                    let pattern = &node.pattern;
                     let consequent = Self::print_node(node, name);
 
-                    quote! { #byte => #consequent, }
+                    quote! { #pattern => #consequent, }
                 }).collect();
 
                 let default = match node.token {

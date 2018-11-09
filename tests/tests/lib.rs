@@ -9,8 +9,11 @@ pub enum Token {
     #[end]
     EndOfProgram,
 
-    // #[identifier]
-    // Identifier,
+    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]+"]
+    Identifier,
+
+    #[regex = "[1-9][0-9]+"]
+    Number,
 
     #[token = "foobar"]
     Foobar,
@@ -67,10 +70,10 @@ pub enum Token {
     FatArrow,
 }
 
-use logos::Lexer;
+use logos::Logos;
 
 fn assert_lex(source: &str, tokens: &[(Token, &str, usize, usize)]) {
-    let mut lex: Lexer<Token, _> = Lexer::new(source);
+    let mut lex = Token::lexer(source);
 
     for (token, slice, start, end) in tokens {
         assert_eq!(lex.token, *token);
@@ -85,7 +88,7 @@ fn assert_lex(source: &str, tokens: &[(Token, &str, usize, usize)]) {
 
 #[test]
 fn empty() {
-    let lex: Lexer<Token, _> = Lexer::new("");
+    let lex = Token::lexer("");
 
     assert_eq!(lex.token, Token::EndOfProgram);
     assert_eq!(lex.loc(), (0, 0));
@@ -93,7 +96,7 @@ fn empty() {
 
 #[test]
 fn whitespace() {
-    let lex: Lexer<Token, _> = Lexer::new("     ");
+    let lex = Token::lexer("     ");
 
     assert_eq!(lex.token, Token::EndOfProgram);
     assert_eq!(lex.loc(), (5, 5));

@@ -8,14 +8,16 @@ extern crate proc_macro;
 extern crate proc_macro2;
 
 mod tree;
+mod regex;
 mod generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use syn::{ItemEnum, Fields};
+use regex::ByteParser;
 
-#[proc_macro_derive(Logos, attributes(error, end, token))]
+#[proc_macro_derive(Logos, attributes(error, end, token, regex))]
 pub fn token(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
 
@@ -61,12 +63,14 @@ pub fn token(input: TokenStream) -> TokenStream {
 
                 match tts.next() {
                     Some(TokenTree::Punct(ref punct)) if punct.as_char() == '=' => {},
+                    Some(invalid) => panic!("#[token] Expected '=', got {}", invalid),
                     _ => panic!("Invalid token")
                 }
 
                 match tts.next() {
-                    Some(TokenTree::Literal(literal)) => handlers.insert(literal.to_string(), &variant.ident),
-                    _ => panic!("Invalid token"),
+                    Some(TokenTree::Literal(literal)) => handlers.insert::<ByteParser>(literal.to_string(), &variant.ident),
+                    Some(invalid) => panic!("#[token] Invalid value: {}", invalid),
+                    None => panic!("Invalid token")
                 };
 
                 assert!(tts.next().is_none(), "Unexpected token!");

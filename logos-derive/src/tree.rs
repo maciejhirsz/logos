@@ -1,45 +1,47 @@
 use syn::Ident;
 use quote::quote;
 use proc_macro2::TokenStream;
+use std::cmp::Ordering;
+use regex::{Pattern, Parser};
 
 use generator::{exhaustive, Generator, ExhaustiveGenerator, LooseGenerator};
 
 #[derive(Debug, Clone)]
 pub struct Node<'a> {
-    pub byte: u8,
+    pub pattern: Pattern,
     pub token: Option<&'a Ident>,
     pub consequents: Vec<Node<'a>>,
 }
 
 impl<'a> Node<'a> {
-    pub fn new(path: &[u8], token: &'a Ident) -> Self {
-        let byte = path[0];
+    pub fn new<P: Parser>(path: &[u8], token: &'a Ident) -> Self {
+        let (pattern, read) = <P as Parser>::parse(path);
 
         let mut node = Node {
-            byte,
+            pattern,
             token: None,
             consequents: Vec::new(),
         };
 
-        node.insert(&path[1..], token);
+        node.insert::<P>(&path[read..], token);
 
         node
     }
 
-    pub fn insert(&mut self, path: &[u8], token: &'a Ident) {
+    pub fn insert<P: Parser>(&mut self, path: &[u8], token: &'a Ident) {
         if path.len() == 0 {
             // FIXME: Error on conflicting token stuff
             return self.token = Some(token);
         }
 
-        let byte = path[0];
+        let (pattern, read) = <P as Parser>::parse(path);
 
-        match self.consequents.binary_search_by(|node| node.byte.cmp(&byte)) {
+        match self.consequents.binary_search_by(|node| node.pattern.partial_cmp(&pattern).unwrap_or_else(|| Ordering::Less)) {
             Ok(index) => {
-                self.consequents[index].insert(&path[1..], token);
+                self.consequents[index].insert::<P>(&path[read..], token);
             },
             Err(index) => {
-                self.consequents.insert(index, Node::new(path, token));
+                self.consequents.insert(index, Node::new::<P>(path, token));
             },
         }
 
@@ -81,7 +83,7 @@ impl<'a> Handlers<'a> {
         }
     }
 
-    pub fn insert(&mut self, path: String, token: &'a Ident) {
+    pub fn insert<P: Parser>(&mut self, path: String, token: &'a Ident) {
         let path = &path.as_bytes()[1..path.len() - 1];
 
         if path.len() == 0 {
@@ -91,8 +93,8 @@ impl<'a> Handlers<'a> {
         let byte = path[0];
 
         match &mut self.handlers[byte as usize] {
-            &mut Handler::Tree(ref mut node) => node.insert(&path[1..], token),
-            slot => *slot = Handler::Tree(Node::new(path, token))
+            &mut Handler::Tree(ref mut node) => node.insert::<P>(&path[1..], token),
+            slot => *slot = Handler::Tree(Node::new::<P>(path, token))
         }
     }
 

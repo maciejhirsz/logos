@@ -18,6 +18,10 @@ pub trait Logos: Sized {
     const ERROR: Self;
 
     fn lexicon<S: Source>() -> Lexicon<Self, S>;
+
+    fn lexer<S: Source>(source: S) -> Lexer<Self, S> {
+        Lexer::new(source)
+    }
 }
 
 pub trait Extras: Sized + Default {
@@ -49,6 +53,25 @@ impl<'source> Source for &'source str {
 
     fn slice(&self, from: usize, to: usize) -> Self::Slice {
         &self[from..to]
+    }
+}
+
+impl Source for *const u8 {
+    type Slice = &'static str;
+
+    fn read(&self, offset: usize) -> u8 {
+        unsafe { *self.offset(offset as isize) }
+    }
+
+    fn slice(&self, from: usize, to: usize) -> Self::Slice {
+        use std::str::from_utf8_unchecked;
+        use std::slice::from_raw_parts;
+
+        unsafe {
+            from_utf8_unchecked(from_raw_parts(
+                self.offset(from as isize), to - from
+            ))
+        }
     }
 }
 
