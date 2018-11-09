@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "logos",
+    "logos-derive",
+    "tests",
+]
+
+[profile]
+release = { lto = true }
+bench = { lto = true }
