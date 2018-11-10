@@ -15,7 +15,7 @@ use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use syn::{ItemEnum, Fields};
-use regex::{ByteParser, RegexParser};
+use regex::{ByteIter, RegexIter};
 
 #[proc_macro_derive(Logos, attributes(error, end, token, regex))]
 pub fn token(input: TokenStream) -> TokenStream {
@@ -72,10 +72,13 @@ pub fn token(input: TokenStream) -> TokenStream {
 
                 match tts.next() {
                     Some(TokenTree::Literal(literal)) => {
+                        let path = literal.to_string();
+                        let path = &path.as_str()[1..path.len() - 1];
+
                         if regex {
-                            handlers.insert::<RegexParser>(literal.to_string(), &variant.ident);
+                            handlers.insert(&mut RegexIter::from(path), &variant.ident);
                         } else {
-                            handlers.insert::<ByteParser>(literal.to_string(), &variant.ident);
+                            handlers.insert(&mut ByteIter::from(path), &variant.ident);
                         }
                     },
                     Some(invalid) => panic!("#[token] Invalid value: {}", invalid),

@@ -8,27 +8,47 @@ pub enum Pattern {
     Alternative(Vec<Pattern>),
 }
 
-pub trait Parser {
-    fn parse(&[u8]) -> Option<(Pattern, usize)>;
-}
+#[derive(Debug, Clone, Copy)] pub struct ByteIter<'a>(&'a [u8]);
+#[derive(Debug, Clone, Copy)] pub struct RegexIter<'a>(&'a [u8]);
 
-pub struct ByteParser;
-pub struct RegexParser;
-
-impl Parser for ByteParser {
-    fn parse(path: &[u8]) -> Option<(Pattern, usize)> {
-        path.get(0).map(|byte| (Pattern::Byte(*byte), 1))
+impl<'a> From<&'a str> for ByteIter<'a> {
+    fn from(str: &'a str) -> Self {
+        ByteIter(str.as_bytes())
     }
 }
 
-impl Parser for RegexParser {
-    fn parse(path: &[u8]) -> Option<(Pattern, usize)> {
-        let display = ::std::str::from_utf8(path).unwrap();
+impl<'a> From<&'a str> for RegexIter<'a> {
+    fn from(str: &'a str) -> Self {
+        RegexIter(str.as_bytes())
+    }
+}
+
+impl<'a> Iterator for ByteIter<'a> {
+    type Item = Pattern;
+
+    fn next(&mut self) -> Option<Pattern> {
+        match (self.0).len() {
+            0 => None,
+            _ => {
+                let byte = self.0[0];
+                self.0 = &self.0[1..];
+
+                Some(Pattern::Byte(byte))
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for RegexIter<'a> {
+    type Item = Pattern;
+
+    fn next(&mut self) -> Option<Pattern> {
+        let display = ::std::str::from_utf8(self.0).unwrap();
 
         let mut read = 0;
-        let mut pattern = match path.get(0)? {
+        let mut pattern = match (self.0).get(0)? {
             b'[' => {
-                let first = *path.get(1).expect("#[regex] Unclosed `[`");
+                let first = *(self.0).get(1).expect("#[regex] Unclosed `[`");
                 read += 2;
 
                 assert!(first != b']', "#[regex] Empty `[]` in {}", display);
@@ -36,7 +56,7 @@ impl Parser for RegexParser {
                 let mut patterns = vec![Pattern::Byte(first)];
 
                 loop {
-                    match *path.get(read).expect("#[regex] Unclosed `[`") {
+                    match *(self.0).get(read).expect("#[regex] Unclosed `[`") {
                         b']' => {
                             read += 1;
                             break;
@@ -49,7 +69,7 @@ impl Parser for RegexParser {
                                 _ => panic!("#[regex] Unexpected `-` in {}", display)
                             };
                             // FIXME: make sure it's a legit character!
-                            let to = *path.get(read).unwrap();
+                            let to = *(self.0).get(read).unwrap();
                             read += 1;
 
                             patterns.push(Pattern::Range(from, to));
@@ -74,12 +94,14 @@ impl Parser for RegexParser {
             },
         };
 
-        if path.get(read) == Some(&b'*') {
+        if (self.0).get(read) == Some(&b'*') {
             read += 1;
             pattern = Pattern::Repeat(Box::new(pattern));
         }
 
-        Some((pattern, read))
+        self.0 = &self.0[read..];
+
+        Some(pattern)
     }
 }
 
@@ -194,5 +216,36 @@ mod test {
         ]);
 
         assert!("abcdef0123456789_$!".bytes().eq(pattern));
+    }
+
+    #[test]
+    fn regex_number() {
+        let regex = RegexIter::from("[1-9][0-9]*");
+
+        assert!(regex.eq([
+            Pattern::Range(b'1', b'9'),
+            Pattern::Repeat(Box::new(Pattern::Range(b'0', b'9'))),
+        ].iter().cloned()));
+    }
+
+    #[test]
+    fn regex_ident() {
+        let regex = RegexIter::from("[a-zA-Z_$][a-zA-Z0-9_$]*");
+
+        assert!(regex.eq([
+            Pattern::Alternative(vec![
+                Pattern::Range(b'a', b'z'),
+                Pattern::Range(b'A', b'Z'),
+                Pattern::Byte(b'_'),
+                Pattern::Byte(b'$'),
+            ]),
+            Pattern::Repeat(Box::new(Pattern::Alternative(vec![
+                Pattern::Range(b'a', b'z'),
+                Pattern::Range(b'A', b'Z'),
+                Pattern::Range(b'0', b'9'),
+                Pattern::Byte(b'_'),
+                Pattern::Byte(b'$'),
+            ]))),
+        ].iter().cloned()));
     }
 }

@@ -2,7 +2,7 @@ use syn::Ident;
 use quote::quote;
 use proc_macro2::TokenStream;
 use std::cmp::Ordering;
-use regex::{Pattern, Parser};
+use regex::Pattern;
 
 use generator::{exhaustive, Generator, ExhaustiveGenerator, LooseGenerator};
 
@@ -14,25 +14,32 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn new<P: Parser>(pattern: Pattern, path: &[u8], token: &'a Ident) -> Self {
+    pub fn new<P>(pattern: Pattern, path: &mut P, token: &'a Ident) -> Self
+    where
+        P: Iterator<Item = Pattern>,
+    {
         let mut node = Node {
             pattern,
             token: None,
             consequents: Vec::new(),
         };
 
-        node.insert::<P>(path, token);
+        node.insert(path, token);
 
         node
     }
 
-    pub fn insert<P: Parser>(&mut self, path: &[u8], token: &'a Ident) {
-        if path.len() == 0 {
-            // FIXME: Error on conflicting token stuff
-            return self.token = Some(token);
-        }
-
-        let (pattern, read) = <P as Parser>::parse(path).expect("Invalid pattern!");
+    pub fn insert<P>(&mut self, path: &mut P, token: &'a Ident)
+    where
+        P: Iterator<Item = Pattern>,
+    {
+        let pattern = match path.next() {
+            Some(pattern) => pattern,
+            None => {
+                // FIXME: Error on conflicting token stuff
+                return self.token = Some(token);
+            }
+        };
 
         if let Pattern::Repeat(_) = pattern {
             // FIXME: Error on conflicting token stuff
@@ -43,10 +50,10 @@ impl<'a> Node<'a> {
             (&node.pattern).partial_cmp(&pattern).unwrap_or_else(|| Ordering::Greater)
         }) {
             Ok(index) => {
-                self.consequents[index].insert::<P>(&path[read..], token);
+                self.consequents[index].insert(path, token);
             },
             Err(index) => {
-                self.consequents.insert(index, Node::new::<P>(pattern, &path[read..], token));
+                self.consequents.insert(index, Node::new(pattern, path, token));
             },
         }
 
@@ -88,19 +95,20 @@ impl<'a> Handlers<'a> {
         }
     }
 
-    pub fn insert<P: Parser>(&mut self, path: String, token: &'a Ident) {
-        let path = &path.as_bytes()[1..path.len() - 1];
-
-        if path.len() == 0 {
-            panic!("#[token] value must not be empty.");
-        }
-
-        let (pattern, read) = <P as Parser>::parse(path).expect("Invalid pattern!");
+    pub fn insert<P>(&mut self, path: &mut P, token: &'a Ident)
+    where
+        P: Iterator<Item = Pattern> + Copy,
+    {
+        let pattern = path.next().expect("#[token] value must not be empty.");
 
         for byte in pattern {
+            let mut path = *path;
+
             match &mut self.handlers[byte as usize] {
-                &mut Handler::Tree(ref mut node) => node.insert::<P>(&path[read..], token),
-                slot => *slot = Handler::Tree(Node::new::<P>(Pattern::Byte(byte), &path[read..], token))
+                &mut Handler::Tree(ref mut node) => node.insert(&mut path, token),
+                slot => {
+                    *slot = Handler::Tree(Node::new(Pattern::Byte(byte), &mut path, token));
+                }
             }
         }
     }
