@@ -14,16 +14,14 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn new<P: Parser>(path: &[u8], token: &'a Ident) -> Self {
-        let (pattern, read) = <P as Parser>::parse(path);
-
+    pub fn new<P: Parser>(pattern: Pattern, path: &[u8], token: &'a Ident) -> Self {
         let mut node = Node {
             pattern,
             token: None,
             consequents: Vec::new(),
         };
 
-        node.insert::<P>(&path[read..], token);
+        node.insert::<P>(path, token);
 
         node
     }
@@ -34,14 +32,21 @@ impl<'a> Node<'a> {
             return self.token = Some(token);
         }
 
-        let (pattern, read) = <P as Parser>::parse(path);
+        let (pattern, read) = <P as Parser>::parse(path).expect("Invalid pattern!");
 
-        match self.consequents.binary_search_by(|node| node.pattern.partial_cmp(&pattern).unwrap_or_else(|| Ordering::Less)) {
+        if let Pattern::Repeat(_) = pattern {
+            // FIXME: Error on conflicting token stuff
+            self.token = Some(token);
+        }
+
+        match self.consequents.binary_search_by(|node| {
+            (&node.pattern).partial_cmp(&pattern).unwrap_or_else(|| Ordering::Greater)
+        }) {
             Ok(index) => {
                 self.consequents[index].insert::<P>(&path[read..], token);
             },
             Err(index) => {
-                self.consequents.insert(index, Node::new::<P>(path, token));
+                self.consequents.insert(index, Node::new::<P>(pattern, &path[read..], token));
             },
         }
 
@@ -90,11 +95,13 @@ impl<'a> Handlers<'a> {
             panic!("#[token] value must not be empty.");
         }
 
-        let byte = path[0];
+        let (pattern, read) = <P as Parser>::parse(path).expect("Invalid pattern!");
 
-        match &mut self.handlers[byte as usize] {
-            &mut Handler::Tree(ref mut node) => node.insert::<P>(&path[1..], token),
-            slot => *slot = Handler::Tree(Node::new::<P>(path, token))
+        for byte in pattern {
+            match &mut self.handlers[byte as usize] {
+                &mut Handler::Tree(ref mut node) => node.insert::<P>(&path[read..], token),
+                slot => *slot = Handler::Tree(Node::new::<P>(Pattern::Byte(byte), &path[read..], token))
+            }
         }
     }
 

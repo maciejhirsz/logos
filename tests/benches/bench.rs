@@ -3,12 +3,17 @@
 extern crate test;
 extern crate logos;
 extern crate luther;
+extern crate pest;
 extern crate toolshed;
 #[macro_use] extern crate logos_derive;
 #[macro_use] extern crate luther_derive;
+#[macro_use] extern crate pest_derive;
 
 use test::Bencher;
 
+#[derive(Parser)]
+#[grammar = "../benches/pestbench.pest"]
+pub struct BenchParser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos, Lexer)]
 pub enum Token {
@@ -139,6 +144,17 @@ fn logos_nul_terminated(b: &mut Bencher) {
         while lex.token != Token::EndOfProgram {
             lex.consume()
         }
+    });
+}
+
+#[bench]
+fn pest(b: &mut Bencher) {
+    use pest::Parser;
+
+    b.bytes = SOURCE.len() as u64;
+
+    b.iter(|| {
+        let _ = BenchParser::parse(Rule::bench, SOURCE).unwrap();
     });
 }
 

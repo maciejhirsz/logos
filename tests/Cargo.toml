@@ -13,3 +13,5 @@ logos-derive = { path = "../logos-derive" }
 toolshed = "0.5"
 luther = "0.1"
 luther-derive = "0.1"
+pest = "2.0"
+pest_derive = "2.0"

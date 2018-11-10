@@ -1,0 +1,5 @@
+bench = { SOI ~  token * ~ EOI }
+
+token = { "foobar" | "private" | "primitive" | "protected" | "instanceof" | "in" | "..." | "." | "(" | ")" | "{" | "}" | "++" | "+" | "===" | "==" | "=>" | "=" }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }

@@ -9,10 +9,10 @@ pub enum Token {
     #[end]
     EndOfProgram,
 
-    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]+"]
+    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
     Identifier,
 
-    #[regex = "[1-9][0-9]+"]
+    #[regex = "[1-9][0-9]*"]
     Number,
 
     #[token = "foobar"]
@@ -135,6 +135,19 @@ fn keywords() {
         (Token::Protectee, "protectee", 40, 49),
         (Token::In, "in", 50, 52),
         (Token::Instanceof, "instanceof", 53, 63),
+    ]);
+}
+
+#[test]
+fn numbers() {
+    assert_lex("0 1 2 3 4 10 42", &[
+        (Token::InvalidToken, "0", 0, 1),
+        (Token::Number, "1", 2, 3),
+        (Token::Number, "2", 4, 5),
+        (Token::Number, "3", 6, 7),
+        (Token::Number, "4", 8, 9),
+        (Token::Number, "10", 10, 12),
+        (Token::Number, "42", 13, 15),
     ]);
 }
 

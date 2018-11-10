@@ -37,18 +37,18 @@ pub trait Generator {
             };
         }
 
-        if node.token.is_some() || !node.pattern.is_byte() {
+        if node.token.is_some() || node.consequents.first().map(|node| !node.pattern.is_byte()).unwrap_or(false)  {
             options += 1;
         }
 
         match options {
             1 => {
-                node = node.consequents.iter().next().unwrap();
+                node = node.consequents.first().unwrap();
                 let byte = &node.pattern;
 
                 let mut test = quote! { lex.next() == #byte };
 
-                while node.consequents.len() == 1 && node.token.is_none() && node.pattern.is_byte() {
+                while node.consequents.len() == 1 && node.token.is_none() && node.consequents.first().unwrap().pattern.is_byte() {
                     node = node.consequents.iter().next().unwrap();
                     let byte = &node.pattern;
 
