@@ -27,8 +27,6 @@ impl<'a> Generator<'a> {
     pub fn print_tree(&mut self, strings: Vec<Token<'a, String>>, regex: Option<Token<'a, Regex>>) -> TokenStream {
         let mut strings = strings.iter();
 
-        let regex = regex.map(|regex| self.regex_to_fn(regex));
-
         if let Some(item) = strings.next() {
             let mut path = ByteIter::from(item.0.as_str());
             let pattern = path.next().unwrap();
@@ -44,7 +42,7 @@ impl<'a> Generator<'a> {
 
             if let Some(fallback) = regex {
                 FallbackGenerator {
-                    enum_name: self.enum_name,
+                    gen: self,
                     fallback,
                 }.print(&node)
             } else if node.exhaustive() {
@@ -52,7 +50,8 @@ impl<'a> Generator<'a> {
             } else {
                 LooseGenerator(self.enum_name).print(&node)
             }
-        } else if let Some(handler) = regex {
+        } else if let Some(regex) = regex {
+            let handler = self.regex_to_fn(regex);
             quote! {
                 Some(#handler)
             }
@@ -158,11 +157,11 @@ impl<'a> Generator<'a> {
 pub trait GeneratorTrait<'a> {
     fn enum_name(&self) -> &'a Ident;
 
-    fn print(&self, node: &Node) -> TokenStream;
+    fn print(&mut self, node: &Node) -> TokenStream;
 
-    fn print_token(&self, variant: &Ident) -> TokenStream;
+    fn print_token(&mut self, variant: &Ident) -> TokenStream;
 
-    fn print_node(&self, mut node: &Node) -> TokenStream {
+    fn print_node(&mut self, mut node: &Node) -> TokenStream {
         let mut options = node.consequents.len();
 
         if options == 0 {
@@ -231,9 +230,9 @@ pub trait GeneratorTrait<'a> {
 
 pub struct ExhaustiveGenerator<'a>(&'a Ident);
 pub struct LooseGenerator<'a>(&'a Ident);
-pub struct FallbackGenerator<'a> {
-    enum_name: &'a Ident,
-    fallback: Ident,
+pub struct FallbackGenerator<'a: 'b, 'b> {
+    gen: &'b mut Generator<'a>,
+    fallback: Token<'a, Regex>,
 }
 
 impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
@@ -241,7 +240,7 @@ impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
         self.0
     }
 
-    fn print(&self, node: &Node) -> TokenStream {
+    fn print(&mut self, node: &Node) -> TokenStream {
         let body = self.print_node(node);
 
         quote! {
@@ -251,7 +250,7 @@ impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
         }
     }
 
-    fn print_token(&self, variant: &Ident) -> TokenStream {
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.enum_name();
 
         quote! { #name::#variant }
@@ -263,7 +262,7 @@ impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
         self.0
     }
 
-    fn print(&self, node: &Node) -> TokenStream {
+    fn print(&mut self, node: &Node) -> TokenStream {
         let body = self.print_node(node);
 
         quote! {
@@ -275,45 +274,93 @@ impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
         }
     }
 
-    fn print_token(&self, variant: &Ident) -> TokenStream {
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.enum_name();
 
         quote! { return lex.token = #name::#variant }
     }
 }
 
-impl<'a> GeneratorTrait<'a> for FallbackGenerator<'a> {
+impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
     fn enum_name(&self) -> &'a Ident {
-        self.enum_name
+        self.gen.enum_name
     }
 
-    fn print(&self, node: &Node) -> TokenStream {
+    fn print(&mut self, node: &Node) -> TokenStream {
         let body = self.print_node(node);
-        let fallback = &self.fallback;
+        let pattern = &self.fallback.0.patterns()[0];
+        let pattern_fn = self.gen.pattern_to_fn(pattern.clone());
+
+        if !pattern.is_repeat() {
+            panic!("Sorry, you are trying to do something that's not implemented yet!");
+        };
+
+        let name = self.gen.enum_name.clone();
+        let fallback = &self.fallback.1;
 
         quote! {
             Some(|lex| {
                 #body
 
-                #fallback(lex);
+                while #pattern_fn(lex.read()) {
+                    lex.bump();
+                }
+
+                lex.token = #name::#fallback;
             })
         }
     }
 
-    fn print_token(&self, variant: &Ident) -> TokenStream {
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.enum_name();
+        let pattern = &self.fallback.0.patterns()[0];
+        let pattern_fn = self.gen.pattern_to_fn(pattern.clone());
 
-        quote! { return lex.token = #name::#variant }
+        quote! {
+            if #pattern_fn(lex.read()) {
+                lex.bump()
+            } else {
+                return lex.token = #name::#variant ;
+            }
+        }
     }
 }
 
 impl ToTokens for Pattern {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Pattern::Byte(byte) => tokens.extend(quote! { #byte }),
-            Pattern::Range(from, to) => tokens.extend(quote! { #from...#to }),
+            Pattern::Byte(byte) => tokens.extend(match *byte {
+                b'a' => quote!(b'a'),
+                b'b' => quote!(b'b'),
+                b'c' => quote!(b'c'),
+                b'd' => quote!(b'd'),
+                b'e' => quote!(b'e'),
+                b'f' => quote!(b'f'),
+                b'g' => quote!(b'g'),
+                b'h' => quote!(b'h'),
+                b'i' => quote!(b'i'),
+                b'j' => quote!(b'j'),
+                b'k' => quote!(b'k'),
+                b'l' => quote!(b'l'),
+                b'm' => quote!(b'm'),
+                b'n' => quote!(b'n'),
+                b'o' => quote!(b'o'),
+                b'p' => quote!(b'p'),
+                b'q' => quote!(b'q'),
+                b'r' => quote!(b'r'),
+                b's' => quote!(b's'),
+                b't' => quote!(b't'),
+                b'u' => quote!(b'u'),
+                b'v' => quote!(b'v'),
+                b'w' => quote!(b'w'),
+                b'x' => quote!(b'x'),
+                b'y' => quote!(b'y'),
+                b'z' => quote!(b'z'),
+                _    => quote!(#byte),
+            }),
+            Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
             Pattern::Repeat(ref pat) => pat.to_tokens(tokens),
-            Pattern::Alternative(ref pat) => tokens.extend(quote! { #( #pat )|* }),
+            Pattern::Alternative(ref pat) => tokens.extend(quote!(#( #pat )|*)),
         }
     }
 }

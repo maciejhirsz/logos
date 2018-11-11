@@ -152,6 +152,20 @@ fn keywords() {
 }
 
 #[test]
+fn keywords_mix_identifiers() {
+    assert_lex("pri priv priva privb privat private privatee privateer", &[
+        (Token::Identifier, "pri", 0..3),
+        (Token::Priv, "priv", 4..8),
+        (Token::Identifier, "priva", 9..14),
+        (Token::Identifier, "privb", 15..20),
+        (Token::Identifier, "privat", 21..27),
+        (Token::Private, "private", 28..35),
+        (Token::Identifier, "privatee", 36..44),
+        (Token::Identifier, "privateer", 45..54),
+    ]);
+}
+
+#[test]
 fn numbers() {
     assert_lex("0 1 2 3 4 10 42 1337", &[
         (Token::InvalidToken, "0", 0..1),
