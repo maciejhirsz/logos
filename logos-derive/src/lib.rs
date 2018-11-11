@@ -12,6 +12,9 @@ mod regex;
 mod handlers;
 mod generator;
 
+use handlers::Handlers;
+use generator::Generator;
+
 use regex::Regex;
 use quote::quote;
 use proc_macro::TokenStream;
@@ -30,7 +33,7 @@ pub fn token(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut end = None;
 
-    let mut handlers = handlers::Handlers::new();
+    let mut handlers = Handlers::new();
 
     for variant in &item.variants {
         if variant.discriminant.is_some() {
@@ -106,16 +109,20 @@ pub fn token(input: TokenStream) -> TokenStream {
 
     // panic!("{:#?}", handlers);
 
+    let mut generator = Generator::new(name);
+
     let handlers = handlers.into_iter().map(|handler| {
         use handlers::Handler;
 
         match handler {
             Handler::Eof                     => quote! { Some(eof) },
-            Handler::Error                   => quote! { Some(error) },
+            Handler::Error                   => quote! { Some(_error) },
             Handler::Whitespace              => quote! { None },
-            Handler::Tree { strings, regex } => generator::print_tree(strings, regex, name),
+            Handler::Tree { strings, regex } => generator.print_tree(strings, regex),
         }
-    });
+    }).collect::<Vec<_>>();
+
+    let fns = generator.fns();
 
     let tokens = quote! {
         impl ::logos::Logos for #name {
@@ -129,11 +136,13 @@ pub fn token(input: TokenStream) -> TokenStream {
                     lex.token = #name::#end;
                 }
 
-                fn error<S: ::logos::Source>(lex: &mut ::logos::Lexer<#name, S>) {
+                fn _error<S: ::logos::Source>(lex: &mut ::logos::Lexer<#name, S>) {
                     lex.bump();
 
                     lex.token = #name::#error;
                 }
+
+                #fns
 
                 [#(#handlers),*]
             }

@@ -1,66 +1,98 @@
+use std::collections::HashSet;
 use syn::Ident;
-use proc_macro2::TokenStream;
+use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
+
 use tree::Node;
 use regex::{Regex, Pattern, ByteIter};
 use handlers::Token;
 
-pub fn print_tree(strings: Vec<Token<String>>, regex: Option<Token<Regex>>, name: &Ident) -> TokenStream {
-    let mut strings = strings.iter();
+pub struct Generator<'a> {
+    enum_name: &'a Ident,
+    fns: TokenStream,
+    fns_check: HashSet<&'a Ident>,
+}
 
-    if let Some(item) = strings.next() {
-        let mut path = ByteIter::from(item.0.as_str());
-        let pattern = path.next().unwrap();
+impl<'a> Generator<'a> {
+    pub fn new(enum_name: &'a Ident) -> Self {
+        Generator {
+            enum_name,
+            fns: TokenStream::new(),
+            fns_check: HashSet::new(),
+        }
+    }
 
-        let mut node = Node::new(pattern, &mut path, item.1);
+    pub fn fns(self) -> TokenStream {
+        self.fns
+    }
 
-        for item in strings {
+    pub fn print_tree(&mut self, strings: Vec<Token<'a, String>>, regex: Option<Token<'a, Regex>>) -> TokenStream {
+        let mut strings = strings.iter();
+
+        if let Some(item) = strings.next() {
             let mut path = ByteIter::from(item.0.as_str());
-            path.next().unwrap();
+            let pattern = path.next().unwrap();
 
-            node.insert(&mut path, item.1);
-        }
+            let mut node = Node::new(pattern, &mut path, item.1);
 
-        if node.exhaustive() {
-            ExhaustiveGenerator::print(&node, name)
-        } else {
-            LooseGenerator::print(&node, name)
-        }
-    } else if let Some(item) = regex {
-        let mut consumers = TokenStream::new();
-        let token = item.1;
+            for item in strings {
+                let mut path = ByteIter::from(item.0.as_str());
+                path.next().unwrap();
 
-        for pattern in item.0.patterns() {
-            consumers.extend(if pattern.is_repeat() {
-                quote! {
-                    loop {
-                        match lex.read() {
-                            #pattern => lex.bump(),
-                            _ => break,
-                        }
-                    }
-                }
-            } else {
-                quote! {
-                    match lex.read() {
-                        #pattern => lex.bump(),
-                        _ => {},
-                    }
-                }
-            });
-        }
-
-        quote! {
-            Some(|lex| {
-                lex.bump();
-
-                #consumers
-
-                lex.token = #name::#token;
+                node.insert(&mut path, item.1);
             }
-        ) }
-    } else {
-        panic!("Invalid tree!");
+
+            if node.exhaustive() {
+                ExhaustiveGenerator::print(&node, self.enum_name)
+            } else {
+                LooseGenerator::print(&node, self.enum_name)
+            }
+        } else if let Some(item) = regex {
+            let handler = format!("_handle_{}", item.1).to_lowercase();
+            let handler = Ident::new(&handler, Span::call_site());
+
+            if self.fns_check.insert(item.1) {
+                let mut consumers = TokenStream::new();
+                let token = item.1;
+
+                for pattern in item.0.patterns() {
+                    consumers.extend(if pattern.is_repeat() {
+                        quote! {
+                            loop {
+                                match lex.read() {
+                                    #pattern => lex.bump(),
+                                    _ => break,
+                                }
+                            }
+                        }
+                    } else {
+                        quote! {
+                            match lex.read() {
+                                #pattern => lex.bump(),
+                                _ => {},
+                            }
+                        }
+                    });
+                }
+
+                let name = self.enum_name;
+
+                self.fns.extend(quote! {
+                    fn #handler<S: ::logos::Source>(lex: &mut ::logos::Lexer<#name, S>) {
+                        lex.bump();
+
+                        #consumers
+
+                        lex.token = #name::#token;
+                    }
+                });
+            }
+
+            quote! { Some(#handler) }
+
+        } else {
+            panic!("Invalid tree!");
+        }
     }
 }
 
@@ -75,7 +107,7 @@ impl ToTokens for Pattern {
     }
 }
 
-pub trait Generator {
+pub trait GeneratorTrait {
     fn print(node: &Node, name: &Ident) -> TokenStream;
 
     fn print_token(name: &Ident, variant: &Ident) -> TokenStream;
@@ -150,7 +182,7 @@ pub trait Generator {
 pub struct LooseGenerator;
 pub struct ExhaustiveGenerator;
 
-impl Generator for LooseGenerator {
+impl GeneratorTrait for LooseGenerator {
     fn print(node: &Node, name: &Ident) -> TokenStream {
         let body = Self::print_node(node, name);
 
@@ -168,7 +200,7 @@ impl Generator for LooseGenerator {
     }
 }
 
-impl Generator for ExhaustiveGenerator {
+impl GeneratorTrait for ExhaustiveGenerator {
     fn print(node: &Node, name: &Ident) -> TokenStream {
         let body = Self::print_node(node, name);
 
