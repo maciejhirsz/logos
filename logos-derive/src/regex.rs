@@ -1,6 +1,32 @@
 use std::cmp::Ordering;
+use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
+pub struct Regex(Vec<Pattern>);
+
+impl Regex {
+    pub fn from(source: &str) -> Self {
+        Regex(RegexIter::from(source).collect())
+    }
+
+    pub fn patterns(&self) -> &[Pattern] {
+        &self.0
+    }
+
+    /// Remove and return the `Pattern` matching the first
+    /// byte of a string.
+    ///
+    /// If said `Pattern` is repeating, it won't be removed.
+    pub fn first(&mut self) -> Pattern {
+        if let Pattern::Repeat(first) = (self.0).first().unwrap() {
+            return (**first).clone();
+        }
+
+        (self.0).remove(0)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
 pub enum Pattern {
     Byte(u8),
     Range(u8, u8),
@@ -8,8 +34,19 @@ pub enum Pattern {
     Alternative(Vec<Pattern>),
 }
 
-#[derive(Debug, Clone, Copy)] pub struct ByteIter<'a>(&'a [u8]);
-#[derive(Debug, Clone, Copy)] pub struct RegexIter<'a>(&'a [u8]);
+impl fmt::Debug for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Pattern::Byte(byte) => (*byte as char).fmt(f),
+            Pattern::Range(from, to) => write!(f, "{:?}...{:?}", *from as char, *to as char),
+            Pattern::Repeat(pattern) => write!(f, "({:?})*", pattern),
+            Pattern::Alternative(alts) => write!(f, "{:?}", alts),
+        }
+    }
+}
+
+#[derive(Clone, Copy)] pub struct ByteIter<'a>(&'a [u8]);
+#[derive(Clone, Copy)] pub struct RegexIter<'a>(&'a [u8]);
 
 impl<'a> From<&'a str> for ByteIter<'a> {
     fn from(str: &'a str) -> Self {
@@ -109,6 +146,13 @@ impl Pattern {
     pub fn is_byte(&self) -> bool {
         match self {
             Pattern::Byte(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_repeat(&self) -> bool {
+        match self {
+            Pattern::Repeat(_) => true,
             _ => false,
         }
     }
@@ -239,22 +283,23 @@ mod test {
 
     #[test]
     fn regex_ident() {
-        let regex = RegexIter::from("[a-zA-Z_$][a-zA-Z0-9_$]*");
-
-        assert!(regex.eq([
-            Pattern::Alternative(vec![
-                Pattern::Range(b'a', b'z'),
-                Pattern::Range(b'A', b'Z'),
-                Pattern::Byte(b'_'),
-                Pattern::Byte(b'$'),
-            ]),
-            Pattern::Repeat(Box::new(Pattern::Alternative(vec![
-                Pattern::Range(b'a', b'z'),
-                Pattern::Range(b'A', b'Z'),
-                Pattern::Range(b'0', b'9'),
-                Pattern::Byte(b'_'),
-                Pattern::Byte(b'$'),
-            ]))),
-        ].iter().cloned()));
+        assert_eq!(
+            Regex::from("[a-zA-Z_$][a-zA-Z0-9_$]*").patterns(),
+            &[
+                Pattern::Alternative(vec![
+                    Pattern::Range(b'a', b'z'),
+                    Pattern::Range(b'A', b'Z'),
+                    Pattern::Byte(b'_'),
+                    Pattern::Byte(b'$'),
+                ]),
+                Pattern::Repeat(Box::new(Pattern::Alternative(vec![
+                    Pattern::Range(b'a', b'z'),
+                    Pattern::Range(b'A', b'Z'),
+                    Pattern::Range(b'0', b'9'),
+                    Pattern::Byte(b'_'),
+                    Pattern::Byte(b'$'),
+                ]))),
+            ]
+        );
     }
 }

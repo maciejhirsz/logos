@@ -2,7 +2,67 @@ use syn::Ident;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use tree::Node;
-use regex::Pattern;
+use regex::{Regex, Pattern, ByteIter};
+use handlers::Token;
+
+pub fn print_tree(strings: Vec<Token<String>>, regex: Option<Token<Regex>>, name: &Ident) -> TokenStream {
+    let mut strings = strings.iter();
+
+    if let Some(item) = strings.next() {
+        let mut path = ByteIter::from(item.0.as_str());
+        let pattern = path.next().unwrap();
+
+        let mut node = Node::new(pattern, &mut path, item.1);
+
+        for item in strings {
+            let mut path = ByteIter::from(item.0.as_str());
+            path.next().unwrap();
+
+            node.insert(&mut path, item.1);
+        }
+
+        if node.exhaustive() {
+            ExhaustiveGenerator::print(&node, name)
+        } else {
+            LooseGenerator::print(&node, name)
+        }
+    } else if let Some(item) = regex {
+        let mut consumers = TokenStream::new();
+        let token = item.1;
+
+        for pattern in item.0.patterns() {
+            consumers.extend(if pattern.is_repeat() {
+                quote! {
+                    loop {
+                        match lex.read() {
+                            #pattern => lex.bump(),
+                            _ => break,
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    match lex.read() {
+                        #pattern => lex.bump(),
+                        _ => {},
+                    }
+                }
+            });
+        }
+
+        quote! {
+            Some(|lex| {
+                lex.bump();
+
+                #consumers
+
+                lex.token = #name::#token;
+            }
+        ) }
+    } else {
+        panic!("Invalid tree!");
+    }
+}
 
 impl ToTokens for Pattern {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -95,11 +155,11 @@ impl Generator for LooseGenerator {
         let body = Self::print_node(node, name);
 
         quote! {
-            |lex| {
+            Some(|lex| {
                 #body
 
                 lex.token = <#name as ::logos::Logos>::ERROR;
-            }
+            })
         }
     }
 
@@ -113,18 +173,13 @@ impl Generator for ExhaustiveGenerator {
         let body = Self::print_node(node, name);
 
         quote! {
-            |lex| {
+            Some(|lex| {
                 lex.token = #body;
-            }
+            })
         }
     }
 
     fn print_token(name: &Ident, variant: &Ident) -> TokenStream {
         quote! { #name::#variant }
     }
-}
-
-/// Tests whether the branch produces a token on all leaves without any tests.
-pub fn exhaustive(node: &Node) -> bool {
-    node.token.is_some() && node.consequents.iter().all(exhaustive)
 }

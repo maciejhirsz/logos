@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 pub type Lexicon<Logos, Source> = [Option<fn(&mut Lexer<Logos, Source>)>; 256];
 
 /// Trait that will be derived for the appropriate enum representing all the tokens
@@ -38,7 +40,7 @@ pub trait Source {
     type Slice;
 
     fn read(&self, offset: usize) -> u8;
-    fn slice(&self, from: usize, to: usize) -> Self::Slice;
+    fn slice(&self, range: Range<usize>) -> Self::Slice;
 }
 
 impl<'source> Source for &'source str {
@@ -51,8 +53,8 @@ impl<'source> Source for &'source str {
             .unwrap_or_else(|| 0)
     }
 
-    fn slice(&self, from: usize, to: usize) -> Self::Slice {
-        &self[from..to]
+    fn slice(&self, range: Range<usize>) -> Self::Slice {
+        &self[range]
     }
 }
 
@@ -63,13 +65,13 @@ impl Source for *const u8 {
         unsafe { *self.offset(offset as isize) }
     }
 
-    fn slice(&self, from: usize, to: usize) -> Self::Slice {
+    fn slice(&self, range: Range<usize>) -> Self::Slice {
         use std::str::from_utf8_unchecked;
         use std::slice::from_raw_parts;
 
         unsafe {
             from_utf8_unchecked(from_raw_parts(
-                self.offset(from as isize), to - from
+                self.offset(range.start as isize), range.end - range.start
             ))
         }
     }
@@ -100,8 +102,8 @@ impl<Token: Logos, S: Source> Lexer<Token, S> {
         lex
     }
 
-    pub fn loc(&self) -> (usize, usize) {
-        (self.token_start, self.token_end)
+    pub fn range(&self) -> Range<usize> {
+        self.token_start .. self.token_end
     }
 
     pub fn consume(&mut self) {
@@ -137,6 +139,6 @@ impl<Token: Logos, S: Source> Lexer<Token, S> {
     }
 
     pub fn slice(&self) -> S::Slice {
-        self.source.slice(self.token_start, self.token_end)
+        self.source.slice(self.range())
     }
 }

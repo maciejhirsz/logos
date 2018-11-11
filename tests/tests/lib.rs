@@ -71,14 +71,15 @@ pub enum Token {
 }
 
 use logos::Logos;
+use std::ops::Range;
 
-fn assert_lex(source: &str, tokens: &[(Token, &str, usize, usize)]) {
+fn assert_lex(source: &str, tokens: &[(Token, &str, Range<usize>)]) {
     let mut lex = Token::lexer(source);
 
-    for (token, slice, start, end) in tokens {
+    for (token, slice, range) in tokens {
         assert_eq!(lex.token, *token);
         assert_eq!(lex.slice(), *slice);
-        assert_eq!(lex.loc(), (*start, *end));
+        assert_eq!(lex.range(), *range);
 
         lex.consume();
     }
@@ -91,7 +92,7 @@ fn empty() {
     let lex = Token::lexer("");
 
     assert_eq!(lex.token, Token::EndOfProgram);
-    assert_eq!(lex.loc(), (0, 0));
+    assert_eq!(lex.range(), 0..0);
 }
 
 #[test]
@@ -99,64 +100,65 @@ fn whitespace() {
     let lex = Token::lexer("     ");
 
     assert_eq!(lex.token, Token::EndOfProgram);
-    assert_eq!(lex.loc(), (5, 5));
+    assert_eq!(lex.range(), 5..5);
 }
 
 #[test]
 fn operators() {
     assert_lex("=== == = => + ++", &[
-        (Token::OpStrictEquality, "===", 0, 3),
-        (Token::OpEquality, "==", 4, 6),
-        (Token::OpAssign, "=", 7, 8),
-        (Token::FatArrow, "=>", 9, 11),
-        (Token::OpAddition, "+", 12, 13),
-        (Token::OpIncrement, "++", 14, 16),
+        (Token::OpStrictEquality, "===", 0..3),
+        (Token::OpEquality, "==", 4..6),
+        (Token::OpAssign, "=", 7..8),
+        (Token::FatArrow, "=>", 9..11),
+        (Token::OpAddition, "+", 12..13),
+        (Token::OpIncrement, "++", 14..16),
     ]);
 }
 
 #[test]
 fn punctation() {
     assert_lex("{ . ... }", &[
-        (Token::BraceOpen, "{", 0, 1),
-        (Token::Accessor, ".", 2, 3),
-        (Token::Ellipsis, "...", 4, 7),
-        (Token::BraceClose, "}", 8, 9),
+        (Token::BraceOpen, "{", 0..1),
+        (Token::Accessor, ".", 2..3),
+        (Token::Ellipsis, "...", 4..7),
+        (Token::BraceClose, "}", 8..9),
     ]);
 }
 
 #[test]
 fn keywords() {
     assert_lex("foobar priv private primitive protected protectee in instanceof", &[
-        (Token::Foobar, "foobar", 0, 6),
-        (Token::Priv, "priv", 7, 11),
-        (Token::Private, "private", 12, 19),
-        (Token::Primitive, "primitive", 20, 29),
-        (Token::Protected, "protected", 30, 39),
-        (Token::Protectee, "protectee", 40, 49),
-        (Token::In, "in", 50, 52),
-        (Token::Instanceof, "instanceof", 53, 63),
+        (Token::Foobar, "foobar", 0..6),
+        (Token::Priv, "priv", 7..11),
+        (Token::Private, "private", 12..19),
+        (Token::Primitive, "primitive", 20..29),
+        (Token::Protected, "protected", 30..39),
+        (Token::Protectee, "protectee", 40..49),
+        (Token::In, "in", 50..52),
+        (Token::Instanceof, "instanceof", 53..63),
     ]);
 }
 
 #[test]
 fn numbers() {
-    assert_lex("0 1 2 3 4 10 42", &[
-        (Token::InvalidToken, "0", 0, 1),
-        (Token::Number, "1", 2, 3),
-        (Token::Number, "2", 4, 5),
-        (Token::Number, "3", 6, 7),
-        (Token::Number, "4", 8, 9),
-        (Token::Number, "10", 10, 12),
-        (Token::Number, "42", 13, 15),
+    assert_lex("0 1 2 3 4 10 42 1337", &[
+        (Token::InvalidToken, "0", 0..1),
+        (Token::Number, "1", 2..3),
+        (Token::Number, "2", 4..5),
+        (Token::Number, "3", 6..7),
+        (Token::Number, "4", 8..9),
+        (Token::Number, "10", 10..12),
+        (Token::Number, "42", 13..15),
+        (Token::Number, "1337", 16..20),
     ]);
 }
 
 #[test]
 fn invalid_tokens() {
     assert_lex("@-/!", &[
-        (Token::InvalidToken, "@", 0, 1),
-        (Token::InvalidToken, "-", 1, 2),
-        (Token::InvalidToken, "/", 2, 3),
-        (Token::InvalidToken, "!", 3, 4),
+        (Token::InvalidToken, "@", 0..1),
+        (Token::InvalidToken, "-", 1..2),
+        (Token::InvalidToken, "/", 2..3),
+        (Token::InvalidToken, "!", 3..4),
     ]);
 }

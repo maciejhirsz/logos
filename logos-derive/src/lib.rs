@@ -9,13 +9,14 @@ extern crate proc_macro2;
 
 mod tree;
 mod regex;
+mod handlers;
 mod generator;
 
+use regex::Regex;
 use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use syn::{ItemEnum, Fields, LitStr};
-use regex::{ByteIter, RegexIter};
 
 #[proc_macro_derive(Logos, attributes(error, end, token, regex))]
 pub fn token(input: TokenStream) -> TokenStream {
@@ -29,7 +30,7 @@ pub fn token(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut end = None;
 
-    let mut handlers = tree::Handlers::new();
+    let mut handlers = handlers::Handlers::new();
 
     for variant in &item.variants {
         if variant.discriminant.is_some() {
@@ -77,9 +78,9 @@ pub fn token(input: TokenStream) -> TokenStream {
                                         .value();
 
                         if regex {
-                            handlers.insert(&mut RegexIter::from(path.as_str()), &variant.ident);
+                            handlers.insert_regex(Regex::from(&path), &variant.ident);
                         } else {
-                            handlers.insert(&mut ByteIter::from(path.as_str()), &variant.ident);
+                            handlers.insert_string(path, &variant.ident);
                         }
                     },
                     Some(invalid) => panic!("#[token] Invalid value: {}", invalid),
@@ -106,13 +107,13 @@ pub fn token(input: TokenStream) -> TokenStream {
     // panic!("{:#?}", handlers);
 
     let handlers = handlers.into_iter().map(|handler| {
-        use tree::Handler;
+        use handlers::Handler;
 
         match handler {
-            Handler::Eof        => quote! { Some(eof) },
-            Handler::Error      => quote! { Some(error) },
-            Handler::Whitespace => quote! { None },
-            Handler::Tree(node) => node.print(name),
+            Handler::Eof                     => quote! { Some(eof) },
+            Handler::Error                   => quote! { Some(error) },
+            Handler::Whitespace              => quote! { None },
+            Handler::Tree { strings, regex } => generator::print_tree(strings, regex, name),
         }
     });
 
