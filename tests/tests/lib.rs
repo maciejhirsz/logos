@@ -15,9 +15,6 @@ pub enum Token {
     #[regex = "[1-9][0-9]*"]
     Number,
 
-    #[token = "foobar"]
-    Foobar,
-
     #[token = "priv"]
     Priv,
 
@@ -76,10 +73,8 @@ use std::ops::Range;
 fn assert_lex(source: &str, tokens: &[(Token, &str, Range<usize>)]) {
     let mut lex = Token::lexer(source);
 
-    for (token, slice, range) in tokens {
-        assert_eq!(lex.token, *token);
-        assert_eq!(lex.slice(), *slice);
-        assert_eq!(lex.range(), *range);
+    for tuple in tokens {
+        assert_eq!(&(lex.token, lex.slice(), lex.range()), tuple);
 
         lex.consume();
     }
@@ -126,9 +121,26 @@ fn punctation() {
 }
 
 #[test]
+fn identifiers() {
+    assert_lex("It was the year when they finally immanentized the Eschaton.", &[
+        (Token::Identifier, "It", 0..2),
+        (Token::Identifier, "was", 3..6),
+        (Token::Identifier, "the", 7..10),
+        (Token::Identifier, "year", 11..15),
+        (Token::Identifier, "when", 16..20),
+        (Token::Identifier, "they", 21..25),
+        (Token::Identifier, "finally", 26..33),
+        (Token::Identifier, "immanentized", 34..46),
+        (Token::Identifier, "the", 47..50),
+        (Token::Identifier, "Eschaton", 51..59),
+        (Token::Accessor, ".", 59..60),
+    ]);
+}
+
+#[test]
 fn keywords() {
     assert_lex("foobar priv private primitive protected protectee in instanceof", &[
-        (Token::Foobar, "foobar", 0..6),
+        (Token::Identifier, "foobar", 0..6),
         (Token::Priv, "priv", 7..11),
         (Token::Private, "private", 12..19),
         (Token::Primitive, "primitive", 20..29),

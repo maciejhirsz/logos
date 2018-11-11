@@ -27,9 +27,9 @@ pub enum Token {
     #[luther(regex="[ \n]+")]
     Whitespace,
 
-    #[token = "foobar"]
-    #[luther(regex="foobar")]
-    Foobar,
+    #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
+    #[luther(regex="[a-zA-Z_$][a-zA-Z0-9_$]*")]
+    Identifier,
 
     #[token = "private"]
     #[luther(regex="private")]

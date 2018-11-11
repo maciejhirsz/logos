@@ -26,7 +26,7 @@ impl Regex {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
     Byte(u8),
     Range(u8, u8),
