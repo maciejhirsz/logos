@@ -11,6 +11,7 @@ pub struct Node<'a> {
     pub pattern: Pattern,
     pub token: Option<&'a Ident>,
     pub consequents: Vec<Node<'a>>,
+    pub fallback: Option<Vec<Pattern>>,
 }
 
 impl<'a> Node<'a> {
@@ -21,6 +22,7 @@ impl<'a> Node<'a> {
         let mut node = Node {
             pattern,
             token: None,
+            fallback: None,
             consequents: Vec::new(),
         };
 
@@ -56,7 +58,6 @@ impl<'a> Node<'a> {
                 self.consequents.insert(index, Node::new(pattern, path, token));
             },
         }
-
     }
 
     pub fn print(&self, name: &Ident) -> TokenStream {
@@ -75,7 +76,7 @@ pub enum Handler<'a> {
     Eof,
     Error,
     Whitespace,
-    Tree(Node<'a>)
+    Tree(Node<'a>),
 }
 
 #[derive(Debug)]

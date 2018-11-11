@@ -14,7 +14,7 @@ mod generator;
 use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
-use syn::{ItemEnum, Fields};
+use syn::{ItemEnum, Fields, LitStr};
 use regex::{ByteIter, RegexIter};
 
 #[proc_macro_derive(Logos, attributes(error, end, token, regex))]
@@ -72,13 +72,14 @@ pub fn token(input: TokenStream) -> TokenStream {
 
                 match tts.next() {
                     Some(TokenTree::Literal(literal)) => {
-                        let path = literal.to_string();
-                        let path = &path.as_str()[1..path.len() - 1];
+                        let path = syn::parse::<LitStr>(quote!{ #literal }.into())
+                                        .expect("#[token] value must be a literal string")
+                                        .value();
 
                         if regex {
-                            handlers.insert(&mut RegexIter::from(path), &variant.ident);
+                            handlers.insert(&mut RegexIter::from(path.as_str()), &variant.ident);
                         } else {
-                            handlers.insert(&mut ByteIter::from(path), &variant.ident);
+                            handlers.insert(&mut ByteIter::from(path.as_str()), &variant.ident);
                         }
                     },
                     Some(invalid) => panic!("#[token] Invalid value: {}", invalid),
