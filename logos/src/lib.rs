@@ -1,4 +1,6 @@
-//! <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="80%" alt="Logos">
+//! <p align="center">
+//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
+//! </p>
 //!
 //! Create ridiculously fast Lexers.
 //!
