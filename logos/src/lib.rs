@@ -9,9 +9,6 @@ mod source;
 #[doc(hidden)]
 pub mod internal;
 
-use std::ops::Range;
-use internal::LexerInternal;
-
 pub use lexer::{Lexer, Lexicon, Extras};
 pub use source::Source;
 
