@@ -56,7 +56,7 @@ impl<Token: Logos, Src: Source> Lexer<Token, Src> {
         lex
     }
 
-    /// Advance the `Lexer` and attempt to produce the next token.
+    /// Advance the `Lexer` and attempt to produce the next `Token`.
     pub fn advance(&mut self) {
         let mut ch;
 

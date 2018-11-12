@@ -1,3 +1,64 @@
+//! # Logos `λόγος`
+//!
+//! Create ridiculously fast Lexers.
+//!
+//! ```rust
+//! extern crate logos;
+//! #[macro_use]
+//! extern crate logos_derive;
+//!
+//! #[derive(Logos)]
+//! enum Token {
+//!     #[end]
+//!     End,
+//!
+//!     #[error]
+//!     Error,
+//!
+//!     #[token = "."]
+//!     Period,
+//!
+//!     #[regex = "[a-zA-Z]*"]
+//!     Text,
+//! }
+//!
+//! fn main() {
+//!     let mut lexer = Token::lexer("Create ridiculously fast Lexers.");
+//!
+//!     assert_eq!(lexer.token, Token::Text);
+//!     assert_eq!(lexer.slice(), "Create");
+//!     assert_eq!(lexer.range(), 0..6);
+//!
+//!     lexer.advance();
+//!
+//!     assert_eq!(lexer.token, Token::Text);
+//!     assert_eq!(lexer.slice(), "ridiculously");
+//!     assert_eq!(lexer.range(), 7..19);
+//!
+//!     lexer.advance();
+//!
+//!     assert_eq!(lexer.token, Token.Text);
+//!     assert_eq!(lexer.slice(), "fast");
+//!     assert_eq!(lexer.range(), 20..24);
+//!
+//!     lexer.advance();
+//!
+//!     assert_eq!(lexer.token, Token.Text);
+//!     assert_eq!(lexer.slice(), "Lexers");
+//!     assert_eq!(lexer.range(), 25..31);
+//!
+//!     lexer.advance();
+//!
+//!     assert_eq!(lexer.token, Token.Period);
+//!     assert_eq!(lexer.slice(), ".");
+//!     assert_eq!(lexer.range(), 31..32);
+//!
+//!     lexer.advance();
+//!
+//!     assert_eq!(lexer.token, Token.End);
+//! }
+//! ```
+
 #![warn(missing_docs)]
 
 #[cfg(feature = "nul_term_source")]
