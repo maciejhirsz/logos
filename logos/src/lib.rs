@@ -1,4 +1,4 @@
-//! # Logos `λόγος`
+//! <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="80%" alt="Logos">
 //!
 //! Create ridiculously fast Lexers.
 //!
@@ -93,7 +93,7 @@ pub trait Logos: Sized {
     /// This can be extremely useful for creating `Logos` Lookup Tables.
     const SIZE: usize;
 
-    /// Helper const pointing to the variant marked as #[error].
+    /// Helper `const` of the variant marked as `#[error]`.
     const ERROR: Self;
 
     /// Returns a lookup table for the `Lexer`

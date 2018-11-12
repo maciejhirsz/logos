@@ -1,6 +1,13 @@
-# Logos `λόγος`
+<img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="80%" alt="Logos">
 
 Create ridiculously fast Lexers.
+
+Pretty usable already. Things to come:
++ Full regex support.
++ Better error messages from the derive crate.
++ Properly branching multiple regex tokens that start with the same prefix (e.g.: `0x` for hex, `0b` for binary etc.).
+
+## Usage
 
 ```rust
 extern crate logos;
