@@ -157,14 +157,14 @@ impl Pattern {
         }
     }
 
-    pub fn contains(&self, other: u8) -> bool {
-        match self {
-            Pattern::Byte(byte) => *byte == other,
-            Pattern::Range(from, to) => *from <= other && other <= *to,
-            Pattern::Repeat(pat) => pat.contains(other),
-            Pattern::Alternative(alt) => alt.iter().any(|pat| pat.contains(other)),
-        }
-    }
+    // pub fn contains(&self, other: u8) -> bool {
+    //     match self {
+    //         Pattern::Byte(byte) => *byte == other,
+    //         Pattern::Range(from, to) => *from <= other && other <= *to,
+    //         Pattern::Repeat(pat) => pat.contains(other),
+    //         Pattern::Alternative(alt) => alt.iter().any(|pat| pat.contains(other)),
+    //     }
+    // }
 }
 
 impl Iterator for Pattern {
