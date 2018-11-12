@@ -7,7 +7,9 @@
 //! #[macro_use]
 //! extern crate logos_derive;
 //!
-//! #[derive(Logos)]
+//! use logos::Logos;
+//!
+//! #[derive(Debug, PartialEq, Logos)]
 //! enum Token {
 //!     #[end]
 //!     End,
@@ -55,7 +57,7 @@
 //!
 //!     lexer.advance();
 //!
-//!     assert_eq!(lexer.token, Token.End);
+//!     assert_eq!(lexer.token, Token::End);
 //! }
 //! ```
 

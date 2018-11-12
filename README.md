@@ -7,7 +7,9 @@ extern crate logos;
 #[macro_use]
 extern crate logos_derive;
 
-#[derive(Logos)]
+use logos::Logos;
+
+#[derive(Debug, PartialEq, Logos)]
 enum Token {
     #[end]
     End,
@@ -37,7 +39,7 @@ fn main() {
 
     lexer.advance();
 
-    assert_eq!(lexer.token, Token.Text);
+    assert_eq!(lexer.token, Token::Text);
     assert_eq!(lexer.slice(), "fast");
     assert_eq!(lexer.range(), 20..24);
 
@@ -55,11 +57,11 @@ fn main() {
 
     lexer.advance();
 
-    assert_eq!(lexer.token, Token.End);
+    assert_eq!(lexer.token, Token::End);
 }
 ```
 
-# How fast?
+## How fast?
 
 Ridiculously fast!
 
@@ -67,3 +69,10 @@ Ridiculously fast!
 test logos                ... bench:       2,086 ns/iter (+/- 73) = 1021 MB/s
 test logos_nul_terminated ... bench:       1,956 ns/iter (+/- 141) = 1089 MB/s
 ```
+
+## License
+
+This code is distributed under the terms of both the MIT license
+and the Apache License (Version 2.0), choose whatever works for you.
+
+See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.

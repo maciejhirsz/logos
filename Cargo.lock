@@ -142,6 +142,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "logos"
 version = "0.2.0"
 dependencies = [
+ "logos-derive 0.2.0",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
