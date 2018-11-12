@@ -20,6 +20,9 @@
 //!     #[token = "."]
 //!     Period,
 //!
+//!     #[token = "fast"]
+//!     Fast,
+//!
 //!     #[regex = "[a-zA-Z]*"]
 //!     Text,
 //! }
@@ -39,7 +42,7 @@
 //!
 //!     lexer.advance();
 //!
-//!     assert_eq!(lexer.token, Token::Text);
+//!     assert_eq!(lexer.token, Token::Fast);
 //!     assert_eq!(lexer.slice(), "fast");
 //!     assert_eq!(lexer.range(), 20..24);
 //!
