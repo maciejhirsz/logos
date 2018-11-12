@@ -1,6 +1,6 @@
 [package]
 name = "tests"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -8,9 +8,9 @@ repository = "https://github.com/maciejhirsz/logos"
 documentation = "https://docs.rs/logos"
 
 [dev-dependencies]
-logos = { path = "../logos" }
+logos = { path = "../logos", features = ["nul_term_source"] }
 logos-derive = { path = "../logos-derive" }
-toolshed = "0.5"
+toolshed = "0.6"
 luther = "0.1"
 luther-derive = "0.1"
 pest = "2.0"

@@ -2,17 +2,26 @@ use syn::Ident;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
-pub struct Token<'a, T>(pub T, pub &'a Ident);
+pub struct Branch<'a, T>(pub T, pub &'a Ident);
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
     Eof,
     Error,
     Whitespace,
-    Tree {
-        strings: Vec<Token<'a, String>>,
-        regex: Option<Token<'a, Regex>>,
-    },
+    Tree(Tree<'a>),
+}
+
+#[derive(Debug, Clone)]
+pub struct Tree<'a> {
+    pub strings: Vec<Branch<'a, String>>,
+    pub regex: Option<Branch<'a, Regex>>,
+}
+
+impl<'a> From<Tree<'a>> for Handler<'a> {
+    fn from(tree: Tree<'a>) -> Handler<'a> {
+        Handler::Tree(tree)
+    }
 }
 
 #[derive(Debug)]
@@ -34,13 +43,17 @@ impl<'a> Handlers<'a> {
 
     pub fn insert_string(&mut self, string: String, token: &'a Ident) {
         let byte = string.as_bytes()[0];
-        let token = Token(string, token);
+        let branch = Branch(string, token);
 
         match self.handlers[byte as usize] {
-            Handler::Tree { ref mut strings, .. } => strings.push(token),
-            ref mut slot => *slot = Handler::Tree {
-                strings: vec![token],
-                regex: None,
+            Handler::Tree(ref mut tree) => {
+                tree.strings.push(branch);
+            }
+            ref mut slot => {
+                *slot = Tree {
+                    strings: vec![branch],
+                    regex: None,
+                }.into()
             }
         }
     }
@@ -49,17 +62,17 @@ impl<'a> Handlers<'a> {
         let first = regex.first();
 
         for byte in first {
-            let token = Token(regex.clone(), token);
+            let branch = Branch(regex.clone(), token);
 
             match self.handlers[byte as usize] {
-                Handler::Tree { ref mut regex, .. } => {
+                Handler::Tree(ref mut tree) => {
                     // FIXME: Panic if regex is already Some
-                    *regex = Some(token);
+                    tree.regex = Some(branch);
                 },
-                ref mut slot => *slot = Handler::Tree {
+                ref mut slot => *slot = Tree {
                     strings: Vec::new(),
-                    regex: Some(token),
-                }
+                    regex: Some(branch),
+                }.into()
             }
         }
     }

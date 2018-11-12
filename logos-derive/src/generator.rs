@@ -5,7 +5,7 @@ use quote::{quote, ToTokens};
 
 use tree::Node;
 use regex::{Regex, Pattern, ByteIter};
-use handlers::Token;
+use handlers::{Branch, Tree};
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,
@@ -24,23 +24,23 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn print_tree(&mut self, strings: Vec<Token<'a, String>>, regex: Option<Token<'a, Regex>>) -> TokenStream {
-        let mut strings = strings.iter();
+    pub fn print_tree(&mut self, tree: Tree<'a>) -> TokenStream {
+        let mut strings = tree.strings.iter();
 
-        if let Some(item) = strings.next() {
-            let mut path = ByteIter::from(item.0.as_str());
+        if let Some(branch) = strings.next() {
+            let mut path = ByteIter::from(branch.0.as_str());
             let pattern = path.next().unwrap();
 
-            let mut node = Node::new(pattern, &mut path, item.1);
+            let mut node = Node::new(pattern, &mut path, branch.1);
 
-            for item in strings {
-                let mut path = ByteIter::from(item.0.as_str());
+            for branch in strings {
+                let mut path = ByteIter::from(branch.0.as_str());
                 path.next().unwrap();
 
-                node.insert(&mut path, item.1);
+                node.insert(&mut path, branch.1);
             }
 
-            if let Some(fallback) = regex {
+            if let Some(fallback) = tree.regex {
                 FallbackGenerator {
                     gen: self,
                     fallback,
@@ -50,7 +50,7 @@ impl<'a> Generator<'a> {
             } else {
                 LooseGenerator(self.enum_name).print(&node)
             }
-        } else if let Some(regex) = regex {
+        } else if let Some(regex) = tree.regex {
             let handler = self.regex_to_fn(regex);
             quote! {
                 Some(#handler)
@@ -60,34 +60,45 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn regex_to_fn(&mut self, item: Token<'a, Regex>) -> Ident {
-        let handler = format!("_handle_{}", item.1).to_lowercase();
+    fn regex_to_fn(&mut self, branch: Branch<'a, Regex>) -> Ident {
+        let handler = format!("_handle_{}", branch.1).to_lowercase();
         let handler = Ident::new(&handler, Span::call_site());
 
-        if self.fns_check.insert(item.1) {
+        if self.fns_check.insert(branch.1) {
             let mut consumers = TokenStream::new();
-            let token = item.1;
+            let token = branch.1;
 
-            for pattern in item.0.patterns() {
+            for pattern in branch.0.patterns() {
                 let pattern_fn = self.pattern_to_fn(pattern.clone());
-                let if_or_while = if pattern.is_repeat() { quote!(while) } else { quote!(if) };
 
-                consumers.extend(quote! {
-                    #if_or_while #pattern_fn(lex.read()) {
+                let tokens = if pattern.is_repeat() {
+                    quote! {
+                        while #pattern_fn(lex.read()) {
+                            lex.bump();
+                        }
+                    }
+                } else {
+                    quote! {
+                        if !#pattern_fn(lex.read()) {
+                            return lex.set_token(::logos::Logos::ERROR);
+                        }
+
                         lex.bump();
                     }
-                });
+                };
+
+                consumers.extend(tokens);
             }
 
             let name = self.enum_name;
 
             self.fns.extend(quote! {
-                fn #handler<S: ::logos::Source>(lex: &mut ::logos::Lexer<#name, S>) {
+                fn #handler<Lexer: ::logos::LexerInternal<#name>>(lex: &mut Lexer) {
                     lex.bump();
 
                     #consumers
 
-                    lex.token = #name::#token;
+                    lex.set_token(#name::#token);
                 }
             });
         }
@@ -185,21 +196,18 @@ pub trait GeneratorTrait<'a> {
         match options {
             1 => {
                 node = node.consequents.first().unwrap();
-                let byte = &node.pattern;
-
-                let mut test = quote! { lex.next() == #byte };
+                let mut test = vec![&node.pattern];
 
                 while node.consequents.len() == 1 && node.token.is_none() && node.consequents.first().unwrap().pattern.is_byte() {
                     node = node.consequents.iter().next().unwrap();
-                    let byte = &node.pattern;
 
-                    test.extend(quote! { && lex.next() == #byte });
+                    test.push(&node.pattern);
                 }
 
                 let consequent = self.print_node(node);
 
                 quote! {
-                    if #test {
+                    if #( lex.next() == #test )&&* {
                         #consequent
                     }
                 }
@@ -232,7 +240,7 @@ pub struct ExhaustiveGenerator<'a>(&'a Ident);
 pub struct LooseGenerator<'a>(&'a Ident);
 pub struct FallbackGenerator<'a: 'b, 'b> {
     gen: &'b mut Generator<'a>,
-    fallback: Token<'a, Regex>,
+    fallback: Branch<'a, Regex>,
 }
 
 impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
@@ -245,7 +253,9 @@ impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
 
         quote! {
             Some(|lex| {
-                lex.token = #body;
+                let token = #body;
+
+                lex.set_token(token);
             })
         }
     }
@@ -269,7 +279,7 @@ impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
             Some(|lex| {
                 #body
 
-                lex.token = ::logos::Logos::ERROR;
+                lex.set_token(::logos::Logos::ERROR);
             })
         }
     }
@@ -277,7 +287,7 @@ impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.enum_name();
 
-        quote! { return lex.token = #name::#variant }
+        quote! { return lex.set_token(#name::#variant) }
     }
 }
 
@@ -306,7 +316,7 @@ impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
                     lex.bump();
                 }
 
-                lex.token = #name::#fallback;
+                lex.set_token(#name::#fallback);
             })
         }
     }
@@ -317,10 +327,8 @@ impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
         let pattern_fn = self.gen.pattern_to_fn(pattern.clone());
 
         quote! {
-            if #pattern_fn(lex.read()) {
-                lex.bump()
-            } else {
-                return lex.token = #name::#variant ;
+            if !#pattern_fn(lex.read()) {
+                return lex.set_token(#name::#variant);
             }
         }
     }
@@ -329,7 +337,19 @@ impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
 impl ToTokens for Pattern {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
+            // This is annoying, but it seems really hard to make quote!
+            // print byte chars instead of integers otherwise
             Pattern::Byte(byte) => tokens.extend(match *byte {
+                b'0' => quote!(b'0'),
+                b'1' => quote!(b'1'),
+                b'2' => quote!(b'2'),
+                b'3' => quote!(b'3'),
+                b'4' => quote!(b'4'),
+                b'5' => quote!(b'5'),
+                b'6' => quote!(b'6'),
+                b'7' => quote!(b'7'),
+                b'8' => quote!(b'8'),
+                b'9' => quote!(b'9'),
                 b'a' => quote!(b'a'),
                 b'b' => quote!(b'b'),
                 b'c' => quote!(b'c'),

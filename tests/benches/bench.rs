@@ -111,7 +111,57 @@ foobar(protected primitive private instanceof in) { + ++ = == === => }
 foobar(protected primitive private instanceof in) { + ++ = == === => }
 foobar(protected primitive private instanceof in) { + ++ = == === => }
 foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
+foobar(protected primitive private instanceof in) { + ++ = == === => }
 ";
+
+
+#[bench]
+fn identifiers(b: &mut Bencher) {
+    use logos::Logos;
+
+    let source = "It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton \
+                  It was the year when they finally immanentized the Eschaton";
+
+    b.bytes = source.len() as u64;
+
+    b.iter(|| {
+        let mut lex = Token::lexer(source);
+
+        while lex.token != Token::EndOfProgram {
+            lex.consume()
+        }
+    });
+}
 
 #[bench]
 fn logos(b: &mut Bencher) {
@@ -134,12 +184,12 @@ fn logos_nul_terminated(b: &mut Bencher) {
     use toolshed::Arena;
 
     let arena = Arena::new();
-    let ptr = arena.alloc_str_with_nul(SOURCE);
+    let nts = arena.alloc_nul_term_str(SOURCE);
 
     b.bytes = SOURCE.len() as u64;
 
     b.iter(|| {
-        let mut lex = Token::lexer(ptr);
+        let mut lex = Token::lexer(nts);
 
         while lex.token != Token::EndOfProgram {
             lex.consume()

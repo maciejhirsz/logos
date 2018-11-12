@@ -115,10 +115,10 @@ pub fn token(input: TokenStream) -> TokenStream {
         use handlers::Handler;
 
         match handler {
-            Handler::Eof                     => quote! { Some(eof) },
-            Handler::Error                   => quote! { Some(_error) },
-            Handler::Whitespace              => quote! { None },
-            Handler::Tree { strings, regex } => generator.print_tree(strings, regex),
+            Handler::Eof        => quote! { Some(eof) },
+            Handler::Error      => quote! { Some(_error) },
+            Handler::Whitespace => quote! { None },
+            Handler::Tree(tree) => generator.print_tree(tree),
         }
     }).collect::<Vec<_>>();
 
@@ -131,15 +131,17 @@ pub fn token(input: TokenStream) -> TokenStream {
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
 
-            fn lexicon<S: ::logos::Source>() -> ::logos::Lexicon<#name, S> {
-                fn eof<S: ::logos::Source>(lex: &mut ::logos::Lexer<#name, S>) {
-                    lex.token = #name::#end;
+            fn lexicon<Lexer: ::logos::LexerInternal<#name>>() -> ::logos::Lexicon<Lexer> {
+                use ::logos::LexerInternal;
+
+                fn eof<Lexer: ::logos::LexerInternal<#name>>(lex: &mut Lexer) {
+                    lex.set_token(#name::#end);
                 }
 
-                fn _error<S: ::logos::Source>(lex: &mut ::logos::Lexer<#name, S>) {
+                fn _error<Lexer: ::logos::LexerInternal<#name>>(lex: &mut Lexer) {
                     lex.bump();
 
-                    lex.token = #name::#error;
+                    lex.set_token(#name::#error);
                 }
 
                 #fns

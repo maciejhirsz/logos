@@ -1,8 +1,16 @@
+#![warn(missing_docs)]
+
+#[cfg(feature = "nul_term_source")]
+extern crate toolshed;
+
+mod lexer;
+
 use std::ops::Range;
 
-pub type Lexicon<Logos, Source> = [Option<fn(&mut Lexer<Logos, Source>)>; 256];
+pub use lexer::{Lexer, LexerInternal, Lexicon, Extras};
 
-/// Trait that will be derived for the appropriate enum representing all the tokens
+/// Trait implemented for an enum representing all tokens. You should never have
+/// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
 pub trait Logos: Sized {
     /// Associated `Extras` for the particular lexer. Those can handle things that
     /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
@@ -16,129 +24,86 @@ pub trait Logos: Sized {
     /// This can be extremely useful for creating `Logos` Lookup Tables.
     const SIZE: usize;
 
-    /// Helper const pointing to the error `Logos` variant.
+    /// Helper const pointing to the variant marked as #[error].
     const ERROR: Self;
 
-    fn lexicon<S: Source>() -> Lexicon<Self, S>;
+    /// Returns a lookup table for the `Lexer`
+    fn lexicon<Lexer: LexerInternal<Self>>() -> Lexicon<Lexer>;
 
+    /// Create a new instance of a `Lexer` that will produce tokens implementing
+    /// this `Logos`.
     fn lexer<S: Source>(source: S) -> Lexer<Self, S> {
         Lexer::new(source)
     }
 }
 
-pub trait Extras: Sized + Default {
-    fn on_consume(&mut self);
-    fn on_whitespace(&mut self, byte: u8);
-}
-
-impl Extras for () {
-    fn on_consume(&mut self) {}
-    fn on_whitespace(&mut self, _byte: u8) {}
-}
-
+/// Trait for types the `Lexer` can read from.
 pub trait Source {
     type Slice;
 
-    fn read(&self, offset: usize) -> u8;
-    fn slice(&self, range: Range<usize>) -> Self::Slice;
+    /// Length of the source
+    fn len(&self) -> usize;
+
+    /// Read a single byte from source.
+    ///
+    /// **Implementors of this method must guarantee it to return `0` when
+    /// `offset` is set to length of the `Source` (one byte after last)!**
+    unsafe fn read(&self, offset: usize) -> u8;
+
+    /// Get a slice of the source at given range. This is analogous for
+    /// `slice::get_unchecked(range)`.
+    unsafe fn slice(&self, range: Range<usize>) -> Self::Slice;
 }
 
 impl<'source> Source for &'source str {
     type Slice = &'source str;
 
-    fn read(&self, offset: usize) -> u8 {
-        self.as_bytes()
-            .get(offset)
-            .map(Clone::clone)
-            .unwrap_or_else(|| 0)
+    fn len(&self) -> usize {
+        (*self).len()
     }
 
-    fn slice(&self, range: Range<usize>) -> Self::Slice {
-        &self[range]
-    }
-}
+    unsafe fn read(&self, offset: usize) -> u8 {
+        debug_assert!(offset <= self.len(), "Reading out founds!");
 
-impl Source for *const u8 {
-    type Slice = &'static str;
-
-    fn read(&self, offset: usize) -> u8 {
-        unsafe { *self.offset(offset as isize) }
-    }
-
-    fn slice(&self, range: Range<usize>) -> Self::Slice {
-        use std::str::from_utf8_unchecked;
-        use std::slice::from_raw_parts;
-
-        unsafe {
-            from_utf8_unchecked(from_raw_parts(
-                self.offset(range.start as isize), range.end - range.start
-            ))
-        }
-    }
-}
-
-pub struct Lexer<Token: Logos, Source> {
-    source: Source,
-    token_start: usize,
-    token_end: usize,
-    pub token: Token,
-    pub extras: Token::Extras,
-    lexicon: [Option<fn(&mut Lexer<Token, Source>)>; 256],
-}
-
-impl<Token: Logos, S: Source> Lexer<Token, S> {
-    pub fn new(source: S) -> Self {
-        let mut lex = Lexer {
-            source,
-            token_start: 0,
-            token_end: 0,
-            token: Token::ERROR,
-            extras: Default::default(),
-            lexicon: Token::lexicon(),
-        };
-
-        lex.consume();
-
-        lex
-    }
-
-    pub fn range(&self) -> Range<usize> {
-        self.token_start .. self.token_end
-    }
-
-    pub fn consume(&mut self) {
-        let mut ch;
-
-        self.extras.on_consume();
-
-        loop {
-            ch = self.read();
-
-            if let Some(handler) = self.lexicon[ch as usize] {
-                self.token_start = self.token_end;
-                return handler(self);
-            }
-
-            self.extras.on_whitespace(ch);
-
-            self.bump();
+        match self.as_bytes().get(offset) {
+            Some(byte) => *byte,
+            None       => 0,
         }
     }
 
-    pub fn read(&mut self) -> u8 {
-        self.source.read(self.token_end)
+    unsafe fn slice(&self, range: Range<usize>) -> Self::Slice {
+        debug_assert!(
+            range.start <= self.len() && range.end <= self.len(),
+            "Reading out of bounds {:?} for {}!", range, self.len()
+        );
+
+        self.get_unchecked(range)
+    }
+}
+
+/// `Source` implemented on `NulTermStr` from the `toolshed` crate.
+///
+/// **This requires the `"nul_term_source"` feature to be enabled.**
+#[cfg(feature = "nul_term_source")]
+impl<'source> Source for toolshed::NulTermStr<'source> {
+    type Slice = &'source str;
+
+    fn len(&self) -> usize {
+        (**self).len()
     }
 
-    pub fn next(&mut self) -> u8 {
-        self.bump();
-        self.read()
+    unsafe fn read(&self, offset: usize) -> u8 {
+        debug_assert!(offset <= self.len(), "Reading out founds!");
+
+        self.byte_unchecked(offset)
     }
 
-    pub fn bump(&mut self) {
-        self.token_end += 1;
-    }
+    unsafe fn slice(&self, range: Range<usize>) -> Self::Slice {
+        debug_assert!(
+            range.start <= self.len() && range.end <= self.len(),
+            "Reading out of bounds {:?} for {}!", range, self.len()
+        );
 
-    pub fn slice(&self) -> S::Slice {
-        self.source.slice(self.range())
+        self.get_unchecked(range)
     }
 }
