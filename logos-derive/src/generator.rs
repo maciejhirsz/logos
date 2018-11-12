@@ -80,7 +80,7 @@ impl<'a> Generator<'a> {
                 } else {
                     quote! {
                         if !#pattern_fn(lex.read()) {
-                            return lex.set_token(::logos::Logos::ERROR);
+                            return lex.token = ::logos::Logos::ERROR;
                         }
 
                         lex.bump();
@@ -93,12 +93,12 @@ impl<'a> Generator<'a> {
             let name = self.enum_name;
 
             self.fns.extend(quote! {
-                fn #handler<Lexer: ::logos::LexerInternal<#name>>(lex: &mut Lexer) {
+                fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
                     lex.bump();
 
                     #consumers
 
-                    lex.set_token(#name::#token);
+                    lex.token = #name::#token;
                 }
             });
         }
@@ -253,9 +253,7 @@ impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
 
         quote! {
             Some(|lex| {
-                let token = #body;
-
-                lex.set_token(token);
+                lex.token = #body;
             })
         }
     }
@@ -279,7 +277,7 @@ impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
             Some(|lex| {
                 #body
 
-                lex.set_token(::logos::Logos::ERROR);
+                lex.token = ::logos::Logos::ERROR;
             })
         }
     }
@@ -287,7 +285,7 @@ impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.enum_name();
 
-        quote! { return lex.set_token(#name::#variant) }
+        quote! { return lex.token = #name::#variant }
     }
 }
 
@@ -316,7 +314,7 @@ impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
                     lex.bump();
                 }
 
-                lex.set_token(#name::#fallback);
+                lex.token = #name::#fallback;
             })
         }
     }
@@ -328,7 +326,7 @@ impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
 
         quote! {
             if !#pattern_fn(lex.read()) {
-                return lex.set_token(#name::#variant);
+                return lex.token = #name::#variant;
             }
         }
     }

@@ -76,7 +76,7 @@ fn assert_lex(source: &str, tokens: &[(Token, &str, Range<usize>)]) {
     for tuple in tokens {
         assert_eq!(&(lex.token, lex.slice(), lex.range()), tuple);
 
-        lex.consume();
+        lex.advance();
     }
 
     assert_eq!(lex.token, Token::EndOfProgram);

@@ -158,7 +158,7 @@ fn identifiers(b: &mut Bencher) {
         let mut lex = Token::lexer(source);
 
         while lex.token != Token::EndOfProgram {
-            lex.consume()
+            lex.advance()
         }
     });
 }
@@ -173,7 +173,7 @@ fn logos(b: &mut Bencher) {
         let mut lex = Token::lexer(SOURCE);
 
         while lex.token != Token::EndOfProgram {
-            lex.consume()
+            lex.advance()
         }
     });
 }
@@ -192,7 +192,7 @@ fn logos_nul_terminated(b: &mut Bencher) {
         let mut lex = Token::lexer(nts);
 
         while lex.token != Token::EndOfProgram {
-            lex.consume()
+            lex.advance()
         }
     });
 }

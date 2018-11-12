@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use super::{Logos, Source};
+use super::internal::LexerInternal;
 
 /// A lookup table used internally. It maps indices for every ASCII
 /// byte to a function that takes a mutable reference to the `Lexer`.
@@ -12,9 +13,14 @@ pub struct Lexer<Token: Logos, Source> {
     source: Source,
     token_start: usize,
     token_end: usize,
-    pub token: Token,
-    pub extras: Token::Extras,
     lexicon: Lexicon<Lexer<Token, Source>>,
+
+    /// Current token. Call the `advance` method to get a new token.
+    pub token: Token,
+
+    /// Extras associated with the `Token`.
+    pub extras: Token::Extras,
+
 }
 
 macro_rules! unwind {
@@ -30,33 +36,28 @@ macro_rules! unwind {
     )
 }
 
-impl<Token: Logos, S: Source> Lexer<Token, S> {
+impl<Token: Logos, Src: Source> Lexer<Token, Src> {
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
-    pub fn new(source: S) -> Self {
+    pub fn new(source: Src) -> Self {
         let mut lex = Lexer {
             source,
             token_start: 0,
             token_end: 0,
+            lexicon: Token::lexicon(),
             token: Token::ERROR,
             extras: Default::default(),
-            lexicon: Token::lexicon(),
         };
 
-        lex.consume();
+        lex.advance();
 
         lex
     }
 
-    /// Get the range for the current token in `Source`.
-    pub fn range(&self) -> Range<usize> {
-        self.token_start .. self.token_end
-    }
-
     /// Advance the `Lexer` and attempt to produce the next token.
-    pub fn consume(&mut self) {
+    pub fn advance(&mut self) {
         let mut ch;
 
         self.extras.on_consume();
@@ -75,8 +76,13 @@ impl<Token: Logos, S: Source> Lexer<Token, S> {
         }
     }
 
-    /// Get a slice representing
-    pub fn slice(&self) -> S::Slice {
+    /// Get the range for the current token in `Source`.
+    pub fn range(&self) -> Range<usize> {
+        self.token_start .. self.token_end
+    }
+
+    /// Get a string slice of the current token.
+    pub fn slice(&self) -> Src::Slice {
         unsafe { self.source.slice(self.range()) }
     }
 }
@@ -95,26 +101,7 @@ pub trait Extras: Sized + Default {
 /// Default `Extras` with no logic
 impl Extras for () { }
 
-/// Trait used by the functions contained in the `Lexicon`.
-///
-/// # WARNING!
-///
-/// **This trait, and it's methods, are not meant to be used outside of the
-/// code produced by `#[derive(Logos)]` macro.**
-pub trait LexerInternal<Token: Logos> {
-    /// Read the byte at current position.
-    fn read(&self) -> u8;
-
-    /// Bump the position by 1 and read the following byte.
-    fn next(&mut self) -> u8;
-
-    /// Bump the position by 1.
-    fn bump(&mut self);
-
-    /// Set the token.
-    fn set_token(&mut self, token: Token);
-}
-
+#[doc(hidden)]
 /// # WARNING!
 ///
 /// **This trait, and it's methods, are not meant to be used outside of the
@@ -122,12 +109,27 @@ pub trait LexerInternal<Token: Logos> {
 impl<Token: Logos, S: Source> LexerInternal<Token> for Lexer<Token, S> {
     /// Read a byte at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
+    ///
+    /// # WARNING!
+    ///
+    /// This should never be called as public API, and is instead
+    /// meant to be called by the implementor of the `Logos` trait.
     fn read(&self) -> u8 {
         unsafe { self.source.read(self.token_end) }
     }
 
     /// Convenience method that bumps the position `Lexer` is
     /// reading from and then reads the following byte.
+    ///
+    /// # WARNING!
+    ///
+    /// This should never be called as public API, and is instead
+    /// meant to be called by the implementor of the `Logos` trait.
+    ///
+    /// **If the end position has been reached, further bumps
+    /// can lead to undefined behavior!**
+    ///
+    /// **This method will panic in debug mode if that happens!**
     fn next(&mut self) -> u8 {
         self.bump();
         self.read()
@@ -135,19 +137,18 @@ impl<Token: Logos, S: Source> LexerInternal<Token> for Lexer<Token, S> {
 
     /// Bump the position `Lexer` is reading from by `1`.
     ///
+    /// # WARNING!
+    ///
     /// This should never be called as public API, and is instead
     /// meant to be called by the implementor of the `Logos` trait.
     ///
     /// **If the end position has been reached, further bumps
-    /// can lead to undefined behavior! This method will panic
-    /// in debug mode if that happens!**
+    /// can lead to undefined behavior!**
+    ///
+    /// **This method will panic in debug mode if that happens!**
     fn bump(&mut self) {
         debug_assert!(self.token_end + 1 <= self.source.len(), "Bumping out of bounds!");
 
         self.token_end += 1;
-    }
-
-    fn set_token(&mut self, token: Token) {
-        self.token = token
     }
 }
