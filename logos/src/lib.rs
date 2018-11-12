@@ -37,19 +37,19 @@
 //!
 //!     lexer.advance();
 //!
-//!     assert_eq!(lexer.token, Token.Text);
+//!     assert_eq!(lexer.token, Token::Text);
 //!     assert_eq!(lexer.slice(), "fast");
 //!     assert_eq!(lexer.range(), 20..24);
 //!
 //!     lexer.advance();
 //!
-//!     assert_eq!(lexer.token, Token.Text);
+//!     assert_eq!(lexer.token, Token::Text);
 //!     assert_eq!(lexer.slice(), "Lexers");
 //!     assert_eq!(lexer.range(), 25..31);
 //!
 //!     lexer.advance();
 //!
-//!     assert_eq!(lexer.token, Token.Period);
+//!     assert_eq!(lexer.token, Token::Period);
 //!     assert_eq!(lexer.slice(), ".");
 //!     assert_eq!(lexer.range(), 31..32);
 //!
