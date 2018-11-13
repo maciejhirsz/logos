@@ -1,6 +1,7 @@
 use syn::Ident;
 use std::cmp::Ordering;
 use regex::Pattern;
+use util::OptionExt;
 
 #[derive(Debug, Clone)]
 pub struct Node<'a> {
@@ -31,17 +32,17 @@ impl<'a> Node<'a> {
     where
         P: Iterator<Item = Pattern>,
     {
+        static ERR: &str = "Two patterns resolving to the same token.";
+
         let pattern = match path.next() {
             Some(pattern) => pattern,
             None => {
-                // FIXME: Error on conflicting token stuff
-                return self.token = Some(token);
+                return self.token.insert(token, ERR);
             }
         };
 
         if let Pattern::Repeat(_) = pattern {
-            // FIXME: Error on conflicting token stuff
-            self.token = Some(token);
+            self.token.insert(token, ERR);
         }
 
         match self.consequents.binary_search_by(|node| {
