@@ -1,13 +1,17 @@
 use std::cmp::Ordering;
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Regex {
     patterns: Vec<Pattern>,
     offset: usize,
 }
 
 impl Regex {
+    pub fn len(&self) -> usize {
+        self.patterns().len()
+    }
+
     pub fn from(source: &str) -> Self {
         Regex {
             patterns: RegexIter::from(source).collect(),
@@ -24,6 +28,37 @@ impl Regex {
 
     pub fn patterns(&self) -> &[Pattern] {
         &self.patterns[self.offset..]
+    }
+
+    pub fn first(&self) -> &Pattern {
+        self.patterns().get(0).unwrap()
+    }
+
+    pub fn is_byte(&self) -> bool {
+        self.len() == 1 && self.first().is_byte()
+    }
+
+    pub fn match_split(&mut self, other: &mut Regex) -> Option<Regex> {
+        let patterns = self.patterns()
+                           .iter()
+                           .zip(other.patterns())
+                           .take_while(|(left, right)| left == right)
+                           .map(|(left, _)| left)
+                           .cloned()
+                           .collect::<Vec<_>>();
+
+        match patterns.len() {
+            0 => None,
+            len => {
+                self.offset += len;
+                other.offset += len;
+
+                Some(Regex {
+                    patterns,
+                    offset: 0
+                })
+            }
+        }
     }
 }
 
@@ -78,6 +113,22 @@ impl fmt::Debug for PatternFlag {
             PatternFlag::Repeat => f.write_str("*"),
             PatternFlag::RepeatPlus => f.write_str("+"),
         }
+    }
+}
+
+impl fmt::Debug for Regex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Regex(")?;
+        let mut patterns = self.patterns().iter();
+
+        if let Some(pattern) = patterns.next() {
+            pattern.fmt(f)?;
+
+            for pattern in patterns {
+                write!(f, ", {:?}", pattern)?;
+            }
+        }
+        f.write_str(")")
     }
 }
 
@@ -177,14 +228,24 @@ impl Pattern {
         }
     }
 
-    // pub fn contains(&self, other: u8) -> bool {
-    //     match self {
-    //         Pattern::Byte(byte) => *byte == other,
-    //         Pattern::Range(from, to) => *from <= other && other <= *to,
-    //         Pattern::Repeat(pat) => pat.contains(other),
-    //         Pattern::Alternative(alt) => alt.iter().any(|pat| pat.contains(other)),
-    //     }
-    // }
+    pub fn is_repeat_plus(&self) -> bool {
+        match self {
+            Pattern::Flagged(_, flag) => match flag {
+                PatternFlag::Repeat => false,
+                PatternFlag::RepeatPlus => true,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn weight(&self) -> usize {
+        match self {
+            Pattern::Byte(_) => 1,
+            Pattern::Range(_, _) => 2,
+            Pattern::Flagged(pat, _) => pat.weight(),
+            Pattern::Alternative(pats) => pats.iter().map(Self::weight).sum(),
+        }
+    }
 }
 
 impl Iterator for Pattern {

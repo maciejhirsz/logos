@@ -1,27 +1,13 @@
 use syn::Ident;
 use regex::Regex;
-
-#[derive(Debug, Clone)]
-pub struct Branch<'a>(pub Regex, pub &'a Ident);
+use tree::Node;
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
     Eof,
     Error,
     Whitespace,
-    Tree(Tree<'a>),
-}
-
-#[derive(Debug, Clone)]
-pub struct Tree<'a> {
-    pub branches: Vec<Branch<'a>>,
-    pub regex: Option<Branch<'a>>,
-}
-
-impl<'a> From<Tree<'a>> for Handler<'a> {
-    fn from(tree: Tree<'a>) -> Handler<'a> {
-        Handler::Tree(tree)
-    }
+    Tree(Node<'a>),
 }
 
 #[derive(Debug)]
@@ -41,42 +27,15 @@ impl<'a> Handlers<'a> {
         }
     }
 
-    pub fn insert(&mut self, regex: Regex, token: &'a Ident) {
-        let first = regex.patterns()[0].clone();
+    pub fn insert(&mut self, mut regex: Regex, token: &'a Ident) {
+        let first = regex.next().expect("Cannot assign tokens to empty patterns");
 
         for byte in first {
-            let branch = Branch(regex.clone(), token);
+            let regex = regex.clone();
 
             match self.handlers[byte as usize] {
-                Handler::Tree(ref mut tree) => {
-                    tree.branches.push(branch);
-                }
-                ref mut slot => {
-                    *slot = Tree {
-                        branches: vec![branch],
-                        regex: None,
-                    }.into()
-                }
-            }
-        }
-    }
-
-    pub fn insert_regex(&mut self, mut regex: Regex, token: &'a Ident) {
-        let first = regex.next().expect("#[regex] pattern musn't be empty");
-
-        for byte in first {
-            let branch = Branch(regex.clone(), token);
-
-            match self.handlers[byte as usize] {
-                Handler::Tree(ref mut tree) => {
-                    // FIXME!
-                    // tree.regex.insert(branch, "Two #[regex] patterns matching the same first byte are not allowed yet.");
-                    tree.regex = Some(branch);
-                },
-                ref mut slot => *slot = Tree {
-                    branches: Vec::new(),
-                    regex: Some(branch),
-                }.into()
+                Handler::Tree(ref mut root) => root.insert(Node::new(regex, token)),
+                ref mut slot => *slot = Handler::Tree(Node::new(regex, token)),
             }
         }
     }

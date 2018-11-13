@@ -80,11 +80,13 @@ pub fn token(input: TokenStream) -> TokenStream {
                                         .expect("#[token] value must be a literal string")
                                         .value();
 
-                        if regex {
-                            handlers.insert_regex(Regex::from(&path), &variant.ident);
+                        let regex = if regex {
+                            Regex::from(&path)
                         } else {
-                            handlers.insert(Regex::sequence(&path), &variant.ident);
-                        }
+                            Regex::sequence(&path)
+                        };
+
+                        handlers.insert(regex, &variant.ident);
                     },
                     Some(invalid) => panic!("#[token] Invalid value: {}", invalid),
                     None => panic!("Invalid token")
