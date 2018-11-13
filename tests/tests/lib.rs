@@ -15,6 +15,9 @@ pub enum Token {
     #[regex = "[1-9][0-9]*"]
     Number,
 
+    #[regex = "0x[0-9a-fA-F]+"]
+    Hex,
+
     #[token = "priv"]
     Priv,
 
@@ -186,5 +189,12 @@ fn invalid_tokens() {
         (Token::InvalidToken, "-", 1..2),
         (Token::InvalidToken, "/", 2..3),
         (Token::InvalidToken, "!", 3..4),
+    ]);
+}
+
+#[test]
+fn hex_and_binary() {
+    assert_lex("0x0672deadbeef", &[
+        (Token::Hex, "0x0672deadbeef", 0..14),
     ]);
 }

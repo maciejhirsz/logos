@@ -18,19 +18,32 @@ impl Regex {
     ///
     /// If said `Pattern` is repeating, it won't be removed.
     pub fn first(&mut self) -> Pattern {
-        if let Pattern::Repeat(first) = (self.0).first().unwrap() {
-            return (**first).clone();
+        match self.0.first_mut().unwrap() {
+            Pattern::Flagged(first, flag) => {
+                if *flag == PatternFlag::RepeatPlus {
+                    *flag = PatternFlag::Repeat;
+                }
+
+                return (**first).clone();
+            }
+            _ => {},
         }
 
-        (self.0).remove(0)
+        self.0.remove(0)
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PatternFlag {
+    Repeat,
+    RepeatPlus,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
     Byte(u8),
     Range(u8, u8),
-    Repeat(Box<Pattern>),
+    Flagged(Box<Pattern>, PatternFlag),
     Alternative(Vec<Pattern>),
 }
 
@@ -39,8 +52,17 @@ impl fmt::Debug for Pattern {
         match self {
             Pattern::Byte(byte) => (*byte as char).fmt(f),
             Pattern::Range(from, to) => write!(f, "{:?}...{:?}", *from as char, *to as char),
-            Pattern::Repeat(pattern) => write!(f, "({:?})*", pattern),
+            Pattern::Flagged(pattern, flag) => write!(f, "({:?}){:?}", pattern, flag),
             Pattern::Alternative(alts) => write!(f, "{:?}", alts),
+        }
+    }
+}
+
+impl fmt::Debug for PatternFlag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PatternFlag::Repeat => f.write_str("*"),
+            PatternFlag::RepeatPlus => f.write_str("+"),
         }
     }
 }
@@ -131,9 +153,13 @@ impl<'a> Iterator for RegexIter<'a> {
             },
         };
 
-        if (self.0).get(read) == Some(&b'*') {
+        if let Some(flag) = match self.0.get(read).cloned().unwrap_or(0) {
+            b'*' => Some(PatternFlag::Repeat),
+            b'+' => Some(PatternFlag::RepeatPlus),
+            _    => None,
+        } {
             read += 1;
-            pattern = Pattern::Repeat(Box::new(pattern));
+            pattern = Pattern::Flagged(Box::new(pattern), flag);
         }
 
         self.0 = &self.0[read..];
@@ -152,7 +178,10 @@ impl Pattern {
 
     pub fn is_repeat(&self) -> bool {
         match self {
-            Pattern::Repeat(_) => true,
+            Pattern::Flagged(_, flag) => match flag {
+                PatternFlag::Repeat => true,
+                PatternFlag::RepeatPlus => true,
+            },
             _ => false,
         }
     }
@@ -191,7 +220,7 @@ impl Iterator for Pattern {
 
                 (out, Pattern::Byte(*to))
             },
-            Pattern::Repeat(boxed) => {
+            Pattern::Flagged(boxed, _) => {
                 let out = boxed.next();
                 let mut new_self = Pattern::Byte(0);
 
@@ -253,7 +282,10 @@ mod test {
 
     #[test]
     fn pattern_iter_repeat() {
-        let pattern = Pattern::Repeat(Box::new(Pattern::Range(b'a', b'f')));
+        let pattern = Pattern::Flagged(
+            Box::new(Pattern::Range(b'a', b'f')),
+            PatternFlag::Repeat
+        );
 
         assert!("abcdef".bytes().eq(pattern));
     }
@@ -261,7 +293,10 @@ mod test {
     #[test]
     fn pattern_iter_complex() {
         let pattern = Pattern::Alternative(vec![
-            Pattern::Repeat(Box::new(Pattern::Range(b'a', b'f'))),
+            Pattern::Flagged(
+                Box::new(Pattern::Range(b'a', b'f')),
+                PatternFlag::Repeat
+            ),
             Pattern::Range(b'0', b'9'),
             Pattern::Byte(b'_'),
             Pattern::Byte(b'$'),
@@ -277,7 +312,10 @@ mod test {
 
         assert!(regex.eq([
             Pattern::Range(b'1', b'9'),
-            Pattern::Repeat(Box::new(Pattern::Range(b'0', b'9'))),
+            Pattern::Flagged(
+                Box::new(Pattern::Range(b'0', b'9')),
+                PatternFlag::Repeat
+            ),
         ].iter().cloned()));
     }
 
@@ -292,13 +330,35 @@ mod test {
                     Pattern::Byte(b'_'),
                     Pattern::Byte(b'$'),
                 ]),
-                Pattern::Repeat(Box::new(Pattern::Alternative(vec![
-                    Pattern::Range(b'a', b'z'),
-                    Pattern::Range(b'A', b'Z'),
-                    Pattern::Range(b'0', b'9'),
-                    Pattern::Byte(b'_'),
-                    Pattern::Byte(b'$'),
-                ]))),
+                Pattern::Flagged(
+                    Box::new(Pattern::Alternative(vec![
+                        Pattern::Range(b'a', b'z'),
+                        Pattern::Range(b'A', b'Z'),
+                        Pattern::Range(b'0', b'9'),
+                        Pattern::Byte(b'_'),
+                        Pattern::Byte(b'$'),
+                    ])),
+                    PatternFlag::Repeat
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn regex_hex() {
+        assert_eq!(
+            Regex::from("0x[0-9a-fA-F]+").patterns(),
+            &[
+                Pattern::Byte(b'0'),
+                Pattern::Byte(b'x'),
+                Pattern::Flagged(
+                    Box::new(Pattern::Alternative(vec![
+                        Pattern::Range(b'0', b'9'),
+                        Pattern::Range(b'a', b'f'),
+                        Pattern::Range(b'A', b'F'),
+                    ])),
+                    PatternFlag::RepeatPlus
+                ),
             ]
         );
     }

@@ -377,7 +377,7 @@ impl ToTokens for Pattern {
                 _    => quote!(#byte),
             }),
             Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
-            Pattern::Repeat(ref pat) => pat.to_tokens(tokens),
+            Pattern::Flagged(ref pat, _) => pat.to_tokens(tokens),
             Pattern::Alternative(ref pat) => tokens.extend(quote!(#( #pat )|*)),
         }
     }

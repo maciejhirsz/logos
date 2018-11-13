@@ -41,7 +41,7 @@ impl<'a> Node<'a> {
             }
         };
 
-        if let Pattern::Repeat(_) = pattern {
+        if let Pattern::Flagged(_, _) = pattern {
             self.token.insert(token, ERR);
         }
 
