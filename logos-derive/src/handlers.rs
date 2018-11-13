@@ -1,6 +1,5 @@
 use syn::Ident;
 use regex::Regex;
-use util::OptionExt;
 
 #[derive(Debug, Clone)]
 pub struct Branch<'a, T>(pub T, pub &'a Ident);
@@ -60,14 +59,16 @@ impl<'a> Handlers<'a> {
     }
 
     pub fn insert_regex(&mut self, mut regex: Regex, token: &'a Ident) {
-        let first = regex.first();
+        let first = regex.first().expect("#[regex] pattern musn't be empty");
 
         for byte in first {
             let branch = Branch(regex.clone(), token);
 
             match self.handlers[byte as usize] {
                 Handler::Tree(ref mut tree) => {
-                    tree.regex.insert(branch, "Two #[regex] patterns matching the same first byte are not allowed yet.");
+                    // FIXME!
+                    // tree.regex.insert(branch, "Two #[regex] patterns matching the same first byte are not allowed yet.");
+                    tree.regex = Some(branch);
                 },
                 ref mut slot => *slot = Tree {
                     strings: Vec::new(),

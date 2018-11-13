@@ -17,19 +17,19 @@ impl Regex {
     /// byte of a string.
     ///
     /// If said `Pattern` is repeating, it won't be removed.
-    pub fn first(&mut self) -> Pattern {
-        match self.0.first_mut().unwrap() {
+    pub fn first(&mut self) -> Option<Pattern> {
+        match self.0.first_mut()? {
             Pattern::Flagged(first, flag) => {
                 if *flag == PatternFlag::RepeatPlus {
                     *flag = PatternFlag::Repeat;
                 }
 
-                return (**first).clone();
+                return Some((**first).clone());
             }
             _ => {},
         }
 
-        self.0.remove(0)
+        Some(self.0.remove(0))
     }
 }
 

@@ -15,6 +15,9 @@ pub enum Token {
     #[regex = "[1-9][0-9]*"]
     Number,
 
+    #[regex = "0x[01]+"]
+    Binary,
+
     #[regex = "0x[0-9a-fA-F]+"]
     Hex,
 
@@ -194,7 +197,10 @@ fn invalid_tokens() {
 
 #[test]
 fn hex_and_binary() {
-    assert_lex("0x0672deadbeef", &[
+    assert_lex("0x0672deadbeef 0b0100010011 0x 0b", &[
         (Token::Hex, "0x0672deadbeef", 0..14),
+        (Token::Binary, "0b0100010011", 15..27),
+        (Token::InvalidToken, "0x", 28..30),
+        (Token::InvalidToken, "0b", 31..33),
     ]);
 }
