@@ -7,11 +7,13 @@ extern crate quote;
 extern crate proc_macro;
 extern crate proc_macro2;
 
+mod util;
 mod tree;
 mod regex;
 mod handlers;
 mod generator;
 
+use util::OptionExt;
 use handlers::Handlers;
 use generator::Generator;
 
@@ -49,15 +51,13 @@ pub fn token(input: TokenStream) -> TokenStream {
             let ident = &attr.path.segments[0].ident;
 
             if ident == "error" {
-                // FIXME: Don't allow overrides
-                error = Some(&variant.ident);
+                error.insert(&variant.ident, "Only one #[error] variant can be declared.");
 
                 break;
             }
 
             if ident == "end" {
-                // FIXME: Don't allow overrides
-                end = Some(&variant.ident);
+                end.insert(&variant.ident, "Only one #[end] variant can be declared.");
 
                 break;
             }
