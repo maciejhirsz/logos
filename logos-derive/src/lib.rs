@@ -83,7 +83,7 @@ pub fn token(input: TokenStream) -> TokenStream {
                         if regex {
                             handlers.insert_regex(Regex::from(&path), &variant.ident);
                         } else {
-                            handlers.insert_string(path, &variant.ident);
+                            handlers.insert(Regex::sequence(&path), &variant.ident);
                         }
                     },
                     Some(invalid) => panic!("#[token] Invalid value: {}", invalid),

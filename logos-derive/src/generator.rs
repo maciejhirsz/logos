@@ -4,7 +4,7 @@ use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
 
 use tree::Node;
-use regex::{Regex, Pattern, ByteIter};
+use regex::Pattern;
 use handlers::{Branch, Tree};
 
 pub struct Generator<'a> {
@@ -24,17 +24,17 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn print_tree(&mut self, tree: Tree<'a>) -> TokenStream {
-        let mut strings = tree.strings.iter();
+    pub fn print_tree(&mut self, mut tree: Tree<'a>) -> TokenStream {
+        let mut branches = tree.branches.drain(..);
 
-        if let Some(branch) = strings.next() {
-            let mut path = ByteIter::from(branch.0.as_str());
+        if let Some(branch) = branches.next() {
+            let mut path = branch.0;
             let pattern = path.next().unwrap();
 
             let mut node = Node::new(pattern, &mut path, branch.1);
 
-            for branch in strings {
-                let mut path = ByteIter::from(branch.0.as_str());
+            for branch in branches {
+                let mut path = branch.0;
                 path.next().unwrap();
 
                 node.insert(&mut path, branch.1);
@@ -60,7 +60,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn regex_to_fn(&mut self, branch: Branch<'a, Regex>) -> Ident {
+    fn regex_to_fn(&mut self, branch: Branch<'a>) -> Ident {
         let handler = format!("_handle_{}", branch.1).to_lowercase();
         let handler = Ident::new(&handler, Span::call_site());
 
@@ -240,7 +240,7 @@ pub struct ExhaustiveGenerator<'a>(&'a Ident);
 pub struct LooseGenerator<'a>(&'a Ident);
 pub struct FallbackGenerator<'a: 'b, 'b> {
     gen: &'b mut Generator<'a>,
-    fallback: Branch<'a, Regex>,
+    fallback: Branch<'a>,
 }
 
 impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {

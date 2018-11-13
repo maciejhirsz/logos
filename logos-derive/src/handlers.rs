@@ -2,7 +2,7 @@ use syn::Ident;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
-pub struct Branch<'a, T>(pub T, pub &'a Ident);
+pub struct Branch<'a>(pub Regex, pub &'a Ident);
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
@@ -14,8 +14,8 @@ pub enum Handler<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Tree<'a> {
-    pub strings: Vec<Branch<'a, String>>,
-    pub regex: Option<Branch<'a, Regex>>,
+    pub branches: Vec<Branch<'a>>,
+    pub regex: Option<Branch<'a>>,
 }
 
 impl<'a> From<Tree<'a>> for Handler<'a> {
@@ -41,25 +41,28 @@ impl<'a> Handlers<'a> {
         }
     }
 
-    pub fn insert_string(&mut self, string: String, token: &'a Ident) {
-        let byte = string.as_bytes()[0];
-        let branch = Branch(string, token);
+    pub fn insert(&mut self, regex: Regex, token: &'a Ident) {
+        let first = regex.patterns()[0].clone();
 
-        match self.handlers[byte as usize] {
-            Handler::Tree(ref mut tree) => {
-                tree.strings.push(branch);
-            }
-            ref mut slot => {
-                *slot = Tree {
-                    strings: vec![branch],
-                    regex: None,
-                }.into()
+        for byte in first {
+            let branch = Branch(regex.clone(), token);
+
+            match self.handlers[byte as usize] {
+                Handler::Tree(ref mut tree) => {
+                    tree.branches.push(branch);
+                }
+                ref mut slot => {
+                    *slot = Tree {
+                        branches: vec![branch],
+                        regex: None,
+                    }.into()
+                }
             }
         }
     }
 
     pub fn insert_regex(&mut self, mut regex: Regex, token: &'a Ident) {
-        let first = regex.first().expect("#[regex] pattern musn't be empty");
+        let first = regex.next().expect("#[regex] pattern musn't be empty");
 
         for byte in first {
             let branch = Branch(regex.clone(), token);
@@ -71,7 +74,7 @@ impl<'a> Handlers<'a> {
                     tree.regex = Some(branch);
                 },
                 ref mut slot => *slot = Tree {
-                    strings: Vec::new(),
+                    branches: Vec::new(),
                     regex: Some(branch),
                 }.into()
             }

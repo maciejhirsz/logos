@@ -2,34 +2,48 @@ use std::cmp::Ordering;
 use std::fmt;
 
 #[derive(Debug, Clone)]
-pub struct Regex(Vec<Pattern>);
+pub struct Regex {
+    patterns: Vec<Pattern>,
+    offset: usize,
+}
 
 impl Regex {
     pub fn from(source: &str) -> Self {
-        Regex(RegexIter::from(source).collect())
+        Regex {
+            patterns: RegexIter::from(source).collect(),
+            offset: 0,
+        }
+    }
+
+    pub fn sequence(source: &str) -> Self {
+        Regex {
+            patterns: source.bytes().map(Pattern::Byte).collect(),
+            offset: 0,
+        }
     }
 
     pub fn patterns(&self) -> &[Pattern] {
-        &self.0
+        &self.patterns[self.offset..]
     }
+}
 
-    /// Remove and return the `Pattern` matching the first
-    /// byte of a string.
-    ///
-    /// If said `Pattern` is repeating, it won't be removed.
-    pub fn first(&mut self) -> Option<Pattern> {
-        match self.0.first_mut()? {
-            Pattern::Flagged(first, flag) => {
-                if *flag == PatternFlag::RepeatPlus {
-                    *flag = PatternFlag::Repeat;
-                }
+impl Iterator for Regex {
+    type Item = Pattern;
 
-                return Some((**first).clone());
-            }
-            _ => {},
+    fn next(&mut self) -> Option<Pattern> {
+        match self.patterns.get_mut(self.offset) {
+            Some(&mut Pattern::Flagged(ref pat, ref mut flag)) if *flag == PatternFlag::RepeatPlus => {
+                *flag = PatternFlag::Repeat;
+
+                Some((**pat).clone())
+            },
+            Some(other) => {
+                self.offset += 1;
+
+                Some(other.clone())
+            },
+            None => None,
         }
-
-        Some(self.0.remove(0))
     }
 }
 
@@ -67,34 +81,11 @@ impl fmt::Debug for PatternFlag {
     }
 }
 
-#[derive(Clone, Copy)] pub struct ByteIter<'a>(&'a [u8]);
 #[derive(Clone, Copy)] pub struct RegexIter<'a>(&'a [u8]);
-
-impl<'a> From<&'a str> for ByteIter<'a> {
-    fn from(str: &'a str) -> Self {
-        ByteIter(str.as_bytes())
-    }
-}
 
 impl<'a> From<&'a str> for RegexIter<'a> {
     fn from(str: &'a str) -> Self {
         RegexIter(str.as_bytes())
-    }
-}
-
-impl<'a> Iterator for ByteIter<'a> {
-    type Item = Pattern;
-
-    fn next(&mut self) -> Option<Pattern> {
-        match (self.0).len() {
-            0 => None,
-            _ => {
-                let byte = self.0[0];
-                self.0 = &self.0[1..];
-
-                Some(Pattern::Byte(byte))
-            }
-        }
     }
 }
 

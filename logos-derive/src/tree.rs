@@ -1,6 +1,6 @@
 use syn::Ident;
 use std::cmp::Ordering;
-use regex::Pattern;
+use regex::{Regex, Pattern};
 use util::OptionExt;
 
 #[derive(Debug, Clone)]
@@ -12,10 +12,7 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn new<P>(pattern: Pattern, path: &mut P, token: &'a Ident) -> Self
-    where
-        P: Iterator<Item = Pattern>,
-    {
+    pub fn new(pattern: Pattern, path: &mut Regex, token: &'a Ident) -> Self {
         let mut node = Node {
             pattern,
             token: None,
@@ -28,10 +25,7 @@ impl<'a> Node<'a> {
         node
     }
 
-    pub fn insert<P>(&mut self, path: &mut P, token: &'a Ident)
-    where
-        P: Iterator<Item = Pattern>,
-    {
+    pub fn insert(&mut self, path: &mut Regex, token: &'a Ident) {
         static ERR: &str = "Two patterns resolving to the same token.";
 
         let pattern = match path.next() {
