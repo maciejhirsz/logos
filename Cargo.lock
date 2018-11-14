@@ -140,15 +140,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "logos"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
- "logos-derive 0.2.3",
+ "logos-derive 0.3.0",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "logos-derive"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -321,8 +321,8 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.2.3",
- "logos-derive 0.2.3",
+ "logos 0.3.0",
+ "logos-derive 0.3.0",
  "luther 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luther-derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
