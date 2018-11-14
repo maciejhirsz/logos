@@ -15,6 +15,12 @@ pub enum Token {
     #[regex = "[1-9][0-9]*"]
     Number,
 
+    #[regex = "0b[01]+"]
+    Binary,
+
+    #[regex = "0x[0-9a-fA-F]+"]
+    Hex,
+
     #[token = "priv"]
     Priv,
 
@@ -139,15 +145,14 @@ fn identifiers() {
 
 #[test]
 fn keywords() {
-    assert_lex("foobar priv private primitive protected protectee in instanceof", &[
-        (Token::Identifier, "foobar", 0..6),
-        (Token::Priv, "priv", 7..11),
-        (Token::Private, "private", 12..19),
-        (Token::Primitive, "primitive", 20..29),
-        (Token::Protected, "protected", 30..39),
-        (Token::Protectee, "protectee", 40..49),
-        (Token::In, "in", 50..52),
-        (Token::Instanceof, "instanceof", 53..63),
+    assert_lex("priv private primitive protected protectee in instanceof", &[
+        (Token::Priv, "priv", 0..4),
+        (Token::Private, "private", 5..12),
+        (Token::Primitive, "primitive", 13..22),
+        (Token::Protected, "protected", 23..32),
+        (Token::Protectee, "protectee", 33..42),
+        (Token::In, "in", 43..45),
+        (Token::Instanceof, "instanceof", 46..56),
     ]);
 }
 
@@ -186,5 +191,21 @@ fn invalid_tokens() {
         (Token::InvalidToken, "-", 1..2),
         (Token::InvalidToken, "/", 2..3),
         (Token::InvalidToken, "!", 3..4),
+    ]);
+}
+
+#[test]
+fn hex_and_binary() {
+    assert_lex("0x0672deadbeef 0b0100010011", &[
+        (Token::Hex, "0x0672deadbeef", 0..14),
+        (Token::Binary, "0b0100010011", 15..27),
+    ]);
+}
+
+#[test]
+fn invalid_hex_and_binary() {
+    assert_lex("0x 0b", &[
+        (Token::InvalidToken, "0x", 0..2),
+        (Token::InvalidToken, "0b", 3..5),
     ]);
 }

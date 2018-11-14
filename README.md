@@ -2,12 +2,16 @@
     <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
 </p>
 
-Create ridiculously fast Lexers.
+## Create ridiculously fast Lexers.
 
-Pretty usable already. Things to come:
-+ Full regex support.
-+ Better error messages from the derive crate.
-+ Properly branching multiple regex tokens that start with the same prefix (e.g.: `0x` for hex, `0b` for binary etc.).
+**Logos** works by:
++ Resolving all logical branching of token definitions into a tree.
++ Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
++ Always using a Lookup Table for the first byte of a token.
++ Producing code that never backtracks, thus running at linear time or close to it.
+
+In practice it means that for most grammars the lexing performance is virtually unaffected by the number
+of tokens defined in the grammar. Or, in other words, **it is really fast**.
 
 ## Usage
 
@@ -20,19 +24,25 @@ use logos::Logos;
 
 #[derive(Debug, PartialEq, Logos)]
 enum Token {
+    // Logos requires that we define two default variants,
+    // one for end of input source,
     #[end]
     End,
 
+    // ...and one for errors. Those can be named anything
+    // you wish as long as the attributes are there.
     #[error]
     Error,
+
+    // Tokens can be literal strings, of any length.
+    #[token = "fast"]
+    Fast,
 
     #[token = "."]
     Period,
 
-    #[token = "fast"]
-    Fast,
-
-    #[regex = "[a-zA-Z]*"]
+    // Or regular expressions.
+    #[regex = "[a-zA-Z]+"]
     Text,
 }
 
@@ -81,6 +91,12 @@ Ridiculously fast!
 test logos                ... bench:       2,086 ns/iter (+/- 73) = 1021 MB/s
 test logos_nul_terminated ... bench:       1,956 ns/iter (+/- 141) = 1089 MB/s
 ```
+
+## TODOs
+
+Pretty usable already. Things to come:
++ Full regex support.
++ Better error messages from the derive crate.
 
 ## License
 

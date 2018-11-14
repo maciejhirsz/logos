@@ -2,7 +2,18 @@
 //!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
 //! </p>
 //!
-//! Create ridiculously fast Lexers.
+//! ## Create ridiculously fast Lexers.
+//!
+//! **Logos** works by:
+//! + Resolving all logical branching of token definitions into a tree.
+//! + Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
+//! + Always using a Lookup Table for the first byte of a token.
+//! + Producing code that never backtracks, thus running at linear time or close to it.
+//!
+//! In practice it means that for most grammars the lexing performance is virtually unaffected by the number
+//! of tokens defined in the grammar. Or, in other words, **it is really fast**.
+//!
+//! ## Example
 //!
 //! ```rust
 //! extern crate logos;
@@ -13,19 +24,25 @@
 //!
 //! #[derive(Debug, PartialEq, Logos)]
 //! enum Token {
+//!     // Logos requires that we define two default variants,
+//!     // one for end of input source,
 //!     #[end]
 //!     End,
 //!
+//!     // ...and one for errors. Those can be named anything
+//!     // you wish as long as the attributes are there.
 //!     #[error]
 //!     Error,
+//!
+//!     // Tokens can be literal strings, of any length.
+//!     #[token = "fast"]
+//!     Fast,
 //!
 //!     #[token = "."]
 //!     Period,
 //!
-//!     #[token = "fast"]
-//!     Fast,
-//!
-//!     #[regex = "[a-zA-Z]*"]
+//!     // Or regular expressions.
+//!     #[regex = "[a-zA-Z]+"]
 //!     Text,
 //! }
 //!

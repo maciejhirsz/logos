@@ -3,12 +3,13 @@ use std::ops::Range;
 use super::{Logos, Source};
 use super::internal::LexerInternal;
 
-/// A lookup table used internally. It maps indices for every ASCII
-/// byte to a function that takes a mutable reference to the `Lexer`.
+/// A Lookup Table used internally. It maps indices for every valid
+/// byte to a function that takes a mutable reference to the `Lexer`,
+/// reads the input and sets the correct token variant for it.
 pub type Lexicon<Lexer> = [Option<fn(&mut Lexer)>; 256];
 
 /// `Lexer` is the main struct of the crate that allows you to read through a
-/// `Source` and produce tokens implementing the `Logos` trait.
+/// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<Token: Logos, Source> {
     source: Source,
     token_start: usize,

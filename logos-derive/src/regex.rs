@@ -1,78 +1,144 @@
 use std::cmp::Ordering;
 use std::fmt;
 
-#[derive(Debug, Clone)]
-pub struct Regex(Vec<Pattern>);
+#[derive(Clone)]
+pub struct Regex {
+    patterns: Vec<Pattern>,
+    offset: usize,
+}
 
 impl Regex {
+    pub fn len(&self) -> usize {
+        self.patterns().len()
+    }
+
     pub fn from(source: &str) -> Self {
-        Regex(RegexIter::from(source).collect())
+        Regex {
+            patterns: RegexIter::from(source).collect(),
+            offset: 0,
+        }
+    }
+
+    pub fn sequence(source: &str) -> Self {
+        Regex {
+            patterns: source.bytes().map(Pattern::Byte).collect(),
+            offset: 0,
+        }
     }
 
     pub fn patterns(&self) -> &[Pattern] {
-        &self.0
+        &self.patterns[self.offset..]
     }
 
-    /// Remove and return the `Pattern` matching the first
-    /// byte of a string.
-    ///
-    /// If said `Pattern` is repeating, it won't be removed.
-    pub fn first(&mut self) -> Pattern {
-        if let Pattern::Repeat(first) = (self.0).first().unwrap() {
-            return (**first).clone();
+    pub fn first(&self) -> &Pattern {
+        self.patterns().get(0).unwrap()
+    }
+
+    pub fn is_byte(&self) -> bool {
+        self.len() == 1 && self.first().is_byte()
+    }
+
+    pub fn match_split(&mut self, other: &mut Regex) -> Option<Regex> {
+        let patterns = self.patterns()
+                           .iter()
+                           .zip(other.patterns())
+                           .take_while(|(left, right)| left == right)
+                           .map(|(left, _)| left)
+                           .cloned()
+                           .collect::<Vec<_>>();
+
+        match patterns.len() {
+            0 => None,
+            len => {
+                self.offset += len;
+                other.offset += len;
+
+                Some(Regex {
+                    patterns,
+                    offset: 0
+                })
+            }
         }
-
-        (self.0).remove(0)
     }
+}
+
+impl Iterator for Regex {
+    type Item = Pattern;
+
+    fn next(&mut self) -> Option<Pattern> {
+        match self.patterns.get_mut(self.offset) {
+            Some(&mut Pattern::Flagged(ref pat, ref mut flag)) if *flag == PatternFlag::RepeatPlus => {
+                *flag = PatternFlag::Repeat;
+
+                Some((**pat).clone())
+            },
+            Some(other) => {
+                self.offset += 1;
+
+                Some(other.clone())
+            },
+            None => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PatternFlag {
+    Repeat,
+    RepeatPlus,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
     Byte(u8),
     Range(u8, u8),
-    Repeat(Box<Pattern>),
+    Flagged(Box<Pattern>, PatternFlag),
     Alternative(Vec<Pattern>),
 }
 
 impl fmt::Debug for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Pattern::Byte(byte) => (*byte as char).fmt(f),
-            Pattern::Range(from, to) => write!(f, "{:?}...{:?}", *from as char, *to as char),
-            Pattern::Repeat(pattern) => write!(f, "({:?})*", pattern),
-            Pattern::Alternative(alts) => write!(f, "{:?}", alts),
+            Pattern::Byte(byte) => fmt::Display::fmt(&(*byte as char), f),
+            Pattern::Range(from, to) => write!(f, "{}-{}", *from as char, *to as char),
+            Pattern::Flagged(pattern, flag) => write!(f, "{:?}{:?}", pattern, flag),
+            Pattern::Alternative(alts) => {
+                f.write_str("[")?;
+                for alt in alts {
+                    alt.fmt(f)?;
+                }
+                f.write_str("]")
+            },
         }
     }
 }
 
-#[derive(Clone, Copy)] pub struct ByteIter<'a>(&'a [u8]);
-#[derive(Clone, Copy)] pub struct RegexIter<'a>(&'a [u8]);
-
-impl<'a> From<&'a str> for ByteIter<'a> {
-    fn from(str: &'a str) -> Self {
-        ByteIter(str.as_bytes())
+impl fmt::Debug for PatternFlag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PatternFlag::Repeat => f.write_str("*"),
+            PatternFlag::RepeatPlus => f.write_str("+"),
+        }
     }
 }
+
+impl fmt::Debug for Regex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("/")?;
+
+        for pattern in self.patterns() {
+            pattern.fmt(f)?;
+        }
+
+        f.write_str("/")
+    }
+}
+
+#[derive(Clone, Copy)] pub struct RegexIter<'a>(&'a [u8]);
 
 impl<'a> From<&'a str> for RegexIter<'a> {
     fn from(str: &'a str) -> Self {
         RegexIter(str.as_bytes())
-    }
-}
-
-impl<'a> Iterator for ByteIter<'a> {
-    type Item = Pattern;
-
-    fn next(&mut self) -> Option<Pattern> {
-        match (self.0).len() {
-            0 => None,
-            _ => {
-                let byte = self.0[0];
-                self.0 = &self.0[1..];
-
-                Some(Pattern::Byte(byte))
-            }
-        }
     }
 }
 
@@ -131,9 +197,13 @@ impl<'a> Iterator for RegexIter<'a> {
             },
         };
 
-        if (self.0).get(read) == Some(&b'*') {
+        if let Some(flag) = match self.0.get(read).cloned().unwrap_or(0) {
+            b'*' => Some(PatternFlag::Repeat),
+            b'+' => Some(PatternFlag::RepeatPlus),
+            _    => None,
+        } {
             read += 1;
-            pattern = Pattern::Repeat(Box::new(pattern));
+            pattern = Pattern::Flagged(Box::new(pattern), flag);
         }
 
         self.0 = &self.0[read..];
@@ -152,19 +222,32 @@ impl Pattern {
 
     pub fn is_repeat(&self) -> bool {
         match self {
-            Pattern::Repeat(_) => true,
+            Pattern::Flagged(_, flag) => match flag {
+                PatternFlag::Repeat => true,
+                PatternFlag::RepeatPlus => true,
+            },
             _ => false,
         }
     }
 
-    // pub fn contains(&self, other: u8) -> bool {
-    //     match self {
-    //         Pattern::Byte(byte) => *byte == other,
-    //         Pattern::Range(from, to) => *from <= other && other <= *to,
-    //         Pattern::Repeat(pat) => pat.contains(other),
-    //         Pattern::Alternative(alt) => alt.iter().any(|pat| pat.contains(other)),
-    //     }
-    // }
+    pub fn is_repeat_plus(&self) -> bool {
+        match self {
+            Pattern::Flagged(_, flag) => match flag {
+                PatternFlag::Repeat => false,
+                PatternFlag::RepeatPlus => true,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn weight(&self) -> usize {
+        match self {
+            Pattern::Byte(_) => 1,
+            Pattern::Range(_, _) => 2,
+            Pattern::Flagged(pat, _) => pat.weight(),
+            Pattern::Alternative(pats) => pats.iter().map(Self::weight).sum(),
+        }
+    }
 }
 
 impl Iterator for Pattern {
@@ -191,7 +274,7 @@ impl Iterator for Pattern {
 
                 (out, Pattern::Byte(*to))
             },
-            Pattern::Repeat(boxed) => {
+            Pattern::Flagged(boxed, _) => {
                 let out = boxed.next();
                 let mut new_self = Pattern::Byte(0);
 
@@ -253,7 +336,10 @@ mod test {
 
     #[test]
     fn pattern_iter_repeat() {
-        let pattern = Pattern::Repeat(Box::new(Pattern::Range(b'a', b'f')));
+        let pattern = Pattern::Flagged(
+            Box::new(Pattern::Range(b'a', b'f')),
+            PatternFlag::Repeat
+        );
 
         assert!("abcdef".bytes().eq(pattern));
     }
@@ -261,7 +347,10 @@ mod test {
     #[test]
     fn pattern_iter_complex() {
         let pattern = Pattern::Alternative(vec![
-            Pattern::Repeat(Box::new(Pattern::Range(b'a', b'f'))),
+            Pattern::Flagged(
+                Box::new(Pattern::Range(b'a', b'f')),
+                PatternFlag::Repeat
+            ),
             Pattern::Range(b'0', b'9'),
             Pattern::Byte(b'_'),
             Pattern::Byte(b'$'),
@@ -277,7 +366,10 @@ mod test {
 
         assert!(regex.eq([
             Pattern::Range(b'1', b'9'),
-            Pattern::Repeat(Box::new(Pattern::Range(b'0', b'9'))),
+            Pattern::Flagged(
+                Box::new(Pattern::Range(b'0', b'9')),
+                PatternFlag::Repeat
+            ),
         ].iter().cloned()));
     }
 
@@ -292,13 +384,35 @@ mod test {
                     Pattern::Byte(b'_'),
                     Pattern::Byte(b'$'),
                 ]),
-                Pattern::Repeat(Box::new(Pattern::Alternative(vec![
-                    Pattern::Range(b'a', b'z'),
-                    Pattern::Range(b'A', b'Z'),
-                    Pattern::Range(b'0', b'9'),
-                    Pattern::Byte(b'_'),
-                    Pattern::Byte(b'$'),
-                ]))),
+                Pattern::Flagged(
+                    Box::new(Pattern::Alternative(vec![
+                        Pattern::Range(b'a', b'z'),
+                        Pattern::Range(b'A', b'Z'),
+                        Pattern::Range(b'0', b'9'),
+                        Pattern::Byte(b'_'),
+                        Pattern::Byte(b'$'),
+                    ])),
+                    PatternFlag::Repeat
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn regex_hex() {
+        assert_eq!(
+            Regex::from("0x[0-9a-fA-F]+").patterns(),
+            &[
+                Pattern::Byte(b'0'),
+                Pattern::Byte(b'x'),
+                Pattern::Flagged(
+                    Box::new(Pattern::Alternative(vec![
+                        Pattern::Range(b'0', b'9'),
+                        Pattern::Range(b'a', b'f'),
+                        Pattern::Range(b'A', b'F'),
+                    ])),
+                    PatternFlag::RepeatPlus
+                ),
             ]
         );
     }

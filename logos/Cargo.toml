@@ -12,7 +12,8 @@ readme = "../README.md"
 toolshed = { version = "0.6", optional = true }
 
 [dev-dependencies]
-logos-derive = "0.2.2"
+# logos-derive = "0.2.2"
+logos-derive = { path = "../logos-derive" }
 
 [features]
 default = []

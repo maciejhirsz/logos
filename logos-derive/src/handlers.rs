@@ -1,28 +1,13 @@
 use syn::Ident;
 use regex::Regex;
-use util::OptionExt;
-
-#[derive(Debug, Clone)]
-pub struct Branch<'a, T>(pub T, pub &'a Ident);
+use tree::Node;
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
     Eof,
     Error,
     Whitespace,
-    Tree(Tree<'a>),
-}
-
-#[derive(Debug, Clone)]
-pub struct Tree<'a> {
-    pub strings: Vec<Branch<'a, String>>,
-    pub regex: Option<Branch<'a, Regex>>,
-}
-
-impl<'a> From<Tree<'a>> for Handler<'a> {
-    fn from(tree: Tree<'a>) -> Handler<'a> {
-        Handler::Tree(tree)
-    }
+    Tree(Node<'a>),
 }
 
 #[derive(Debug)]
@@ -42,37 +27,15 @@ impl<'a> Handlers<'a> {
         }
     }
 
-    pub fn insert_string(&mut self, string: String, token: &'a Ident) {
-        let byte = string.as_bytes()[0];
-        let branch = Branch(string, token);
-
-        match self.handlers[byte as usize] {
-            Handler::Tree(ref mut tree) => {
-                tree.strings.push(branch);
-            }
-            ref mut slot => {
-                *slot = Tree {
-                    strings: vec![branch],
-                    regex: None,
-                }.into()
-            }
-        }
-    }
-
-    pub fn insert_regex(&mut self, mut regex: Regex, token: &'a Ident) {
-        let first = regex.first();
+    pub fn insert(&mut self, mut regex: Regex, token: &'a Ident) {
+        let first = regex.next().expect("Cannot assign tokens to empty patterns");
 
         for byte in first {
-            let branch = Branch(regex.clone(), token);
+            let regex = regex.clone();
 
             match self.handlers[byte as usize] {
-                Handler::Tree(ref mut tree) => {
-                    tree.regex.insert(branch, "Two #[regex] patterns matching the same first byte are not allowed yet.");
-                },
-                ref mut slot => *slot = Tree {
-                    strings: Vec::new(),
-                    regex: Some(branch),
-                }.into()
+                Handler::Tree(ref mut root) => root.insert(Node::new(regex, token)),
+                ref mut slot => *slot = Handler::Tree(Node::new(regex, token)),
             }
         }
     }

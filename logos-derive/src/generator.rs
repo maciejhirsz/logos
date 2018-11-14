@@ -3,9 +3,8 @@ use syn::Ident;
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
 
-use tree::Node;
-use regex::{Regex, Pattern, ByteIter};
-use handlers::{Branch, Tree};
+use tree::{Node, Branch};
+use regex::Pattern;
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,
@@ -24,140 +23,184 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn print_tree(&mut self, tree: Tree<'a>) -> TokenStream {
-        let mut strings = tree.strings.iter();
+    pub fn print_tree(&mut self, tree: Node<'a>) -> TokenStream {
+        match tree.only_leaf() {
+            Some(variant) => {
+                let handler = format!("_handle_{}", variant).to_lowercase();
+                let handler = Ident::new(&handler, Span::call_site());
 
-        if let Some(branch) = strings.next() {
-            let mut path = ByteIter::from(branch.0.as_str());
-            let pattern = path.next().unwrap();
+                if self.fns_check.insert(variant) {
+                    let body = self.tree_to_fn_body(tree);
 
-            let mut node = Node::new(pattern, &mut path, branch.1);
+                    self.fns.extend(quote! {
+                        fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
+                            lex.bump();
+                            #body
+                        }
+                    });
+                }
 
-            for branch in strings {
-                let mut path = ByteIter::from(branch.0.as_str());
-                path.next().unwrap();
+                quote!(Some(#handler))
+            },
+            None => {
+                let body = self.tree_to_fn_body(tree);
 
-                node.insert(&mut path, branch.1);
+                quote!(Some(|lex| {
+                    lex.bump();
+                    #body
+                }))
             }
+        }
+    }
 
-            if let Some(fallback) = tree.regex {
+    fn tree_to_fn_body(&mut self, mut tree: Node<'a>) -> TokenStream {
+        if tree.exhaustive() {
+            ExhaustiveGenerator(self).print(&tree)
+        } else {
+            if let Some(fallback) = tree.fallback() {
                 FallbackGenerator {
                     gen: self,
                     fallback,
-                }.print(&node)
-            } else if node.exhaustive() {
-                ExhaustiveGenerator(self.enum_name).print(&node)
+                }.print(&tree)
             } else {
-                LooseGenerator(self.enum_name).print(&node)
+                LooseGenerator(self).print(&tree)
             }
-        } else if let Some(regex) = tree.regex {
-            let handler = self.regex_to_fn(regex);
-            quote! {
-                Some(#handler)
-            }
-        } else {
-            panic!("Invalid tree!");
         }
     }
 
-    fn regex_to_fn(&mut self, branch: Branch<'a, Regex>) -> Ident {
-        let handler = format!("_handle_{}", branch.1).to_lowercase();
-        let handler = Ident::new(&handler, Span::call_site());
+    fn regex_to_consumers(&mut self, mut regex: &[Pattern], then: TokenStream) -> TokenStream {
+        let mut tokens = TokenStream::new();
 
-        if self.fns_check.insert(branch.1) {
-            let mut consumers = TokenStream::new();
-            let token = branch.1;
+        while regex.len() != 0 {
+            let bytes = regex.iter().take_while(|pat| pat.is_byte()).count();
 
-            for pattern in branch.0.patterns() {
-                let pattern_fn = self.pattern_to_fn(pattern.clone());
+            if bytes != 0 {
+                let first = &regex[0];
+                let rest = &regex[1..bytes];
 
-                let tokens = if pattern.is_repeat() {
-                    quote! {
-                        while #pattern_fn(lex.read()) {
+                regex = &regex[bytes..];
+
+                if regex.len() == 0 {
+                    tokens.extend(quote! {
+                        if lex.read() == #first #(&& lex.next() == #rest )* {
                             lex.bump();
+                            #then
                         }
-                    }
+                    });
+
+                    return quote!({ #tokens });
                 } else {
-                    quote! {
-                        if !#pattern_fn(lex.read()) {
+                    tokens.extend(quote! {
+                        if lex.read() != #first #(|| lex.next() != #rest )* {
                             return lex.token = ::logos::Logos::ERROR;
                         }
-
                         lex.bump();
-                    }
-                };
-
-                consumers.extend(tokens);
+                    });
+                }
             }
 
-            let name = self.enum_name;
+            if regex[0].is_repeat() {
+                let test = self.pattern_to_fn(&regex[0]);
 
-            self.fns.extend(quote! {
-                fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
-                    lex.bump();
-
-                    #consumers
-
-                    lex.token = #name::#token;
+                if regex[0].is_repeat_plus() {
+                    tokens.extend(quote! {
+                        if #test(lex.read()) {
+                            lex.bump();
+                        } else {
+                            return lex.token = ::logos::Logos::ERROR;
+                        }
+                    });
                 }
-            });
+
+                tokens.extend(quote! {
+                    while #test(lex.read()) {
+                        lex.bump();
+                    }
+                });
+
+                regex = &regex[1..];
+
+                continue;
+            }
+
+            break;
         }
 
-        handler
+        quote!(
+            #tokens
+
+            #then
+        )
     }
 
-    fn pattern_to_fn(&mut self, pattern: Pattern) -> &Ident {
+    fn pattern_to_fn(&mut self, pattern: &Pattern) -> TokenStream {
         let idx = self.patterns.len();
 
         let patterns = &mut self.patterns;
         let fns = &mut self.fns;
 
-        patterns.entry(pattern.clone()).or_insert_with(|| {
-            let bytes: Vec<u8> = pattern.collect();
-            let chars = bytes.iter()
-                             .filter(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
-                             .map(|b| *b as char)
-                             .collect::<String>();
-            let pattern = Ident::new(&format!("_pattern_{}_{}", chars, idx), Span::call_site());
+        let function = patterns.entry(pattern.clone()).or_insert_with(|| {
+            let chars = format!("{:?}", pattern)
+                            .bytes()
+                            .filter(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+                            .map(|b| b as char)
+                            .collect::<String>();
+            let function = Ident::new(&format!("_pattern_{}_{}", idx, chars), Span::call_site());
 
-            let tokens = if bytes.len() == 1 {
-                let byte = bytes[0];
-
-                quote! {
-                    #[inline]
-                    fn #pattern(byte: u8) -> bool {
-                        byte == #byte
+            let tokens = match pattern.weight() {
+                1 => {
+                    quote! {
+                        #[inline]
+                        fn #function(byte: u8) -> bool {
+                            byte == #pattern
+                        }
                     }
-                }
-            } else {
-                let mut table = [false; 256];
+                },
+                2 => {
+                    quote! {
+                        #[inline]
+                        fn #function(byte: u8) -> bool {
+                            match byte {
+                                #pattern => true,
+                                _ => false,
+                            }
+                        }
+                    }
+                },
+                _ => {
+                    let bytes: Vec<u8> = pattern.clone().collect();
 
-                for byte in bytes {
-                    table[byte as usize] = true;
-                }
+                    let mut table = [false; 256];
 
-                let ltrue = quote!(TT);
-                let lfalse = quote!(__);
+                    for byte in bytes {
+                        table[byte as usize] = true;
+                    }
 
-                let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
+                    let ltrue = quote!(TT);
+                    let lfalse = quote!(__);
 
-                quote! {
-                    #[inline]
-                    fn #pattern(byte: u8) -> bool {
-                        const #ltrue: bool = true;
-                        const #lfalse: bool = false;
+                    let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
 
-                        static LUT: [bool; 256] = [#( #table ),*];
+                    quote! {
+                        #[inline]
+                        fn #function(byte: u8) -> bool {
+                            const #ltrue: bool = true;
+                            const #lfalse: bool = false;
 
-                        LUT[byte as usize]
+                            static LUT: [bool; 256] = [#( #table ),*];
+
+                            LUT[byte as usize]
+                        }
                     }
                 }
             };
 
             fns.extend(tokens);
 
-            pattern
-        })
+            function
+        });
+
+        quote!(#function)
     }
 
     pub fn fns(self) -> TokenStream {
@@ -165,86 +208,99 @@ impl<'a> Generator<'a> {
     }
 }
 
-pub trait GeneratorTrait<'a> {
-    fn enum_name(&self) -> &'a Ident;
+pub trait SubGenerator<'a> {
+    fn gen(&mut self) -> &mut Generator<'a>;
 
     fn print(&mut self, node: &Node) -> TokenStream;
 
     fn print_token(&mut self, variant: &Ident) -> TokenStream;
 
-    fn print_node(&mut self, mut node: &Node) -> TokenStream {
-        let mut options = node.consequents.len();
+    fn print_branch(&mut self, branch: &Branch) -> TokenStream {
+        let consequent = self.print_node(&*branch.then);
 
-        if options == 0 {
-            return if let Some(token) = node.token {
-                let token = self.print_token(token);
+        self.gen().regex_to_consumers(branch.regex.patterns(), consequent)
+    }
 
-                quote! { {
-                    lex.bump();
+    fn print_node(&mut self, node: &Node) -> TokenStream {
+        match node {
+            Node::Leaf(token) => self.print_token(token),
+            Node::Branch(branch) => {
+                let branch = self.print_branch(branch);
 
-                    #token
-                } }
-            } else {
-                TokenStream::new()
-            };
-        }
+                quote!({
+                    #branch
+                })
+            },
+            Node::Fork(fork) => {
+                let branches: TokenStream = fork.arms.iter().map(|branch| {
+                    let pattern = &branch.regex.first();
 
-        if node.token.is_some() || node.consequents.first().map(|node| !node.pattern.is_byte()).unwrap_or(false)  {
-            options += 1;
-        }
+                    let test = if pattern.is_byte() {
+                        quote!(#pattern =>)
+                    } else {
+                        let test = self.gen().pattern_to_fn(pattern);
 
-        match options {
-            1 => {
-                node = node.consequents.first().unwrap();
-                let mut test = vec![&node.pattern];
+                        quote!(byte if #test(byte) =>)
+                    };
+                    let regex = if pattern.is_repeat() {
+                        branch.regex.patterns()
+                    } else {
+                        &branch.regex.patterns()[1..]
+                    };
 
-                while node.consequents.len() == 1 && node.token.is_none() && node.consequents.first().unwrap().pattern.is_byte() {
-                    node = node.consequents.iter().next().unwrap();
+                    let consequent = self.print_node(&*branch.then);
+                    let consequent = self.gen().regex_to_consumers(regex, consequent);
 
-                    test.push(&node.pattern);
-                }
-
-                let consequent = self.print_node(node);
-
-                quote! {
-                    if #( lex.next() == #test )&&* {
+                    quote! { #test {
+                        lex.bump();
                         #consequent
-                    }
-                }
-            }
-            _ => {
-                let branches: TokenStream = node.consequents.iter().map(|node| {
-                    let pattern = &node.pattern;
-                    let consequent = self.print_node(node);
-
-                    quote! { #pattern => #consequent, }
+                    }, }
                 }).collect();
 
-                let default = match node.token {
+                let default = match fork.default {
                     Some(token) => self.print_token(token),
                     None        => quote! { {} },
                 };
 
                 quote! {
-                    match lex.next() {
+                    match lex.read() {
                         #branches
                         _ => #default,
                     }
                 }
-            }
+            },
         }
     }
+
 }
 
-pub struct ExhaustiveGenerator<'a>(&'a Ident);
-pub struct LooseGenerator<'a>(&'a Ident);
+pub struct ExhaustiveGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
+pub struct LooseGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct FallbackGenerator<'a: 'b, 'b> {
     gen: &'b mut Generator<'a>,
-    fallback: Branch<'a, Regex>,
+    fallback: Branch<'a>,
 }
 
-impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
-    fn enum_name(&self) -> &'a Ident {
+impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
+    fn gen(&mut self) -> &mut Generator<'a> {
+        self.0
+    }
+
+    fn print(&mut self, node: &Node) -> TokenStream {
+        let body = self.print_node(node);
+
+        quote!(lex.token = #body;)
+    }
+
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+        let name = self.gen().enum_name;
+
+        quote!(#name::#variant)
+    }
+}
+
+impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
+    fn gen(&mut self) -> &mut Generator<'a> {
         self.0
     }
 
@@ -252,77 +308,44 @@ impl<'a> GeneratorTrait<'a> for ExhaustiveGenerator<'a> {
         let body = self.print_node(node);
 
         quote! {
-            Some(|lex| {
-                lex.token = #body;
-            })
+            #body
+
+            lex.token = ::logos::Logos::ERROR;
         }
     }
 
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
-        let name = self.enum_name();
+        let name = self.gen().enum_name;
 
-        quote! { #name::#variant }
+        quote!(return lex.token = #name::#variant)
     }
 }
 
-impl<'a> GeneratorTrait<'a> for LooseGenerator<'a> {
-    fn enum_name(&self) -> &'a Ident {
-        self.0
+impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
+    fn gen(&mut self) -> &mut Generator<'a> {
+        self.gen
     }
 
     fn print(&mut self, node: &Node) -> TokenStream {
         let body = self.print_node(node);
+        let fallback = LooseGenerator(self.gen).print_branch(&self.fallback);
+        // let pattern = self.fallback.regex.first();
+        // let pattern_fn = self.gen().pattern_to_fn(pattern);
+
+        // let name = self.gen().enum_name.clone();
+        // let fallback = &self.fallback.then;
 
         quote! {
-            Some(|lex| {
-                #body
+            #body
 
-                lex.token = ::logos::Logos::ERROR;
-            })
+            #fallback
         }
     }
 
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
-        let name = self.enum_name();
-
-        quote! { return lex.token = #name::#variant }
-    }
-}
-
-impl<'a, 'b> GeneratorTrait<'a> for FallbackGenerator<'a, 'b> {
-    fn enum_name(&self) -> &'a Ident {
-        self.gen.enum_name
-    }
-
-    fn print(&mut self, node: &Node) -> TokenStream {
-        let body = self.print_node(node);
-        let pattern = &self.fallback.0.patterns()[0];
-        let pattern_fn = self.gen.pattern_to_fn(pattern.clone());
-
-        if !pattern.is_repeat() {
-            panic!("Sorry, you are trying to do something that's not implemented yet!");
-        };
-
-        let name = self.gen.enum_name.clone();
-        let fallback = &self.fallback.1;
-
-        quote! {
-            Some(|lex| {
-                #body
-
-                while #pattern_fn(lex.read()) {
-                    lex.bump();
-                }
-
-                lex.token = #name::#fallback;
-            })
-        }
-    }
-
-    fn print_token(&mut self, variant: &Ident) -> TokenStream {
-        let name = self.enum_name();
-        let pattern = &self.fallback.0.patterns()[0];
-        let pattern_fn = self.gen.pattern_to_fn(pattern.clone());
+        let name = self.gen().enum_name;
+        let pattern = self.fallback.regex.first();
+        let pattern_fn = self.gen.pattern_to_fn(pattern);
 
         quote! {
             if !#pattern_fn(lex.read()) {
@@ -377,7 +400,7 @@ impl ToTokens for Pattern {
                 _    => quote!(#byte),
             }),
             Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
-            Pattern::Repeat(ref pat) => pat.to_tokens(tokens),
+            Pattern::Flagged(ref pat, _) => pat.to_tokens(tokens),
             Pattern::Alternative(ref pat) => tokens.extend(quote!(#( #pat )|*)),
         }
     }
