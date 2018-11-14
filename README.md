@@ -88,8 +88,8 @@ fn main() {
 Ridiculously fast!
 
 ```
-test logos                ... bench:       2,086 ns/iter (+/- 73) = 1021 MB/s
-test logos_nul_terminated ... bench:       1,956 ns/iter (+/- 141) = 1089 MB/s
+test logos                ... bench:       2,005 ns/iter (+/- 16) = 1062 MB/s
+test logos_nul_terminated ... bench:       1,828 ns/iter (+/- 69) = 1165 MB/s
 ```
 
 ## TODOs

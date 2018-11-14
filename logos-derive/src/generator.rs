@@ -45,10 +45,10 @@ impl<'a> Generator<'a> {
             None => {
                 let body = self.tree_to_fn_body(tree);
 
-                quote!(Some(|lex| {
+                quote!(Some({fn handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
                     lex.bump();
                     #body
-                }))
+                } handler}))
             }
         }
     }

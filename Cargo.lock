@@ -140,25 +140,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "logos"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
- "logos-derive 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "logos-derive 0.3.0",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "logos-derive"
-version = "0.2.3"
-dependencies = [
- "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
- "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "syn 0.15.18 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "logos-derive"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.3.0"
 dependencies = [
  "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -331,8 +321,8 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.2.3",
- "logos-derive 0.2.3",
+ "logos 0.3.0",
+ "logos-derive 0.3.0",
  "luther 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luther-derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -408,7 +398,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum generic-array 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ef25c5683767570c2bbd7deba372926a55eaae9982d7726ee2a1050239d45b9d"
 "checksum itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)" = "f58856976b776fedd95533137617a02fb25719f40e7d9b01c7043cd65474f450"
 "checksum libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)" = "76e3a3ef172f1a0b9a9ff0dd1491ae5e6c948b94479a3021819ba7d860c8645d"
-"checksum logos-derive 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "7dc10c37b68a939e898b2a65a6c4b56afcc5391b8d2906e11cf3c558c717f3ff"
 "checksum luther 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "06f4cea3d0eb2247968458e31546dd676406dd5b8ecab4fb09290a73de99c00c"
 "checksum luther-derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "64e6619260728020da3870d66e90492fe093674929670e0b19d4659bf3596c62"
 "checksum maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08cbb6b4fef96b6d77bfc40ec491b1690c779e77b05cd9f07f787ed376fd4c43"
