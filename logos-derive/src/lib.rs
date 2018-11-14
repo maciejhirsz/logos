@@ -140,7 +140,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
 
-            fn lexicon<S: ::logos::Source>() -> &'static ::logos::Lexicon<::logos::Lexer<Self, S>> {
+            fn lexicon<'a, S: ::logos::Source>() -> &'a ::logos::Lexicon<::logos::Lexer<Self, S>> {
                 use ::logos::internal::LexerInternal;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;

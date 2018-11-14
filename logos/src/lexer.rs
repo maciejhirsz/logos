@@ -14,7 +14,6 @@ pub struct Lexer<Token: Logos, Source> {
     source: Source,
     token_start: usize,
     token_end: usize,
-    // lexicon: Lexicon<Lexer<Token, Source>>,
 
     /// Current token. Call the `advance` method to get a new token.
     pub token: Token,
@@ -47,7 +46,6 @@ impl<Token: Logos, Src: Source> Lexer<Token, Src> {
             source,
             token_start: 0,
             token_end: 0,
-            // lexicon: Token::lexicon(),
             token: Token::ERROR,
             extras: Default::default(),
         };
