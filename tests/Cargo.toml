@@ -1,11 +1,9 @@
 [package]
 name = "tests"
-version = "0.2.1"
+version = "0.0.0"
 authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
-repository = "https://github.com/maciejhirsz/logos"
-documentation = "https://docs.rs/logos"
 
 [dev-dependencies]
 logos = { path = "../logos", features = ["nul_term_source"] }

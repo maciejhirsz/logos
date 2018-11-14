@@ -92,6 +92,7 @@ impl<'a> Generator<'a> {
                 } else {
                     tokens.extend(quote! {
                         if lex.read() != #first #(|| lex.next() != #rest )* {
+                            // FIXME: Need to handle fallback in FallbackGenerator here
                             return lex.token = ::logos::Logos::ERROR;
                         }
                         lex.bump();
@@ -107,6 +108,7 @@ impl<'a> Generator<'a> {
                         if #test(lex.read()) {
                             lex.bump();
                         } else {
+                            // FIXME: Need to handle fallback in FallbackGenerator here
                             return lex.token = ::logos::Logos::ERROR;
                         }
                     });
@@ -271,7 +273,6 @@ pub trait SubGenerator<'a> {
             },
         }
     }
-
 }
 
 pub struct ExhaustiveGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
@@ -329,11 +330,6 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
     fn print(&mut self, node: &Node) -> TokenStream {
         let body = self.print_node(node);
         let fallback = LooseGenerator(self.gen).print_branch(&self.fallback);
-        // let pattern = self.fallback.regex.first();
-        // let pattern_fn = self.gen().pattern_to_fn(pattern);
-
-        // let name = self.gen().enum_name.clone();
-        // let fallback = &self.fallback.then;
 
         quote! {
             #body
