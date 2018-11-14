@@ -116,7 +116,7 @@ pub trait Logos: Sized {
     const ERROR: Self;
 
     /// Returns a lookup table for the `Lexer`
-    fn lexicon<S: Source>() -> Lexicon<Lexer<Self, S>>;
+    fn lexicon<S: Source>() -> &'static Lexicon<Lexer<Self, S>>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.

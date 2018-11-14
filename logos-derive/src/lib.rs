@@ -7,7 +7,7 @@
 //! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos).
 
 // The `quote!` macro requires deep recursion.
-#![recursion_limit = "128"]
+#![recursion_limit = "196"]
 
 extern crate syn;
 extern crate quote;
@@ -140,7 +140,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
 
-            fn lexicon<S: ::logos::Source>() -> ::logos::Lexicon<::logos::Lexer<Self, S>> {
+            fn lexicon<S: ::logos::Source>() -> &'static ::logos::Lexicon<::logos::Lexer<Self, S>> {
                 use ::logos::internal::LexerInternal;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
@@ -157,7 +157,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                 #fns
 
-                [#(#handlers),*]
+                &[#(#handlers),*]
             }
         }
     };
