@@ -1,3 +1,10 @@
+//! <p align="center">
+//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
+//! </p>
+//!
+//! ## Create ridiculously fast Lexers.
+//!
+//! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos).
 
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "128"]
@@ -24,7 +31,7 @@ use proc_macro2::TokenTree;
 use syn::{ItemEnum, Fields, LitStr};
 
 #[proc_macro_derive(Logos, attributes(error, end, token, regex))]
-pub fn token(input: TokenStream) -> TokenStream {
+pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
 
     let size = item.variants.len();

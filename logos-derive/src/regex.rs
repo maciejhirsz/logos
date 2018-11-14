@@ -99,10 +99,16 @@ pub enum Pattern {
 impl fmt::Debug for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Pattern::Byte(byte) => (*byte as char).fmt(f),
-            Pattern::Range(from, to) => write!(f, "{:?}...{:?}", *from as char, *to as char),
-            Pattern::Flagged(pattern, flag) => write!(f, "({:?}){:?}", pattern, flag),
-            Pattern::Alternative(alts) => write!(f, "{:?}", alts),
+            Pattern::Byte(byte) => fmt::Display::fmt(&(*byte as char), f),
+            Pattern::Range(from, to) => write!(f, "{}-{}", *from as char, *to as char),
+            Pattern::Flagged(pattern, flag) => write!(f, "{:?}{:?}", pattern, flag),
+            Pattern::Alternative(alts) => {
+                f.write_str("[")?;
+                for alt in alts {
+                    alt.fmt(f)?;
+                }
+                f.write_str("]")
+            },
         }
     }
 }
@@ -118,17 +124,13 @@ impl fmt::Debug for PatternFlag {
 
 impl fmt::Debug for Regex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Regex(")?;
-        let mut patterns = self.patterns().iter();
+        f.write_str("/")?;
 
-        if let Some(pattern) = patterns.next() {
+        for pattern in self.patterns() {
             pattern.fmt(f)?;
-
-            for pattern in patterns {
-                write!(f, ", {:?}", pattern)?;
-            }
         }
-        f.write_str(")")
+
+        f.write_str("/")
     }
 }
 

@@ -14,6 +14,7 @@ pub struct Branch<'a> {
 pub struct Fork<'a> {
     pub arms: Vec<Branch<'a>>,
     pub default: Option<&'a Ident>,
+    pub fallback: Option<Branch<'a>>,
 }
 
 #[derive(Debug, Clone)]
@@ -48,6 +49,12 @@ impl<'a> Fork<'a> {
             Node::Branch(mut branch) => {
                 if branch.regex.len() == 0 {
                     return self.insert(*branch.then);
+                }
+
+                // FIXME: Verify the assumption that all branches of the fork are valid
+                // enumerations of the fallback.
+                if branch.regex.first().is_repeat() {
+                    return self.fallback.insert(branch, "#[regex] patterns cannot overlap");
                 }
 
                 // Look for a branch that matches the same prefix
@@ -140,10 +147,19 @@ impl<'a> Node<'a> {
                 branch.regex.len() == 1 && branch.then.exhaustive()
             },
             Node::Fork(fork) => {
-                fork.default.is_some() && fork.arms.iter().all(|branch| {
-                    branch.regex.is_byte() && branch.then.exhaustive()
-                })
+                fork.default.is_some()
+                    && fork.fallback.is_none()
+                    && fork.arms.iter().all(|branch| {
+                        branch.regex.is_byte() && branch.then.exhaustive()
+                    })
             }
+        }
+    }
+
+    pub fn fallback(&mut self) -> Option<Branch<'a>> {
+        match self {
+            Node::Fork(fork) => fork.fallback.take(),
+            _ => None,
         }
     }
 
