@@ -17,8 +17,6 @@ of tokens defined in the grammar. Or, in other words, **it is really fast**.
 
 ```rust
 extern crate logos;
-#[macro_use]
-extern crate logos_derive;
 
 use logos::Logos;
 
