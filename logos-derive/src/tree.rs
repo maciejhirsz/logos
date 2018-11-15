@@ -14,7 +14,6 @@ pub struct Branch<'a> {
 pub struct Fork<'a> {
     pub arms: Vec<Branch<'a>>,
     pub default: Option<&'a Ident>,
-    pub fallback: Option<Branch<'a>>,
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +39,12 @@ impl<'a> From<Branch<'a>> for Node<'a> {
     }
 }
 
+impl<'a> From<Fork<'a>> for Node<'a> {
+    fn from(fork: Fork<'a>) -> Self {
+        Node::Fork(fork)
+    }
+}
+
 impl<'a> Fork<'a> {
     pub fn insert<N>(&mut self, then: N)
     where
@@ -49,12 +54,6 @@ impl<'a> Fork<'a> {
             Node::Branch(mut branch) => {
                 if branch.regex.len() == 0 {
                     return self.insert(*branch.then);
-                }
-
-                // FIXME: Verify the assumption that all branches of the fork are valid
-                // enumerations of the fallback.
-                if branch.regex.first().is_repeat() {
-                    return self.fallback.insert(branch, "#[regex] patterns cannot overlap");
                 }
 
                 // Look for a branch that matches the same prefix
@@ -87,7 +86,7 @@ impl<'a> Fork<'a> {
                 }
             },
             Node::Leaf(leaf) => {
-                self.default.insert(leaf, "Two token variants cannot be produced by the same explicit path!");
+                self.default.insert(leaf, |_| panic!("Two token variants cannot be produced by the same explicit path!"));
             },
             Node::Fork(other) => {
                 if let Some(leaf) = other.default {
@@ -148,7 +147,6 @@ impl<'a> Node<'a> {
             },
             Node::Fork(fork) => {
                 fork.default.is_some()
-                    && fork.fallback.is_none()
                     && fork.arms.iter().all(|branch| {
                         branch.regex.is_byte() && branch.then.exhaustive()
                     })
@@ -158,7 +156,27 @@ impl<'a> Node<'a> {
 
     pub fn fallback(&mut self) -> Option<Branch<'a>> {
         match self {
-            Node::Fork(fork) => fork.fallback.take(),
+            Node::Fork(fork) => {
+                // This is a bit weird, but it basically checks if the fork
+                // has one and only one branch that start with a repeat regex,
+                // and if so, it removes that branch and returns it.
+                //
+                // FIXME: This should check if all other branches in the tree
+                //        are specializations of that regex
+                let idxs =
+                    fork.arms
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, branch)| branch.regex.first().is_repeat())
+                        .map(|(idx, _)| idx)
+                        .collect::<Vec<_>>();
+
+                if idxs.len() == 1 {
+                    Some(fork.arms.remove(idxs[0]))
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }

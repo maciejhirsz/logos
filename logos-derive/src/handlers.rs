@@ -1,13 +1,12 @@
-use syn::Ident;
-use regex::Regex;
-use tree::Node;
+use std::rc::Rc;
+use tree::{Node, Branch};
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
     Eof,
     Error,
     Whitespace,
-    Tree(Node<'a>),
+    Tree(Rc<Node<'a>>),
 }
 
 #[derive(Debug)]
@@ -27,15 +26,14 @@ impl<'a> Handlers<'a> {
         }
     }
 
-    pub fn insert(&mut self, mut regex: Regex, token: &'a Ident) {
-        let first = regex.next().expect("Cannot assign tokens to empty patterns");
+    pub fn insert(&mut self, mut branch: Branch<'a>) {
+        let first = branch.regex.next().expect("Cannot assign tokens to empty patterns");
+        let node = Rc::new(Node::from(branch));
 
-        for byte in first {
-            let regex = regex.clone();
-
+        for byte in first.to_bytes() {
             match self.handlers[byte as usize] {
-                Handler::Tree(ref mut root) => root.insert(Node::new(regex, token)),
-                ref mut slot => *slot = Handler::Tree(Node::new(regex, token)),
+                Handler::Tree(ref mut root) => Rc::make_mut(root).insert((*node).clone()),
+                ref mut slot => *slot = Handler::Tree(node.clone()),
             }
         }
     }

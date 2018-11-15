@@ -11,11 +11,11 @@ pub enum Token {
     #[end]
     EndOfProgram,
 
-    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
-    Identifier,
-
     #[regex = "[1-9][0-9]*"]
     Number,
+
+    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
+    Identifier,
 
     #[regex = "0b[01]+"]
     Binary,

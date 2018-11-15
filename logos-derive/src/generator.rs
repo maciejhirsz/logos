@@ -1,4 +1,5 @@
 use std::collections::{HashSet, HashMap};
+use std::rc::Rc;
 use syn::Ident;
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
@@ -23,7 +24,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn print_tree(&mut self, tree: Node<'a>) -> TokenStream {
+    pub fn print_tree(&mut self, tree: Rc<Node<'a>>) -> TokenStream {
         match tree.only_leaf() {
             Some(variant) => {
                 let handler = format!("_handle_{}", variant).to_lowercase();
@@ -53,11 +54,11 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn tree_to_fn_body(&mut self, mut tree: Node<'a>) -> TokenStream {
+    fn tree_to_fn_body(&mut self, mut tree: Rc<Node<'a>>) -> TokenStream {
         if tree.exhaustive() {
             ExhaustiveGenerator(self).print(&tree)
         } else {
-            if let Some(fallback) = tree.fallback() {
+            if let Some(fallback) = Rc::make_mut(&mut tree).fallback() {
                 FallbackGenerator {
                     gen: self,
                     fallback,
@@ -170,7 +171,7 @@ impl<'a> Generator<'a> {
                     }
                 },
                 _ => {
-                    let bytes: Vec<u8> = pattern.clone().collect();
+                    let bytes: Vec<u8> = pattern.to_bytes();
 
                     let mut table = [false; 256];
 
@@ -396,8 +397,8 @@ impl ToTokens for Pattern {
                 _    => quote!(#byte),
             }),
             Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
-            Pattern::Flagged(ref pat, _) => pat.to_tokens(tokens),
-            Pattern::Alternative(ref pat) => tokens.extend(quote!(#( #pat )|*)),
+            Pattern::Repetition(ref pat, _) => pat.to_tokens(tokens),
+            Pattern::Class(ref class) => tokens.extend(quote!(#( #class )|*)),
         }
     }
 }
