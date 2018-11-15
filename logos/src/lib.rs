@@ -17,8 +17,6 @@
 //!
 //! ```rust
 //! extern crate logos;
-//! #[macro_use]
-//! extern crate logos_derive;
 //!
 //! use logos::Logos;
 //!
@@ -84,6 +82,10 @@
 //! ```
 
 #![warn(missing_docs)]
+
+extern crate logos_derive;
+
+pub use logos_derive::Logos;
 
 #[cfg(feature = "nul_term_source")]
 extern crate toolshed;

@@ -1,5 +1,7 @@
 extern crate logos;
-#[macro_use] extern crate logos_derive;
+
+use logos::Logos;
+use std::ops::Range;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {
@@ -72,9 +74,6 @@ pub enum Token {
     #[token = "=>"]
     FatArrow,
 }
-
-use logos::Logos;
-use std::ops::Range;
 
 fn assert_lex(source: &str, tokens: &[(Token, &str, Range<usize>)]) {
     let mut lex = Token::lexer(source);
