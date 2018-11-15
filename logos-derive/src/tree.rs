@@ -1,12 +1,13 @@
 use syn::Ident;
 use std::mem;
 use std::cmp::Ordering;
-use regex::Regex;
+use regex::{Regex, RepetitionFlag};
 use util::OptionExt;
 
 #[derive(Debug, Clone)]
 pub struct Branch<'a> {
     pub regex: Regex,
+    pub flag: Option<RepetitionFlag>,
     pub then: Box<Node<'a>>,
 }
 
@@ -39,6 +40,16 @@ impl<'a> From<Branch<'a>> for Node<'a> {
     }
 }
 
+impl<'a> Branch<'a> {
+    pub fn new(regex: Regex, token: &'a Ident) -> Self {
+        Branch {
+            regex,
+            flag: None,
+            then: Node::Leaf(token).boxed(),
+        }
+    }
+}
+
 impl<'a> From<Fork<'a>> for Node<'a> {
     fn from(fork: Fork<'a>) -> Self {
         Node::Fork(fork)
@@ -63,6 +74,7 @@ impl<'a> Fork<'a> {
                         // Create a new branch with the common prefix in place of the old one,
                         let old = mem::replace(other, Branch {
                             regex,
+                            flag: None,
                             then: Node::from(branch).boxed(),
                         });
 
@@ -108,6 +120,7 @@ impl<'a> Node<'a> {
         } else {
             Node::Branch(Branch {
                 regex,
+                flag: None,
                 then: Node::Leaf(token).boxed()
             })
         }
@@ -135,6 +148,38 @@ impl<'a> Node<'a> {
 
         if let Node::Fork(fork) = self {
             fork.insert(then);
+        }
+    }
+
+    pub fn replace<N>(&mut self, node: N)
+    where
+        N: Into<Node<'a>>
+    {
+        mem::replace(self, node.into());
+    }
+
+    pub fn set_flag(&mut self, flag: RepetitionFlag) {
+        match self {
+            Node::Branch(branch) => branch.flag.insert(flag, |_| panic!("Flag was already set!")),
+            Node::Fork(fork) => {
+                for branch in fork.arms.iter_mut() {
+                    branch.flag.insert(flag, |_| panic!("Flag was already set!"))
+                }
+            },
+            Node::Leaf(_) => {},
+        }
+    }
+
+    // Tests whether there is a branch on the node that doesn't consume any more bytes
+    pub fn can_be_empty(&self) -> bool {
+        match self {
+            Node::Leaf(_) => true,
+            Node::Branch(branch) => branch.flag == Some(RepetitionFlag::ZeroOrMore),
+            Node::Fork(fork) => {
+                fork.arms
+                    .iter()
+                    .any(|branch| branch.flag == Some(RepetitionFlag::ZeroOrMore))
+            }
         }
     }
 
