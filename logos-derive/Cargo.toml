@@ -16,3 +16,4 @@ proc-macro = true
 syn = { version = "0.15", features = ["extra-traits", "full"] }
 quote = "0.6"
 proc-macro2 = "0.4.4"
+regex-syntax = "0.6"

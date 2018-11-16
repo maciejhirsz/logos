@@ -1,12 +1,13 @@
 use syn::Ident;
-use std::mem;
+use std::{mem, fmt};
 use std::cmp::Ordering;
-use regex::Regex;
+use regex::{Regex, RepetitionFlag};
 use util::OptionExt;
 
 #[derive(Debug, Clone)]
 pub struct Branch<'a> {
     pub regex: Regex,
+    pub repeat: RepetitionFlag,
     pub then: Box<Node<'a>>,
 }
 
@@ -14,14 +15,23 @@ pub struct Branch<'a> {
 pub struct Fork<'a> {
     pub arms: Vec<Branch<'a>>,
     pub default: Option<&'a Ident>,
-    pub fallback: Option<Branch<'a>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Node<'a> {
     Branch(Branch<'a>),
     Fork(Fork<'a>),
     Leaf(&'a Ident),
+}
+
+impl<'a> fmt::Debug for Node<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Node::Branch(branch) => branch.fmt(f),
+            Node::Fork(fork) => fork.fmt(f),
+            Node::Leaf(leaf) => write!(f, "Leaf(\"{}\")", leaf),
+        }
+    }
 }
 
 impl<'a> From<&'a Ident> for Node<'a> {
@@ -40,6 +50,22 @@ impl<'a> From<Branch<'a>> for Node<'a> {
     }
 }
 
+impl<'a> Branch<'a> {
+    pub fn new(regex: Regex, token: &'a Ident) -> Self {
+        Branch {
+            regex,
+            repeat: RepetitionFlag::One,
+            then: Node::Leaf(token).boxed(),
+        }
+    }
+}
+
+impl<'a> From<Fork<'a>> for Node<'a> {
+    fn from(fork: Fork<'a>) -> Self {
+        Node::Fork(fork)
+    }
+}
+
 impl<'a> Fork<'a> {
     pub fn insert<N>(&mut self, then: N)
     where
@@ -51,12 +77,6 @@ impl<'a> Fork<'a> {
                     return self.insert(*branch.then);
                 }
 
-                // FIXME: Verify the assumption that all branches of the fork are valid
-                // enumerations of the fallback.
-                if branch.regex.first().is_repeat() {
-                    return self.fallback.insert(branch, "#[regex] patterns cannot overlap");
-                }
-
                 // Look for a branch that matches the same prefix
                 for other in self.arms.iter_mut() {
                     // We got a match!
@@ -64,6 +84,7 @@ impl<'a> Fork<'a> {
                         // Create a new branch with the common prefix in place of the old one,
                         let old = mem::replace(other, Branch {
                             regex,
+                            repeat: RepetitionFlag::One,
                             then: Node::from(branch).boxed(),
                         });
 
@@ -87,7 +108,7 @@ impl<'a> Fork<'a> {
                 }
             },
             Node::Leaf(leaf) => {
-                self.default.insert(leaf, "Two token variants cannot be produced by the same explicit path!");
+                self.default.insert(leaf, |_| panic!("Two token variants cannot be produced by the same explicit path!"));
             },
             Node::Fork(other) => {
                 if let Some(leaf) = other.default {
@@ -109,6 +130,7 @@ impl<'a> Node<'a> {
         } else {
             Node::Branch(Branch {
                 regex,
+                repeat: RepetitionFlag::One,
                 then: Node::Leaf(token).boxed()
             })
         }
@@ -139,6 +161,25 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn replace<N>(&mut self, node: N)
+    where
+        N: Into<Node<'a>>
+    {
+        mem::replace(self, node.into());
+    }
+
+    pub fn set_repeat(&mut self, flag: RepetitionFlag) {
+        match self {
+            Node::Branch(branch) => branch.repeat = flag,
+            Node::Fork(fork) => {
+                for branch in fork.arms.iter_mut() {
+                    branch.repeat = flag;
+                }
+            },
+            Node::Leaf(_) => {},
+        }
+    }
+
     /// Tests whether the branch produces a token on all leaves without any tests.
     pub fn exhaustive(&self) -> bool {
         match self {
@@ -148,7 +189,6 @@ impl<'a> Node<'a> {
             },
             Node::Fork(fork) => {
                 fork.default.is_some()
-                    && fork.fallback.is_none()
                     && fork.arms.iter().all(|branch| {
                         branch.regex.is_byte() && branch.then.exhaustive()
                     })
@@ -158,7 +198,29 @@ impl<'a> Node<'a> {
 
     pub fn fallback(&mut self) -> Option<Branch<'a>> {
         match self {
-            Node::Fork(fork) => fork.fallback.take(),
+            Node::Fork(fork) => {
+                // This is a bit weird, but it basically checks if the fork
+                // has one and only one branch that start with a repeat regex,
+                // and if so, it removes that branch and returns it.
+                //
+                // FIXME: This should check if all other branches in the tree
+                //        are specializations of that regex
+                let idxs =
+                    fork.arms
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, branch)| {
+                            branch.repeat != RepetitionFlag::One && branch.regex.first().weight() > 1
+                        })
+                        .map(|(idx, _)| idx)
+                        .collect::<Vec<_>>();
+
+                if idxs.len() == 1 {
+                    Some(fork.arms.remove(idxs[0]))
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }

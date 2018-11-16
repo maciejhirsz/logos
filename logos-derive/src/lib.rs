@@ -13,6 +13,7 @@ extern crate syn;
 extern crate quote;
 extern crate proc_macro;
 extern crate proc_macro2;
+extern crate regex_syntax;
 
 mod util;
 mod tree;
@@ -20,11 +21,11 @@ mod regex;
 mod handlers;
 mod generator;
 
+use tree::{Node, Fork};
 use util::OptionExt;
 use handlers::Handlers;
 use generator::Generator;
 
-use regex::Regex;
 use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
@@ -42,7 +43,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut end = None;
 
-    let mut handlers = Handlers::new();
+    let mut fork = Fork::default();
 
     for variant in &item.variants {
         if variant.discriminant.is_some() {
@@ -58,15 +59,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let ident = &attr.path.segments[0].ident;
 
             if ident == "error" {
-                error.insert(&variant.ident, "Only one #[error] variant can be declared.");
-
-                break;
+                error.insert(&variant.ident, |_| panic!("Only one #[error] variant can be declared."));
             }
 
             if ident == "end" {
-                end.insert(&variant.ident, "Only one #[end] variant can be declared.");
-
-                break;
+                end.insert(&variant.ident, |_| panic!("Only one #[end] variant can be declared."));
             }
 
             let token = ident == "token";
@@ -87,23 +84,29 @@ pub fn logos(input: TokenStream) -> TokenStream {
                                         .expect("#[token] value must be a literal string")
                                         .value();
 
-                        let regex = if regex {
-                            Regex::from(&path)
+                        let node = if regex {
+                            Node::from_regex(&path, &variant.ident)
                         } else {
-                            Regex::sequence(&path)
+                            Node::from_sequence(&path, &variant.ident)
                         };
 
-                        handlers.insert(regex, &variant.ident);
+                        fork.insert(node);
                     },
                     Some(invalid) => panic!("#[token] Invalid value: {}", invalid),
                     None => panic!("Invalid token")
                 };
 
                 assert!(tts.next().is_none(), "Unexpected token!");
-
-                break;
             }
         }
+    }
+
+    // panic!("{:#?}", fork);
+
+    let mut handlers = Handlers::new();
+
+    for branch in fork.arms.drain(..) {
+        handlers.insert(branch)
     }
 
     let error = match error {
