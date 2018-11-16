@@ -23,6 +23,9 @@ pub enum Token {
     #[regex = "0x[0-9a-fA-F]+"]
     Hex,
 
+    #[regex = "(abc)+(def|xyz)?"]
+    Abc,
+
     #[token = "priv"]
     Priv,
 
@@ -206,5 +209,27 @@ fn invalid_hex_and_binary() {
     assert_lex("0x 0b", &[
         (Token::InvalidToken, "0x", 0..2),
         (Token::InvalidToken, "0b", 3..5),
+    ]);
+}
+
+#[test]
+fn abcs() {
+    assert_lex("abc abcabcabcabc abcdef abcabcxyz", &[
+        (Token::Abc, "abc", 0..3),
+        (Token::Abc, "abcabcabcabc", 4..16),
+        (Token::Abc, "abcdef", 17..23),
+        (Token::Abc, "abcabcxyz", 24..33),
+    ]);
+}
+
+#[test]
+fn invalid_abcs() {
+    assert_lex("ab abca abcabcab abxyz abcxy abcdefxyz", &[
+        (Token::Identifier, "ab", 0..2),
+        (Token::Identifier, "abca", 3..7),
+        (Token::Identifier, "abcabcab", 8..16),
+        (Token::Identifier, "abxyz", 17..22),
+        (Token::Identifier, "abcxy", 23..28),
+        (Token::Identifier, "abcdefxyz", 29..38),
     ]);
 }

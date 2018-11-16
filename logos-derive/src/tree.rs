@@ -1,5 +1,5 @@
 use syn::Ident;
-use std::mem;
+use std::{mem, fmt};
 use std::cmp::Ordering;
 use regex::{Regex, RepetitionFlag};
 use util::OptionExt;
@@ -7,7 +7,7 @@ use util::OptionExt;
 #[derive(Debug, Clone)]
 pub struct Branch<'a> {
     pub regex: Regex,
-    pub flag: Option<RepetitionFlag>,
+    pub repeat: RepetitionFlag,
     pub then: Box<Node<'a>>,
 }
 
@@ -17,11 +17,22 @@ pub struct Fork<'a> {
     pub default: Option<&'a Ident>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Node<'a> {
     Branch(Branch<'a>),
     Fork(Fork<'a>),
     Leaf(&'a Ident),
+    // FIXME: needs a variant for repeat node
+}
+
+impl<'a> fmt::Debug for Node<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Node::Branch(branch) => branch.fmt(f),
+            Node::Fork(fork) => fork.fmt(f),
+            Node::Leaf(leaf) => write!(f, "Leaf(\"{}\")", leaf),
+        }
+    }
 }
 
 impl<'a> From<&'a Ident> for Node<'a> {
@@ -44,7 +55,7 @@ impl<'a> Branch<'a> {
     pub fn new(regex: Regex, token: &'a Ident) -> Self {
         Branch {
             regex,
-            flag: None,
+            repeat: RepetitionFlag::Once,
             then: Node::Leaf(token).boxed(),
         }
     }
@@ -74,7 +85,7 @@ impl<'a> Fork<'a> {
                         // Create a new branch with the common prefix in place of the old one,
                         let old = mem::replace(other, Branch {
                             regex,
-                            flag: None,
+                            repeat: RepetitionFlag::Once,
                             then: Node::from(branch).boxed(),
                         });
 
@@ -120,7 +131,7 @@ impl<'a> Node<'a> {
         } else {
             Node::Branch(Branch {
                 regex,
-                flag: None,
+                repeat: RepetitionFlag::Once,
                 then: Node::Leaf(token).boxed()
             })
         }
@@ -158,28 +169,15 @@ impl<'a> Node<'a> {
         mem::replace(self, node.into());
     }
 
-    pub fn set_flag(&mut self, flag: RepetitionFlag) {
+    pub fn set_repeat(&mut self, flag: RepetitionFlag) {
         match self {
-            Node::Branch(branch) => branch.flag.insert(flag, |_| panic!("Flag was already set!")),
+            Node::Branch(branch) => branch.repeat = flag,
             Node::Fork(fork) => {
                 for branch in fork.arms.iter_mut() {
-                    branch.flag.insert(flag, |_| panic!("Flag was already set!"))
+                    branch.repeat = flag;
                 }
             },
             Node::Leaf(_) => {},
-        }
-    }
-
-    // Tests whether there is a branch on the node that doesn't consume any more bytes
-    pub fn can_be_empty(&self) -> bool {
-        match self {
-            Node::Leaf(_) => true,
-            Node::Branch(branch) => branch.flag == Some(RepetitionFlag::ZeroOrMore),
-            Node::Fork(fork) => {
-                fork.arms
-                    .iter()
-                    .any(|branch| branch.flag == Some(RepetitionFlag::ZeroOrMore))
-            }
         }
     }
 
@@ -212,7 +210,9 @@ impl<'a> Node<'a> {
                     fork.arms
                         .iter()
                         .enumerate()
-                        .filter(|(_, branch)| branch.regex.first().is_repeat())
+                        .filter(|(_, branch)| {
+                            branch.repeat != RepetitionFlag::Once && branch.regex.first().weight() > 1
+                        })
                         .map(|(idx, _)| idx)
                         .collect::<Vec<_>>();
 

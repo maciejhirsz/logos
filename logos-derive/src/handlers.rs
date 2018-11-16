@@ -27,10 +27,13 @@ impl<'a> Handlers<'a> {
     }
 
     pub fn insert(&mut self, mut branch: Branch<'a>) {
-        let first = branch.regex.next().expect("Cannot assign tokens to empty patterns");
+        let bytes = branch.unshift()
+                          .expect("Cannot assign tokens to empty patterns")
+                          .to_bytes();
+
         let node = Rc::new(Node::from(branch));
 
-        for byte in first.to_bytes() {
+        for byte in bytes {
             match self.handlers[byte as usize] {
                 Handler::Tree(ref mut root) => Rc::make_mut(root).insert((*node).clone()),
                 ref mut slot => *slot = Handler::Tree(node.clone()),
