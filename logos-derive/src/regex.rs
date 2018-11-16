@@ -105,9 +105,9 @@ impl<'a> Branch<'a> {
 
     fn reset(&mut self) {
         match self.repeat {
-            RepetitionFlag::Once => {},
+            RepetitionFlag::One => {},
             RepetitionFlag::ZeroOrOne => {
-                self.repeat = RepetitionFlag::Once;
+                self.repeat = RepetitionFlag::One;
             },
             RepetitionFlag::OneOrMore => {
                 self.repeat = RepetitionFlag::ZeroOrMore;
@@ -273,7 +273,7 @@ impl Regex {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RepetitionFlag {
-    Once,
+    One,
     ZeroOrMore,
     OneOrMore,
     ZeroOrOne,
@@ -311,7 +311,7 @@ impl fmt::Debug for Pattern {
 impl fmt::Debug for RepetitionFlag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RepetitionFlag::Once => f.write_str("n/a"),
+            RepetitionFlag::One => f.write_str("n/a"),
             RepetitionFlag::ZeroOrMore => f.write_str("*"),
             RepetitionFlag::OneOrMore => f.write_str("+"),
             RepetitionFlag::ZeroOrOne => f.write_str("?"),
@@ -452,7 +452,7 @@ mod test {
         let b = branch(Node::from_regex(regex, &token)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
-        assert_eq!(b.repeat, Once);
+        assert_eq!(b.repeat, One);
 
         let b = branch(*b.then).unwrap();
 
@@ -474,7 +474,7 @@ mod test {
                     Pattern::Range(b'a', b'z'),
             ])
         ]);
-        assert_eq!(b.repeat, Once);
+        assert_eq!(b.repeat, One);
 
         let b = branch(*b.then).unwrap();
 
@@ -500,7 +500,7 @@ mod test {
             Pattern::Byte(b'0'),
             Pattern::Byte(b'x'),
         ]);
-        assert_eq!(b.repeat, Once);
+        assert_eq!(b.repeat, One);
 
         let b = branch(*b.then).unwrap();
 

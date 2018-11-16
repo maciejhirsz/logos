@@ -22,7 +22,6 @@ pub enum Node<'a> {
     Branch(Branch<'a>),
     Fork(Fork<'a>),
     Leaf(&'a Ident),
-    // FIXME: needs a variant for repeat node
 }
 
 impl<'a> fmt::Debug for Node<'a> {
@@ -55,7 +54,7 @@ impl<'a> Branch<'a> {
     pub fn new(regex: Regex, token: &'a Ident) -> Self {
         Branch {
             regex,
-            repeat: RepetitionFlag::Once,
+            repeat: RepetitionFlag::One,
             then: Node::Leaf(token).boxed(),
         }
     }
@@ -85,7 +84,7 @@ impl<'a> Fork<'a> {
                         // Create a new branch with the common prefix in place of the old one,
                         let old = mem::replace(other, Branch {
                             regex,
-                            repeat: RepetitionFlag::Once,
+                            repeat: RepetitionFlag::One,
                             then: Node::from(branch).boxed(),
                         });
 
@@ -131,7 +130,7 @@ impl<'a> Node<'a> {
         } else {
             Node::Branch(Branch {
                 regex,
-                repeat: RepetitionFlag::Once,
+                repeat: RepetitionFlag::One,
                 then: Node::Leaf(token).boxed()
             })
         }
@@ -211,7 +210,7 @@ impl<'a> Node<'a> {
                         .iter()
                         .enumerate()
                         .filter(|(_, branch)| {
-                            branch.repeat != RepetitionFlag::Once && branch.regex.first().weight() > 1
+                            branch.repeat != RepetitionFlag::One && branch.regex.first().weight() > 1
                         })
                         .map(|(idx, _)| idx)
                         .collect::<Vec<_>>();

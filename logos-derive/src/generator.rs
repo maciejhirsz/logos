@@ -163,7 +163,7 @@ pub trait SubGenerator<'a> {
         }
 
         match branch.repeat {
-            Once | OneOrMore => {
+            One | OneOrMore => {
                 let (first, rest) = self.regex_to_test(branch.consume());
 
                 let next = self.print_branch(branch);
