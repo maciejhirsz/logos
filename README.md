@@ -93,8 +93,9 @@ test logos_nul_terminated ... bench:       1,828 ns/iter (+/- 69) = 1165 MB/s
 ## TODOs
 
 Pretty usable already. Things to come:
-+ Full regex support.
++ Validation functions when hitting a token.
 + Better error messages from the derive crate.
++ Working out edge case kinks in regex.
 
 ## License
 
