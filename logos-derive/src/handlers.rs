@@ -27,7 +27,8 @@ impl<'a> Handlers<'a> {
     }
 
     pub fn insert(&mut self, mut branch: Branch<'a>) {
-        let bytes = branch.unshift()
+        let bytes = branch.regex
+                          .unshift()
                           .expect("Cannot assign tokens to empty patterns")
                           .to_bytes();
 

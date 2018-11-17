@@ -11,6 +11,7 @@ static NO_ZERO_BYTE: &str = "Tokens mustn't include the `0` byte.";
 pub struct Regex {
     patterns: Vec<Pattern>,
     offset: usize,
+    pub repeat: RepetitionFlag,
 }
 
 impl<'a> Node<'a> {
@@ -21,7 +22,10 @@ impl<'a> Node<'a> {
     }
 
     pub fn from_regex(source: &str, token: &'a Ident) -> Self {
-        let hir = Parser::new().parse(source).unwrap().into_kind();
+        let hir = match Parser::new().parse(source) {
+            Ok(hir) => hir.into_kind(),
+            Err(err) => panic!("Unable to parse the #[regex] regular expression:\n\n{:#?}", err),
+        };
 
         Self::from_hir(hir, token)
     }
@@ -37,6 +41,39 @@ impl<'a> Node<'a> {
                 }
 
                 Node::from(fork)
+            },
+            HirKind::Concat(concat) => {
+                let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
+                let mut nodes = vec![];
+                let mut read = 0;
+
+                while concat.len() != read {
+                    let mut regex = Regex::default();
+
+                    let count = concat[read..].iter().take_while(|hir| {
+                        Regex::from_hir_internal(hir, &mut regex)
+                    }).count();
+
+                    if count != 0 {
+                        nodes.push(Node::new(regex, token));
+                        read += count;
+                    } else {
+                        nodes.push(Node::from_hir(concat.remove(read), token));
+                    }
+                }
+
+                let mut node = match nodes.pop() {
+                    Some(node) => node,
+                    None       => return Node::Leaf(token),
+                };
+
+                for mut n in nodes.into_iter().rev() {
+                    n.chain(node);
+
+                    node = n;
+                }
+
+                node
             },
             HirKind::Repetition(repetition) => {
                 use self::hir::RepetitionKind;
@@ -64,57 +101,15 @@ impl<'a> Node<'a> {
 
                 node
             },
+            HirKind::Group(group) => Node::from_hir(group.hir.into_kind(), token),
             _ => {
-                let mut branch = Branch::new(Regex::default(), token);
+                let mut regex = Regex::default();
 
-                Regex::from_hir_internal(hir, &mut branch);
+                Regex::from_hir_internal(&hir, &mut regex);
+
+                let branch = Branch::new(regex, token);
 
                 Node::from(branch)
-            }
-        }
-    }
-}
-
-impl<'a> Branch<'a> {
-    /// Get the first pattern from the regex on this Branch, removing it unless
-    /// it repeats.
-    pub fn unshift(&mut self) -> Option<&Pattern> {
-        if self.regex.len() == 0 {
-            return None;
-        }
-
-        let offset = self.regex.offset;
-
-        self.regex.offset += 1;
-
-        if self.regex.len() == 0 {
-            self.reset();
-        }
-
-        self.regex.patterns.get(offset)
-    }
-
-    pub fn consume(&mut self) -> &[Pattern] {
-        let offset = self.regex.offset;
-        self.regex.offset = self.regex.patterns.len();
-
-        self.reset();
-
-        &self.regex.patterns[offset..]
-    }
-
-    fn reset(&mut self) {
-        match self.repeat {
-            RepetitionFlag::One => {},
-            RepetitionFlag::ZeroOrOne => {
-                self.repeat = RepetitionFlag::One;
-            },
-            RepetitionFlag::OneOrMore => {
-                self.repeat = RepetitionFlag::ZeroOrMore;
-                self.regex.offset = 0;
-            },
-            RepetitionFlag::ZeroOrMore => {
-                self.regex.offset = 0;
             }
         }
     }
@@ -132,23 +127,32 @@ impl Regex {
 
                 Pattern::Byte(byte)
             }).collect(),
+            repeat: RepetitionFlag::One,
             offset: 0,
         }
     }
 
-    fn from_hir_internal(hir: HirKind, branch: &mut Branch) {
+    pub fn from(pat: Pattern) -> Regex {
+        let mut regex = Regex::default();
+
+        regex.patterns.push(pat);
+
+        regex
+    }
+
+    fn from_hir_internal(hir: &HirKind, regex: &mut Regex) -> bool {
         match hir {
-            HirKind::Empty => {},
+            HirKind::Empty => true,
             HirKind::Literal(literal) => {
                 use self::hir::Literal;
 
                 match literal {
                     Literal::Unicode(unicode) => {
-                        assert!(unicode != 0 as char, NO_ZERO_BYTE);
+                        assert!(*unicode != 0 as char, NO_ZERO_BYTE);
 
                         let mut buf = [0u8; 4];
 
-                        branch.regex.patterns.extend(
+                        regex.patterns.extend(
                             unicode
                                 .encode_utf8(&mut buf)
                                 .bytes()
@@ -157,6 +161,8 @@ impl Regex {
                     },
                     Literal::Byte(_) => panic!("Invalid Unicode codepoint in #[regex]."),
                 };
+
+                true
             },
             HirKind::Class(class) => {
                 use self::hir::{Class};
@@ -193,45 +199,18 @@ impl Regex {
 
                         match class.len() {
                             0 => {},
-                            1 => branch.regex.patterns.push(class.remove(0)),
-                            _ => branch.regex.patterns.push(Pattern::Class(class)),
+                            1 => regex.patterns.push(class.remove(0)),
+                            _ => regex.patterns.push(Pattern::Class(class)),
                         }
                     },
                     Class::Bytes(_) => panic!("Invalid Unicode codepoint in #[regex]."),
                 }
-            },
-            HirKind::Concat(concat) => {
-                for mut hir in concat.into_iter().map(Hir::into_kind) {
-                    Self::from_hir_internal(hir, branch);
-                }
+
+                true
             },
             HirKind::WordBoundary(_) => panic!("Word boundaries in #[regex] are currently unsupported."),
             HirKind::Anchor(_) => panic!("Anchors in #[regex] are currently unsupported."),
-            HirKind::Group(group) => {
-                Self::from_hir_internal(group.hir.into_kind(), branch);
-            },
-
-            _ => {
-                fn insert_at_tail(hir: HirKind, branch: &mut Branch) {
-                    let token = match *branch.then {
-                        Node::Leaf(ref token) => *token,
-                        Node::Branch(ref mut branch) => return insert_at_tail(hir, branch),
-                        Node::Fork(ref mut fork) => {
-                            for branch in fork.arms.iter_mut() {
-                                // FIXME: A way to handle this without cloning?
-                                insert_at_tail(hir.clone(), branch);
-                            }
-                            return;
-                        }
-                    };
-
-                    let node = Node::from_hir(hir, token);
-
-                    branch.then.replace(node);
-                }
-
-                insert_at_tail(hir, branch);
-            },
+            _ => false
         }
     }
 
@@ -243,11 +222,12 @@ impl Regex {
         self.patterns().get(0).unwrap()
     }
 
-    pub fn is_byte(&self) -> bool {
-        self.len() == 1 && self.first().is_byte()
-    }
-
     pub fn match_split(&mut self, other: &mut Regex) -> Option<Regex> {
+        if self.repeat != other.repeat {
+            // FIXME: Should be able to handle things like One and OneOrMore, etc...
+            return None;
+        }
+
         let patterns = self.patterns()
                            .iter()
                            .zip(other.patterns())
@@ -264,19 +244,71 @@ impl Regex {
 
                 Some(Regex {
                     patterns,
+                    repeat: self.repeat,
                     offset: 0
                 })
             }
         }
     }
+
+    pub fn common_prefix(&self, other: &Regex) -> Option<Pattern> {
+        self.first().intersect(other.first())
+    }
+
+    pub fn unshift(&mut self) -> Option<&Pattern> {
+        if self.len() == 0 {
+            return None;
+        }
+
+        let offset = self.offset;
+
+        self.offset += 1;
+
+        if self.len() == 0 {
+            self.reset();
+        }
+
+        self.patterns.get(offset)
+    }
+
+    pub fn consume(&mut self) -> &[Pattern] {
+        let offset = self.offset;
+        self.offset = self.patterns.len();
+
+        self.reset();
+
+        &self.patterns[offset..]
+    }
+
+    fn reset(&mut self) {
+        match self.repeat {
+            RepetitionFlag::One => {},
+            RepetitionFlag::ZeroOrOne => {
+                self.repeat = RepetitionFlag::One;
+            },
+            RepetitionFlag::OneOrMore => {
+                self.repeat = RepetitionFlag::ZeroOrMore;
+                self.offset = 0;
+            },
+            RepetitionFlag::ZeroOrMore => {
+                self.offset = 0;
+            }
+        }
+    }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RepetitionFlag {
     One,
     ZeroOrMore,
     OneOrMore,
     ZeroOrOne,
+}
+
+impl Default for RepetitionFlag {
+    fn default() -> Self {
+        RepetitionFlag::One
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -311,7 +343,7 @@ impl fmt::Debug for Pattern {
 impl fmt::Debug for RepetitionFlag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RepetitionFlag::One => f.write_str("n/a"),
+            RepetitionFlag::One => f.write_str(""),
             RepetitionFlag::ZeroOrMore => f.write_str("*"),
             RepetitionFlag::OneOrMore => f.write_str("+"),
             RepetitionFlag::ZeroOrOne => f.write_str("?"),
@@ -333,7 +365,7 @@ impl fmt::Debug for Regex {
             }
         }
 
-        f.write_str(")")
+        write!(f, "){:?}", self.repeat)
     }
 }
 
@@ -369,6 +401,37 @@ impl Pattern {
         }
     }
 
+    // FIXME: this can be more robust
+    pub fn intersect(&self, other: &Pattern) -> Option<Pattern> {
+        if self.contains(other) {
+            Some(other.clone())
+        } else if other.contains(self) {
+            Some(self.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn contains(&self, other: &Pattern) -> bool {
+        use self::Pattern::*;
+
+        if let Byte(x) = other {
+            match self {
+                Byte(a) => {
+                    *a == *x
+                },
+                Range(a, b) => {
+                    *a <= *x && *x <= *b
+                },
+                Class(class) => {
+                    class.iter().any(|pat| pat.contains(other))
+                },
+            }
+        } else {
+            false
+        }
+    }
+
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(self.len());
 
@@ -383,8 +446,12 @@ impl PartialOrd for Pattern {
         match (self, other) {
             (&Pattern::Byte(ref byte), &Pattern::Byte(ref other)) => Some(byte.cmp(other)),
 
-            // Lighter first
-            _ => self.weight().partial_cmp(&other.weight())
+            // Shorter first
+            _ => match self.len().partial_cmp(&other.len()) {
+                // Equal length != equal patterns, so let's not do that!
+                Some(Ordering::Equal) => None,
+                ordering              => ordering
+            }
         }
     }
 }
@@ -452,12 +519,12 @@ mod test {
         let b = branch(Node::from_regex(regex, &token)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
-        assert_eq!(b.repeat, One);
+        assert_eq!(b.regex.repeat, One);
 
         let b = branch(*b.then).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'0', b'9')]);
-        assert_eq!(b.repeat, ZeroOrMore);
+        assert_eq!(b.regex.repeat, ZeroOrMore);
     }
 
     #[test]
@@ -474,7 +541,7 @@ mod test {
                     Pattern::Range(b'a', b'z'),
             ])
         ]);
-        assert_eq!(b.repeat, One);
+        assert_eq!(b.regex.repeat, One);
 
         let b = branch(*b.then).unwrap();
 
@@ -487,7 +554,7 @@ mod test {
                 Pattern::Range(b'a', b'z'),
             ])
         ]);
-        assert_eq!(b.repeat, ZeroOrMore);
+        assert_eq!(b.regex.repeat, ZeroOrMore);
     }
 
     #[test]
@@ -500,7 +567,7 @@ mod test {
             Pattern::Byte(b'0'),
             Pattern::Byte(b'x'),
         ]);
-        assert_eq!(b.repeat, One);
+        assert_eq!(b.regex.repeat, One);
 
         let b = branch(*b.then).unwrap();
 
@@ -511,64 +578,64 @@ mod test {
                 Pattern::Range(b'a', b'f'),
             ])
         ]);
-        assert_eq!(b.repeat, OneOrMore);
+        assert_eq!(b.regex.repeat, OneOrMore);
     }
 
     #[test]
-    fn branch_unshift() {
+    fn regex_unshift() {
         let token = mock_token();
         let regex = "abc";
-        let mut b = branch(Node::from_regex(regex, &token)).unwrap();
+        let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
 
-        assert_eq!(b.regex.patterns(), &[
+        assert_eq!(r.patterns(), &[
             Pattern::Byte(b'a'),
             Pattern::Byte(b'b'),
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'a')));
-        assert_eq!(b.regex.patterns(), &[
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.patterns(), &[
             Pattern::Byte(b'b'),
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'b')));
-        assert_eq!(b.regex.patterns(), &[
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
+        assert_eq!(r.patterns(), &[
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'c')));
-        assert_eq!(b.regex.patterns(), &[]);
-        assert_eq!(b.unshift(), None);
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
+        assert_eq!(r.patterns(), &[]);
+        assert_eq!(r.unshift(), None);
     }
 
     #[test]
-    fn branch_unshift_repeat() {
+    fn regex_unshift_repeat() {
         let token = mock_token();
         let regex = "a+";
-        let mut b = branch(Node::from_regex(regex, &token)).unwrap();
+        let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
 
-        assert_eq!(b.regex.patterns(), &[Pattern::Byte(b'a')]);
-        assert_eq!(b.repeat, OneOrMore);
+        assert_eq!(r.patterns(), &[Pattern::Byte(b'a')]);
+        assert_eq!(r.repeat, OneOrMore);
 
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'a')));
-        assert_eq!(b.regex.patterns(), &[Pattern::Byte(b'a')]);
-        assert_eq!(b.repeat, ZeroOrMore);
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.patterns(), &[Pattern::Byte(b'a')]);
+        assert_eq!(r.repeat, ZeroOrMore);
 
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'a')));
-        assert_eq!(b.regex.patterns(), &[Pattern::Byte(b'a')]);
-        assert_eq!(b.repeat, ZeroOrMore);
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.patterns(), &[Pattern::Byte(b'a')]);
+        assert_eq!(r.repeat, ZeroOrMore);
     }
 
     #[test]
-    fn branch_unshift_repeat_group() {
+    fn regex_unshift_repeat_group() {
         let token = mock_token();
         let regex = "(abc)*";
-        let mut b = branch(Node::from_regex(regex, &token)).unwrap();
+        let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
 
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'a')));
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'b')));
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'c')));
-        assert_eq!(b.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
     }
 }

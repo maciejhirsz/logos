@@ -7,7 +7,6 @@ use util::OptionExt;
 #[derive(Debug, Clone)]
 pub struct Branch<'a> {
     pub regex: Regex,
-    pub repeat: RepetitionFlag,
     pub then: Box<Node<'a>>,
 }
 
@@ -54,9 +53,12 @@ impl<'a> Branch<'a> {
     pub fn new(regex: Regex, token: &'a Ident) -> Self {
         Branch {
             regex,
-            repeat: RepetitionFlag::One,
             then: Node::Leaf(token).boxed(),
         }
+    }
+
+    pub fn compare(&self, other: &Branch<'a>) -> Ordering {
+        other.regex.first().partial_cmp(self.regex.first()).unwrap_or_else(|| Ordering::Greater)
     }
 }
 
@@ -84,7 +86,6 @@ impl<'a> Fork<'a> {
                         // Create a new branch with the common prefix in place of the old one,
                         let old = mem::replace(other, Branch {
                             regex,
-                            repeat: RepetitionFlag::One,
                             then: Node::from(branch).boxed(),
                         });
 
@@ -93,13 +94,62 @@ impl<'a> Fork<'a> {
 
                         return;
                     }
+
+                    if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
+                        let regex = Regex::from(prefix);
+
+                        let mut fork = Fork::default();
+                        let mut new = Branch {
+                            regex,
+                            then: Node::from(fork).boxed()
+                        };
+
+                        if branch.regex.first() == new.regex.first() {
+                            let mut other = other.clone();
+                            let mut old = mem::replace(&mut branch, new);
+
+                            old.regex.unshift();
+                            other.regex.unshift();
+
+                            branch.then.insert(old);
+                            branch.then.insert(other);
+
+                            // panic!("BRANCH! {:#?}", branch);
+
+
+                            // return;
+
+                        } else if other.regex.first() == new.regex.first() {
+                            let mut branch = branch.clone();
+                            let mut old = mem::replace(other, new);
+
+                            old.regex.unshift();
+                            branch.regex.unshift();
+
+                            other.then.insert(old);
+                            // other.then.insert(branch);
+
+
+                            // panic!("OTHER! {:#?}\nBRANCH {:#?}", other, branch);
+
+                            // return;
+                            // let mut old = mem::replace(other, new);
+
+                            // old.regex.unshift();
+
+                            // other.then.insert(old);
+
+                            // return;
+                        }
+                    }
                 }
 
                 // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
-                match self.arms.binary_search_by(|other| {
-                    other.regex.first().partial_cmp(branch.regex.first()).unwrap_or_else(|| Ordering::Greater)
-                }) {
+                match self.arms.binary_search_by(|other| branch.compare(other)) {
                     Ok(index) => {
+                        println!("Found matching index for {:#?}\n\nat {:#?}\n\n--------", branch, self.arms[index]);
+                        println!("{:?}", branch.compare(&self.arms[index]));
+
                         self.arms[index].then.insert(branch);
                     },
                     Err(index) => {
@@ -108,7 +158,11 @@ impl<'a> Fork<'a> {
                 }
             },
             Node::Leaf(leaf) => {
-                self.default.insert(leaf, |_| panic!("Two token variants cannot be produced by the same explicit path!"));
+                self.default.insert(leaf, |old| {
+                    if old != &leaf {
+                        panic!("Two token variants cannot be produced by the same explicit path: {} and {}", leaf, old);
+                    }
+                });
             },
             Node::Fork(other) => {
                 if let Some(leaf) = other.default {
@@ -130,7 +184,6 @@ impl<'a> Node<'a> {
         } else {
             Node::Branch(Branch {
                 regex,
-                repeat: RepetitionFlag::One,
                 then: Node::Leaf(token).boxed()
             })
         }
@@ -165,32 +218,57 @@ impl<'a> Node<'a> {
     where
         N: Into<Node<'a>>
     {
+        match self {
+            Node::Leaf(_) => {},
+            _ => panic!("Throwing non-leaf node away! {:#?}", self)
+        }
+
         mem::replace(self, node.into());
     }
 
     pub fn set_repeat(&mut self, flag: RepetitionFlag) {
         match self {
-            Node::Branch(branch) => branch.repeat = flag,
+            Node::Branch(branch) => branch.regex.repeat = flag,
             Node::Fork(fork) => {
                 for branch in fork.arms.iter_mut() {
-                    branch.repeat = flag;
+                    branch.regex.repeat = flag;
                 }
             },
             Node::Leaf(_) => {},
         }
     }
 
+    pub fn chain(&mut self, then: Node<'a>) {
+        match self {
+            Node::Branch(branch) => branch.then.replace(then),
+            Node::Fork(fork) => {
+                for branch in fork.arms.iter_mut() {
+                    branch.then.replace(then.clone());
+                }
+            },
+            Node::Leaf(_) => {
+                mem::replace(self, then);
+            }
+        }
+    }
+
     /// Tests whether the branch produces a token on all leaves without any tests.
     pub fn exhaustive(&self) -> bool {
+        use self::RepetitionFlag::*;
+
         match self {
             Node::Leaf(_) => true,
             Node::Branch(branch) => {
-                branch.regex.len() == 1 && branch.then.exhaustive()
+                branch.regex.len() == 1
+                    && (branch.regex.repeat == ZeroOrMore || branch.regex.repeat == ZeroOrOne)
+                    && branch.then.exhaustive()
             },
             Node::Fork(fork) => {
                 fork.default.is_some()
                     && fork.arms.iter().all(|branch| {
-                        branch.regex.is_byte() && branch.then.exhaustive()
+                        branch.regex.len() == 1
+                            && (branch.regex.repeat == ZeroOrMore || branch.regex.repeat == ZeroOrOne)
+                            && branch.then.exhaustive()
                     })
             }
         }
@@ -210,7 +288,7 @@ impl<'a> Node<'a> {
                         .iter()
                         .enumerate()
                         .filter(|(_, branch)| {
-                            branch.repeat != RepetitionFlag::One && branch.regex.first().weight() > 1
+                            branch.regex.repeat != RepetitionFlag::One && branch.regex.first().weight() > 1
                         })
                         .map(|(idx, _)| idx)
                         .collect::<Vec<_>>();
@@ -225,12 +303,25 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Checks whether the tree can produce only a single token, if so return that token
-    pub fn only_leaf(&self) -> Option<&'a Ident> {
+    /// Get all tokens in this tree
+    pub fn get_tokens(&self, vec: &mut Vec<&'a Ident>) {
+        fn insert<'a>(vec: &mut Vec<&'a Ident>, token: &'a Ident) {
+            if let Err(index) = vec.binary_search(&token) {
+                vec.insert(index, token);
+            }
+        }
+
         match self {
-            Node::Leaf(leaf) => Some(leaf),
-            Node::Branch(branch) => branch.then.only_leaf(),
-            Node::Fork(_) => None,
+            Node::Leaf(token) => insert(vec, token),
+            Node::Branch(branch) => branch.then.get_tokens(vec),
+            Node::Fork(fork) => {
+                for branch in fork.arms.iter() {
+                    branch.then.get_tokens(vec);
+                }
+                if let Some(token) = fork.default {
+                    insert(vec, token)
+                }
+            }
         }
     }
 

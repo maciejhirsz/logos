@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::rc::Rc;
 use syn::Ident;
 use regex::RepetitionFlag;
@@ -11,8 +11,22 @@ use regex::Pattern;
 pub struct Generator<'a> {
     enum_name: &'a Ident,
     fns: TokenStream,
-    fns_check: HashSet<&'a Ident>,
+    fns_constructed: HashMap<usize, Ident>,
     patterns: HashMap<Pattern, Ident>,
+}
+
+/// Get a pointer to the Rc as `usize`. We can use this
+/// as the key in the HashMap for constructed handlers, which
+/// is way faster to hash than the entire tree. It also means
+/// we don't have to derive `Hash` everywhere.
+///
+/// This is a bit hacky, but ultimately safe.
+fn get_rc_ptr<T>(rc: Rc<T>) -> (Rc<T>, usize) {
+    let ptr = Rc::into_raw(rc);
+
+    let rc = unsafe { Rc::from_raw(ptr) };
+
+    (rc, ptr as usize)
 }
 
 impl<'a> Generator<'a> {
@@ -20,39 +34,44 @@ impl<'a> Generator<'a> {
         Generator {
             enum_name,
             fns: TokenStream::new(),
-            fns_check: HashSet::new(),
+            fns_constructed: HashMap::new(),
             patterns: HashMap::new(),
         }
     }
 
     pub fn print_tree(&mut self, tree: Rc<Node<'a>>) -> TokenStream {
-        match tree.only_leaf() {
-            Some(variant) => {
-                let handler = format!("_handle_{}", variant).to_lowercase();
-                let handler = Ident::new(&handler, Span::call_site());
+        let (tree, ptr) = get_rc_ptr(tree);
 
-                if self.fns_check.insert(variant) {
-                    let body = self.tree_to_fn_body(tree);
+        if !self.fns_constructed.contains_key(&ptr) {
+            let mut tokens = Vec::new();
+            tree.get_tokens(&mut tokens);
+            let body = self.tree_to_fn_body(tree.clone());
 
-                    self.fns.extend(quote! {
-                        fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
-                            lex.bump();
-                            #body
-                        }
-                    });
-                }
+            let handler = Some(format!("_handle_{}", self.fns_constructed.len()))
+                            .into_iter()
+                            .chain(
+                                tokens.into_iter()
+                                      .take(3)
+                                      .map(|token| format!("{}", token).to_lowercase())
+                            )
+                            .collect::<Vec<_>>()
+                            .join("_");
 
-                quote!(Some(#handler))
-            },
-            None => {
-                let body = self.tree_to_fn_body(tree);
+            let handler = Ident::new(&handler, Span::call_site());
 
-                quote!(Some({fn handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
+            self.fns.extend(quote! {
+                fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
                     lex.bump();
                     #body
-                } handler}))
-            }
+                }
+            });
+
+            self.fns_constructed.insert(ptr, handler);
         }
+
+        let handler = self.fns_constructed.get(&ptr).unwrap();
+
+        quote!(Some(#handler))
     }
 
     fn tree_to_fn_body(&mut self, mut tree: Rc<Node<'a>>) -> TokenStream {
@@ -162,9 +181,9 @@ pub trait SubGenerator<'a> {
             return self.print_node(&mut *branch.then);
         }
 
-        match branch.repeat {
+        match branch.regex.repeat {
             One | OneOrMore => {
-                let (first, rest) = self.regex_to_test(branch.consume());
+                let (first, rest) = self.regex_to_test(branch.regex.consume());
 
                 let next = self.print_branch(branch);
 
@@ -178,7 +197,7 @@ pub trait SubGenerator<'a> {
             },
             ZeroOrMore => {
                 let next = self.print_node(&mut *branch.then);
-                let (first, rest) = self.regex_to_test(branch.consume());
+                let (first, rest) = self.regex_to_test(branch.regex.consume());
 
                 if rest.len() == 0 {
                     quote!({
@@ -211,7 +230,7 @@ pub trait SubGenerator<'a> {
             },
             ZeroOrOne => {
                 let next = self.print_node(&mut *branch.then);
-                let (first, rest) = self.regex_to_test(branch.consume());
+                let (first, rest) = self.regex_to_test(branch.regex.consume());
 
                 if rest.len() == 0 {
                     quote!({
@@ -274,10 +293,11 @@ pub trait SubGenerator<'a> {
             Node::Fork(fork) => {
                 let branches = fork.arms.iter_mut().map(|branch| {
                     let test = {
-                        let pattern = branch.unshift()
+                        let pattern = branch.regex
+                                            .unshift()
                                             .expect("Invalid tree structure, please make an issue on GitHub!");
 
-                        if pattern.is_byte() {
+                        if pattern.weight() <= 2 {
                             quote!(#pattern =>)
                         } else {
                             let test = self.gen().pattern_to_fn(&pattern);
