@@ -113,12 +113,6 @@ impl<'a> Fork<'a> {
 
                             branch.then.insert(old);
                             branch.then.insert(other);
-
-                            // panic!("BRANCH! {:#?}", branch);
-
-
-                            // return;
-
                         } else if other.regex.first() == new.regex.first() {
                             let mut branch = branch.clone();
                             let mut old = mem::replace(other, new);
@@ -127,19 +121,7 @@ impl<'a> Fork<'a> {
                             branch.regex.unshift();
 
                             other.then.insert(old);
-                            // other.then.insert(branch);
-
-
-                            // panic!("OTHER! {:#?}\nBRANCH {:#?}", other, branch);
-
-                            // return;
-                            // let mut old = mem::replace(other, new);
-
-                            // old.regex.unshift();
-
-                            // other.then.insert(old);
-
-                            // return;
+                            other.then.insert(branch);
                         }
                     }
                 }
@@ -147,9 +129,6 @@ impl<'a> Fork<'a> {
                 // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
                 match self.arms.binary_search_by(|other| branch.compare(other)) {
                     Ok(index) => {
-                        println!("Found matching index for {:#?}\n\nat {:#?}\n\n--------", branch, self.arms[index]);
-                        println!("{:?}", branch.compare(&self.arms[index]));
-
                         self.arms[index].then.insert(branch);
                     },
                     Err(index) => {
