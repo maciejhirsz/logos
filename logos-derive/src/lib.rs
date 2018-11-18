@@ -19,17 +19,18 @@ mod util;
 mod tree;
 mod regex;
 mod handlers;
-mod generator;
+// mod generator;
 
 use tree::{Node, Fork};
 use util::OptionExt;
 use handlers::Handlers;
-use generator::Generator;
+// use generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use syn::{ItemEnum, Fields, LitStr};
+use std::rc::Rc;
 
 #[proc_macro_derive(Logos, attributes(error, end, token, regex))]
 pub fn logos(input: TokenStream) -> TokenStream {
@@ -101,7 +102,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    // panic!("{:#?}", fork);
+    panic!("{:#?}", fork);
 
     let mut handlers = Handlers::new();
 
@@ -121,52 +122,52 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("{:#?}", handlers);
 
-    let mut generator = Generator::new(name);
+    // let mut generator = Generator::new(name);
 
-    let handlers = handlers.into_iter().map(|handler| {
-        use handlers::Handler;
+    // let handlers = handlers.into_iter().map(|handler| {
+    //     use handlers::Handler;
 
-        match handler {
-            Handler::Eof        => quote! { Some(eof) },
-            Handler::Error      => quote! { Some(_error) },
-            Handler::Whitespace => quote! { None },
-            Handler::Tree(tree) => generator.print_tree(tree),
-        }
-    }).collect::<Vec<_>>();
+    //     match handler {
+    //         Handler::Eof        => quote! { Some(eof) },
+    //         Handler::Error      => quote! { Some(_error) },
+    //         Handler::Whitespace => quote! { None },
+    //         Handler::Tree(tree) => generator.print_tree(tree),
+    //     }
+    // }).collect::<Vec<_>>();
 
-    let fns = generator.fns();
+    // let fns = generator.fns();
 
-    let tokens = quote! {
-        impl ::logos::Logos for #name {
-            type Extras = ();
+    // let tokens = quote! {
+    //     impl ::logos::Logos for #name {
+    //         type Extras = ();
 
-            const SIZE: usize = #size;
-            const ERROR: Self = #name::#error;
+    //         const SIZE: usize = #size;
+    //         const ERROR: Self = #name::#error;
 
-            fn lexicon<'a, S: ::logos::Source>() -> &'a ::logos::Lexicon<::logos::Lexer<Self, S>> {
-                use ::logos::internal::LexerInternal;
+    //         fn lexicon<'a, S: ::logos::Source>() -> &'a ::logos::Lexicon<::logos::Lexer<Self, S>> {
+    //             use ::logos::internal::LexerInternal;
 
-                type Lexer<S> = ::logos::Lexer<#name, S>;
+    //             type Lexer<S> = ::logos::Lexer<#name, S>;
 
-                fn eof<S: ::logos::Source>(lex: &mut Lexer<S>) {
-                    lex.token = #name::#end;
-                }
+    //             fn eof<S: ::logos::Source>(lex: &mut Lexer<S>) {
+    //                 lex.token = #name::#end;
+    //             }
 
-                fn _error<S: ::logos::Source>(lex: &mut Lexer<S>) {
-                    lex.bump();
+    //             fn _error<S: ::logos::Source>(lex: &mut Lexer<S>) {
+    //                 lex.bump();
 
-                    lex.token = #name::#error;
-                }
+    //                 lex.token = #name::#error;
+    //             }
 
-                #fns
+    //             #fns
 
-                &[#(#handlers),*]
-            }
-        }
-    };
+    //             &[#(#handlers),*]
+    //         }
+    //     }
+    // };
 
     // panic!("{}", tokens);
 
-    TokenStream::from(tokens).into()
+    // TokenStream::from(tokens).into()
     // TokenStream::new()
 }

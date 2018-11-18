@@ -4,23 +4,39 @@ use std::cmp::Ordering;
 use regex::{Regex, RepetitionFlag};
 use util::OptionExt;
 
-#[derive(Debug, Clone)]
+pub type Token<'a> = &'a Ident;
+
+#[derive(Clone, Default, PartialEq)]
 pub struct Branch<'a> {
     pub regex: Regex,
-    pub then: Box<Node<'a>>,
+    pub then: Option<Box<Node<'a>>>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ForkKind {
+    Plain  = 0,
+    Maybe  = 1,
+    Repeat = 2,
+}
+
+impl Default for ForkKind {
+    fn default() -> Self {
+        ForkKind::Plain
+    }
+}
+
+#[derive(Clone, Default, PartialEq)]
 pub struct Fork<'a> {
+    pub kind: ForkKind,
     pub arms: Vec<Branch<'a>>,
-    pub default: Option<&'a Ident>,
+    pub then: Option<Box<Node<'a>>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Node<'a> {
     Branch(Branch<'a>),
     Fork(Fork<'a>),
-    Leaf(&'a Ident),
+    Token(Token<'a>),
 }
 
 impl<'a> fmt::Debug for Node<'a> {
@@ -28,37 +44,62 @@ impl<'a> fmt::Debug for Node<'a> {
         match self {
             Node::Branch(branch) => branch.fmt(f),
             Node::Fork(fork) => fork.fmt(f),
-            Node::Leaf(leaf) => write!(f, "Leaf(\"{}\")", leaf),
+            Node::Token(token) => write!(f, "TOKEN \"{}\"", token),
         }
     }
 }
 
-impl<'a> From<&'a Ident> for Node<'a> {
-    fn from(token: &'a Ident) -> Self {
-        Node::Leaf(token)
+impl<'a> fmt::Debug for Branch<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.regex.fmt(f)?;
+
+        if let Some(ref then) = self.then {
+            f.write_str(" -> ")?;
+            then.fmt(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Debug for ForkKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ForkKind::Plain => Ok(()),
+            ForkKind::Maybe => f.write_str("MAYBE "),
+            ForkKind::Repeat => f.write_str("REPEAT "),
+        }
+    }
+}
+
+impl<'a> fmt::Debug for Fork<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.kind.fmt(f)?;
+
+        f.debug_list().entries(self.arms.iter()).finish()?;
+
+        if let Some(ref then) = self.then {
+            f.write_str(" -> ")?;
+            then.fmt(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> From<Token<'a>> for Node<'a> {
+    fn from(token: Token<'a>) -> Self {
+        Node::Token(token)
     }
 }
 
 impl<'a> From<Branch<'a>> for Node<'a> {
     fn from(branch: Branch<'a>) -> Self {
         if branch.regex.len() == 0 {
-            *branch.then
+            *branch.then.expect("Cannot convert an empty branch to a Node!")
         } else {
             Node::Branch(branch)
         }
-    }
-}
-
-impl<'a> Branch<'a> {
-    pub fn new(regex: Regex, token: &'a Ident) -> Self {
-        Branch {
-            regex,
-            then: Node::Leaf(token).boxed(),
-        }
-    }
-
-    pub fn compare(&self, other: &Branch<'a>) -> Ordering {
-        other.regex.first().partial_cmp(self.regex.first()).unwrap_or_else(|| Ordering::Greater)
     }
 }
 
@@ -68,215 +109,340 @@ impl<'a> From<Fork<'a>> for Node<'a> {
     }
 }
 
+impl<'a> From<Fork<'a>> for Box<Node<'a>> {
+    fn from(fork: Fork<'a>) -> Self {
+        Node::Fork(fork).boxed()
+    }
+}
+
+impl<'a> Branch<'a> {
+    pub fn new(regex: Regex) -> Self {
+        Branch {
+            regex,
+            then: None,
+        }
+    }
+
+    pub fn compare(&self, other: &Branch<'a>) -> Ordering {
+        other.regex.first().partial_cmp(self.regex.first()).unwrap_or_else(|| Ordering::Greater)
+    }
+
+    fn append_at_end(&mut self, then: &Node<'a>) {
+        match self.then {
+            Some(ref mut node) => node.append_at_end(then),
+            None => {
+                self.then = Some(then.clone().boxed());
+            },
+        }
+    }
+
+    pub fn insert_then(&mut self, other: Option<Box<Node<'a>>>) {
+        if let Some(other) = other {
+            self.then = match self.then.take() {
+                Some(mut then) => {
+                    then.insert(*other);
+
+                    Some(then)
+                },
+                None => Some(other)
+            };
+        }
+    }
+
+    fn to_node(self) -> Option<Node<'a>> {
+        if self.regex.len() == 0 {
+            self.then.map(|node| *node)
+        } else {
+            Some(Node::Branch(self))
+        }
+    }
+}
+
 impl<'a> Fork<'a> {
-    pub fn insert<N>(&mut self, then: N)
-    where
-        N: Into<Node<'a>>
-    {
-        match then.into() {
-            Node::Branch(mut branch) => {
-                if branch.regex.len() == 0 {
-                    return self.insert(*branch.then);
-                }
-
-                // Look for a branch that matches the same prefix
-                for other in self.arms.iter_mut() {
-                    // We got a match!
-                    if let Some(regex) = branch.regex.match_split(&mut other.regex) {
-                        // Create a new branch with the common prefix in place of the old one,
-                        let old = mem::replace(other, Branch {
-                            regex,
-                            then: Node::from(branch).boxed(),
-                        });
-
-                        // Append old branch to the newly created fork
-                        other.then.insert(old);
-
-                        return;
-                    }
-
-                    if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
-                        let regex = Regex::from(prefix);
-
-                        let mut fork = Fork::default();
-                        let mut new = Branch {
-                            regex,
-                            then: Node::from(fork).boxed()
-                        };
-
-                        if branch.regex.first() == new.regex.first() {
-                            let mut other = other.clone();
-                            let mut old = mem::replace(&mut branch, new);
-
-                            old.regex.unshift();
-                            other.regex.unshift();
-
-                            branch.then.insert(old);
-                            branch.then.insert(other);
-                        } else if other.regex.first() == new.regex.first() {
-                            let mut branch = branch.clone();
-                            let mut old = mem::replace(other, new);
-
-                            old.regex.unshift();
-                            branch.regex.unshift();
-
-                            other.then.insert(old);
-                            other.then.insert(branch);
-                        }
-                    }
-                }
-
-                // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
-                match self.arms.binary_search_by(|other| branch.compare(other)) {
-                    Ok(index) => {
-                        self.arms[index].then.insert(branch);
-                    },
-                    Err(index) => {
-                        self.arms.insert(index, branch.into());
-                    },
-                }
+    pub fn insert(&mut self, then: Node<'a>) {
+        match then {
+            Node::Branch(branch) => self.insert_branch(branch),
+            Node::Token(_) => {
+                self.collapse();
+                self.then = Some(then.boxed());
             },
-            Node::Leaf(leaf) => {
-                self.default.insert(leaf, |old| {
-                    if old != &leaf {
-                        panic!("Two token variants cannot be produced by the same explicit path: {} and {}", leaf, old);
-                    }
-                });
-            },
-            Node::Fork(other) => {
-                if let Some(leaf) = other.default {
-                    self.insert(leaf);
+            Node::Fork(mut other)    => {
+                if self.kind == other.kind && self.arms == other.arms {
+                    self.insert_then(other.then.take());
+
+                    return;
                 }
 
-                for branch in other.arms {
-                    self.insert(branch);
+                other.unwind();
+                other.collapse();
+
+                // self.unwind();
+                // self.collapse();
+
+                for branch in other.arms.into_iter() {
+                    self.insert_branch(branch);
                 }
             }
+        }
+    }
+
+    pub fn insert_branch(&mut self, mut branch: Branch<'a>) {
+        if branch.regex.len() == 0 {
+            if let Some(then) = branch.then {
+                return self.insert(*then);
+            }
+        }
+
+        // Look for a branch that matches the same prefix
+        for other in self.arms.iter_mut() {
+            // We got a match!
+            if let Some(regex) = branch.regex.match_split(&mut other.regex) {
+                let old = mem::replace(other, Branch {
+                    regex,
+                    then: branch.to_node().map(Box::new),
+                });
+
+                other.insert_then(old.to_node().map(Box::new));
+
+                return;
+            }
+
+            if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
+                let regex = Regex::from(prefix);
+
+                let mut fork = Fork::default();
+                let mut new = Branch {
+                    regex,
+                    then: Some(fork.into()),
+                };
+
+                if branch.regex.first() == new.regex.first() {
+                    let mut other = other.clone();
+                    let mut old = mem::replace(&mut branch, new);
+
+                    old.regex.unshift();
+                    other.regex.unshift();
+
+                    branch.insert_then(old.to_node().map(Box::new));
+                    branch.insert_then(other.to_node().map(Box::new));
+                } else if other.regex.first() == new.regex.first() {
+                    let mut branch = branch.clone();
+                    let mut old = mem::replace(other, new);
+
+                    old.regex.unshift();
+                    branch.regex.unshift();
+
+                    other.insert_then(old.to_node().map(Box::new));
+                    other.insert_then(branch.to_node().map(Box::new));
+                }
+            }
+        }
+
+        // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
+        match self.arms.binary_search_by(|other| branch.compare(other)) {
+            Ok(index) => {
+                self.arms[index].then.as_mut().expect("Token conflict?").insert(branch.into());
+            },
+            Err(index) => {
+                self.arms.insert(index, branch.into());
+            },
+        }
+    }
+
+    pub fn chain(&mut self, then: Node<'a>) {
+        if let Some(ref current) = self.then {
+            panic!("Trying to chain fork to {:#?}\n\nFork is already chained to {:#?}", then, current);
+        }
+
+        self.then = Some(then.boxed());
+    }
+
+    pub fn insert_then(&mut self, other: Option<Box<Node<'a>>>) {
+        if let Some(other) = other {
+            self.then = match self.then.take() {
+                Some(mut then) => {
+                    then.insert(*other);
+
+                    Some(then)
+                },
+                None => Some(other)
+            };
+        }
+    }
+
+    fn unwind(&mut self) {
+        if self.kind != ForkKind::Repeat {
+            return;
+        }
+
+        let repeat = self.clone();
+        let repeat = mem::replace(self, repeat);
+
+        self.kind = ForkKind::Plain;
+
+        // Also do this?
+        // self.insert(repeat.clone());
+
+        self.then = Some(Node::from(repeat).boxed());
+    }
+
+    fn collapse(&mut self) {
+        let then = match self.then.take() {
+            None => return,
+            Some(node) => node,
+        };
+
+        for branch in self.arms.iter_mut() {
+            branch.append_at_end(&then);
+        }
+    }
+
+    fn append_at_end(&mut self, then: &Node<'a>) {
+        match self.then {
+            Some(ref mut node) => node.append_at_end(then),
+            None => {
+                self.then = Some(then.clone().boxed());
+            },
+        }
+
+        for branch in self.arms.iter_mut() {
+            branch.append_at_end(then)
         }
     }
 }
 
 impl<'a> Node<'a> {
-    pub fn new(regex: Regex, token: &'a Ident) -> Self {
+    pub fn new(regex: Regex, token: Token<'a>) -> Self {
         if regex.len() == 0 {
-            Node::Leaf(token)
+            Node::Token(token)
         } else {
             Node::Branch(Branch {
                 regex,
-                then: Node::Leaf(token).boxed()
+                then: Some(Node::from(token).boxed()),
             })
         }
     }
 
-    pub fn insert<N>(&mut self, then: N)
-    where
-        N: Into<Node<'a>>
-    {
-        match self {
-            Node::Fork(_) => {},
-            _ => {
-                let replaced = mem::replace(self, Node::Fork(Fork::default()));
+    fn to_mut_fork(&mut self) -> &mut Fork<'a> {
+        let fork = match self {
+            Node::Fork(fork) => return fork,
+            Node::Branch(branch) => {
+                let arm = Branch {
+                    regex: branch.regex.clone(),
+                    then: None,
+                };
 
-                match replaced {
-                    Node::Branch(branch) => self.insert(branch),
-
-                    // FIXME: set default without resorting to creating a new Regex here
-                    Node::Leaf(token)    => self.insert(token),
-
-                    _ => unreachable!(),
+                Fork {
+                    kind: ForkKind::Plain,
+                    arms: vec![arm],
+                    then: branch.then.clone(),
                 }
+            },
+            Node::Token(_) => {
+                Fork {
+                    kind: ForkKind::Plain,
+                    arms: vec![],
+                    then: Some(self.clone().boxed()),
+                }
+            }
+        };
+
+        mem::replace(self, Node::Fork(fork));
+
+        if let Node::Fork(fork) = self {
+            fork
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn insert(&mut self, then: Node<'a>) {
+        self.to_mut_fork().insert(then);
+    }
+
+    pub fn make_repeat(&mut self, flag: RepetitionFlag) {
+        use self::RepetitionFlag::*;
+
+        if let Node::Branch(branch) = self {
+            if flag == OneOrMore {
+                let mut next = Node::from(branch.clone());
+
+                next.to_mut_fork().kind = ForkKind::Repeat;
+
+                return branch.then = Some(next.boxed());
             }
         }
 
-        if let Node::Fork(fork) = self {
-            fork.insert(then);
-        }
-    }
+        let fork = self.to_mut_fork();
 
-    pub fn replace<N>(&mut self, node: N)
-    where
-        N: Into<Node<'a>>
-    {
-        match self {
-            Node::Leaf(_) => {},
-            _ => panic!("Throwing non-leaf node away! {:#?}", self)
-        }
+        match flag {
+            ZeroOrOne => fork.kind = ForkKind::Maybe,
+            ZeroOrMore => fork.kind = ForkKind::Repeat,
+            OneOrMore => {
+                let mut next: Fork = fork.clone();
 
-        mem::replace(self, node.into());
-    }
+                next.kind = ForkKind::Repeat;
 
-    pub fn set_repeat(&mut self, flag: RepetitionFlag) {
-        match self {
-            Node::Branch(branch) => branch.regex.repeat = flag,
-            Node::Fork(fork) => {
-                for branch in fork.arms.iter_mut() {
-                    branch.regex.repeat = flag;
-                }
-            },
-            Node::Leaf(_) => {},
+                fork.then = Some(next.into());
+            }
         }
     }
 
     pub fn chain(&mut self, then: Node<'a>) {
         match self {
-            Node::Branch(branch) => branch.then.replace(then),
-            Node::Fork(fork) => {
-                for branch in fork.arms.iter_mut() {
-                    branch.then.replace(then.clone());
-                }
-            },
-            Node::Leaf(_) => {
-                mem::replace(self, then);
-            }
+            Node::Branch(branch) => branch.then = Some(then.boxed()),
+            Node::Fork(fork) => fork.then = Some(then.boxed()),
+            Node::Token(_) => panic!("Cannot chain on `Token` nodes"),
         }
     }
 
     /// Tests whether the branch produces a token on all leaves without any tests.
     pub fn exhaustive(&self) -> bool {
-        use self::RepetitionFlag::*;
-
         match self {
-            Node::Leaf(_) => true,
+            Node::Token(_) => true,
             Node::Branch(branch) => {
                 branch.regex.len() == 1
-                    && (branch.regex.repeat == ZeroOrMore || branch.regex.repeat == ZeroOrOne)
-                    && branch.then.exhaustive()
+                    && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
             },
             Node::Fork(fork) => {
-                fork.default.is_some()
+                fork.then.is_some()
+                    && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                    && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)
                     && fork.arms.iter().all(|branch| {
                         branch.regex.len() == 1
-                            && (branch.regex.repeat == ZeroOrMore || branch.regex.repeat == ZeroOrOne)
-                            && branch.then.exhaustive()
+                            && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
                     })
-            }
+            },
         }
     }
 
     pub fn fallback(&mut self) -> Option<Branch<'a>> {
         match self {
             Node::Fork(fork) => {
+                if fork.kind != ForkKind::Repeat {
+                    return None;
+                }
+
                 // This is a bit weird, but it basically checks if the fork
-                // has one and only one branch that start with a repeat regex,
-                // and if so, it removes that branch and returns it.
+                // has one and only one branch that is heavy and if so, it
+                // removes that branch and returns it.
                 //
                 // FIXME: This should check if all other branches in the tree
                 //        are specializations of that regex
-                let idxs =
-                    fork.arms
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, branch)| {
-                            branch.regex.repeat != RepetitionFlag::One && branch.regex.first().weight() > 1
-                        })
-                        .map(|(idx, _)| idx)
-                        .collect::<Vec<_>>();
+                let mut index = None;
 
-                if idxs.len() == 1 {
-                    Some(fork.arms.remove(idxs[0]))
-                } else {
-                    None
+                for (idx, branch) in fork.arms.iter().enumerate() {
+                    if branch.regex.first().weight() > 1 {
+                        // Make sure we only get one
+                        if index.is_some() {
+                            return None;
+                        }
+
+                        index = Some(idx);
+                    }
                 }
+
+                index.map(|idx| fork.arms.remove(idx))
             }
             _ => None,
         }
@@ -291,16 +457,30 @@ impl<'a> Node<'a> {
         }
 
         match self {
-            Node::Leaf(token) => insert(vec, token),
-            Node::Branch(branch) => branch.then.get_tokens(vec),
+            Node::Token(token) => insert(vec, token),
+            Node::Branch(branch) => {
+                if let Some(ref then) = branch.then {
+                    then.get_tokens(vec);
+                }
+            },
             Node::Fork(fork) => {
                 for branch in fork.arms.iter() {
-                    branch.then.get_tokens(vec);
+                    if let Some(ref then) = branch.then {
+                        then.get_tokens(vec);
+                    }
                 }
-                if let Some(token) = fork.default {
-                    insert(vec, token)
+                if let Some(ref then) = fork.then {
+                    then.get_tokens(vec);
                 }
             }
+        }
+    }
+
+    fn append_at_end(&mut self, then: &Node<'a>) {
+        match self {
+            Node::Branch(branch) => branch.append_at_end(then),
+            Node::Fork(fork) => fork.append_at_end(then),
+            Node::Token(_) => {},
         }
     }
 

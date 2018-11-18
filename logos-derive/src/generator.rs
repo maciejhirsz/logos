@@ -19,14 +19,8 @@ pub struct Generator<'a> {
 /// as the key in the HashMap for constructed handlers, which
 /// is way faster to hash than the entire tree. It also means
 /// we don't have to derive `Hash` everywhere.
-///
-/// This is a bit hacky, but ultimately safe.
-fn get_rc_ptr<T>(rc: Rc<T>) -> (Rc<T>, usize) {
-    let ptr = Rc::into_raw(rc);
-
-    let rc = unsafe { Rc::from_raw(ptr) };
-
-    (rc, ptr as usize)
+fn get_rc_ptr<T>(rc: &Rc<T>) -> usize {
+    Rc::into_raw(rc.clone()) as usize
 }
 
 impl<'a> Generator<'a> {
@@ -40,7 +34,7 @@ impl<'a> Generator<'a> {
     }
 
     pub fn print_tree(&mut self, tree: Rc<Node<'a>>) -> TokenStream {
-        let (tree, ptr) = get_rc_ptr(tree);
+        let ptr = get_rc_ptr(&tree);
 
         if !self.fns_constructed.contains_key(&ptr) {
             let mut tokens = Vec::new();
@@ -406,49 +400,30 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
     }
 }
 
+macro_rules! match_quote {
+    ($source:expr; $($byte:tt,)* ) => {match $source {
+        $( $byte => quote!($byte), )*
+        byte => quote!(#byte),
+    }}
+}
+
 impl ToTokens for Pattern {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             // This is annoying, but it seems really hard to make quote!
             // print byte chars instead of integers otherwise
-            Pattern::Byte(byte) => tokens.extend(match *byte {
-                b'0' => quote!(b'0'),
-                b'1' => quote!(b'1'),
-                b'2' => quote!(b'2'),
-                b'3' => quote!(b'3'),
-                b'4' => quote!(b'4'),
-                b'5' => quote!(b'5'),
-                b'6' => quote!(b'6'),
-                b'7' => quote!(b'7'),
-                b'8' => quote!(b'8'),
-                b'9' => quote!(b'9'),
-                b'a' => quote!(b'a'),
-                b'b' => quote!(b'b'),
-                b'c' => quote!(b'c'),
-                b'd' => quote!(b'd'),
-                b'e' => quote!(b'e'),
-                b'f' => quote!(b'f'),
-                b'g' => quote!(b'g'),
-                b'h' => quote!(b'h'),
-                b'i' => quote!(b'i'),
-                b'j' => quote!(b'j'),
-                b'k' => quote!(b'k'),
-                b'l' => quote!(b'l'),
-                b'm' => quote!(b'm'),
-                b'n' => quote!(b'n'),
-                b'o' => quote!(b'o'),
-                b'p' => quote!(b'p'),
-                b'q' => quote!(b'q'),
-                b'r' => quote!(b'r'),
-                b's' => quote!(b's'),
-                b't' => quote!(b't'),
-                b'u' => quote!(b'u'),
-                b'v' => quote!(b'v'),
-                b'w' => quote!(b'w'),
-                b'x' => quote!(b'x'),
-                b'y' => quote!(b'y'),
-                b'z' => quote!(b'z'),
-                _    => quote!(#byte),
+            Pattern::Byte(byte) => tokens.extend(match_quote! {
+                *byte;
+                b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9',
+                b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j',
+                b'k', b'l', b'm', b'n', b'o', b'p', b'q', b'r', b's', b't',
+                b'u', b'v', b'w', b'x', b'y', b'z',
+                b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J',
+                b'K', b'L', b'M', b'N', b'O', b'P', b'Q', b'R', b'S', b'T',
+                b'U', b'V', b'W', b'X', b'Y', b'Z',
+                b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
+                b'{', b'}', b'[', b']', b'<', b'>', b'-', b'=', b'_', b'+',
+                b':', b';', b',', b'.', b'/', b'?', b'|', b'"', b'\'', b'\\',
             }),
             Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
             Pattern::Class(ref class) => tokens.extend(quote!(#( #class )|*)),
