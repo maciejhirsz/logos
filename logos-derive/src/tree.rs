@@ -76,7 +76,13 @@ impl<'a> fmt::Debug for Fork<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.kind.fmt(f)?;
 
-        f.debug_list().entries(self.arms.iter()).finish()?;
+        if self.arms.len() == 1 && self.arms[0].then.is_none() {
+            f.write_str("[")?;
+            self.arms[0].fmt(f)?;
+            f.write_str("]")?;
+        } else {
+            f.debug_list().entries(self.arms.iter()).finish()?;
+        }
 
         if let Some(ref then) = self.then {
             f.write_str(" -> ")?;
@@ -175,9 +181,6 @@ impl<'a> Fork<'a> {
 
                 other.unwind();
                 other.collapse();
-
-                // self.unwind();
-                // self.collapse();
 
                 for branch in other.arms.into_iter() {
                     self.insert_branch(branch);
@@ -280,7 +283,7 @@ impl<'a> Fork<'a> {
 
         self.kind = ForkKind::Plain;
 
-        // Also do this?
+        // FIXME? Also do this?
         // self.insert(repeat.clone());
 
         self.then = Some(Node::from(repeat).boxed());
@@ -305,8 +308,10 @@ impl<'a> Fork<'a> {
             },
         }
 
-        for branch in self.arms.iter_mut() {
-            branch.append_at_end(then)
+        if self.kind == ForkKind::Plain {
+            for branch in self.arms.iter_mut() {
+                branch.append_at_end(then)
+            }
         }
     }
 }
@@ -383,7 +388,7 @@ impl<'a> Node<'a> {
 
                 next.kind = ForkKind::Repeat;
 
-                fork.then = Some(next.into());
+                fork.insert_then(Some(next.into()));
             }
         }
     }

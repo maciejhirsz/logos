@@ -36,20 +36,40 @@ impl<'a> Node<'a> {
             Err(err) => panic!("Unable to parse #[regex] for variant: {}!\n\n{:#?}", token, err),
         };
 
-        Self::from_hir(hir, token)
+        let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
+        let then = Some(Node::Token(token).boxed());
+
+        fn insert_at_end<'a>(node: &mut Node<'a>, then: Option<Box<Node<'a>>>) {
+            let next = match node {
+                Node::Fork(fork) => &mut fork.then,
+                Node::Branch(branch) => &mut branch.then,
+                Node::Token(_) => panic!("Internal error"),
+            };
+
+            match next {
+                Some(ref mut next) => insert_at_end(&mut **next, then),
+                None               => *next = then,
+            }
+        }
+
+        insert_at_end(&mut node, then);
+
+        node
     }
 
-    fn from_hir(hir: HirKind, token: Token<'a>) -> Self {
+    fn from_hir(hir: HirKind) -> Option<Self> {
         match hir {
-            HirKind::Empty => token.into(),
+            HirKind::Empty => None,
             HirKind::Alternation(alternation) => {
                 let mut fork = Fork::default();
 
                 for hir in alternation.into_iter().map(Hir::into_kind) {
-                    fork.insert(Node::from_hir(hir, token));
+                    if let Some(node) = Node::from_hir(hir) {
+                        fork.insert(node);
+                    }
                 }
 
-                Node::from(fork)
+                Some(Node::from(fork))
             },
             HirKind::Concat(concat) => {
                 let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
@@ -67,14 +87,13 @@ impl<'a> Node<'a> {
                         nodes.push(Branch::new(regex).into());
                         read += count;
                     } else {
-                        nodes.push(Node::from_hir(concat.remove(read), token));
+                        if let Some(node) = Node::from_hir(concat.remove(read)) {
+                            nodes.push(node);
+                        }
                     }
                 }
 
-                let mut node = match nodes.pop() {
-                    Some(node) => node,
-                    None => return token.into(),
-                };
+                let mut node = nodes.pop()?;
 
                 for mut n in nodes.into_iter().rev() {
                     n.chain(node);
@@ -82,7 +101,7 @@ impl<'a> Node<'a> {
                     node = n;
                 }
 
-                node
+                Some(node)
             },
             HirKind::Repetition(repetition) => {
                 use self::hir::RepetitionKind;
@@ -99,23 +118,29 @@ impl<'a> Node<'a> {
                     RepetitionKind::Range(_) => panic!("The '{n,m}' repetition in #[regex] is currently unsupported."),
                 };
 
-                let mut node = Node::from_hir(repetition.hir.into_kind(), token);
-
-                // println!("{:#?} {:#?}", node, flag);
+                let mut node = Node::from_hir(repetition.hir.into_kind())?;
 
                 node.make_repeat(flag);
 
-                // panic!("{:#?} {:#?}", node, flag);
-
-                node
+                Some(node)
             },
-            HirKind::Group(group) => Node::from_hir(group.hir.into_kind(), token),
+            HirKind::Group(group) => {
+                let mut fork = Fork::default();
+
+                fork.insert(Node::from_hir(group.hir.into_kind())?);
+
+                Some(Node::from(fork))
+            },
             _ => {
                 let mut regex = Regex::default();
 
                 Regex::from_hir_internal(&hir, &mut regex);
 
-                Node::new(regex, token)
+                if regex.len() == 0 {
+                    None
+                } else {
+                    Some(Branch::new(regex).into())
+                }
             }
         }
     }
