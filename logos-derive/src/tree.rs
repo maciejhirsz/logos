@@ -1,10 +1,9 @@
-use syn::Ident;
 use std::{mem, fmt};
 use std::cmp::Ordering;
 use regex::{Regex, RepetitionFlag};
 use util::OptionExt;
 
-pub type Token<'a> = &'a Ident;
+pub type Token<'a> = &'a ::syn::Ident;
 
 #[derive(Clone, Default, PartialEq)]
 pub struct Branch<'a> {
@@ -179,7 +178,18 @@ impl<'a> Fork<'a> {
                     return;
                 }
 
-                other.unwind();
+                if let Some(next) = other.unwind() {
+                    // FIXME: this if could be an assert that panics, but that
+                    //        would break the top fork when people do things like
+                    //        [0-9]* instead of [0-9]+ for ints
+                    //
+                    // Maybe throw a warning?
+                    if self.kind == ForkKind::Plain && self.then.is_none() {
+                        self.kind = ForkKind::Maybe;
+                        self.then = Some(next);
+                    }
+                }
+
                 other.collapse();
 
                 for branch in other.arms.into_iter() {
@@ -252,14 +262,6 @@ impl<'a> Fork<'a> {
         }
     }
 
-    pub fn chain(&mut self, then: Node<'a>) {
-        if let Some(ref current) = self.then {
-            panic!("Trying to chain fork to {:#?}\n\nFork is already chained to {:#?}", then, current);
-        }
-
-        self.then = Some(then.boxed());
-    }
-
     pub fn insert_then(&mut self, other: Option<Box<Node<'a>>>) {
         if let Some(other) = other {
             self.then = match self.then.take() {
@@ -273,30 +275,31 @@ impl<'a> Fork<'a> {
         }
     }
 
-    fn unwind(&mut self) {
+    /// Unwinds a Repeat fork, if successful returns the old `then`
+    /// variant
+    fn unwind(&mut self) -> Option<Box<Node<'a>>> {
         if self.kind != ForkKind::Repeat {
-            return;
+            return None;
         }
 
         let repeat = self.clone();
         let repeat = mem::replace(self, repeat);
 
-        self.kind = ForkKind::Plain;
-
-        // FIXME? Also do this?
-        // self.insert(repeat.clone());
+        let ret = self.then.take();
 
         self.then = Some(Node::from(repeat).boxed());
+
+        ret
     }
 
     fn collapse(&mut self) {
-        let then = match self.then.take() {
+        let then = match self.then {
             None => return,
-            Some(node) => node,
+            Some(ref node) => &**node,
         };
 
         for branch in self.arms.iter_mut() {
-            branch.append_at_end(&then);
+            branch.append_at_end(then);
         }
     }
 
@@ -394,10 +397,15 @@ impl<'a> Node<'a> {
     }
 
     pub fn chain(&mut self, then: Node<'a>) {
-        match self {
-            Node::Branch(branch) => branch.then = Some(then.boxed()),
-            Node::Fork(fork) => fork.then = Some(then.boxed()),
-            Node::Token(_) => panic!("Cannot chain on `Token` nodes"),
+        let this = match self {
+            Node::Fork(fork) => &mut fork.then,
+            Node::Branch(branch) => &mut branch.then,
+            Node::Token(_) => panic!("Internal error"),
+        };
+
+        match this {
+            Some(ref mut this) => this.chain(then),
+            None               => *this = Some(then.boxed()),
         }
     }
 
@@ -454,8 +462,8 @@ impl<'a> Node<'a> {
     }
 
     /// Get all tokens in this tree
-    pub fn get_tokens(&self, vec: &mut Vec<&'a Ident>) {
-        fn insert<'a>(vec: &mut Vec<&'a Ident>, token: &'a Ident) {
+    pub fn get_tokens(&self, vec: &mut Vec<Token<'a>>) {
+        fn insert<'a>(vec: &mut Vec<Token<'a>>, token: Token<'a>) {
             if let Err(index) = vec.binary_search(&token) {
                 vec.insert(index, token);
             }

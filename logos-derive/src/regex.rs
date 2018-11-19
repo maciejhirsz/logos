@@ -1,7 +1,6 @@
 use regex_syntax::hir::{self, Hir, HirKind};
 use regex_syntax::Parser;
 use tree::{Node, Fork, Branch, Token};
-use syn::Ident;
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -37,22 +36,8 @@ impl<'a> Node<'a> {
         };
 
         let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
-        let then = Some(Node::Token(token).boxed());
 
-        fn insert_at_end<'a>(node: &mut Node<'a>, then: Option<Box<Node<'a>>>) {
-            let next = match node {
-                Node::Fork(fork) => &mut fork.then,
-                Node::Branch(branch) => &mut branch.then,
-                Node::Token(_) => panic!("Internal error"),
-            };
-
-            match next {
-                Some(ref mut next) => insert_at_end(&mut **next, then),
-                None               => *next = then,
-            }
-        }
-
-        insert_at_end(&mut node, then);
+        node.chain(Node::Token(token));
 
         node
     }

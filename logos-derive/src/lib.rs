@@ -102,6 +102,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
+    // if let Some(ref then) = fork.then {
+    //     match **then {
+    //         Node::Token(token) => panic!("#[regex] for {} shouldn't allow empty patterns.", token),
+    //         _ => {}
+    //     }
+    // }
+
     panic!("{:#?}", fork);
 
     let mut handlers = Handlers::new();
