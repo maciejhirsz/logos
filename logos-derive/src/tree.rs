@@ -177,8 +177,6 @@ impl<'a> Fork<'a> {
                     self.kind = ForkKind::Maybe;
                     self.then = Some(Node::Token(token).boxed());
                 } else {
-                    // panic!("{} into {:#?}", token, self);
-
                     assert!(
                         self.kind != ForkKind::Plain,
                         "Internal Error: Invalid fork construction: {:#?}", self
@@ -191,19 +189,18 @@ impl<'a> Fork<'a> {
             },
             Node::Fork(mut other) => {
                 if self.kind == other.kind && self.arms == other.arms {
-                    // let a = self.clone();
-                    // let b = other.clone();
                     self.insert_then(other.then.take());
-
-                    // panic!("MERGE PRODUCT\n\nA: {:#?}\n\nB: {:#?}\n\n= {:#?}", a, b, self);
 
                     return;
                 }
 
+                // If possible, we unwind repeat forks and collapse maybe forks.
+                self.unwind();
+                self.collapse();
                 other.unwind();
-                let token = other.collapse();
+                other.collapse();
 
-                self.insert_then(token);
+                self.insert_then(other.then.take());
 
                 for branch in other.arms.into_iter() {
                     self.insert_branch(branch);
@@ -217,7 +214,7 @@ impl<'a> Fork<'a> {
             return self.insert_then(branch.then);
         }
 
-        let mut byproduct = None;
+        let mut byproducts = Vec::new();
 
         // Look for a branch that matches the same prefix
         for other in self.arms.iter_mut() {
@@ -245,21 +242,22 @@ impl<'a> Fork<'a> {
                 intersection.insert_then(b.to_node().map(Box::new));
 
                 // Cannot insert while we are still looping
-                byproduct = Some(intersection);
+                byproducts.push(intersection);
             }
         }
 
         // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
         match self.arms.binary_search_by(|other| branch.compare(other)) {
             Ok(index) => {
-                self.arms[index].then.as_mut().expect("Token conflict?").insert(branch.into());
+                // self.arms[index].then.as_mut().expect("Token conflict?").insert(branch.into());
+                self.arms[index].insert_then(branch.to_node().map(Box::new));
             },
             Err(index) => {
                 self.arms.insert(index, branch.into());
             },
         }
 
-        if let Some(byproduct) = byproduct {
+        for byproduct in byproducts {
             self.insert_branch(byproduct);
         }
     }
@@ -294,28 +292,21 @@ impl<'a> Fork<'a> {
             return;
         }
 
-        let repeat = self.clone();
-        let repeat = mem::replace(self, repeat);
+        let repeat = Node::Fork(self.clone());
 
-        let then = self.then.take();
-
-        self.then = Some(Node::from(repeat).boxed());
-        self.kind = ForkKind::Maybe;
-
-        if let Some(then) = then {
-            self.insert(*then);
+        for branch in self.arms.iter_mut() {
+            branch.append_at_end(&repeat);
         }
 
-        // panic!("Unwound {:#?}\n\nInto {:#?}", before, self);
+        self.kind = ForkKind::Maybe;
     }
 
     // Attempts to collapse a Maybe fork into a Plain fork.
-    // If `then` on this fork is a `Token`, then return it
-    fn collapse(&mut self) -> Option<Box<Node<'a>>> {
-        // let before = self.clone();
-
+    // If `then` on this fork is a `Token`, then it will
+    // remain a Maybe fork.
+    fn collapse(&mut self) {
         if self.kind != ForkKind::Maybe {
-            return None;
+            return;
         }
 
         let then = match self.then.take() {
@@ -328,23 +319,14 @@ impl<'a> Fork<'a> {
         }
 
         if then.is_token() {
-            Some(then)
+            self.then = Some(then);
         } else {
-            None
+            self.kind = ForkKind::Plain;
         }
-
-        // panic!("Collapsed {:#?}\n\nInto {:#?}", before, self);
     }
 
     fn append_at_end(&mut self, then: &Node<'a>) {
-        // match self.then {
-        //     Some(ref mut node) => node.append_at_end(then),
-        //     None => {
-        //         self.then = Some(then.clone().boxed());
-        //     },
-        // }
-
-        if self.kind == ForkKind::Plain {
+        if self.kind != ForkKind::Repeat {
             for branch in self.arms.iter_mut() {
                 branch.append_at_end(then)
             }
@@ -556,6 +538,13 @@ mod tests {
         Ident::new(mock, Span::call_site())
     }
 
+    fn branch<'a>(regex: &str, token: Token<'a>) -> Branch<'a> {
+        Branch {
+            regex: Regex::sequence(regex),
+            then: Some(Node::Token(token).boxed()),
+        }
+    }
+
     #[test]
     fn branch_to_node() {
         let regex = Regex::sequence("abc");
@@ -590,18 +579,11 @@ mod tests {
         let token_a = token("ABC");
         let token_b = token("DEF");
 
-        let branch_a = Branch {
-            regex: Regex::sequence("abc"),
-            then: Some(Node::Token(&token_a).boxed()),
-        };
+        let branch_a = branch("abc", &token_a);
+        let branch_b = branch("def", &token_b);
 
-        let branch_b = Branch {
-            regex: Regex::sequence("def"),
-            then: Some(Node::Token(&token_b).boxed()),
-        };
-
-        let mut parent = branch_a.clone().to_node().unwrap();
-        let child = branch_b.clone().to_node().unwrap();
+        let mut parent = branch("abc", &token_a).to_node().unwrap();
+        let child = branch("def", &token_b).to_node().unwrap();
 
         parent.insert(child);
 
@@ -617,20 +599,236 @@ mod tests {
         let token_a = token("ABC");
         let token_b = token("DEF");
 
-        let branch = Branch {
-            regex: Regex::sequence("abc"),
-            then: Some(Node::Token(&token_a).boxed()),
-        };
-
-        let mut parent = branch.clone().to_node().unwrap();
+        let mut parent = branch("abc", &token_a).to_node().unwrap();
         let child = Node::Token(&token_b);
 
         parent.insert(child);
 
         assert_eq!(parent, Node::Fork(Fork {
             kind: ForkKind::Maybe,
-            arms: vec![branch],
+            arms: vec![branch("abc", &token_a)],
             then: Some(Node::Token(&token_b).boxed()),
         }));
+    }
+
+    #[test]
+    fn insert_a_branch_into_a_token() {
+        let token_a = token("ABC");
+        let token_b = token("DEF");
+
+        let mut parent = Node::Token(&token_a);
+        let child = branch("xyz", &token_b).to_node().unwrap();
+
+        parent.insert(child);
+
+        assert_eq!(parent, Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![branch("xyz", &token_b)],
+            then: Some(Node::Token(&token_a).boxed()),
+        }));
+    }
+
+    #[test]
+    fn insert_a_fork_into_a_fork() {
+        let token_a = token("ABC");
+        let token_b = token("DEF");
+
+        let mut parent = Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![branch("abc", &token_a)],
+            then: None,
+        });
+
+        let child = Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![branch("def", &token_b)],
+            then: None,
+        });
+
+        parent.insert(child);
+
+        assert_eq!(parent, Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![
+                branch("abc", &token_a),
+                branch("def", &token_b),
+            ],
+            then: None,
+        }));
+    }
+
+    #[test]
+    fn insert_a_maybe_fork_into_a_fork() {
+        let token_a = token("ABC");
+        let token_b = token("DEF");
+        let token_x = token("XYZ");
+
+        let mut parent = Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![branch("abc", &token_a)],
+            then: None,
+        });
+
+        let child = Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![branch("def", &token_b)],
+            then: Some(Node::Token(&token_x).boxed()),
+        });
+
+        parent.insert(child);
+
+        assert_eq!(parent, Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![
+                branch("abc", &token_a),
+                branch("def", &token_b),
+            ],
+            then: Some(Node::Token(&token_x).boxed()),
+        }));
+    }
+
+    #[test]
+    fn insert_a_fork_into_a_maybe_fork() {
+        let token_a = token("ABC");
+        let token_b = token("DEF");
+        let token_x = token("XYZ");
+
+        let mut parent = Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![branch("abc", &token_a)],
+            then: Some(Node::Token(&token_x).boxed()),
+        });
+
+        let child = Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![branch("def", &token_b)],
+            then: None,
+        });
+
+        parent.insert(child);
+
+        assert_eq!(parent, Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![
+                branch("abc", &token_a),
+                branch("def", &token_b),
+            ],
+            then: Some(Node::Token(&token_x).boxed()),
+        }));
+    }
+
+    #[test]
+    fn collapsing_a_fork() {
+        let token_a = token("ABC");
+
+        let mut fork = Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![Branch::new(Regex::sequence("abc"))],
+            then: Some(Node::Token(&token_a).boxed()),
+        };
+
+        let expected = Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![branch("abc", &token_a)],
+            then: Some(Node::Token(&token_a).boxed()),
+        };
+
+        fork.collapse();
+
+        assert!(fork == expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", fork, expected);
+    }
+
+    #[test]
+    fn unwinding_a_fork() {
+        let token_a = token("ABC");
+
+        let mut fork = Fork {
+            kind: ForkKind::Repeat,
+            arms: vec![Branch::new(Regex::sequence("abc"))],
+            then: Some(Node::Token(&token_a).boxed()),
+        };
+
+        let expected = Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![Branch {
+                regex: Regex::sequence("abc"),
+                then: Some(Node::Fork(fork.clone()).boxed()),
+            }],
+            then: Some(Node::Token(&token_a).boxed()),
+        };
+
+        fork.unwind();
+        // fork.collapse();
+
+        assert!(fork == expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", fork, expected);
+    }
+
+    #[test]
+    fn insert_a_repeat_fork_into_a_fork() {
+        let token_a = token("ABC");
+        let token_b = token("DEF");
+
+        let mut parent = Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![branch("abc", &token_a)],
+            then: None,
+        });
+
+        let child = Node::Fork(Fork {
+            kind: ForkKind::Repeat,
+            arms: vec![Branch::new(Regex::sequence("def"))],
+            then: Some(Node::Token(&token_b).boxed()),
+        });
+
+        let expected = Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![
+                branch("abc", &token_a),
+                Branch {
+                    regex: Regex::sequence("def"),
+                    then: Some(child.clone().boxed()),
+                }
+            ],
+            then: Some(Node::Token(&token_b).boxed()),
+        });
+
+        parent.insert(child);
+
+        assert!(parent == expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", parent, expected);
+    }
+
+    #[test]
+    fn insert_a_fork_into_a_repeat_fork() {
+        let token_a = token("ABC");
+        let token_b = token("DEF");
+
+
+        let mut parent = Node::Fork(Fork {
+            kind: ForkKind::Repeat,
+            arms: vec![Branch::new(Regex::sequence("def"))],
+            then: Some(Node::Token(&token_b).boxed()),
+        });
+
+        let child = Node::Fork(Fork {
+            kind: ForkKind::Plain,
+            arms: vec![branch("abc", &token_a)],
+            then: None,
+        });
+
+        let expected = Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![
+                branch("abc", &token_a),
+                Branch {
+                    regex: Regex::sequence("def"),
+                    then: Some(parent.clone().boxed()),
+                }
+            ],
+            then: Some(Node::Token(&token_b).boxed()),
+        });
+
+        parent.insert(child);
+
+        assert!(parent == expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", parent, expected);
     }
 }
