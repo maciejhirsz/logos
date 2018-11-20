@@ -22,24 +22,41 @@ mod handlers;
 mod generator;
 
 use tree::{Node, Fork};
-use util::OptionExt;
+use util::{OptionExt, value_from_attr};
 use handlers::Handlers;
 use generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
-use proc_macro2::TokenTree;
-use syn::{ItemEnum, Fields, LitStr};
+use proc_macro2::Span;
+use syn::{ItemEnum, Fields, Ident};
 
-#[proc_macro_derive(Logos, attributes(error, end, token, regex))]
+#[proc_macro_derive(Logos, attributes(
+    extras,
+    error,
+    end,
+    token,
+    regex,
+    extras,
+    callback,
+))]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
 
     let size = item.variants.len();
     let name = &item.ident;
 
+    let mut extras = quote!(());
     let mut error = None;
     let mut end = None;
+
+    for attr in &item.attrs {
+        if let Some(ext) = value_from_attr("extras", attr) {
+            let ext = Ident::new(&ext, Span::call_site());
+
+            extras = quote!(#ext);
+        }
+    }
 
     let mut fork = Fork::default();
 
@@ -55,46 +72,26 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
+            let variant = &variant.ident;
 
             if ident == "error" {
-                error.insert(&variant.ident, |_| panic!("Only one #[error] variant can be declared."));
+                error.insert(variant, |_| panic!("Only one #[error] variant can be declared."));
             }
 
             if ident == "end" {
-                end.insert(&variant.ident, |_| panic!("Only one #[end] variant can be declared."));
+                end.insert(variant, |_| panic!("Only one #[end] variant can be declared."));
             }
 
-            let token = ident == "token";
-            let regex = ident == "regex";
+            if let Some(path) = value_from_attr("token", attr) {
+                fork.insert(Node::from_sequence(&path, variant));
+            }
 
-            if token || regex {
-                let mut tts = attr.tts.clone().into_iter();
+            if let Some(path) = value_from_attr("regex", attr) {
+                fork.insert(Node::from_regex(&path, variant));
+            }
 
-                match tts.next() {
-                    Some(TokenTree::Punct(ref punct)) if punct.as_char() == '=' => {},
-                    Some(invalid) => panic!("#[token] Expected '=', got {}", invalid),
-                    _ => panic!("Invalid token")
-                }
-
-                match tts.next() {
-                    Some(TokenTree::Literal(literal)) => {
-                        let path = syn::parse::<LitStr>(quote!{ #literal }.into())
-                                        .expect("#[token] value must be a literal string")
-                                        .value();
-
-                        let node = if regex {
-                            Node::from_regex(&path, &variant.ident)
-                        } else {
-                            Node::from_sequence(&path, &variant.ident)
-                        };
-
-                        fork.insert(node);
-                    },
-                    Some(invalid) => panic!("#[token] Invalid value: {}", invalid),
-                    None => panic!("Invalid token")
-                };
-
-                assert!(tts.next().is_none(), "Unexpected token!");
+            if let Some(callback) = value_from_attr("callback", attr) {
+                panic!("Callback {} for variant {}", callback, variant);
             }
         }
     }
@@ -136,7 +133,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let tokens = quote! {
         impl ::logos::Logos for #name {
-            type Extras = ();
+            type Extras = #extras;
 
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
