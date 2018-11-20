@@ -132,9 +132,9 @@ impl<'a> Branch<'a> {
         other.regex.first().partial_cmp(self.regex.first()).unwrap_or_else(|| Ordering::Greater)
     }
 
-    fn append_at_end(&mut self, then: &Node<'a>) {
+    fn chain(&mut self, then: &Node<'a>) {
         match self.then {
-            Some(ref mut node) => node.append_at_end(then),
+            Some(ref mut node) => node.chain(then),
             None => {
                 self.then = Some(then.clone().boxed());
             },
@@ -169,18 +169,23 @@ impl<'a> Fork<'a> {
             Node::Branch(branch) => self.insert_branch(branch),
             Node::Token(token) => {
                 if self.then.is_none() {
+                    // assert!(
+                    //     self.kind == ForkKind::Plain,
+                    //     "Internal Error: Invalid fork construction: {:#?}", self
+                    // );
+
+                    self.kind = ForkKind::Maybe;
+                    self.then = Some(Node::Token(token).boxed());
+                } else {
+                    self.collapse();
+
                     assert!(
-                        self.kind == ForkKind::Plain,
+                        self.kind != ForkKind::Plain,
                         "Internal Error: Invalid fork construction: {:#?}", self
                     );
 
                     self.kind = ForkKind::Maybe;
                     self.then = Some(Node::Token(token).boxed());
-                } else {
-                    assert!(
-                        self.kind != ForkKind::Plain,
-                        "Internal Error: Invalid fork construction: {:#?}", self
-                    );
                 }
 
                 // FIXME: look up through all tokens produced by `self.then`,
@@ -214,7 +219,30 @@ impl<'a> Fork<'a> {
             return self.insert_then(branch.then);
         }
 
-        let mut byproducts = Vec::new();
+        if self.kind == ForkKind::Plain {
+            // Looking for intersection prefixes, that is: A ≠ B & (A ⊂ B | B ⊂ A)
+            for other in self.arms.iter_mut() {
+                if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
+                    let mut intersection = Branch::new(Regex::from(prefix));
+
+                    let mut a = branch.clone();
+                    let mut b = other.clone();
+
+                    a.regex.unshift();
+                    b.regex.unshift();
+
+                    intersection.insert_then(a.to_node().map(Box::new));
+                    intersection.insert_then(b.to_node().map(Box::new));
+
+                    if intersection.regex.first() == branch.regex.first() {
+                        branch = intersection;
+                    } else {
+                        mem::swap(other, &mut intersection);
+                        // byproducts.push(intersection);
+                    }
+                }
+            }
+        }
 
         // Look for a branch that matches the same prefix
         for other in self.arms.iter_mut() {
@@ -229,21 +257,6 @@ impl<'a> Fork<'a> {
 
                 return;
             }
-
-            if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
-                let mut intersection = Branch::new(Regex::from(prefix));
-
-                let mut a = branch.clone();
-                let mut b = other.clone();
-
-                a.regex.unshift();
-                b.regex.unshift();
-
-                intersection.insert_then(b.to_node().map(Box::new));
-
-                // Cannot insert while we are still looping
-                byproducts.push(intersection);
-            }
         }
 
         // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
@@ -255,10 +268,6 @@ impl<'a> Fork<'a> {
             Err(index) => {
                 self.arms.insert(index, branch.into());
             },
-        }
-
-        for byproduct in byproducts {
-            self.insert_branch(byproduct);
         }
     }
 
@@ -295,7 +304,7 @@ impl<'a> Fork<'a> {
         let repeat = Node::Fork(self.clone());
 
         for branch in self.arms.iter_mut() {
-            branch.append_at_end(&repeat);
+            branch.chain(&repeat);
         }
 
         self.kind = ForkKind::Maybe;
@@ -315,7 +324,7 @@ impl<'a> Fork<'a> {
         };
 
         for branch in self.arms.iter_mut() {
-            branch.append_at_end(&*then);
+            branch.chain(&*then);
         }
 
         if then.is_token() {
@@ -325,14 +334,14 @@ impl<'a> Fork<'a> {
         }
     }
 
-    fn append_at_end(&mut self, then: &Node<'a>) {
-        if self.kind != ForkKind::Repeat {
+    fn chain(&mut self, then: &Node<'a>) {
+        if self.kind == ForkKind::Plain {
             for branch in self.arms.iter_mut() {
-                branch.append_at_end(then)
+                branch.chain(then)
             }
         } else {
             match self.then {
-                Some(ref mut node) => node.append_at_end(then),
+                Some(ref mut node) => node.chain(then),
                 None => {
                     self.then = Some(then.clone().boxed());
                 },
@@ -411,19 +420,6 @@ impl<'a> Node<'a> {
 
                 fork.insert_then(Some(next.into()));
             }
-        }
-    }
-
-    pub fn chain(&mut self, then: Node<'a>) {
-        let this = match self {
-            Node::Fork(fork) => &mut fork.then,
-            Node::Branch(branch) => &mut branch.then,
-            Node::Token(_) => panic!("Internal error"),
-        };
-
-        match this {
-            Some(ref mut this) => this.chain(then),
-            None               => *this = Some(then.boxed()),
         }
     }
 
@@ -507,10 +503,10 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn append_at_end(&mut self, then: &Node<'a>) {
+    pub fn chain(&mut self, then: &Node<'a>) {
         match self {
-            Node::Branch(branch) => branch.append_at_end(then),
-            Node::Fork(fork) => fork.append_at_end(then),
+            Node::Branch(branch) => branch.chain(then),
+            Node::Fork(fork) => fork.chain(then),
             Node::Token(_) => {},
         }
     }

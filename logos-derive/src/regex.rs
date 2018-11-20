@@ -37,7 +37,11 @@ impl<'a> Node<'a> {
 
         let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
 
-        node.chain(Node::Token(token));
+        let token = Node::Token(token);
+
+        node.chain(&token);
+
+        // panic!("{:#?}", node);
 
         node
     }
@@ -81,7 +85,7 @@ impl<'a> Node<'a> {
                 let mut node = nodes.pop()?;
 
                 for mut n in nodes.into_iter().rev() {
-                    n.chain(node);
+                    n.chain(&node);
 
                     node = n;
                 }
@@ -396,9 +400,7 @@ impl Pattern {
 
         if let Byte(x) = other {
             match self {
-                Byte(a) => {
-                    *a == *x
-                },
+                Byte(a) => false,
                 Range(a, b) => {
                     *a <= *x && *x <= *b
                 },
