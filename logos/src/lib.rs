@@ -83,8 +83,10 @@
 
 #![warn(missing_docs)]
 
+#[cfg(feature = "export_derive")]
 extern crate logos_derive;
 
+#[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
 
 #[cfg(feature = "nul_term_source")]

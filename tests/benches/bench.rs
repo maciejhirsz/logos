@@ -1,10 +1,11 @@
 #![feature(test)]
 
+extern crate toolshed;
 extern crate test;
 extern crate logos;
 
-#[cfg(feature = "nul_term_source")]
-extern crate toolshed;
+#[macro_use]
+extern crate logos_derive;
 
 use test::Bencher;
 use logos::Logos;
@@ -154,7 +155,6 @@ fn logos(b: &mut Bencher) {
     });
 }
 
-#[cfg(feature = "nul_term_source")]
 #[bench]
 fn logos_nul_terminated(b: &mut Bencher) {
     use logos::Logos;

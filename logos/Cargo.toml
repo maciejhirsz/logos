@@ -1,6 +1,6 @@
 [package]
 name = "logos"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -10,9 +10,9 @@ readme = "../README.md"
 
 [dependencies]
 toolshed = { version = "0.6", optional = true }
-# logos-derive = "0.4"
-logos-derive = { path = "../logos-derive" }
+logos-derive = { version = "0.4", optional = true }
 
 [features]
-default = []
+default = ["export_derive"]
 nul_term_source = ["toolshed"]
+export_derive = ["logos-derive"]
