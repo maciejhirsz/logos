@@ -2,6 +2,7 @@
 members = [
     "logos",
     "logos-derive",
+    "tests",
 ]
 
 [profile]

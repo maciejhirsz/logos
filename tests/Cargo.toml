@@ -1,0 +1,11 @@
+[package]
+name = "tests"
+version = "0.0.0"
+authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/maciejhirsz/logos"
+
+[dependencies]
+logos = { path = "../logos", default-features = false, features = ["nul_term_source"] }
+logos-derive = { path = "../logos-derive" }
+toolshed = "0.6"
