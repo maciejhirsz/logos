@@ -101,7 +101,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    // panic!("{:#?}", fork);
+    panic!("{:#?}", fork);
 
     let mut handlers = Handlers::new();
 

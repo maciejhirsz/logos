@@ -1,6 +1,6 @@
 use regex_syntax::hir::{self, Hir, HirKind};
 use regex_syntax::Parser;
-use tree::{Node, Fork, Branch, Token};
+use tree::{Node, Fork, ForkKind, Branch, Token};
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -40,12 +40,6 @@ impl<'a> Node<'a> {
 
         node.chain(&token);
 
-        // if let Node::Fork(ref mut fork) = node {
-        //     fork.unwind();
-        // }
-
-        // panic!("{:#?}", node);
-
         node
     }
 
@@ -58,6 +52,8 @@ impl<'a> Node<'a> {
                 for hir in alternation.into_iter().map(Hir::into_kind) {
                     if let Some(node) = Node::from_hir(hir) {
                         fork.insert(node);
+                    } else {
+                        fork.kind = ForkKind::Maybe;
                     }
                 }
 

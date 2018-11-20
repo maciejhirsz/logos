@@ -249,7 +249,6 @@ impl<'a> Fork<'a> {
                     intersection.insert_then(a.to_node().map(Box::new));
                     intersection.insert_then(b.to_node().map(Box::new));
 
-
                     if intersection.regex.first() == branch.regex.first() {
                         branch = intersection;
                     } else {
