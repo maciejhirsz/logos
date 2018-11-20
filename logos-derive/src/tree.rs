@@ -169,10 +169,10 @@ impl<'a> Fork<'a> {
             Node::Branch(branch) => self.insert_branch(branch),
             Node::Token(token) => {
                 if self.then.is_none() {
-                    // assert!(
-                    //     self.kind == ForkKind::Plain,
-                    //     "Internal Error: Invalid fork construction: {:#?}", self
-                    // );
+                    assert!(
+                        self.kind == ForkKind::Plain,
+                        "Internal Error: Invalid fork construction: {:#?}", self
+                    );
 
                     self.kind = ForkKind::Maybe;
                     self.then = Some(Node::Token(token).boxed());
@@ -219,6 +219,10 @@ impl<'a> Fork<'a> {
             return self.insert_then(branch.then);
         }
 
+        // FIXME!
+        //
+        // This is kind of a hack that prevents us from creating intersections for
+        // identifiers all the way down, blowing up the stack!
         if self.kind == ForkKind::Plain {
             // Looking for intersection prefixes, that is: A ≠ B & (A ⊂ B | B ⊂ A)
             for other in self.arms.iter_mut() {
@@ -238,7 +242,6 @@ impl<'a> Fork<'a> {
                         branch = intersection;
                     } else {
                         mem::swap(other, &mut intersection);
-                        // byproducts.push(intersection);
                     }
                 }
             }
@@ -262,7 +265,6 @@ impl<'a> Fork<'a> {
         // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
         match self.arms.binary_search_by(|other| branch.compare(other)) {
             Ok(index) => {
-                // self.arms[index].then.as_mut().expect("Token conflict?").insert(branch.into());
                 self.arms[index].insert_then(branch.to_node().map(Box::new));
             },
             Err(index) => {
@@ -295,8 +297,6 @@ impl<'a> Fork<'a> {
 
     /// Unwinds a Repeat fork into a Maybe fork
     fn unwind(&mut self) {
-        // let before = self.clone();
-
         if self.kind != ForkKind::Repeat {
             return;
         }

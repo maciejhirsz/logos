@@ -36,12 +36,9 @@ impl<'a> Node<'a> {
         };
 
         let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
-
         let token = Node::Token(token);
 
         node.chain(&token);
-
-        // panic!("{:#?}", node);
 
         node
     }
@@ -303,7 +300,7 @@ pub enum Pattern {
 }
 
 fn format_ascii(byte: u8, f: &mut fmt::Formatter) -> fmt::Result {
-    if byte.is_ascii() {
+    if byte >= 0x20 && byte <= 127 {
         write!(f, "{}", byte as char)
     } else {
         write!(f, "{:?}", byte)

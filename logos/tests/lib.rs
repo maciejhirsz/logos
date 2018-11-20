@@ -23,7 +23,7 @@ pub enum Token {
     #[regex = "0x[0-9a-fA-F]+"]
     Hex,
 
-    // #[regex = "(abc)+(def|xyz)?"]
+    #[regex = "(abc)+(def|xyz)?"]
     Abc,
 
     #[token = "priv"]
