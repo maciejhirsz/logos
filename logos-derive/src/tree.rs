@@ -471,17 +471,12 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Tests whether all branches have a `then` node set to `Some`, and that that node is bounded as well.
+    /// Tests whether all branches have a `then` node set to `Some`.
     pub fn is_bounded(&self) -> bool {
         match self {
             Node::Token(_) => true,
-            Node::Branch(branch) => branch.then.as_ref().map(|then| then.is_bounded()).unwrap_or(false),
-            Node::Fork(fork) => {
-                // fork.then.as_ref().map(|then| then.is_bounded()).unwrap_or(false)
-                    fork.arms.iter().all(|branch| {
-                        branch.then.as_ref().map(|then| then.is_bounded()).unwrap_or(false)
-                    })
-            },
+            Node::Branch(branch) => branch.then.is_some(),
+            Node::Fork(fork) => fork.arms.iter().all(|branch| branch.then.is_some()),
         }
     }
 
