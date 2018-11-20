@@ -171,7 +171,13 @@ impl<'a> Branch<'a> {
 impl<'a> Fork<'a> {
     pub fn insert(&mut self, then: Node<'a>) {
         match then {
-            Node::Branch(branch) => self.insert_branch(branch),
+            Node::Branch(branch) => {
+                // If possible, we unwind repeat forks and collapse maybe forks.
+                self.unwind();
+                self.collapse();
+
+                self.insert_branch(branch);
+            },
             Node::Token(token) => {
                 if self.then.is_none() {
                     assert!(
@@ -243,6 +249,7 @@ impl<'a> Fork<'a> {
                     intersection.insert_then(a.to_node().map(Box::new));
                     intersection.insert_then(b.to_node().map(Box::new));
 
+
                     if intersection.regex.first() == branch.regex.first() {
                         branch = intersection;
                     } else {
@@ -267,6 +274,10 @@ impl<'a> Fork<'a> {
             }
         }
 
+        self.sorted_insert_arm(branch);
+    }
+
+    fn sorted_insert_arm(&mut self, branch: Branch<'a>) {
         // Sort arms of the fork, simple bytes in alphabetical order first, patterns last
         match self.arms.binary_search_by(|other| branch.compare(other)) {
             Ok(index) => {
@@ -449,22 +460,24 @@ impl<'a> Node<'a> {
             },
             Node::Fork(fork) => {
                 // FIXME: combine the two checks, somehow?
-                if fork.kind != ForkKind::Plain
-                    && fork.arms.len() == 1
-                    && fork.arms[0].then.is_none()
-                    && fork.arms[0].regex.len() == 1
-                    && fork.then.is_some()
-                {
-                    return true;
-                }
+                // if fork.kind != ForkKind::Plain
+                //     && fork.arms.len() == 1
+                //     && fork.arms[0].then.is_none()
+                //     && fork.arms[0].regex.len() == 1
+                //     && fork.then.is_some()
+                // {
+                //     return true;
+                // }
 
-                fork.then.is_some()
-                    && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
-                    && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)
-                    && fork.arms.iter().all(|branch| {
-                        branch.regex.len() == 1
-                            && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
-                    })
+                false
+
+                // fork.then.is_some()
+                //     && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                //     && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)
+                //     && fork.arms.iter().all(|branch| {
+                //         branch.regex.len() == 1
+                //             && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                //     })
             },
         }
     }
