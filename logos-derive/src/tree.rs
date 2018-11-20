@@ -109,13 +109,19 @@ impl<'a> From<Branch<'a>> for Node<'a> {
 
 impl<'a> From<Fork<'a>> for Node<'a> {
     fn from(fork: Fork<'a>) -> Self {
+        if fork.arms.len() == 0 {
+            if let Some(then) = fork.then {
+                return *then;
+            }
+        }
+
         Node::Fork(fork)
     }
 }
 
 impl<'a> From<Fork<'a>> for Box<Node<'a>> {
     fn from(fork: Fork<'a>) -> Self {
-        Node::Fork(fork).boxed()
+        Node::from(fork).boxed()
     }
 }
 
@@ -300,7 +306,7 @@ impl<'a> Fork<'a> {
             return;
         }
 
-        let repeat = Node::Fork(self.clone());
+        let repeat = Node::from(self.clone());
 
         for branch in self.arms.iter_mut() {
             branch.chain(&repeat);
@@ -392,6 +398,17 @@ impl<'a> Node<'a> {
 
     pub fn insert(&mut self, then: Node<'a>) {
         self.to_mut_fork().insert(then);
+
+        let then = match self {
+            Node::Fork(fork) if fork.arms.len() == 0 => {
+                fork.then.take()
+            },
+            _ => None
+        };
+
+        if let Some(then) = then {
+            mem::replace(self, *then);
+        }
     }
 
     pub fn make_repeat(&mut self, flag: RepetitionFlag) {
@@ -455,7 +472,7 @@ impl<'a> Node<'a> {
     pub fn fallback(&mut self) -> Option<Branch<'a>> {
         match self {
             Node::Fork(fork) => {
-                if fork.kind != ForkKind::Repeat {
+                if fork.kind != ForkKind::Maybe {
                     return None;
                 }
 

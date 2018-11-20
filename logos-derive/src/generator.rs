@@ -192,72 +192,6 @@ pub trait SubGenerator<'a> {
                 #next
             }
         }
-
-        //     },
-        //     ZeroOrMore => {
-        //         let next = self.print_node(&mut *branch.then);
-        //         let (first, rest) = self.regex_to_test(branch.regex.consume());
-
-        //         if rest.len() == 0 {
-        //             quote!({
-        //                 while #first {
-        //                     lex.bump();
-        //                 }
-
-        //                 #next
-        //             })
-        //         } else {
-        //             // FIXME: return with fallback here?
-        //             quote!({
-        //                 let mut ok = true;
-
-        //                 while #first {
-        //                     if #(#rest)&&* {
-        //                         lex.bump();
-        //                     } else {
-        //                         ok = false;
-
-        //                         break;
-        //                     }
-        //                 }
-
-        //                 if ok {
-        //                     #next
-        //                 }
-        //             })
-        //         }
-        //     },
-        //     ZeroOrOne => {
-        //         let next = self.print_node(&mut *branch.then);
-        //         let (first, rest) = self.regex_to_test(branch.regex.consume());
-
-        //         if rest.len() == 0 {
-        //             quote!({
-        //                 if #first {
-        //                     lex.bump();
-        //                 }
-
-        //                 #next
-        //             })
-        //         } else {
-        //             // FIXME: return with fallback here?
-        //             quote!({
-        //                 let mut ok = true;
-
-        //                 if #first {
-        //                     if !(#(#rest)&&*) {
-        //                         ok = false;
-        //                     }
-        //                 }
-
-        //                 if ok {
-        //                     lex.bump();
-        //                     #next
-        //                 }
-        //             })
-        //         }
-        //     }
-        // }
     }
 
     fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
@@ -432,7 +366,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
         let body = self.print_node(node);
-        let fallback = LooseGenerator(self.gen).print_branch(&mut self.fallback);
+        let fallback = LooseGenerator(self.gen).print_then(&mut self.fallback.then);
 
         quote! {
             #body
