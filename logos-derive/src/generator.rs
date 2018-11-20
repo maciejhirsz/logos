@@ -1,12 +1,12 @@
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::rc::Rc;
 use syn::Ident;
-use regex::Regex;
-use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
+use proc_macro2::{TokenStream, Span};
 
 use tree::{Node, Branch, ForkKind};
-use regex::Pattern;
+use regex::{Regex, Pattern};
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,
@@ -75,10 +75,14 @@ impl<'a> Generator<'a> {
         if tree.exhaustive() {
             ExhaustiveGenerator(self).print(tree)
         } else {
-            if let Some(fallback) = tree.fallback() {
+            if let Some(mut fallback) = tree.fallback() {
+                let boundary = fallback.regex.first().clone();
+                let fallback = LooseGenerator(self).print_then(&mut fallback.then);
+
                 FallbackGenerator {
                     gen: self,
                     fallback,
+                    boundary,
                 }.print(tree)
             } else {
                 LooseGenerator(self).print(tree)
@@ -161,7 +165,7 @@ impl<'a> Generator<'a> {
     }
 }
 
-pub trait SubGenerator<'a> {
+pub trait SubGenerator<'a>: Sized {
     fn gen(&mut self) -> &mut Generator<'a>;
 
     fn print(&mut self, node: &mut Node) -> TokenStream;
@@ -172,7 +176,6 @@ pub trait SubGenerator<'a> {
         if let Some(node) = then {
             self.print_node(&mut **node)
         } else {
-            // quote!(continue)
             quote!( {} )
         }
     }
@@ -262,19 +265,21 @@ pub trait SubGenerator<'a> {
                     return self.print_then(&mut fork.then);
                 }
 
-                if fork.kind != ForkKind::Plain
-                    && fork.arms.len() == 1
-                    && fork.arms[0].then.is_none()
-                {
-                    let regex = &fork.arms[0].regex;
-                    let then = &mut fork.then;
+                // if fork.kind != ForkKind::Plain
+                //     && fork.arms.len() == 1
+                //     && fork.arms[0].then.is_none()
+                // {
+                //     let regex = &fork.arms[0].regex;
+                //     let then = &mut fork.then;
 
-                    return if fork.kind == ForkKind::Repeat {
-                        self.print_simple_repeat(regex, then)
-                    } else {
-                        self.print_simple_maybe(regex, then)
-                    };
-                }
+                //     return if fork.kind == ForkKind::Repeat {
+                //         self.print_simple_repeat(regex, then)
+                //     } else {
+                //         self.print_simple_maybe(regex, then)
+                //     };
+                // }
+
+                let kind = fork.kind;
 
                 let branches = fork.arms.iter_mut().map(|branch| {
                     let test = {
@@ -291,7 +296,10 @@ pub trait SubGenerator<'a> {
                         }
                     };
 
-                    let branch = self.print_branch(branch);
+                    let branch = match kind {
+                        ForkKind::Repeat => LoopGenerator(self, PhantomData).print_branch(branch),
+                        _                => self.print_branch(branch),
+                    };
 
                     quote! { #test {
                         lex.bump();
@@ -301,23 +309,47 @@ pub trait SubGenerator<'a> {
 
                 let default = self.print_then(&mut fork.then);
 
-                quote! {
-                    match lex.read() {
-                        #branches
-                        _ => #default,
+                if fork.kind == ForkKind::Repeat {
+                    let fallback = self.print_fallback();
+
+                    quote!({
+                        loop {
+                            match lex.read() {
+                                #branches
+                                _ => break,
+                            }
+
+                            #fallback
+                        }
+
+                        #default
+                    })
+                } else {
+                    quote! {
+                        match lex.read() {
+                            #branches
+                            _ => #default,
+                        }
                     }
                 }
             },
         }
     }
+
+    fn print_fallback(&mut self) -> TokenStream;
 }
 
 pub struct ExhaustiveGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct LooseGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct FallbackGenerator<'a: 'b, 'b> {
     gen: &'b mut Generator<'a>,
-    fallback: Branch<'a>,
+    boundary: Pattern,
+    fallback: TokenStream,
 }
+
+pub struct LoopGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
+where
+    SubGen: SubGenerator<'a> + 'c;
 
 impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
     fn gen(&mut self) -> &mut Generator<'a> {
@@ -334,6 +366,10 @@ impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
         let name = self.gen().enum_name;
 
         quote!(#name::#variant)
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        quote!(return lex.token = ::logos::Logos::ERROR;)
     }
 }
 
@@ -357,6 +393,10 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
 
         quote!(return lex.token = #name::#variant)
     }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        quote!(return lex.token = ::logos::Logos::ERROR;)
+    }
 }
 
 impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
@@ -366,7 +406,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
         let body = self.print_node(node);
-        let fallback = LooseGenerator(self.gen).print_then(&mut self.fallback.then);
+        let fallback = &self.fallback;
 
         quote! {
             #body
@@ -377,14 +417,46 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
 
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.gen().enum_name;
-        let pattern = self.fallback.regex.first();
-        let pattern_fn = self.gen.pattern_to_fn(pattern);
+        let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
 
         quote! {
             if !#pattern_fn(lex.read()) {
                 return lex.token = #name::#variant;
             }
         }
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        self.fallback.clone()
+    }
+}
+
+impl<'a, 'b, 'c, SubGen> SubGenerator<'a> for LoopGenerator<'a, 'b, 'c, SubGen>
+where
+    SubGen: SubGenerator<'a>
+{
+    fn gen(&mut self) -> &mut Generator<'a> {
+        self.0.gen()
+    }
+
+    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        if let Some(node) = then {
+            self.0.print_node(&mut **node)
+        } else {
+            quote!(continue)
+        }
+    }
+
+    fn print(&mut self, node: &mut Node) -> TokenStream {
+        self.0.print(node)
+    }
+
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+        self.0.print_token(variant)
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        self.0.print_fallback()
     }
 }
 
