@@ -397,7 +397,7 @@ impl Pattern {
 
         if let Byte(x) = other {
             match self {
-                Byte(a) => false,
+                Byte(_) => false,
                 Range(a, b) => {
                     *a <= *x && *x <= *b
                 },

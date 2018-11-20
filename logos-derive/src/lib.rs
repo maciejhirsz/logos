@@ -30,7 +30,6 @@ use quote::quote;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use syn::{ItemEnum, Fields, LitStr};
-use std::rc::Rc;
 
 #[proc_macro_derive(Logos, attributes(error, end, token, regex))]
 pub fn logos(input: TokenStream) -> TokenStream {
