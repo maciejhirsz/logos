@@ -105,33 +105,35 @@ foobar(protected primitive private instanceof in) { + ++ = == === => }
 foobar(protected primitive private instanceof in) { + ++ = == === => }
 ";
 
+static IDENTIFIERS: &str = "It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton \
+                            It was the year when they finally immanentized the Eschaton";
 
 #[bench]
 fn identifiers(b: &mut Bencher) {
     use logos::Logos;
 
-    let source = "It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton \
-                  It was the year when they finally immanentized the Eschaton";
 
-    b.bytes = source.len() as u64;
+    b.bytes = IDENTIFIERS.len() as u64;
 
     b.iter(|| {
-        let mut lex = Token::lexer(source);
+        let mut lex = Token::lexer(IDENTIFIERS);
 
         while lex.token != Token::EndOfProgram {
-            lex.advance()
+            lex.advance();
         }
+
+        lex.token
     });
 }
 
@@ -145,8 +147,10 @@ fn logos(b: &mut Bencher) {
         let mut lex = Token::lexer(SOURCE);
 
         while lex.token != Token::EndOfProgram {
-            lex.advance()
+            lex.advance();
         }
+
+        lex.token
     });
 }
 
@@ -165,7 +169,9 @@ fn logos_nul_terminated(b: &mut Bencher) {
         let mut lex = Token::lexer(nts);
 
         while lex.token != Token::EndOfProgram {
-            lex.advance()
+            lex.advance();
         }
+
+        lex.token
     });
 }

@@ -1,18 +1,26 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::rc::Rc;
 use syn::Ident;
-use regex::RepetitionFlag;
-use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
+use proc_macro2::{TokenStream, Span};
 
-use tree::{Node, Branch};
-use regex::Pattern;
+use tree::{Node, Branch, ForkKind};
+use regex::{Regex, Pattern};
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,
     fns: TokenStream,
-    fns_check: HashSet<&'a Ident>,
+    fns_constructed: HashMap<usize, Ident>,
     patterns: HashMap<Pattern, Ident>,
+}
+
+/// Get a pointer to the Rc as `usize`. We can use this
+/// as the key in the HashMap for constructed handlers, which
+/// is way faster to hash than the entire tree. It also means
+/// we don't have to derive `Hash` everywhere.
+fn get_rc_ptr<T>(rc: &Rc<T>) -> usize {
+    Rc::into_raw(rc.clone()) as usize
 }
 
 impl<'a> Generator<'a> {
@@ -20,52 +28,62 @@ impl<'a> Generator<'a> {
         Generator {
             enum_name,
             fns: TokenStream::new(),
-            fns_check: HashSet::new(),
+            fns_constructed: HashMap::new(),
             patterns: HashMap::new(),
         }
     }
 
     pub fn print_tree(&mut self, tree: Rc<Node<'a>>) -> TokenStream {
-        match tree.only_leaf() {
-            Some(variant) => {
-                let handler = format!("_handle_{}", variant).to_lowercase();
-                let handler = Ident::new(&handler, Span::call_site());
+        let ptr = get_rc_ptr(&tree);
 
-                if self.fns_check.insert(variant) {
-                    let body = self.tree_to_fn_body(tree);
+        if !self.fns_constructed.contains_key(&ptr) {
+            let mut tokens = Vec::new();
+            tree.get_tokens(&mut tokens);
+            let body = self.tree_to_fn_body(tree.clone());
 
-                    self.fns.extend(quote! {
-                        fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
-                            lex.bump();
-                            #body
-                        }
-                    });
-                }
+            let handler = Some(format!("_handle_{}", self.fns_constructed.len()))
+                            .into_iter()
+                            .chain(
+                                tokens.into_iter()
+                                      .take(3)
+                                      .map(|token| format!("{}", token).to_lowercase())
+                            )
+                            .collect::<Vec<_>>()
+                            .join("_");
 
-                quote!(Some(#handler))
-            },
-            None => {
-                let body = self.tree_to_fn_body(tree);
+            let handler = Ident::new(&handler, Span::call_site());
 
-                quote!(Some({fn handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
+            self.fns.extend(quote! {
+                #[allow(unreachable_code)]
+                fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
                     lex.bump();
                     #body
-                } handler}))
-            }
+                }
+            });
+
+            self.fns_constructed.insert(ptr, handler);
         }
+
+        let handler = self.fns_constructed.get(&ptr).unwrap();
+
+        quote!(Some(#handler))
     }
 
     fn tree_to_fn_body(&mut self, mut tree: Rc<Node<'a>>) -> TokenStream {
         // At this point all Rc pointers should be unique
         let tree = Rc::make_mut(&mut tree);
 
-        if tree.exhaustive() {
+        if tree.is_exhaustive() {
             ExhaustiveGenerator(self).print(tree)
         } else {
-            if let Some(fallback) = tree.fallback() {
+            if let Some(mut fallback) = tree.fallback() {
+                let boundary = fallback.regex.first().clone();
+                let fallback = LooseGenerator(self).print_then(&mut fallback.then);
+
                 FallbackGenerator {
                     gen: self,
                     fallback,
+                    boundary,
                 }.print(tree)
             } else {
                 LooseGenerator(self).print(tree)
@@ -148,98 +166,70 @@ impl<'a> Generator<'a> {
     }
 }
 
-pub trait SubGenerator<'a> {
+pub trait SubGenerator<'a>: Sized {
     fn gen(&mut self) -> &mut Generator<'a>;
 
     fn print(&mut self, node: &mut Node) -> TokenStream;
 
     fn print_token(&mut self, variant: &Ident) -> TokenStream;
 
-    fn print_branch(&mut self, branch: &mut Branch) -> TokenStream {
-        use self::RepetitionFlag::*;
+    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        if let Some(node) = then {
+            self.print_node(&mut **node)
+        } else {
+            quote!( {} )
+        }
+    }
 
+    fn print_branch(&mut self, branch: &mut Branch) -> TokenStream {
         if branch.regex.len() == 0 {
-            return self.print_node(&mut *branch.then);
+            return self.print_then(&mut branch.then);
         }
 
-        match branch.repeat {
-            One | OneOrMore => {
-                let (first, rest) = self.regex_to_test(branch.consume());
+        let (first, rest) = self.regex_to_test(branch.regex.consume());
+        let next = self.print_branch(branch);
 
-                let next = self.print_branch(branch);
+        quote! {
+            if #first #(&& #rest)* {
+                lex.bump();
 
-                quote! {
-                    if #first #(&& #rest)* {
-                        lex.bump();
-
-                        #next
-                    }
-                }
-            },
-            ZeroOrMore => {
-                let next = self.print_node(&mut *branch.then);
-                let (first, rest) = self.regex_to_test(branch.consume());
-
-                if rest.len() == 0 {
-                    quote!({
-                        while #first {
-                            lex.bump();
-                        }
-
-                        #next
-                    })
-                } else {
-                    // FIXME: return with fallback here?
-                    quote!({
-                        let mut ok = true;
-
-                        while #first {
-                            if #(#rest)&&* {
-                                lex.bump();
-                            } else {
-                                ok = false;
-
-                                break;
-                            }
-                        }
-
-                        if ok {
-                            #next
-                        }
-                    })
-                }
-            },
-            ZeroOrOne => {
-                let next = self.print_node(&mut *branch.then);
-                let (first, rest) = self.regex_to_test(branch.consume());
-
-                if rest.len() == 0 {
-                    quote!({
-                        if #first {
-                            lex.bump();
-                        }
-
-                        #next
-                    })
-                } else {
-                    // FIXME: return with fallback here?
-                    quote!({
-                        let mut ok = true;
-
-                        if #first {
-                            if !(#(#rest)&&*) {
-                                ok = false;
-                            }
-                        }
-
-                        if ok {
-                            lex.bump();
-                            #next
-                        }
-                    })
-                }
+                #next
             }
         }
+    }
+
+    fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
+        if regex.len() == 0 {
+            return self.print_then(then);
+        }
+
+        let (first, rest) = self.regex_to_test(regex.patterns());
+        let next = self.print_then(then);
+
+        quote!({
+            while #first #(&& #rest)* {
+                lex.bump();
+            }
+
+            #next
+        })
+    }
+
+    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
+        if regex.len() == 0 {
+            return self.print_then(then);
+        }
+
+        let (first, rest) = self.regex_to_test(regex.patterns());
+        let next = self.print_then(then);
+
+        quote!({
+            if #first #(&& #rest)* {
+                lex.bump();
+            }
+
+            #next
+        })
     }
 
     fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, Vec<TokenStream>) {
@@ -268,16 +258,43 @@ pub trait SubGenerator<'a> {
     }
 
     fn print_node(&mut self, node: &mut Node) -> TokenStream {
+        let is_exhaustive = node.is_exhaustive();
+        let is_bounded = node.is_bounded();
+
         match node {
-            Node::Leaf(token) => self.print_token(token),
+            Node::Token(token) => self.print_token(token),
             Node::Branch(branch) => self.print_branch(branch),
             Node::Fork(fork) => {
+                if fork.arms.len() == 0 {
+                    return self.print_then(&mut fork.then);
+                }
+
+                if fork.kind != ForkKind::Plain
+                    && fork.arms.len() == 1
+                    && fork.arms[0].regex.len() == 1
+                    && fork.arms[0].then.is_none()
+                {
+                    let regex = &fork.arms[0].regex;
+                    let then = &mut fork.then;
+
+                    return if fork.kind == ForkKind::Repeat {
+                        self.print_simple_repeat(regex, then)
+                    } else {
+                        self.print_simple_maybe(regex, then)
+                    };
+                }
+
+                fork.collapse();
+
+                let kind = fork.kind;
+
                 let branches = fork.arms.iter_mut().map(|branch| {
                     let test = {
-                        let pattern = branch.unshift()
+                        let pattern = branch.regex
+                                            .unshift()
                                             .expect("Invalid tree structure, please make an issue on GitHub!");
 
-                        if pattern.is_byte() {
+                        if pattern.weight() <= 2 {
                             quote!(#pattern =>)
                         } else {
                             let test = self.gen().pattern_to_fn(&pattern);
@@ -286,7 +303,11 @@ pub trait SubGenerator<'a> {
                         }
                     };
 
-                    let branch = self.print_branch(branch);
+                    let branch = match kind {
+                        ForkKind::Plain  => self.print_branch(branch),
+                        ForkKind::Maybe  => MaybeGenerator(self, PhantomData).print_branch(branch),
+                        ForkKind::Repeat => LoopGenerator(self, PhantomData).print_branch(branch),
+                    };
 
                     quote! { #test {
                         lex.bump();
@@ -294,28 +315,56 @@ pub trait SubGenerator<'a> {
                     }, }
                 }).collect::<TokenStream>();
 
-                let default = match fork.default {
-                    Some(token) => self.print_token(token),
-                    None        => quote! { {} },
-                };
+                let default = self.print_then(&mut fork.then);
 
-                quote! {
-                    match lex.read() {
-                        #branches
-                        _ => #default,
+                if fork.kind == ForkKind::Plain
+                    || (fork.kind == ForkKind::Maybe && is_bounded)
+                    || (fork.kind == ForkKind::Repeat && is_exhaustive)
+                {
+                    quote! {
+                        match lex.read() {
+                            #branches
+                            _ => #default,
+                        }
                     }
+                } else {
+                    let fallback = self.print_fallback();
+
+                    quote!({
+                        loop {
+                            match lex.read() {
+                                #branches
+                                _ => break,
+                            }
+
+                            #fallback
+                        }
+
+                        #default
+                    })
                 }
             },
         }
     }
+
+    fn print_fallback(&mut self) -> TokenStream;
 }
 
 pub struct ExhaustiveGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct LooseGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct FallbackGenerator<'a: 'b, 'b> {
     gen: &'b mut Generator<'a>,
-    fallback: Branch<'a>,
+    boundary: Pattern,
+    fallback: TokenStream,
 }
+
+pub struct LoopGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
+where
+    SubGen: SubGenerator<'a> + 'c;
+
+pub struct MaybeGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
+where
+    SubGen: SubGenerator<'a> + 'c;
 
 impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
     fn gen(&mut self) -> &mut Generator<'a> {
@@ -332,6 +381,10 @@ impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
         let name = self.gen().enum_name;
 
         quote!(#name::#variant)
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        quote!(return lex.token = ::logos::Logos::ERROR;)
     }
 }
 
@@ -355,6 +408,10 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
 
         quote!(return lex.token = #name::#variant)
     }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        quote!(return lex.token = ::logos::Logos::ERROR;)
+    }
 }
 
 impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
@@ -364,7 +421,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
         let body = self.print_node(node);
-        let fallback = LooseGenerator(self.gen).print_branch(&mut self.fallback);
+        let fallback = &self.fallback;
 
         quote! {
             #body
@@ -375,8 +432,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
 
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.gen().enum_name;
-        let pattern = self.fallback.regex.first();
-        let pattern_fn = self.gen.pattern_to_fn(pattern);
+        let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
 
         quote! {
             if !#pattern_fn(lex.read()) {
@@ -384,6 +440,75 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
             }
         }
     }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        self.fallback.clone()
+    }
+}
+
+impl<'a, 'b, 'c, SubGen> SubGenerator<'a> for LoopGenerator<'a, 'b, 'c, SubGen>
+where
+    SubGen: SubGenerator<'a>
+{
+    fn gen(&mut self) -> &mut Generator<'a> {
+        self.0.gen()
+    }
+
+    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        if let Some(node) = then {
+            self.0.print_node(&mut **node)
+        } else {
+            quote!(continue)
+        }
+    }
+
+    fn print(&mut self, node: &mut Node) -> TokenStream {
+        self.0.print(node)
+    }
+
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+        self.0.print_token(variant)
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        self.0.print_fallback()
+    }
+}
+
+impl<'a, 'b, 'c, SubGen> SubGenerator<'a> for MaybeGenerator<'a, 'b, 'c, SubGen>
+where
+    SubGen: SubGenerator<'a>
+{
+    fn gen(&mut self) -> &mut Generator<'a> {
+        self.0.gen()
+    }
+
+    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        if let Some(node) = then {
+            self.0.print_node(&mut **node)
+        } else {
+            quote!(break)
+        }
+    }
+
+    fn print(&mut self, node: &mut Node) -> TokenStream {
+        self.0.print(node)
+    }
+
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+        self.0.print_token(variant)
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        self.0.print_fallback()
+    }
+}
+
+macro_rules! match_quote {
+    ($source:expr; $($byte:tt,)* ) => {match $source {
+        $( $byte => quote!($byte), )*
+        byte => quote!(#byte),
+    }}
 }
 
 impl ToTokens for Pattern {
@@ -391,44 +516,18 @@ impl ToTokens for Pattern {
         match self {
             // This is annoying, but it seems really hard to make quote!
             // print byte chars instead of integers otherwise
-            Pattern::Byte(byte) => tokens.extend(match *byte {
-                b'0' => quote!(b'0'),
-                b'1' => quote!(b'1'),
-                b'2' => quote!(b'2'),
-                b'3' => quote!(b'3'),
-                b'4' => quote!(b'4'),
-                b'5' => quote!(b'5'),
-                b'6' => quote!(b'6'),
-                b'7' => quote!(b'7'),
-                b'8' => quote!(b'8'),
-                b'9' => quote!(b'9'),
-                b'a' => quote!(b'a'),
-                b'b' => quote!(b'b'),
-                b'c' => quote!(b'c'),
-                b'd' => quote!(b'd'),
-                b'e' => quote!(b'e'),
-                b'f' => quote!(b'f'),
-                b'g' => quote!(b'g'),
-                b'h' => quote!(b'h'),
-                b'i' => quote!(b'i'),
-                b'j' => quote!(b'j'),
-                b'k' => quote!(b'k'),
-                b'l' => quote!(b'l'),
-                b'm' => quote!(b'm'),
-                b'n' => quote!(b'n'),
-                b'o' => quote!(b'o'),
-                b'p' => quote!(b'p'),
-                b'q' => quote!(b'q'),
-                b'r' => quote!(b'r'),
-                b's' => quote!(b's'),
-                b't' => quote!(b't'),
-                b'u' => quote!(b'u'),
-                b'v' => quote!(b'v'),
-                b'w' => quote!(b'w'),
-                b'x' => quote!(b'x'),
-                b'y' => quote!(b'y'),
-                b'z' => quote!(b'z'),
-                _    => quote!(#byte),
+            Pattern::Byte(byte) => tokens.extend(match_quote! {
+                *byte;
+                b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9',
+                b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j',
+                b'k', b'l', b'm', b'n', b'o', b'p', b'q', b'r', b's', b't',
+                b'u', b'v', b'w', b'x', b'y', b'z',
+                b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J',
+                b'K', b'L', b'M', b'N', b'O', b'P', b'Q', b'R', b'S', b'T',
+                b'U', b'V', b'W', b'X', b'Y', b'Z',
+                b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
+                b'{', b'}', b'[', b']', b'<', b'>', b'-', b'=', b'_', b'+',
+                b':', b';', b',', b'.', b'/', b'?', b'|', b'"', b'\'', b'\\',
             }),
             Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
             Pattern::Class(ref class) => tokens.extend(quote!(#( #class )|*)),
