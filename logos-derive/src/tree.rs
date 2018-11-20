@@ -312,7 +312,7 @@ impl<'a> Fork<'a> {
     }
 
     /// Unwinds a Repeat fork into a Maybe fork
-    fn unwind(&mut self) {
+    pub fn unwind(&mut self) {
         if self.kind != ForkKind::Repeat {
             return;
         }
@@ -323,13 +323,40 @@ impl<'a> Fork<'a> {
             branch.chain(&repeat);
         }
 
-        self.kind = ForkKind::Maybe;
+        let mut then = self.then.take();
+
+        let move_back = if let Some(ref mut then) = then {
+            match **then {
+                Node::Fork(ref mut fork) if fork.kind == ForkKind::Plain => {
+                    for branch in fork.arms.drain(..) {
+                        self.insert_branch(branch);
+                    }
+
+                    false
+                },
+                Node::Branch(ref mut branch) => {
+                    self.insert_branch(branch.clone());
+
+                    false
+                },
+                _ => true,
+            }
+        } else {
+            true
+        };
+
+        if move_back {
+            self.then = then;
+            self.kind = ForkKind::Maybe;
+        } else {
+            self.kind = ForkKind::Plain;
+        }
     }
 
     // Attempts to collapse a Maybe fork into a Plain fork.
     // If `then` on this fork is a `Token`, then it will
     // remain a Maybe fork.
-    fn collapse(&mut self) {
+    pub fn collapse(&mut self) {
         if self.kind != ForkKind::Maybe {
             return;
         }
@@ -459,7 +486,7 @@ impl<'a> Node<'a> {
                     && branch.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(false)
             },
             Node::Fork(fork) => {
-                let exhaustive_nones = if fork.kind == ForkKind::Plain { false } else { true };
+                let exhaustive_nones = if fork.kind == ForkKind::Repeat { true } else { false };
 
                 fork.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(false)
                     && (fork.kind != ForkKind::Repeat || fork.arms.len() == 1)

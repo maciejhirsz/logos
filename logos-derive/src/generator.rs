@@ -269,8 +269,9 @@ pub trait SubGenerator<'a>: Sized {
                     return self.print_then(&mut fork.then);
                 }
 
-                if fork.kind != ForkKind::Plain && is_exhaustive
+                if fork.kind != ForkKind::Plain
                     && fork.arms.len() == 1
+                    && fork.arms[0].regex.len() == 1
                     && fork.arms[0].then.is_none()
                 {
                     let regex = &fork.arms[0].regex;
@@ -282,6 +283,8 @@ pub trait SubGenerator<'a>: Sized {
                         self.print_simple_maybe(regex, then)
                     };
                 }
+
+                fork.collapse();
 
                 let kind = fork.kind;
 

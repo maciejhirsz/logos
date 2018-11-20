@@ -40,6 +40,12 @@ impl<'a> Node<'a> {
 
         node.chain(&token);
 
+        // if let Node::Fork(ref mut fork) = node {
+        //     fork.unwind();
+        // }
+
+        // panic!("{:#?}", node);
+
         node
     }
 
