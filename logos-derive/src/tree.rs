@@ -460,24 +460,22 @@ impl<'a> Node<'a> {
             },
             Node::Fork(fork) => {
                 // FIXME: combine the two checks, somehow?
-                // if fork.kind != ForkKind::Plain
-                //     && fork.arms.len() == 1
-                //     && fork.arms[0].then.is_none()
-                //     && fork.arms[0].regex.len() == 1
-                //     && fork.then.is_some()
-                // {
-                //     return true;
-                // }
+                if fork.kind != ForkKind::Plain
+                    && fork.arms.len() == 1
+                    && fork.arms[0].then.as_ref().map(|then| then.exhaustive()).unwrap_or(true)
+                    && fork.arms[0].regex.len() == 1
+                    && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                {
+                    return true;
+                }
 
-                false
-
-                // fork.then.is_some()
-                //     && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
-                //     && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)
-                //     && fork.arms.iter().all(|branch| {
-                //         branch.regex.len() == 1
-                //             && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
-                //     })
+                fork.then.is_some()
+                    && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                    && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)
+                    && fork.arms.iter().all(|branch| {
+                        branch.regex.len() == 1
+                            && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                    })
             },
         }
     }

@@ -54,6 +54,7 @@ impl<'a> Generator<'a> {
             let handler = Ident::new(&handler, Span::call_site());
 
             self.fns.extend(quote! {
+                #[allow(unreachable_code)]
                 fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
                     lex.bump();
                     #body
