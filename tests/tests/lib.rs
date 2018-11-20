@@ -2,11 +2,28 @@ extern crate logos;
 #[macro_use]
 extern crate logos_derive;
 
-use logos::Logos;
+use logos::{Logos, Extras};
 use std::ops::Range;
 
+#[derive(Default)]
+struct Dummy {
+    spaces: usize,
+    tokens: usize,
+}
+
+impl Extras for Dummy {
+    fn on_advance(&mut self) {
+        self.tokens += 1;
+    }
+
+    fn on_whitespace(&mut self, _byte: u8) {
+        self.spaces += 1;
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
-pub enum Token {
+#[extras = "Dummy"]
+enum Token {
     #[error]
     InvalidToken,
 
@@ -234,4 +251,17 @@ fn invalid_abcs() {
         (Token::Identifier, "abcxy", 23..28),
         (Token::Identifier, "abcdefxyz", 29..38),
     ]);
+}
+
+#[test]
+fn extras() {
+    let source = "foo bar     baz qux";
+    let mut lex = Token::lexer(source);
+
+    while lex.token != Token::EndOfProgram {
+        lex.advance();
+    }
+
+    assert_eq!(lex.extras.spaces, 7);
+    assert_eq!(lex.extras.tokens, 5); // End counts as a token
 }

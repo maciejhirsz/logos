@@ -59,7 +59,7 @@ impl<Token: Logos, Src: Source> Lexer<Token, Src> {
     pub fn advance(&mut self) {
         let mut ch;
 
-        self.extras.on_consume();
+        self.extras.on_advance();
 
         unwind! {
             ch = self.read();
@@ -91,7 +91,7 @@ impl<Token: Logos, Src: Source> Lexer<Token, Src> {
 /// in JavaScript.
 pub trait Extras: Sized + Default {
     /// Method called by the `Lexer` when a new token is about to be produced.
-    fn on_consume(&mut self) {}
+    fn on_advance(&mut self) {}
 
     /// Method called by the `Lexer` when a white space byte has been encountered.
     fn on_whitespace(&mut self, _byte: u8) {}
