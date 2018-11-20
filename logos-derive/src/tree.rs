@@ -264,7 +264,7 @@ impl<'a> Fork<'a> {
             if let Some(regex) = branch.regex.match_split(&mut other.regex) {
                 let old = mem::replace(other, Branch {
                     regex,
-                    then: branch.to_node().map(Box::new),
+                    then: branch.to_node().map(Box::new)
                 });
 
                 other.insert_then(old.to_node().map(Box::new));
@@ -379,6 +379,22 @@ impl<'a> Fork<'a> {
     fn chain(&mut self, then: &Node<'a>) {
         if self.kind == ForkKind::Plain {
             for branch in self.arms.iter_mut() {
+                match branch.then {
+                    // FIXME: This is super hacky and is a bandaid over the fact that
+                    //        tree produces by something like `try|typeof|type` is not
+                    //        attaching token leaves properly currently :|
+                    Some(ref mut node) => {
+                        if node.is_branch() {
+                            node.to_mut_fork().kind = ForkKind::Maybe;
+                            node.chain(then);
+                            node.to_mut_fork().collapse();
+
+                            continue
+                        }
+                    },
+                    _ => {}
+                }
+
                 branch.chain(then)
             }
         } else {
@@ -480,10 +496,7 @@ impl<'a> Node<'a> {
     pub fn is_exhaustive(&self) -> bool {
         match self {
             Node::Token(_) => true,
-            Node::Branch(branch) => {
-                branch.regex.len() == 1
-                    && branch.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(false)
-            },
+            Node::Branch(_) => false,
             Node::Fork(fork) => {
                 let exhaustive_nones = if fork.kind == ForkKind::Repeat { true } else { false };
 
@@ -571,6 +584,13 @@ impl<'a> Node<'a> {
             Node::Branch(branch) => branch.chain(then),
             Node::Fork(fork) => fork.chain(then),
             Node::Token(_) => {},
+        }
+    }
+
+    fn is_branch(&self) -> bool {
+        match self {
+            Node::Branch(_) => true,
+            _ => false,
         }
     }
 

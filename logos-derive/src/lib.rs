@@ -38,8 +38,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let size = item.variants.len();
     let name = &item.ident;
 
-    // panic!("{:#?}", item);
-
     let mut error = None;
     let mut end = None;
 
@@ -101,7 +99,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    panic!("{:#?}", fork);
+    // panic!("{:#?}", fork);
 
     let mut handlers = Handlers::new();
 
