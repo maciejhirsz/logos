@@ -434,186 +434,151 @@ impl PartialOrd for Pattern {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use self::RepetitionFlag::*;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use syn::Ident;
 
-//     #[test]
-//     fn pattern_bytes_byte() {
-//         let pattern = Pattern::Byte(b'a');
+    #[test]
+    fn pattern_bytes_byte() {
+        let pattern = Pattern::Byte(b'a');
 
-//         assert_eq!(b"a", &pattern.to_bytes()[..]);
-//     }
+        assert_eq!(b"a", &pattern.to_bytes()[..]);
+    }
 
-//     #[test]
-//     fn pattern_bytes_range() {
-//         let pattern = Pattern::Range(b'a', b'f');
+    #[test]
+    fn pattern_bytes_range() {
+        let pattern = Pattern::Range(b'a', b'f');
 
-//         assert_eq!(b"abcdef", &pattern.to_bytes()[..]);
-//     }
+        assert_eq!(b"abcdef", &pattern.to_bytes()[..]);
+    }
 
-//     #[test]
-//     fn pattern_bytes_alternative() {
-//         let pattern = Pattern::Class(vec![
-//             Pattern::Byte(b'_'),
-//             Pattern::Byte(b'$'),
-//             Pattern::Byte(b'!'),
-//         ]);
+    #[test]
+    fn pattern_bytes_alternative() {
+        let pattern = Pattern::Class(vec![
+            Pattern::Byte(b'_'),
+            Pattern::Byte(b'$'),
+            Pattern::Byte(b'!'),
+        ]);
 
-//         assert_eq!(b"_$!", &pattern.to_bytes()[..]);
-//     }
+        assert_eq!(b"_$!", &pattern.to_bytes()[..]);
+    }
 
-//     #[test]
-//     fn pattern_bytes_complex() {
-//         let pattern = Pattern::Class(vec![
-//             Pattern::Range(b'a', b'f'),
-//             Pattern::Range(b'0', b'9'),
-//             Pattern::Byte(b'_'),
-//             Pattern::Byte(b'$'),
-//             Pattern::Byte(b'!'),
-//         ]);
+    #[test]
+    fn pattern_bytes_complex() {
+        let pattern = Pattern::Class(vec![
+            Pattern::Range(b'a', b'f'),
+            Pattern::Range(b'0', b'9'),
+            Pattern::Byte(b'_'),
+            Pattern::Byte(b'$'),
+            Pattern::Byte(b'!'),
+        ]);
 
-//         assert_eq!(b"abcdef0123456789_$!", &pattern.to_bytes()[..]);
-//     }
+        assert_eq!(b"abcdef0123456789_$!", &pattern.to_bytes()[..]);
+    }
 
-//     fn mock_token() -> Ident {
-//         use proc_macro2::Span;
+    fn mock_token() -> Ident {
+        use proc_macro2::Span;
 
-//         Ident::new("mock", Span::call_site())
-//     }
+        Ident::new("mock", Span::call_site())
+    }
 
-//     fn branch(node: Node) -> Option<Branch> {
-//         match node {
-//             Node::Branch(branch) => Some(branch),
-//             _ => None
-//         }
-//     }
+    fn branch(node: Node) -> Option<Branch> {
+        match node {
+            Node::Branch(branch) => Some(branch),
+            Node::Fork(fork) => Some(fork.arms[0].clone()),
+            _ => None
+        }
+    }
 
-//     #[test]
-//     fn branch_regex_number() {
-//         let token = mock_token();
-//         let regex = "[1-9][0-9]*";
-//         let b = branch(Node::from_regex(regex, &token)).unwrap();
+    #[test]
+    fn branch_regex_number() {
+        let token = mock_token();
+        let regex = "[1-9][0-9]*";
+        let b = branch(Node::from_regex(regex, &token)).unwrap();
 
-//         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
-//         assert_eq!(b.regex.repeat, One);
+        assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
 
-//         let b = branch(*b.then).unwrap();
+        let b = branch(*b.then.unwrap()).unwrap();
 
-//         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'0', b'9')]);
-//         assert_eq!(b.regex.repeat, ZeroOrMore);
-//     }
+        assert_eq!(b.regex.patterns(), &[Pattern::Range(b'0', b'9')]);
+    }
 
-//     #[test]
-//     fn regex_ident() {
-//         let token = mock_token();
-//         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
-//         let b = branch(Node::from_regex(regex, &token)).unwrap();
+    #[test]
+    fn regex_ident() {
+        let token = mock_token();
+        let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
+        let b = branch(Node::from_regex(regex, &token)).unwrap();
 
-//         assert_eq!(b.regex.patterns(), &[
-//             Pattern::Class(vec![
-//                     Pattern::Byte(b'$'),
-//                     Pattern::Range(b'A', b'Z'),
-//                     Pattern::Byte(b'_'),
-//                     Pattern::Range(b'a', b'z'),
-//             ])
-//         ]);
-//         assert_eq!(b.regex.repeat, One);
+        assert_eq!(b.regex.patterns(), &[
+            Pattern::Class(vec![
+                    Pattern::Byte(b'$'),
+                    Pattern::Range(b'A', b'Z'),
+                    Pattern::Byte(b'_'),
+                    Pattern::Range(b'a', b'z'),
+            ])
+        ]);
 
-//         let b = branch(*b.then).unwrap();
+        let b = branch(*b.then.unwrap()).unwrap();
 
-//         assert_eq!(b.regex.patterns(), &[
-//             Pattern::Class(vec![
-//                 Pattern::Byte(b'$'),
-//                 Pattern::Range(b'0', b'9'),
-//                 Pattern::Range(b'A', b'Z'),
-//                 Pattern::Byte(b'_'),
-//                 Pattern::Range(b'a', b'z'),
-//             ])
-//         ]);
-//         assert_eq!(b.regex.repeat, ZeroOrMore);
-//     }
+        assert_eq!(b.regex.patterns(), &[
+            Pattern::Class(vec![
+                Pattern::Byte(b'$'),
+                Pattern::Range(b'0', b'9'),
+                Pattern::Range(b'A', b'Z'),
+                Pattern::Byte(b'_'),
+                Pattern::Range(b'a', b'z'),
+            ])
+        ]);
+    }
 
-//     #[test]
-//     fn regex_hex() {
-//         let token = mock_token();
-//         let regex = "0x[0-9a-fA-F]+";
-//         let b = branch(Node::from_regex(regex, &token)).unwrap();
+    #[test]
+    fn regex_hex() {
+        let token = mock_token();
+        let regex = "0x[0-9a-fA-F]+";
+        let b = branch(Node::from_regex(regex, &token)).unwrap();
 
-//         assert_eq!(b.regex.patterns(), &[
-//             Pattern::Byte(b'0'),
-//             Pattern::Byte(b'x'),
-//         ]);
-//         assert_eq!(b.regex.repeat, One);
+        assert_eq!(b.regex.patterns(), &[
+            Pattern::Byte(b'0'),
+            Pattern::Byte(b'x'),
+        ]);
 
-//         let b = branch(*b.then).unwrap();
+        let b = branch(*b.then.unwrap()).unwrap();
 
-//         assert_eq!(b.regex.patterns(), &[
-//             Pattern::Class(vec![
-//                 Pattern::Range(b'0', b'9'),
-//                 Pattern::Range(b'A', b'F'),
-//                 Pattern::Range(b'a', b'f'),
-//             ])
-//         ]);
-//         assert_eq!(b.regex.repeat, OneOrMore);
-//     }
+        assert_eq!(b.regex.patterns(), &[
+            Pattern::Class(vec![
+                Pattern::Range(b'0', b'9'),
+                Pattern::Range(b'A', b'F'),
+                Pattern::Range(b'a', b'f'),
+            ])
+        ]);
+    }
 
-//     #[test]
-//     fn regex_unshift() {
-//         let token = mock_token();
-//         let regex = "abc";
-//         let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
+    #[test]
+    fn regex_unshift() {
+        let token = mock_token();
+        let regex = "abc";
+        let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
 
-//         assert_eq!(r.patterns(), &[
-//             Pattern::Byte(b'a'),
-//             Pattern::Byte(b'b'),
-//             Pattern::Byte(b'c'),
-//         ]);
+        assert_eq!(r.patterns(), &[
+            Pattern::Byte(b'a'),
+            Pattern::Byte(b'b'),
+            Pattern::Byte(b'c'),
+        ]);
 
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
-//         assert_eq!(r.patterns(), &[
-//             Pattern::Byte(b'b'),
-//             Pattern::Byte(b'c'),
-//         ]);
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.patterns(), &[
+            Pattern::Byte(b'b'),
+            Pattern::Byte(b'c'),
+        ]);
 
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
-//         assert_eq!(r.patterns(), &[
-//             Pattern::Byte(b'c'),
-//         ]);
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
+        assert_eq!(r.patterns(), &[
+            Pattern::Byte(b'c'),
+        ]);
 
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
-//         assert_eq!(r.patterns(), &[]);
-//         assert_eq!(r.unshift(), None);
-//     }
-
-//     #[test]
-//     fn regex_unshift_repeat() {
-//         let token = mock_token();
-//         let regex = "a+";
-//         let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
-
-//         assert_eq!(r.patterns(), &[Pattern::Byte(b'a')]);
-//         assert_eq!(r.repeat, OneOrMore);
-
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
-//         assert_eq!(r.patterns(), &[Pattern::Byte(b'a')]);
-//         assert_eq!(r.repeat, ZeroOrMore);
-
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
-//         assert_eq!(r.patterns(), &[Pattern::Byte(b'a')]);
-//         assert_eq!(r.repeat, ZeroOrMore);
-//     }
-
-//     #[test]
-//     fn regex_unshift_repeat_group() {
-//         let token = mock_token();
-//         let regex = "(abc)*";
-//         let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
-
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
-//         assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
-//     }
-// }
+        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
+        assert_eq!(r.patterns(), &[]);
+        assert_eq!(r.unshift(), None);
+    }
+}
