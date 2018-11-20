@@ -257,6 +257,8 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn print_node(&mut self, node: &mut Node) -> TokenStream {
+        let is_exhaustive = node.exhaustive();
+
         match node {
             Node::Token(token) => self.print_token(token),
             Node::Branch(branch) => self.print_branch(branch),
@@ -265,19 +267,19 @@ pub trait SubGenerator<'a>: Sized {
                     return self.print_then(&mut fork.then);
                 }
 
-                // if fork.kind != ForkKind::Plain
-                //     && fork.arms.len() == 1
-                //     && fork.arms[0].then.is_none()
-                // {
-                //     let regex = &fork.arms[0].regex;
-                //     let then = &mut fork.then;
+                if fork.kind != ForkKind::Plain && is_exhaustive
+                    && fork.arms.len() == 1
+                    && fork.arms[0].then.is_none()
+                {
+                    let regex = &fork.arms[0].regex;
+                    let then = &mut fork.then;
 
-                //     return if fork.kind == ForkKind::Repeat {
-                //         self.print_simple_repeat(regex, then)
-                //     } else {
-                //         self.print_simple_maybe(regex, then)
-                //     };
-                // }
+                    return if fork.kind == ForkKind::Repeat {
+                        self.print_simple_repeat(regex, then)
+                    } else {
+                        self.print_simple_maybe(regex, then)
+                    };
+                }
 
                 let kind = fork.kind;
 
@@ -297,8 +299,9 @@ pub trait SubGenerator<'a>: Sized {
                     };
 
                     let branch = match kind {
+                        ForkKind::Plain  => self.print_branch(branch),
+                        ForkKind::Maybe  => MaybeGenerator(self, PhantomData).print_branch(branch),
                         ForkKind::Repeat => LoopGenerator(self, PhantomData).print_branch(branch),
-                        _                => self.print_branch(branch),
                     };
 
                     quote! { #test {
@@ -309,7 +312,7 @@ pub trait SubGenerator<'a>: Sized {
 
                 let default = self.print_then(&mut fork.then);
 
-                if fork.kind == ForkKind::Repeat {
+                if fork.kind == ForkKind::Repeat || (fork.kind == ForkKind::Maybe && !is_exhaustive) {
                     let fallback = self.print_fallback();
 
                     quote!({
@@ -348,6 +351,10 @@ pub struct FallbackGenerator<'a: 'b, 'b> {
 }
 
 pub struct LoopGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
+where
+    SubGen: SubGenerator<'a> + 'c;
+
+pub struct MaybeGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
 where
     SubGen: SubGenerator<'a> + 'c;
 
@@ -444,6 +451,35 @@ where
             self.0.print_node(&mut **node)
         } else {
             quote!(continue)
+        }
+    }
+
+    fn print(&mut self, node: &mut Node) -> TokenStream {
+        self.0.print(node)
+    }
+
+    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+        self.0.print_token(variant)
+    }
+
+    fn print_fallback(&mut self) -> TokenStream {
+        self.0.print_fallback()
+    }
+}
+
+impl<'a, 'b, 'c, SubGen> SubGenerator<'a> for MaybeGenerator<'a, 'b, 'c, SubGen>
+where
+    SubGen: SubGenerator<'a>
+{
+    fn gen(&mut self) -> &mut Generator<'a> {
+        self.0.gen()
+    }
+
+    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        if let Some(node) = then {
+            self.0.print_node(&mut **node)
+        } else {
+            quote!(break)
         }
     }
 
