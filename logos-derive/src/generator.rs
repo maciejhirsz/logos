@@ -73,7 +73,7 @@ impl<'a> Generator<'a> {
         // At this point all Rc pointers should be unique
         let tree = Rc::make_mut(&mut tree);
 
-        if tree.exhaustive() {
+        if tree.is_exhaustive() {
             ExhaustiveGenerator(self).print(tree)
         } else {
             if let Some(mut fallback) = tree.fallback() {
@@ -258,7 +258,8 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn print_node(&mut self, node: &mut Node) -> TokenStream {
-        let is_exhaustive = node.exhaustive();
+        let is_exhaustive = node.is_exhaustive();
+        let is_bounded = node.is_bounded();
 
         match node {
             Node::Token(token) => self.print_token(token),
@@ -313,7 +314,17 @@ pub trait SubGenerator<'a>: Sized {
 
                 let default = self.print_then(&mut fork.then);
 
-                if fork.kind == ForkKind::Repeat || (fork.kind == ForkKind::Maybe && !is_exhaustive) {
+                if fork.kind == ForkKind::Plain
+                    || (fork.kind == ForkKind::Maybe && is_bounded)
+                    || (fork.kind == ForkKind::Repeat && is_exhaustive)
+                {
+                    quote! {
+                        match lex.read() {
+                            #branches
+                            _ => #default,
+                        }
+                    }
+                } else {
                     let fallback = self.print_fallback();
 
                     quote!({
@@ -328,13 +339,6 @@ pub trait SubGenerator<'a>: Sized {
 
                         #default
                     })
-                } else {
-                    quote! {
-                        match lex.read() {
-                            #branches
-                            _ => #default,
-                        }
-                    }
                 }
             },
         }

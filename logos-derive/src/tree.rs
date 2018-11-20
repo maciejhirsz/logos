@@ -451,30 +451,35 @@ impl<'a> Node<'a> {
     }
 
     /// Tests whether the branch produces a token on all leaves without any tests.
-    pub fn exhaustive(&self) -> bool {
+    pub fn is_exhaustive(&self) -> bool {
         match self {
             Node::Token(_) => true,
             Node::Branch(branch) => {
                 branch.regex.len() == 1
-                    && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                    && branch.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(false)
             },
             Node::Fork(fork) => {
-                // FIXME: combine the two checks, somehow?
-                if fork.kind != ForkKind::Plain
-                    && fork.arms.len() == 1
-                    && fork.arms[0].then.as_ref().map(|then| then.exhaustive()).unwrap_or(true)
-                    && fork.arms[0].regex.len() == 1
-                    && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
-                {
-                    return true;
-                }
+                let exhaustive_nones = if fork.kind == ForkKind::Plain { false } else { true };
 
-                fork.then.is_some()
-                    && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
-                    && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)
+                fork.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(false)
+                    && (fork.kind != ForkKind::Repeat || fork.arms.len() == 1)
                     && fork.arms.iter().all(|branch| {
                         branch.regex.len() == 1
-                            && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
+                            && branch.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(exhaustive_nones)
+                    })
+            },
+        }
+    }
+
+    /// Tests whether all branches have a `then` node set to `Some`, and that that node is bounded as well.
+    pub fn is_bounded(&self) -> bool {
+        match self {
+            Node::Token(_) => true,
+            Node::Branch(branch) => branch.then.as_ref().map(|then| then.is_bounded()).unwrap_or(false),
+            Node::Fork(fork) => {
+                // fork.then.as_ref().map(|then| then.is_bounded()).unwrap_or(false)
+                    fork.arms.iter().all(|branch| {
+                        branch.then.as_ref().map(|then| then.is_bounded()).unwrap_or(false)
                     })
             },
         }
@@ -835,7 +840,6 @@ mod tests {
         let token_a = token("ABC");
         let token_b = token("DEF");
 
-
         let mut parent = Node::Fork(Fork {
             kind: ForkKind::Repeat,
             arms: vec![Branch::new(Regex::sequence("def"))],
@@ -863,5 +867,40 @@ mod tests {
         parent.insert(child);
 
         assert!(parent == expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", parent, expected);
+    }
+
+    #[test]
+    fn tree_is_exhaustive() {
+        // '=' -> MAYBE [
+        //     '=' -> MAYBE [
+        //         '=' -> TOKEN "OpStrictEquality"
+        //     ] -> TOKEN "OpEquality",
+        //     '>' -> TOKEN "FatArrow"
+        // ] -> TOKEN "OpAssign",
+        //
+        let arrow = token("FatArrow");
+        let assign = token("OpAssign");
+        let eq = token("OpEquality");
+        let seq = token("OpStrictEquality");
+
+        let seq_or_eq = Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![branch("=", &seq)],
+            then: Some(Node::Token(&eq).boxed()),
+        });
+
+        let tree = Node::Fork(Fork {
+            kind: ForkKind::Maybe,
+            arms: vec![
+                Branch {
+                    regex: Regex::sequence("="),
+                    then: Some(Box::new(seq_or_eq)),
+                },
+                branch(">", &arrow),
+            ],
+            then: Some(Node::Token(&assign).boxed()),
+        });
+
+        assert!(tree.is_exhaustive(), "Tree is not is_exhaustive! {:#?}", tree);
     }
 }
