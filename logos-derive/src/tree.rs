@@ -431,6 +431,16 @@ impl<'a> Node<'a> {
                     && branch.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
             },
             Node::Fork(fork) => {
+                // FIXME: combine the two checks, somehow?
+                if fork.kind != ForkKind::Plain
+                    && fork.arms.len() == 1
+                    && fork.arms[0].then.is_none()
+                    && fork.arms[0].regex.len() == 1
+                    && fork.then.is_some()
+                {
+                    return true;
+                }
+
                 fork.then.is_some()
                     && fork.then.as_ref().map(|then| then.exhaustive()).unwrap_or(false)
                     && (fork.kind == ForkKind::Plain || fork.arms.len() == 1)

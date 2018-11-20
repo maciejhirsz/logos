@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use syn::Ident;
-use regex::RepetitionFlag;
+use regex::Regex;
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
 
@@ -260,6 +260,40 @@ pub trait SubGenerator<'a> {
         // }
     }
 
+    fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
+        if regex.len() == 0 {
+            return self.print_then(then);
+        }
+
+        let (first, rest) = self.regex_to_test(regex.patterns());
+        let next = self.print_then(then);
+
+        quote!({
+            while #first #(&& #rest)* {
+                lex.bump();
+            }
+
+            #next
+        })
+    }
+
+    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
+        if regex.len() == 0 {
+            return self.print_then(then);
+        }
+
+        let (first, rest) = self.regex_to_test(regex.patterns());
+        let next = self.print_then(then);
+
+        quote!({
+            if #first #(&& #rest)* {
+                lex.bump();
+            }
+
+            #next
+        })
+    }
+
     fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, Vec<TokenStream>) {
         let first = &patterns[0];
         let rest = &patterns[1..];
@@ -290,6 +324,24 @@ pub trait SubGenerator<'a> {
             Node::Token(token) => self.print_token(token),
             Node::Branch(branch) => self.print_branch(branch),
             Node::Fork(fork) => {
+                if fork.arms.len() == 0 {
+                    return self.print_then(&mut fork.then);
+                }
+
+                if fork.kind != ForkKind::Plain
+                    && fork.arms.len() == 1
+                    && fork.arms[0].then.is_none()
+                {
+                    let regex = &fork.arms[0].regex;
+                    let then = &mut fork.then;
+
+                    return if fork.kind == ForkKind::Repeat {
+                        self.print_simple_repeat(regex, then)
+                    } else {
+                        self.print_simple_maybe(regex, then)
+                    };
+                }
+
                 let branches = fork.arms.iter_mut().map(|branch| {
                     let test = {
                         let pattern = branch.regex
