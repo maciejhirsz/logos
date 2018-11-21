@@ -11,15 +11,17 @@ pub type Lexicon<Lexer> = [Option<fn(&mut Lexer)>; 256];
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<Token: Logos, Source> {
-    source: Source,
-    token_start: usize,
-    token_end: usize,
+    /// Source from which the Lexer is reading tokens.
+    pub source: Source,
 
     /// Current token. Call the `advance` method to get a new token.
     pub token: Token,
 
     /// Extras associated with the `Token`.
     pub extras: Token::Extras,
+
+    token_start: usize,
+    token_end: usize,
 }
 
 macro_rules! unwind {
@@ -47,10 +49,10 @@ where
     pub fn new(source: Source) -> Self {
         let mut lex = Lexer {
             source,
-            token_start: 0,
-            token_end: 0,
             token: Token::ERROR,
             extras: Default::default(),
+            token_start: 0,
+            token_end: 0,
         };
 
         lex.advance();
@@ -85,7 +87,7 @@ where
 
     /// Get a string slice of the current token.
     pub fn slice(&self) -> &'source str {
-        unsafe { self.source.slice(self.range()) }
+        unsafe { self.source.slice_unchecked(self.range()) }
     }
 }
 

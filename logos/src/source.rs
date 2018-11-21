@@ -31,7 +31,24 @@ pub trait Source<'source> {
     /// ```
     unsafe fn read(&self, offset: usize) -> u8;
 
-    /// Get a slice of the source at given range. This is analogous for
+    /// Get a slice of the source at given range. This is analogous to
+    /// `slice::get(range)`.
+    ///
+    /// ```rust
+    /// # extern crate logos;
+    /// # fn main() {
+    /// use logos::Source;
+    ///
+    /// let foo = "It was the year when they finally immanentized the Eschaton.";
+    ///
+    /// unsafe {
+    ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
+    /// }
+    /// # }
+    /// ```
+    fn slice(&self, range: Range<usize>) -> Option<&'source str>;
+
+    /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
     ///
     /// ```rust
@@ -42,11 +59,11 @@ pub trait Source<'source> {
     /// let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
     /// unsafe {
-    ///     assert_eq!(foo.slice(51..59), "Eschaton");
+    ///     assert_eq!(Source::slice_unchecked(&foo, 51..59), "Eschaton");
     /// }
     /// # }
     /// ```
-    unsafe fn slice(&self, range: Range<usize>) -> &'source str;
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str;
 }
 
 impl<'source> Source<'source> for &'source str {
@@ -63,7 +80,11 @@ impl<'source> Source<'source> for &'source str {
         }
     }
 
-    unsafe fn slice(&self, range: Range<usize>) -> &'source str {
+    fn slice(&self, range: Range<usize>) -> Option<&'source str> {
+        self.get(range)
+    }
+
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!", range, self.len()
@@ -89,7 +110,15 @@ impl<'source> Source<'source> for toolshed::NulTermStr<'source> {
         self.byte_unchecked(offset)
     }
 
-    unsafe fn slice(&self, range: Range<usize>) -> &'source str {
+    fn slice(&self, range: Range<usize>) -> Option<&'source str> {
+        if range.start <= self.len() && range.end <= self.len() {
+            Some(unsafe { self.get_unchecked(range) })
+        } else {
+            None
+        }
+    }
+
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!", range, self.len()
