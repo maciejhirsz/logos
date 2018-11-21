@@ -5,11 +5,7 @@ use std::ops::Range;
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
-pub trait Source {
-    /// Slice of this `Source`, for most types this will be `&str` with
-    /// appropriate lifetime.
-    type Slice;
-
+pub trait Source<'source> {
     /// Length of the source
     fn len(&self) -> usize;
 
@@ -50,12 +46,10 @@ pub trait Source {
     /// }
     /// # }
     /// ```
-    unsafe fn slice(&self, range: Range<usize>) -> Self::Slice;
+    unsafe fn slice(&self, range: Range<usize>) -> &'source str;
 }
 
-impl<'source> Source for &'source str {
-    type Slice = &'source str;
-
+impl<'source> Source<'source> for &'source str {
     fn len(&self) -> usize {
         (*self).len()
     }
@@ -69,7 +63,7 @@ impl<'source> Source for &'source str {
         }
     }
 
-    unsafe fn slice(&self, range: Range<usize>) -> Self::Slice {
+    unsafe fn slice(&self, range: Range<usize>) -> &'source str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!", range, self.len()
@@ -84,9 +78,7 @@ impl<'source> Source for &'source str {
 ///
 /// **This requires the `"nul_term_source"` feature to be enabled.**
 #[cfg(feature = "nul_term_source")]
-impl<'source> Source for toolshed::NulTermStr<'source> {
-    type Slice = &'source str;
-
+impl<'source> Source<'source> for toolshed::NulTermStr<'source> {
     fn len(&self) -> usize {
         (**self).len()
     }
@@ -97,7 +89,7 @@ impl<'source> Source for toolshed::NulTermStr<'source> {
         self.byte_unchecked(offset)
     }
 
-    unsafe fn slice(&self, range: Range<usize>) -> Self::Slice {
+    unsafe fn slice(&self, range: Range<usize>) -> &'source str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!", range, self.len()
