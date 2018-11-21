@@ -13,6 +13,7 @@ pub struct Generator<'a> {
     fns: TokenStream,
     fns_constructed: HashMap<usize, Ident>,
     patterns: HashMap<Pattern, Ident>,
+    callbacks: HashMap<&'a Ident, Ident>,
 }
 
 /// Get a pointer to the Rc as `usize`. We can use this
@@ -30,7 +31,12 @@ impl<'a> Generator<'a> {
             fns: TokenStream::new(),
             fns_constructed: HashMap::new(),
             patterns: HashMap::new(),
+            callbacks: HashMap::new(),
         }
+    }
+
+    pub fn set_callback(&mut self, variant: &'a Ident, func: Ident) {
+        self.callbacks.insert(variant, func);
     }
 
     pub fn print_tree(&mut self, tree: Rc<Node<'a>>) -> TokenStream {
@@ -75,19 +81,17 @@ impl<'a> Generator<'a> {
 
         if tree.is_exhaustive() {
             ExhaustiveGenerator(self).print(tree)
-        } else {
-            if let Some(mut fallback) = tree.fallback() {
-                let boundary = fallback.regex.first().clone();
-                let fallback = LooseGenerator(self).print_then(&mut fallback.then);
+        } else if let Some(mut fallback) = tree.fallback() {
+            let boundary = fallback.regex.first().clone();
+            let fallback = LooseGenerator(self).print_then(&mut fallback.then);
 
-                FallbackGenerator {
-                    gen: self,
-                    fallback,
-                    boundary,
-                }.print(tree)
-            } else {
-                LooseGenerator(self).print(tree)
-            }
+            FallbackGenerator {
+                gen: self,
+                fallback,
+                boundary,
+            }.print(tree)
+        } else {
+            LooseGenerator(self).print(tree)
         }
     }
 
@@ -380,7 +384,15 @@ impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.gen().enum_name;
 
-        quote!(#name::#variant)
+        match self.gen().callbacks.get(variant) {
+            Some(callback) => {
+                quote!({
+                    lex.token = #name::#variant;
+                    return #callback(lex)
+                })
+            },
+            None => quote!(#name::#variant),
+        }
     }
 
     fn print_fallback(&mut self) -> TokenStream {
@@ -406,7 +418,15 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
     fn print_token(&mut self, variant: &Ident) -> TokenStream {
         let name = self.gen().enum_name;
 
-        quote!(return lex.token = #name::#variant)
+        match self.gen().callbacks.get(variant) {
+            Some(callback) => {
+                quote!({
+                    lex.token = #name::#variant;
+                    return #callback(lex)
+                })
+            },
+            None => quote!(return lex.token = #name::#variant),
+        }
     }
 
     fn print_fallback(&mut self) -> TokenStream {
@@ -434,9 +454,22 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
         let name = self.gen().enum_name;
         let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
 
-        quote! {
-            if !#pattern_fn(lex.read()) {
-                return lex.token = #name::#variant;
+
+        match self.gen().callbacks.get(variant) {
+            Some(callback) => {
+                quote! {
+                    if !#pattern_fn(lex.read()) {
+                        lex.token = #name::#variant;
+                        return #callback(lex);
+                    }
+                }
+            },
+            None => {
+                quote! {
+                    if !#pattern_fn(lex.read()) {
+                        return lex.token = #name::#variant;
+                    }
+                }
             }
         }
     }

@@ -15,3 +15,5 @@ matrix:
 
 os:
   - linux
+
+script: ./test.sh
