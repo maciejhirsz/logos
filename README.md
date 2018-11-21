@@ -20,7 +20,7 @@ extern crate logos;
 
 use logos::Logos;
 
-#[derive(Debug, PartialEq, Logos)]
+#[derive(Logos, Debug, PartialEq)]
 enum Token {
     // Logos requires that we define two default variants,
     // one for end of input source,

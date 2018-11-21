@@ -1,5 +1,5 @@
-pub use syn::{Attribute, LitStr};
-pub use proc_macro2::TokenTree;
+pub use syn::{Attribute, LitStr, Ident, PathArguments, Lifetime};
+pub use proc_macro2::{Span, TokenTree};
 use quote::quote;
 
 pub trait OptionExt<T> {
@@ -41,5 +41,12 @@ pub fn value_from_attr(name: &str, attr: &Attribute) -> Option<String> {
         Some(value)
     } else {
         None
+    }
+}
+
+pub fn ident(ident: &str) -> Ident {
+    match syn::parse_str::<Ident>(ident) {
+        Ok(ident) => ident,
+        Err(_)    => panic!("Unable to parse {:?} into a Rust identifier.", ident),
     }
 }

@@ -28,8 +28,7 @@ use generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
-use syn::{ItemEnum, Fields, Ident};
+use syn::{ItemEnum, Fields};
 
 #[proc_macro_derive(Logos, attributes(
     extras,
@@ -46,19 +45,26 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let size = item.variants.len();
     let name = &item.ident;
 
-    let mut extras = quote!(());
+    let mut extras = None;
     let mut error = None;
     let mut end = None;
 
     for attr in &item.attrs {
         if let Some(ext) = value_from_attr("extras", attr) {
-            let ext = Ident::new(&ext, Span::call_site());
-
-            extras = quote!(#ext);
+            extras.insert(util::ident(&ext), |_| panic!("Only one #[extras] attribute can be declared."));
         }
     }
 
+    // Initially we pack all variants into a single fork, this is where all the logic branching
+    // magic happens.
     let mut fork = Fork::default();
+
+    // Then the fork is split into handlers using all possible permutations of the first byte of
+    // any branch as the index of a 256-entries-long table.
+    let mut handlers = Handlers::new();
+
+    // Finally the `Generator` will spit out Rust code for all the handlers.
+    let mut generator = Generator::new(name);
 
     for variant in &item.variants {
         if variant.discriminant.is_some() {
@@ -91,14 +97,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {
-                panic!("Callback {} for variant {}", callback, variant);
+                generator.set_callback(variant, util::ident(&callback));
             }
         }
     }
 
     // panic!("{:#?}", fork);
-
-    let mut handlers = Handlers::new();
 
     for branch in fork.arms.drain(..) {
         handlers.insert(branch)
@@ -114,9 +118,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
         None => panic!("Missing #[end] token variant.")
     };
 
-    // panic!("{:#?}", handlers);
+    let extras = match extras {
+        Some(ext) => quote!(#ext),
+        None      => quote!(()),
+    };
 
-    let mut generator = Generator::new(name);
+    // panic!("{:#?}", handlers);
 
     let handlers = handlers.into_iter().map(|handler| {
         use handlers::Handler;
@@ -138,7 +145,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
 
-            fn lexicon<'a, S: ::logos::Source>() -> &'a ::logos::Lexicon<::logos::Lexer<Self, S>> {
+            fn lexicon<'lexicon, S: ::logos::Source>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
                 use ::logos::internal::LexerInternal;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;

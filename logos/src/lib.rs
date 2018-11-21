@@ -20,7 +20,7 @@
 //!
 //! use logos::Logos;
 //!
-//! #[derive(Debug, PartialEq, Logos)]
+//! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
 //!     // Logos requires that we define two default variants,
 //!     // one for end of input source,
@@ -104,7 +104,7 @@ pub use source::Source;
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
 pub trait Logos: Sized {
-    /// Associated `Extras` for the particular lexer. Those can handle things that
+    /// Associated type `Extras` for the particular lexer. Those can handle things that
     /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
     /// in JavaScript.
     type Extras: self::Extras;
@@ -120,11 +120,11 @@ pub trait Logos: Sized {
     const ERROR: Self;
 
     /// Returns a lookup table for the `Lexer`
-    fn lexicon<'a, S: Source>() -> &'a Lexicon<Lexer<Self, S>>;
+    fn lexicon<'lexicon, Source: self::Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
-    fn lexer<S: Source>(source: S) -> Lexer<Self, S> {
+    fn lexer<Source: self::Source>(source: Source) -> Lexer<Self, Source> {
         Lexer::new(source)
     }
 }

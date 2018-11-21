@@ -2,16 +2,17 @@ extern crate logos;
 #[macro_use]
 extern crate logos_derive;
 
-use logos::{Logos, Extras};
+use logos::{Logos, Extras, Lexer};
 use std::ops::Range;
 
 #[derive(Default)]
-struct Dummy {
+struct MockExtras {
     spaces: usize,
     tokens: usize,
+    numbers: usize,
 }
 
-impl Extras for Dummy {
+impl Extras for MockExtras {
     fn on_advance(&mut self) {
         self.tokens += 1;
     }
@@ -21,8 +22,12 @@ impl Extras for Dummy {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Logos)]
-#[extras = "Dummy"]
+fn count_numbers<S>(lex: &mut Lexer<Token, S>) {
+    lex.extras.numbers += 1;
+}
+
+#[derive(Logos, Debug, Clone, Copy, PartialEq)]
+#[extras = "MockExtras"]
 enum Token {
     #[error]
     InvalidToken,
@@ -34,6 +39,7 @@ enum Token {
     Identifier,
 
     #[regex = "[1-9][0-9]*"]
+    #[callback = "count_numbers"]
     Number,
 
     #[regex = "0b[01]+"]
@@ -254,14 +260,16 @@ fn invalid_abcs() {
 }
 
 #[test]
-fn extras() {
-    let source = "foo bar     baz qux";
+fn extras_and_callbacks() {
+    let source = "foo  bar       42      HAL=9000";
     let mut lex = Token::lexer(source);
 
     while lex.token != Token::EndOfProgram {
         lex.advance();
     }
 
-    assert_eq!(lex.extras.spaces, 7);
-    assert_eq!(lex.extras.tokens, 5); // End counts as a token
+    assert_eq!(lex.extras.spaces, 15);
+    assert_eq!(lex.extras.tokens, 7); // End counts as a token
+
+    assert_eq!(lex.extras.numbers, 2);
 }

@@ -20,7 +20,6 @@ pub struct Lexer<Token: Logos, Source> {
 
     /// Extras associated with the `Token`.
     pub extras: Token::Extras,
-
 }
 
 macro_rules! unwind {
@@ -36,12 +35,16 @@ macro_rules! unwind {
     )
 }
 
-impl<Token: Logos, Src: Source> Lexer<Token, Src> {
+impl<Token, Source> Lexer<Token, Source>
+where
+    Token: self::Logos,
+    Source: self::Source,
+{
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
-    pub fn new(source: Src) -> Self {
+    pub fn new(source: Source) -> Self {
         let mut lex = Lexer {
             source,
             token_start: 0,
@@ -81,7 +84,7 @@ impl<Token: Logos, Src: Source> Lexer<Token, Src> {
     }
 
     /// Get a string slice of the current token.
-    pub fn slice(&self) -> Src::Slice {
+    pub fn slice(&self) -> Source::Slice {
         unsafe { self.source.slice(self.range()) }
     }
 }
@@ -105,7 +108,11 @@ impl Extras for () { }
 ///
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
-impl<Token: Logos, S: Source> LexerInternal<Token> for Lexer<Token, S> {
+impl<Token, Source> LexerInternal for Lexer<Token, Source>
+where
+    Token: self::Logos,
+    Source: self::Source,
+{
     /// Read a byte at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
     ///
