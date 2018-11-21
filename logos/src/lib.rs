@@ -120,11 +120,16 @@ pub trait Logos: Sized {
     const ERROR: Self;
 
     /// Returns a lookup table for the `Lexer`
-    fn lexicon<'lexicon, Source: self::Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>;
+    fn lexicon<'lexicon, 'source, Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>
+    where
+        Source: self::Source<'source>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
-    fn lexer<Source: self::Source>(source: Source) -> Lexer<Self, Source> {
+    fn lexer<'source, Source>(source: Source) -> Lexer<Self, Source>
+    where
+        Source: self::Source<'source>,
+    {
         Lexer::new(source)
     }
 }

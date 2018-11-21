@@ -35,10 +35,10 @@ macro_rules! unwind {
     )
 }
 
-impl<Token, Source> Lexer<Token, Source>
+impl<'source, Token, Source> Lexer<Token, Source>
 where
     Token: self::Logos,
-    Source: self::Source,
+    Source: self::Source<'source>,
 {
     /// Create a new `Lexer`.
     ///
@@ -84,7 +84,7 @@ where
     }
 
     /// Get a string slice of the current token.
-    pub fn slice(&self) -> Source::Slice {
+    pub fn slice(&self) -> &'source str {
         unsafe { self.source.slice(self.range()) }
     }
 }
@@ -108,10 +108,10 @@ impl Extras for () { }
 ///
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
-impl<Token, Source> LexerInternal for Lexer<Token, Source>
+impl<'source, Token, Source> LexerInternal for Lexer<Token, Source>
 where
     Token: self::Logos,
-    Source: self::Source,
+    Source: self::Source<'source>,
 {
     /// Read a byte at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.

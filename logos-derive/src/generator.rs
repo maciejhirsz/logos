@@ -61,7 +61,7 @@ impl<'a> Generator<'a> {
 
             self.fns.extend(quote! {
                 #[allow(unreachable_code)]
-                fn #handler<S: ::logos::Source>(lex: &mut Lexer<S>) {
+                fn #handler<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
                     lex.bump();
                     #body
                 }

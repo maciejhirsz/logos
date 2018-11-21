@@ -145,16 +145,16 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
 
-            fn lexicon<'lexicon, S: ::logos::Source>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
+            fn lexicon<'lexicon, 'source, S: ::logos::Source<'source>>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
                 use ::logos::internal::LexerInternal;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
 
-                fn eof<S: ::logos::Source>(lex: &mut Lexer<S>) {
+                fn eof<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
                     lex.token = #name::#end;
                 }
 
-                fn _error<S: ::logos::Source>(lex: &mut Lexer<S>) {
+                fn _error<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
                     lex.bump();
 
                     lex.token = #name::#error;
