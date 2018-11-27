@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "logos"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "logos-derive 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -78,7 +78,7 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.6.3",
+ "logos 0.7.0",
  "logos-derive 0.6.0",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
