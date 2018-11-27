@@ -68,9 +68,7 @@ pub trait Source<'source> {
     ///
     /// let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
-    /// unsafe {
-    ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
-    /// }
+    /// assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
     /// # }
     /// ```
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice>;
