@@ -8,3 +8,4 @@ cd ..
 
 cd logos
 cargo test || exit
+cargo test --no-default-features --features export_derive || exit
