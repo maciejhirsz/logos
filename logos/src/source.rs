@@ -1,11 +1,12 @@
 use std::ops::Range;
+use std::fmt::Debug;
 
 /// Trait for a `Slice` of a `Source` that the `Lexer` can consume.
 ///
 /// Most commonly, those will be the same types:
 /// * `&str` slice for `&str` source.
 /// * `&[u8]` slice for `&[u8]` source.
-pub trait Slice<'source>: Sized {
+pub trait Slice<'source>: Sized + PartialEq + Eq + Debug {
     /// In all implementations we should at least be able to obtain a
     /// slice of bytes as the lowest level common denominator.
     fn as_bytes(&self) -> &'source [u8];

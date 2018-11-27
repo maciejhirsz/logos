@@ -26,7 +26,10 @@ enum Token {
     LiteralFloat,
 }
 
-fn assert_lex(source: &str, tokens: &[(Token, &str, Range<usize>)]) {
+fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
+where
+    Source: logos::Source<'a>,
+{
     let mut lex = Token::lexer(source);
 
     for tuple in tokens {
