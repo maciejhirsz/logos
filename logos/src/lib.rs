@@ -103,7 +103,7 @@ mod source;
 pub mod internal;
 
 pub use lexer::{Lexer, Lexicon, Extras};
-pub use source::Source;
+pub use source::{Source, Slice};
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.

@@ -90,13 +90,6 @@ test logos                ... bench:       2,005 ns/iter (+/- 16) = 1062 MB/s
 test logos_nul_terminated ... bench:       1,828 ns/iter (+/- 69) = 1165 MB/s
 ```
 
-## TODOs
-
-Pretty usable already. Things to come:
-+ Validation functions when hitting a token.
-+ Better error messages from the derive crate.
-+ Working out edge case kinks in regex.
-
 ## License
 
 This code is distributed under the terms of both the MIT license
