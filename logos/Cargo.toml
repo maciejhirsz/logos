@@ -1,6 +1,6 @@
 [package]
 name = "logos"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -13,6 +13,15 @@ toolshed = { version = "0.6", optional = true }
 logos-derive = { version = "0.6", optional = true }
 
 [features]
-default = ["export_derive"]
+default = ["export_derive", "std"]
+
+# Should the crate use the standard library?
+std = []
+
+# Provides an `impl Source for NulTermStr` from the `toolshed` crate.
 nul_term_source = ["toolshed"]
+
+# Re-exports the `Logos` derive macro, so that end user only needs to
+# import this crate and `use logos::Logos` to get both the trait and
+# derive proc macro.
 export_derive = ["logos-derive"]

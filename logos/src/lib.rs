@@ -81,7 +81,11 @@
 //! }
 //! ```
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
+
+#[cfg(not(feature = "std"))]
+extern crate core as std;
 
 #[cfg(feature = "export_derive")]
 extern crate logos_derive;
