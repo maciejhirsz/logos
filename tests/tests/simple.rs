@@ -103,7 +103,10 @@ enum Token {
     FatArrow,
 }
 
-fn assert_lex(source: &str, tokens: &[(Token, &str, Range<usize>)]) {
+fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
+where
+    Source: logos::Source<'a>,
+{
     let mut lex = Token::lexer(source);
 
     for tuple in tokens {
@@ -275,5 +278,22 @@ mod simple {
         assert_eq!(lex.extras.tokens, 7); // End counts as a token
 
         assert_eq!(lex.extras.numbers, 2);
+    }
+
+    #[test]
+    fn u8_source() {
+        assert_lex(&b"It was the year when they finally immanentized the Eschaton."[..], &[
+            (Token::Identifier, b"It", 0..2),
+            (Token::Identifier, b"was", 3..6),
+            (Token::Identifier, b"the", 7..10),
+            (Token::Identifier, b"year", 11..15),
+            (Token::Identifier, b"when", 16..20),
+            (Token::Identifier, b"they", 21..25),
+            (Token::Identifier, b"finally", 26..33),
+            (Token::Identifier, b"immanentized", 34..46),
+            (Token::Identifier, b"the", 47..50),
+            (Token::Identifier, b"Eschaton", 51..59),
+            (Token::Accessor, b".", 59..60),
+        ]);
     }
 }

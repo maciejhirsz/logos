@@ -86,7 +86,7 @@ where
     }
 
     /// Get a string slice of the current token.
-    pub fn slice(&self) -> &'source str {
+    pub fn slice(&self) -> Source::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
 }
