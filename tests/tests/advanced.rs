@@ -31,7 +31,7 @@ enum Token {
     #[regex = "[ąęśćżźńół]+"]
     Polish,
 
-    #[regex = "[\\u0400-\\u04FF]+"]
+    #[regex = r"[\u0400-\u04FF]+"]
     Cyrillic,
 }
 
