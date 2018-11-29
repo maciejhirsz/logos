@@ -533,11 +533,11 @@ where
     }
 
     fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        MaybeGenerator(self.0, PhantomData).print_branch(branch)
+        self.print_branch(branch)
     }
 
     fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        self.print_branch(branch)
+        LoopGenerator(self.0, PhantomData).print_branch(branch)
     }
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
