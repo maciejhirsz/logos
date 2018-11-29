@@ -24,7 +24,7 @@ pub struct Lexer<Token: Logos, Source> {
     token_end: usize,
 }
 
-macro_rules! unwind {
+macro_rules! unroll {
     ($( $code:tt )*) => (
         $( $code )*
         $( $code )*
@@ -66,7 +66,7 @@ where
 
         self.extras.on_advance();
 
-        unwind! {
+        unroll! {
             ch = self.read();
 
             if let Some(handler) = Token::lexicon()[ch as usize] {

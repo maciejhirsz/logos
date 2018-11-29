@@ -14,6 +14,7 @@ extern crate quote;
 extern crate proc_macro;
 extern crate proc_macro2;
 extern crate regex_syntax;
+extern crate utf8_ranges;
 
 mod util;
 mod tree;

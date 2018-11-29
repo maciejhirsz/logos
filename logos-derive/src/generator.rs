@@ -202,6 +202,14 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
+    fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
+        MaybeGenerator(self, PhantomData).print_branch(branch)
+    }
+
+    fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
+        LoopGenerator(self, PhantomData).print_branch(branch)
+    }
+
     fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
         if regex.len() == 0 {
             return self.print_then(then);
@@ -309,8 +317,8 @@ pub trait SubGenerator<'a>: Sized {
 
                     let branch = match kind {
                         ForkKind::Plain  => self.print_branch(branch),
-                        ForkKind::Maybe  => MaybeGenerator(self, PhantomData).print_branch(branch),
-                        ForkKind::Repeat => LoopGenerator(self, PhantomData).print_branch(branch),
+                        ForkKind::Maybe  => self.print_branch_maybe(branch),
+                        ForkKind::Repeat => self.print_branch_loop(branch),
                     };
 
                     quote! { #test {
@@ -487,9 +495,17 @@ where
         self.0.gen()
     }
 
+    fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
+        MaybeGenerator(self.0, PhantomData).print_branch(branch)
+    }
+
+    fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
+        self.print_branch(branch)
+    }
+
     fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
         if let Some(node) = then {
-            self.0.print_node(&mut **node)
+            self.print_node(&mut **node)
         } else {
             quote!(continue)
         }
@@ -514,6 +530,14 @@ where
 {
     fn gen(&mut self) -> &mut Generator<'a> {
         self.0.gen()
+    }
+
+    fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
+        MaybeGenerator(self.0, PhantomData).print_branch(branch)
+    }
+
+    fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
+        self.print_branch(branch)
     }
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {

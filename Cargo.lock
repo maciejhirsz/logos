@@ -13,20 +13,10 @@ dependencies = [
 
 [[package]]
 name = "logos"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "logos-derive 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "logos-derive"
-version = "0.6.0"
-dependencies = [
- "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
- "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex-syntax 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "syn 0.15.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -38,6 +28,17 @@ dependencies = [
  "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex-syntax 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.15.18 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "logos-derive"
+version = "0.7.0"
+dependencies = [
+ "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex-syntax 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.15.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "utf8-ranges 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -78,8 +79,8 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.7.0",
- "logos-derive 0.6.0",
+ "logos 0.7.1",
+ "logos-derive 0.7.0",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -101,6 +102,11 @@ name = "unicode-xid"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
+[[package]]
+name = "utf8-ranges"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
 [metadata]
 "checksum byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "94f88df23a25417badc922ab0f5716cc1330e87f71ddd9203b3a3ccd9cedf75d"
 "checksum fxhash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
@@ -112,3 +118,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d686c1f8d0a8c365f024145b31dfcd249c55b7ea17fc8bdcbae3844e16892233"
 "checksum ucd-util 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d0f8bfa9ff0cadcd210129ad9d2c5f145c13e9ced3d3e5d948a6213487d52444"
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"
+"checksum utf8-ranges 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "796f7e48bef87609f7ade7e06495a87d5cd06c7866e6a5cbfceffc558a243737"

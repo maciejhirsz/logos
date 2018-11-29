@@ -1,4 +1,5 @@
-use regex_syntax::hir::{self, Hir, HirKind};
+use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
+use regex_syntax::hir::{self, Hir, HirKind, Class};
 use regex_syntax::Parser;
 use tree::{Node, Fork, ForkKind, Branch, Token};
 use std::cmp::Ordering;
@@ -119,6 +120,28 @@ impl<'a> Node<'a> {
 
                 Some(Node::from(fork))
             },
+            // This handles classes with non-ASCII Unicode ranges
+            HirKind::Class(ref class) if !class_is_ascii(class) => {
+                match class {
+                    Class::Unicode(unicode) => {
+                        let mut branches =
+                            unicode.iter()
+                                .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
+                                .map(|seq| Branch::new(seq.into()));
+
+                        branches.next().map(|branch| {
+                            let mut node = Node::Branch(branch);
+
+                            for branch in branches {
+                                node.insert(Node::Branch(branch));
+                            }
+
+                            node
+                        })
+                    },
+                    Class::Bytes(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                }
+            },
             _ => {
                 let mut regex = Regex::default();
 
@@ -150,14 +173,6 @@ impl Regex {
         }
     }
 
-    pub fn from(pat: Pattern) -> Regex {
-        let mut regex = Regex::default();
-
-        regex.patterns.push(pat);
-
-        regex
-    }
-
     fn from_hir_internal(hir: &HirKind, regex: &mut Regex) -> bool {
         match hir {
             HirKind::Empty => true,
@@ -183,7 +198,9 @@ impl Regex {
                 true
             },
             HirKind::Class(class) => {
-                use self::hir::{Class};
+                if !class_is_ascii(&class) {
+                    return false;
+                }
 
                 match class {
                     Class::Unicode(unicode) => {
@@ -287,6 +304,64 @@ impl Regex {
     }
 }
 
+impl From<Pattern> for Regex {
+    fn from(pat: Pattern) -> Regex {
+        let mut regex = Regex::default();
+
+        regex.patterns.push(pat);
+
+        regex
+    }
+}
+
+impl From<Utf8Sequence> for Regex {
+    fn from(seq: Utf8Sequence) -> Self {
+        let patterns =
+            seq.as_slice()
+               .iter()
+               .cloned()
+               .map(Pattern::from)
+               .collect::<Vec<_>>();
+
+        Regex {
+            patterns,
+            offset: 0,
+        }
+    }
+}
+
+fn class_is_ascii(class: &Class) -> bool {
+    match class {
+        Class::Unicode(unicode) => {
+            unicode.iter().all(|range| {
+                let start = range.start() as u32;
+                let end = range.end() as u32;
+
+                start < 128 && end > 0 && (end < 128 || end == 0x10FFFF)
+            })
+        },
+        Class::Bytes(_) => false,
+    }
+}
+
+impl From<Utf8Range> for Pattern {
+    fn from(mut range: Utf8Range) -> Pattern {
+        if range.end == 0 {
+            panic!("Invalid Unicode codepoint in #[regex]");
+        }
+
+        if range.start == 0 {
+            range.start = 1;
+        }
+
+        if range.start == range.end {
+            Pattern::Byte(range.start)
+        } else {
+            Pattern::Range(range.start, range.end)
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RepetitionFlag {
     ZeroOrMore,
@@ -305,7 +380,7 @@ fn format_ascii(byte: u8, f: &mut fmt::Formatter) -> fmt::Result {
     if byte >= 0x20 && byte <= 127 {
         write!(f, "{}", byte as char)
     } else {
-        write!(f, "{:?}", byte)
+        write!(f, "{:02X?}", byte)
     }
 }
 
