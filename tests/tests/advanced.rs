@@ -24,6 +24,12 @@ enum Token {
 
     #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
     LiteralFloat,
+
+    #[regex = "🦀+"]
+    Rustaceans,
+
+    #[regex = "[ąęśćżźńół]+"]
+    Polish,
 }
 
 fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
@@ -93,5 +99,26 @@ mod advanced {
             (Token::LiteralFloat, "42.9001e+12", 26..37),
             (Token::LiteralFloat, ".1e-3", 38..43),
         ]);
+    }
+
+    #[test]
+    fn rustaceans() {
+        assert_lex("🦀 🦀🦀 🦀🦀🦀 🦀🦀🦀🦀", &[
+            (Token::Rustaceans, "🦀", 0..4),
+            (Token::Rustaceans, "🦀🦀", 5..13),
+            (Token::Rustaceans, "🦀🦀🦀", 14..26),
+            (Token::Rustaceans, "🦀🦀🦀🦀", 27..43),
+        ]);
+    }
+
+    #[test]
+    fn polish() {
+        assert_lex("ą ę ó ąąąą łóżź", &[
+            (Token::Polish, "ą", 0..2),
+            (Token::Polish, "ę", 3..5),
+            (Token::Polish, "ó", 6..8),
+            (Token::Polish, "ąąąą", 9..17),
+            (Token::Polish, "łóżź", 18..26),
+        ])
     }
 }
