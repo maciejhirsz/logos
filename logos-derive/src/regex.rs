@@ -198,6 +198,10 @@ impl Regex {
                 true
             },
             HirKind::Class(class) => {
+                if !class_is_ascii(&class) {
+                    return false;
+                }
+
                 match class {
                     Class::Unicode(unicode) => {
                         let mut class = unicode
