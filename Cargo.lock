@@ -13,26 +13,27 @@ dependencies = [
 
 [[package]]
 name = "logos"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
- "logos-derive 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "logos-derive 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "logos-derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.7.0"
 dependencies = [
  "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex-syntax 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.15.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "utf8-ranges 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "logos-derive"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -79,7 +80,7 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.7.1",
+ "logos 0.7.2",
  "logos-derive 0.7.0",
  "toolshed 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -110,7 +111,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [metadata]
 "checksum byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "94f88df23a25417badc922ab0f5716cc1330e87f71ddd9203b3a3ccd9cedf75d"
 "checksum fxhash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-"checksum logos-derive 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f88819dac1563f0e8cc0a1371c6757128e73a38dfb0073b0d3707a165fa9359a"
+"checksum logos-derive 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "55ffd970977f29b4b336090eaf4c07b949eba4c884b7c6759f0e482d9bc1235a"
 "checksum proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)" = "3d7b7eaaa90b4a90a932a9ea6666c95a389e424eff347f0f793979289429feee"
 "checksum quote 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)" = "63b5829244f52738cfee93b3a165c1911388675be000c888d2fae620dee8fa5b"
 "checksum regex-syntax 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "fbc557aac2b708fe84121caf261346cc2eed71978024337e42eb46b8a252ac6e"
