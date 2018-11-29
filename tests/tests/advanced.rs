@@ -30,6 +30,9 @@ enum Token {
 
     #[regex = "[ąęśćżźńół]+"]
     Polish,
+
+    #[regex = "[\\u0400-\\u04FF]+"]
+    Cyrillic,
 }
 
 fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
@@ -119,6 +122,14 @@ mod advanced {
             (Token::Polish, "ó", 6..8),
             (Token::Polish, "ąąąą", 9..17),
             (Token::Polish, "łóżź", 18..26),
+        ])
+    }
+
+    #[test]
+    fn cyrillic() {
+        assert_lex("До свидания", &[
+            (Token::Cyrillic, "До", 0..4),
+            (Token::Cyrillic, "свидания", 5..21),
         ])
     }
 }
