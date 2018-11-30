@@ -2,7 +2,7 @@ extern crate logos;
 #[macro_use]
 extern crate logos_derive;
 
-use logos::Logos;
+use logos::{Logos, lookup};
 use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
@@ -122,7 +122,7 @@ mod advanced {
             (Token::Polish, "ó", 6..8),
             (Token::Polish, "ąąąą", 9..17),
             (Token::Polish, "łóżź", 18..26),
-        ])
+        ]);
     }
 
     #[test]
@@ -130,6 +130,19 @@ mod advanced {
         assert_lex("До свидания", &[
             (Token::Cyrillic, "До", 0..4),
             (Token::Cyrillic, "свидания", 5..21),
-        ])
+        ]);
+    }
+
+    #[test]
+    fn lookup() {
+        static LUT: [Option<&'static str>; Token::SIZE] = lookup! {
+            Token::Polish => Some("Polish"),
+            Token::Rustaceans => Some("🦀"),
+            _ => None,
+        };
+
+        assert_eq!(LUT[Token::Polish as usize], Some("Polish"));
+        assert_eq!(LUT[Token::Rustaceans as usize], Some("🦀"));
+        assert_eq!(LUT[Token::Cyrillic as usize], None);
     }
 }

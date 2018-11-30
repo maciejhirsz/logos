@@ -137,3 +137,65 @@ pub trait Logos: Sized {
         Lexer::new(source)
     }
 }
+
+/// Macro for creating lookup tables where index matches the token variant
+/// as `usize`.
+///
+/// This can be especially useful for creating Jump Tables using the static `fn()`
+/// function pointers, enabling an O(1) branching at the cost of introducing some
+/// indirection.
+///
+/// ```rust
+/// extern crate logos;
+///
+/// use logos::{Logos, lookup};
+///
+/// #[derive(Logos, Clone, Copy, PartialEq, Debug)]
+/// enum Token {
+///     #[end]
+///     End,
+///
+///     #[error]
+///     Error,
+///
+///     #[token = "Immanetize"]
+///     Immanetize,
+///
+///     #[token = "the"]
+///     The,
+///
+///     #[token = "Eschaton"]
+///     Eschaton,
+/// }
+///
+/// static LUT: [fn(u32) -> u32; Token::SIZE] = lookup! {
+///     // Rust is smart enough to convert closure syntax to `fn()`
+///     // pointers here, as long as we don't capture any values.
+///     Token::Eschaton => |n| n + 40,
+///     Token::Immanetize => |n| n + 8999,
+///     _ => |_| 0,
+/// };
+///
+/// fn main() {
+///     let mut lexer = Token::lexer("Immanetize the Eschaton");
+///
+///     assert_eq!(lexer.token, Token::Immanetize);
+///     assert_eq!(LUT[lexer.token as usize](2), 9001); // 2 + 8999
+///
+///     lexer.advance();
+///
+///     assert_eq!(lexer.token, Token::The);
+///     assert_eq!(LUT[lexer.token as usize](2), 0); // always 0
+///
+///     lexer.advance();
+///
+///     assert_eq!(lexer.token, Token::Eschaton);
+///     assert_eq!(LUT[lexer.token as usize](2), 42); // 2 + 40
+/// }
+/// ```
+#[macro_export]
+macro_rules! lookup {
+    ( $token:ident $($rest:tt)* ) => (
+        $token!( $token $($rest)* )
+    );
+}

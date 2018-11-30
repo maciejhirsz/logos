@@ -32,7 +32,7 @@ pub fn value_from_attr(name: &str, attr: &Attribute) -> Option<String> {
                     Err(_) => panic!("#[{}] value must be a literal string", name),
                 }
             },
-            Some(invalid) => panic!("#[extras] Invalid value: {}", invalid),
+            Some(invalid) => panic!("#[{}] Invalid value: {}", name, invalid),
             None => panic!("Invalid token")
         };
 
