@@ -135,14 +135,14 @@ mod advanced {
 
     #[test]
     fn lookup() {
-        let map = map! {
+        static MAP: [Option<&'static str>; Token::SIZE] = map! {
             Token::Polish => Some("Polish"),
             Token::Rustaceans => Some("🦀"),
             _ => None,
         };
 
-        assert_eq!(map[Token::Polish as usize], Some("Polish"));
-        assert_eq!(map[Token::Rustaceans as usize], Some("🦀"));
-        assert_eq!(map[Token::Cyrillic as usize], None);
+        assert_eq!(MAP[Token::Polish as usize], Some("Polish"));
+        assert_eq!(MAP[Token::Rustaceans as usize], Some("🦀"));
+        assert_eq!(MAP[Token::Cyrillic as usize], None);
     }
 }
