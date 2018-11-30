@@ -137,3 +137,10 @@ pub trait Logos: Sized {
         Lexer::new(source)
     }
 }
+
+#[macro_export]
+macro_rules! map {
+    ( $token:ident $($rest:tt)* ) => (
+        $token!( $token $($rest)* )
+    );
+}
