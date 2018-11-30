@@ -139,7 +139,7 @@ pub trait Logos: Sized {
 }
 
 #[macro_export]
-macro_rules! map {
+macro_rules! lookup {
     ( $token:ident $($rest:tt)* ) => (
         $token!( $token $($rest)* )
     );

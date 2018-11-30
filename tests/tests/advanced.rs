@@ -2,7 +2,7 @@ extern crate logos;
 #[macro_use]
 extern crate logos_derive;
 
-use logos::{Logos, map};
+use logos::{Logos, lookup};
 use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
@@ -135,14 +135,14 @@ mod advanced {
 
     #[test]
     fn lookup() {
-        static MAP: [Option<&'static str>; Token::SIZE] = map! {
+        static LUT: [Option<&'static str>; Token::SIZE] = lookup! {
             Token::Polish => Some("Polish"),
             Token::Rustaceans => Some("🦀"),
             _ => None,
         };
 
-        assert_eq!(MAP[Token::Polish as usize], Some("Polish"));
-        assert_eq!(MAP[Token::Rustaceans as usize], Some("🦀"));
-        assert_eq!(MAP[Token::Cyrillic as usize], None);
+        assert_eq!(LUT[Token::Polish as usize], Some("Polish"));
+        assert_eq!(LUT[Token::Rustaceans as usize], Some("🦀"));
+        assert_eq!(LUT[Token::Cyrillic as usize], None);
     }
 }
