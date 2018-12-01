@@ -12,7 +12,7 @@ readme = "../README.md"
 
 [dependencies]
 toolshed = { version = "0.6", optional = true }
-logos-derive = { version = "0.7.3", optional = true }
+logos-derive = { version = "0.7.4", optional = true }
 
 [features]
 default = ["export_derive", "std"]
