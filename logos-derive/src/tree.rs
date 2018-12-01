@@ -368,8 +368,8 @@ impl<'a> Fork<'a> {
     }
 
     // Attempts to collapse a Maybe fork into a Plain fork.
-    // If `then` on this fork is a `Token`, or if it is not
-    // set,then it will remain a Maybe fork.
+    // If `then` on this fork is a `Token`, or if it isn't
+    // set, then it will remain a Maybe fork.
     pub fn collapse(&mut self) {
         if self.kind != ForkKind::Maybe {
             return;
