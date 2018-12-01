@@ -166,6 +166,21 @@ impl<'a> Branch<'a> {
             Some(Node::Branch(self))
         }
     }
+
+    fn to_guaranteed_node(self) -> Node<'a> {
+        if self.regex.len() == 0 {
+            match self.then {
+                Some(node) => *node,
+                None => Node::Fork(Fork {
+                    kind: ForkKind::Maybe,
+                    arms: Vec::new(),
+                    then: None,
+                }),
+            }
+        } else {
+            Node::Branch(self)
+        }
+    }
 }
 
 impl<'a> Fork<'a> {
@@ -264,7 +279,7 @@ impl<'a> Fork<'a> {
             if let Some(regex) = branch.regex.match_split(&mut other.regex) {
                 let old = mem::replace(other, Branch {
                     regex,
-                    then: branch.to_node().map(Box::new)
+                    then: Some(branch.to_guaranteed_node().boxed()),
                 });
 
                 other.insert_then(old.to_node().map(Box::new));
@@ -353,15 +368,15 @@ impl<'a> Fork<'a> {
     }
 
     // Attempts to collapse a Maybe fork into a Plain fork.
-    // If `then` on this fork is a `Token`, then it will
-    // remain a Maybe fork.
+    // If `then` on this fork is a `Token`, or if it is not
+    // set,then it will remain a Maybe fork.
     pub fn collapse(&mut self) {
         if self.kind != ForkKind::Maybe {
             return;
         }
 
         let then = match self.then.take() {
-            None => panic!("Invalid fork construction: {:#?}", self),
+            None => return,
             Some(node) => node,
         };
 
@@ -380,22 +395,6 @@ impl<'a> Fork<'a> {
     fn chain(&mut self, then: &Node<'a>) {
         if self.kind == ForkKind::Plain {
             for branch in self.arms.iter_mut() {
-                // match branch.then {
-                //     // FIXME: This is super hacky and is a bandaid over the fact that
-                //     //        tree produces by something like `try|typeof|type` is not
-                //     //        attaching token leaves properly currently :|
-                //     Some(ref mut node) => {
-                //         if node.is_branch() {
-                //             node.to_mut_fork().kind = ForkKind::Maybe;
-                //             node.chain(then);
-                //             node.to_mut_fork().collapse();
-
-                //             continue
-                //         }
-                //     },
-                //     _ => {}
-                // }
-
                 branch.chain(then)
             }
         } else {
@@ -585,13 +584,6 @@ impl<'a> Node<'a> {
             Node::Branch(branch) => branch.chain(then),
             Node::Fork(fork) => fork.chain(then),
             Node::Token(_) => {},
-        }
-    }
-
-    fn is_branch(&self) -> bool {
-        match self {
-            Node::Branch(_) => true,
-            _ => false,
         }
     }
 
