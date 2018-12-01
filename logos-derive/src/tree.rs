@@ -380,21 +380,21 @@ impl<'a> Fork<'a> {
     fn chain(&mut self, then: &Node<'a>) {
         if self.kind == ForkKind::Plain {
             for branch in self.arms.iter_mut() {
-                match branch.then {
-                    // FIXME: This is super hacky and is a bandaid over the fact that
-                    //        tree produces by something like `try|typeof|type` is not
-                    //        attaching token leaves properly currently :|
-                    Some(ref mut node) => {
-                        if node.is_branch() {
-                            node.to_mut_fork().kind = ForkKind::Maybe;
-                            node.chain(then);
-                            node.to_mut_fork().collapse();
+                // match branch.then {
+                //     // FIXME: This is super hacky and is a bandaid over the fact that
+                //     //        tree produces by something like `try|typeof|type` is not
+                //     //        attaching token leaves properly currently :|
+                //     Some(ref mut node) => {
+                //         if node.is_branch() {
+                //             node.to_mut_fork().kind = ForkKind::Maybe;
+                //             node.chain(then);
+                //             node.to_mut_fork().collapse();
 
-                            continue
-                        }
-                    },
-                    _ => {}
-                }
+                //             continue
+                //         }
+                //     },
+                //     _ => {}
+                // }
 
                 branch.chain(then)
             }
