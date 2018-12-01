@@ -19,7 +19,7 @@ enum Token {
     #[regex = "0[xX][0-9a-fA-F]+"]
     LiteralHex,
 
-    #[regex = "[0-9]+"]
+    #[regex = "-?[0-9]+"]
     LiteralInteger,
 
     #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
@@ -33,6 +33,9 @@ enum Token {
 
     #[regex = r"[\u0400-\u04FF]+"]
     Cyrillic,
+
+    #[regex = "try|type|typeof"]
+    Keyword,
 }
 
 fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
@@ -83,11 +86,12 @@ mod advanced {
 
     #[test]
     fn integer() {
-        assert_lex("0 5 123 9001", &[
+        assert_lex("0 5 123 9001 -42", &[
             (Token::LiteralInteger, "0", 0..1),
             (Token::LiteralInteger, "5", 2..3),
             (Token::LiteralInteger, "123", 4..7),
             (Token::LiteralInteger, "9001", 8..12),
+            (Token::LiteralInteger, "-42", 13..16),
         ]);
     }
 
@@ -144,5 +148,14 @@ mod advanced {
         assert_eq!(LUT[Token::Polish as usize], Some("Polish"));
         assert_eq!(LUT[Token::Rustaceans as usize], Some("🦀"));
         assert_eq!(LUT[Token::Cyrillic as usize], None);
+    }
+
+    #[test]
+    fn keywords() {
+        assert_lex("try type typeof", &[
+            (Token::Keyword, "try", 0..3),
+            (Token::Keyword, "type", 4..8),
+            (Token::Keyword, "typeof", 9..15),
+        ]);
     }
 }
