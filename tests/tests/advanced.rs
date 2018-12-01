@@ -19,7 +19,7 @@ enum Token {
     #[regex = "0[xX][0-9a-fA-F]+"]
     LiteralHex,
 
-    #[regex = "[0-9]+"]
+    #[regex = "-?[0-9]+"]
     LiteralInteger,
 
     #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
@@ -83,11 +83,12 @@ mod advanced {
 
     #[test]
     fn integer() {
-        assert_lex("0 5 123 9001", &[
+        assert_lex("0 5 123 9001 -42", &[
             (Token::LiteralInteger, "0", 0..1),
             (Token::LiteralInteger, "5", 2..3),
             (Token::LiteralInteger, "123", 4..7),
             (Token::LiteralInteger, "9001", 8..12),
+            (Token::LiteralInteger, "-42", 13..16),
         ]);
     }
 

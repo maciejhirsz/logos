@@ -373,6 +373,7 @@ impl<'a> Fork<'a> {
             self.then = Some(then);
         } else {
             self.kind = ForkKind::Plain;
+            self.insert(*then);
         }
     }
 
