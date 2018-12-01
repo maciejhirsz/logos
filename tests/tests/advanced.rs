@@ -33,6 +33,9 @@ enum Token {
 
     #[regex = r"[\u0400-\u04FF]+"]
     Cyrillic,
+
+    #[regex = "try|type|typeof"]
+    Keyword,
 }
 
 fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
@@ -145,5 +148,14 @@ mod advanced {
         assert_eq!(LUT[Token::Polish as usize], Some("Polish"));
         assert_eq!(LUT[Token::Rustaceans as usize], Some("🦀"));
         assert_eq!(LUT[Token::Cyrillic as usize], None);
+    }
+
+    #[test]
+    fn keywords() {
+        assert_lex("try type typeof", &[
+            (Token::Keyword, "try", 0..3),
+            (Token::Keyword, "type", 4..8),
+            (Token::Keyword, "typeof", 9..15),
+        ]);
     }
 }
