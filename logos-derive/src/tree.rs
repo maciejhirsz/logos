@@ -166,21 +166,6 @@ impl<'a> Branch<'a> {
             Some(Node::Branch(self))
         }
     }
-
-    fn to_guaranteed_node(self) -> Node<'a> {
-        if self.regex.len() == 0 {
-            match self.then {
-                Some(node) => *node,
-                None => Node::Fork(Fork {
-                    kind: ForkKind::Maybe,
-                    arms: Vec::new(),
-                    then: None,
-                }),
-            }
-        } else {
-            Node::Branch(self)
-        }
-    }
 }
 
 impl<'a> Fork<'a> {
@@ -279,10 +264,26 @@ impl<'a> Fork<'a> {
             if let Some(regex) = branch.regex.match_split(&mut other.regex) {
                 let old = mem::replace(other, Branch {
                     regex,
-                    then: Some(branch.to_guaranteed_node().boxed()),
+                    then: None,
                 });
 
-                other.insert_then(old.to_node().map(Box::new));
+                let mut maybe_fork = false;
+
+                match branch.to_node() {
+                    Some(node) => other.insert_then(Some(node.boxed())),
+                    None       => maybe_fork = true,
+                }
+
+                match old.to_node() {
+                    Some(node) => other.insert_then(Some(node.boxed())),
+                    None       => maybe_fork = true,
+                }
+
+                if maybe_fork {
+                    if let Some(ref mut then) = other.then {
+                        then.to_mut_fork().kind = ForkKind::Maybe;
+                    }
+                }
 
                 return;
             }
@@ -313,7 +314,7 @@ impl<'a> Fork<'a> {
                 },
                 None => {
                     assert!(
-                        self.kind == ForkKind::Plain,
+                        self.kind != ForkKind::Repeat,
                         "Internal Error: Invalid fork construction: {:#?}", self
                     );
 

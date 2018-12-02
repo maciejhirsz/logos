@@ -72,6 +72,9 @@ enum Token {
     #[token = "instanceof"]
     Instanceof,
 
+    #[regex = "byte|bytes[1-9][0-9]?"]
+    Byte,
+
     #[token = "."]
     Accessor,
 
@@ -262,6 +265,15 @@ mod simple {
             (Token::Identifier, "abxyz", 17..22),
             (Token::Identifier, "abcxy", 23..28),
             (Token::Identifier, "abcdefxyz", 29..38),
+        ]);
+    }
+
+    #[test]
+    fn bytes() {
+        assert_lex("byte bytes1 bytes32", &[
+            (Token::Byte, "byte", 0..4),
+            (Token::Byte, "bytes1", 5..11),
+            (Token::Byte, "bytes32", 12..19),
         ]);
     }
 
