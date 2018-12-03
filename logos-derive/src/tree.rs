@@ -10,7 +10,7 @@ pub struct Branch<'a> {
     pub then: Option<Box<Node<'a>>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ForkKind {
     Plain  = 0,
     Maybe  = 1,
@@ -147,15 +147,14 @@ impl<'a> Branch<'a> {
     }
 
     pub fn insert_then(&mut self, other: Option<Box<Node<'a>>>) {
-        if let Some(other) = other {
-            self.then = match self.then.take() {
-                Some(mut then) => {
-                    then.insert(*other);
-
-                    Some(then)
-                },
-                None => Some(other)
-            };
+        match self.then {
+            Some(ref mut node) => {
+                match other {
+                    Some(other) => node.insert(*other),
+                    None => node.make_maybe_fork(),
+                }
+            }
+            ref mut then => *then = other,
         }
     }
 
@@ -216,6 +215,10 @@ impl<'a> Fork<'a> {
                 other.unwind();
                 other.collapse();
 
+                if other.kind > self.kind {
+                    self.kind = other.kind;
+                }
+
                 self.insert_then(other.then.take());
 
                 for branch in other.arms.into_iter() {
@@ -226,6 +229,10 @@ impl<'a> Fork<'a> {
     }
 
     pub fn insert_branch(&mut self, mut branch: Branch<'a>) {
+        // if self.arms.len() == 1 {
+        //     panic!("BEFORE INSERT {:#?}", self);
+        // }
+
         if branch.regex.len() == 0 {
             return self.insert_then(branch.then);
         }
@@ -267,21 +274,17 @@ impl<'a> Fork<'a> {
                     then: None,
                 });
 
-                let mut maybe_fork = false;
+                let a = branch.to_node().map(Box::new);
+                let b = old.to_node().map(Box::new);
 
-                match branch.to_node() {
-                    Some(node) => other.insert_then(Some(node.boxed())),
-                    None       => maybe_fork = true,
-                }
+                let maybe_fork = a.is_none() || b.is_none();
 
-                match old.to_node() {
-                    Some(node) => other.insert_then(Some(node.boxed())),
-                    None       => maybe_fork = true,
-                }
+                other.insert_then(a);
+                other.insert_then(b);
 
                 if maybe_fork {
                     if let Some(ref mut then) = other.then {
-                        then.to_mut_fork().kind = ForkKind::Maybe;
+                        then.make_maybe_fork();
                     }
                 }
 
@@ -305,24 +308,25 @@ impl<'a> Fork<'a> {
     }
 
     pub fn insert_then(&mut self, other: Option<Box<Node<'a>>>) {
-        if let Some(other) = other {
-            self.then = match self.then.take() {
-                Some(mut then) => {
-                    then.insert(*other);
-
-                    Some(then)
-                },
-                None => {
+        match self.then {
+            Some(ref mut node) => {
+                match other {
+                    Some(other) => node.insert(*other),
+                    None => node.make_maybe_fork(),
+                }
+            }
+            ref mut then => {
+                if other.is_some() {
                     assert!(
                         self.kind != ForkKind::Repeat,
-                        "Internal Error: Invalid fork construction: {:#?}", self
+                        "Internal Error: Invalid fork construction"
                     );
 
                     self.kind = ForkKind::Maybe;
 
-                    Some(other)
-                },
-            };
+                    *then = other;
+                }
+            },
         }
     }
 
@@ -424,19 +428,23 @@ impl<'a> Node<'a> {
     fn to_mut_fork(&mut self) -> &mut Fork<'a> {
         let fork = match self {
             Node::Fork(fork) => return fork,
-            Node::Branch(branch) => {
-                // FIXME: a memswap of the branch could save an allocation here
+            Node::Branch(ref mut branch) => {
+                let branch = mem::replace(branch, Branch {
+                    regex: Regex::default(),
+                    then: None,
+                });
+
                 Fork {
                     kind: ForkKind::Plain,
-                    arms: vec![branch.clone()],
+                    arms: vec![branch],
                     then: None,
                 }
             },
-            Node::Token(_) => {
+            Node::Token(token) => {
                 Fork {
                     kind: ForkKind::Maybe,
                     arms: vec![],
-                    then: Some(self.clone().boxed()),
+                    then: Some(Node::Token(token).boxed()),
                 }
             }
         };
@@ -448,6 +456,31 @@ impl<'a> Node<'a> {
         } else {
             unreachable!()
         }
+    }
+
+    fn make_maybe_fork(&mut self) {
+        let fork = match self {
+            Node::Fork(fork) => {
+                assert!(fork.kind != ForkKind::Repeat);
+
+                return fork.kind = ForkKind::Maybe;
+            },
+            Node::Branch(ref mut branch) => {
+                let branch = mem::replace(branch, Branch {
+                    regex: Regex::default(),
+                    then: None,
+                });
+
+                Fork {
+                    kind: ForkKind::Maybe,
+                    arms: vec![branch],
+                    then: None,
+                }
+            },
+            Node::Token(_) => return,
+        };
+
+        mem::replace(self, Node::Fork(fork));
     }
 
     pub fn insert(&mut self, then: Node<'a>) {
