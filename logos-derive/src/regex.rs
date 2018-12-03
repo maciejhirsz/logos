@@ -1,7 +1,7 @@
 use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
 use regex_syntax::hir::{self, Hir, HirKind, Class};
 use regex_syntax::Parser;
-use tree::{Node, Fork, ForkKind, Branch, Token};
+use tree::{Node, Fork, ForkKind, Branch, Leaf};
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -20,26 +20,26 @@ impl PartialEq for Regex {
 }
 
 impl<'a> Node<'a> {
-    pub fn from_sequence(source: &str, token: Token<'a>) -> Self {
+    pub fn from_sequence(source: &str, leaf: Leaf<'a>) -> Self {
         let regex = Regex::sequence(source);
 
         if regex.len() == 0 {
-            panic!("Empty #[token] string in variant: {}!", token);
+            panic!("Empty #[token] string in variant: {}!", leaf.token);
         }
 
-        Node::new(regex, token)
+        Node::new(regex, leaf)
     }
 
-    pub fn from_regex(source: &str, token: Token<'a>) -> Self {
+    pub fn from_regex(source: &str, leaf: Leaf<'a>) -> Self {
         let hir = match Parser::new().parse(source) {
             Ok(hir) => hir.into_kind(),
-            Err(err) => panic!("Unable to parse #[regex] for variant: {}!\n\n{:#?}", token, err),
+            Err(err) => panic!("Unable to parse #[regex] for variant: {}!\n\n{:#?}", leaf.token, err),
         };
 
         let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
-        let token = Node::Token(token);
+        let leaf = Node::Leaf(leaf);
 
-        node.chain(&token);
+        node.chain(&leaf);
 
         node
     }
@@ -554,10 +554,26 @@ mod test {
         assert_eq!(b"abcdef0123456789_$!", &pattern.to_bytes()[..]);
     }
 
-    fn mock_token() -> Ident {
+    fn mock_leaf() -> Leaf<'static> {
         use proc_macro2::Span;
 
-        Ident::new("mock", Span::call_site())
+        static mut MOCK_VARIANT: Option<&'static Ident> = None;
+
+        let variant = unsafe {
+            if MOCK_VARIANT.is_none() {
+                let variant = Ident::new("mock", Span::call_site());
+                let variant = Box::into_raw(Box::new(variant));
+
+                MOCK_VARIANT = Some(&*variant);
+            }
+
+            MOCK_VARIANT.unwrap()
+        };
+
+        Leaf {
+            token: variant,
+            callback: None,
+        }
     }
 
     fn branch(node: Node) -> Option<Branch> {
@@ -570,9 +586,9 @@ mod test {
 
     #[test]
     fn branch_regex_number() {
-        let token = mock_token();
+        let leaf = mock_leaf();
         let regex = "[1-9][0-9]*";
-        let b = branch(Node::from_regex(regex, &token)).unwrap();
+        let b = branch(Node::from_regex(regex, leaf)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
 
@@ -583,9 +599,9 @@ mod test {
 
     #[test]
     fn regex_ident() {
-        let token = mock_token();
+        let leaf = mock_leaf();
         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
-        let b = branch(Node::from_regex(regex, &token)).unwrap();
+        let b = branch(Node::from_regex(regex, leaf)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Class(vec![
@@ -611,9 +627,9 @@ mod test {
 
     #[test]
     fn regex_hex() {
-        let token = mock_token();
+        let leaf = mock_leaf();
         let regex = "0x[0-9a-fA-F]+";
-        let b = branch(Node::from_regex(regex, &token)).unwrap();
+        let b = branch(Node::from_regex(regex, leaf)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Byte(b'0'),
@@ -633,9 +649,9 @@ mod test {
 
     #[test]
     fn regex_unshift() {
-        let token = mock_token();
+        let leaf = mock_leaf();
         let regex = "abc";
-        let mut r = branch(Node::from_regex(regex, &token)).unwrap().regex;
+        let mut r = branch(Node::from_regex(regex, leaf)).unwrap().regex;
 
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'a'),

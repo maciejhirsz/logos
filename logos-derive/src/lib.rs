@@ -22,7 +22,7 @@ mod regex;
 mod handlers;
 mod generator;
 
-use tree::{Node, Fork};
+use tree::{Node, Fork, Leaf};
 use util::{OptionExt, value_from_attr};
 use handlers::Handlers;
 use generator::Generator;
@@ -93,12 +93,17 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 end.insert(variant, |_| panic!("Only one #[end] variant can be declared."));
             }
 
+            let leaf = Leaf {
+                token: variant,
+                callback: None,
+            };
+
             if let Some(path) = value_from_attr("token", attr) {
-                fork.insert(Node::from_sequence(&path, variant));
+                fork.insert(Node::from_sequence(&path, leaf));
             }
 
             if let Some(path) = value_from_attr("regex", attr) {
-                fork.insert(Node::from_regex(&path, variant));
+                fork.insert(Node::from_regex(&path, leaf));
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {
