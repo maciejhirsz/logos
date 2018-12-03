@@ -185,6 +185,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
+        #[macro_export]
         #[doc(hidden)]
         macro_rules! #name {
             // This pattern just handles trailing comma
