@@ -229,10 +229,6 @@ impl<'a> Fork<'a> {
     }
 
     pub fn insert_branch(&mut self, mut branch: Branch<'a>) {
-        // if self.arms.len() == 1 {
-        //     panic!("BEFORE INSERT {:#?}", self);
-        // }
-
         if branch.regex.len() == 0 {
             return self.insert_then(branch.then);
         }
