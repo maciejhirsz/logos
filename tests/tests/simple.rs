@@ -75,6 +75,9 @@ enum Token {
     #[regex = "byte|bytes[1-9][0-9]?"]
     Byte,
 
+    #[regex = "int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"]
+    Int,
+
     #[token = "."]
     Accessor,
 
@@ -307,5 +310,49 @@ mod simple {
             (Token::Identifier, b"Eschaton", 51..59),
             (Token::Accessor, b".", 59..60),
         ]);
+    }
+
+    #[test]
+    fn ints() {
+        assert_lex(
+            "int8 int16 int24 int32 int40 int48 int56 int64 int72 int80 \
+             int88 int96 int104 int112 int120 int128 int136 int144 int152 \
+             int160 int168 int176 int184 int192 int200 int208 int216 int224 \
+             int232 int240 int248 int256",
+            &[
+                (Token::Int, "int8",   0..4),
+                (Token::Int, "int16",  5..10),
+                (Token::Int, "int24",  11..16),
+                (Token::Int, "int32",  17..22),
+                (Token::Int, "int40",  23..28),
+                (Token::Int, "int48",  29..34),
+                (Token::Int, "int56",  35..40),
+                (Token::Int, "int64",  41..46),
+                (Token::Int, "int72",  47..52),
+                (Token::Int, "int80",  53..58),
+                (Token::Int, "int88",  59..64),
+                (Token::Int, "int96",  65..70),
+                (Token::Int, "int104", 71..77),
+                (Token::Int, "int112", 78..84),
+                (Token::Int, "int120", 85..91),
+                (Token::Int, "int128", 92..98),
+                (Token::Int, "int136", 99..105),
+                (Token::Int, "int144", 106..112),
+                (Token::Int, "int152", 113..119),
+                (Token::Int, "int160", 120..126),
+                (Token::Int, "int168", 127..133),
+                (Token::Int, "int176", 134..140),
+                (Token::Int, "int184", 141..147),
+                (Token::Int, "int192", 148..154),
+                (Token::Int, "int200", 155..161),
+                (Token::Int, "int208", 162..168),
+                (Token::Int, "int216", 169..175),
+                (Token::Int, "int224", 176..182),
+                (Token::Int, "int232", 183..189),
+                (Token::Int, "int240", 190..196),
+                (Token::Int, "int248", 197..203),
+                (Token::Int, "int256", 204..210),
+            ]
+        );
     }
 }
