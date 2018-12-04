@@ -5,7 +5,7 @@ use syn::Ident;
 use quote::{quote, ToTokens};
 use proc_macro2::{TokenStream, Span};
 
-use tree::{Node, Branch, ForkKind};
+use tree::{Node, Branch, ForkKind, Leaf};
 use regex::{Regex, Pattern};
 
 pub struct Generator<'a> {
@@ -175,7 +175,7 @@ pub trait SubGenerator<'a>: Sized {
 
     fn print(&mut self, node: &mut Node) -> TokenStream;
 
-    fn print_token(&mut self, variant: &Ident) -> TokenStream;
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream;
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
         if let Some(node) = then {
@@ -274,7 +274,7 @@ pub trait SubGenerator<'a>: Sized {
         let is_bounded = node.is_bounded();
 
         match node {
-            Node::Token(token) => self.print_token(token),
+            Node::Leaf(leaf) => self.print_leaf(leaf),
             Node::Branch(branch) => self.print_branch(branch),
             Node::Fork(fork) => {
                 if fork.arms.len() == 0 {
@@ -389,10 +389,13 @@ impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
         quote!(lex.token = #body;)
     }
 
-    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
         let name = self.gen().enum_name;
 
-        match self.gen().callbacks.get(variant) {
+        let variant = leaf.token;
+        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
+
+        match callback {
             Some(callback) => {
                 quote!({
                     lex.token = #name::#variant;
@@ -423,10 +426,13 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
         }
     }
 
-    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
         let name = self.gen().enum_name;
 
-        match self.gen().callbacks.get(variant) {
+        let variant = leaf.token;
+        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
+
+        match callback {
             Some(callback) => {
                 quote!({
                     lex.token = #name::#variant;
@@ -458,12 +464,14 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
         }
     }
 
-    fn print_token(&mut self, variant: &Ident) -> TokenStream {
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
         let name = self.gen().enum_name;
         let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
 
+        let variant = leaf.token;
+        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
 
-        match self.gen().callbacks.get(variant) {
+        match callback {
             Some(callback) => {
                 quote! {
                     if !#pattern_fn(lex.read()) {
@@ -515,8 +523,8 @@ where
         self.0.print(node)
     }
 
-    fn print_token(&mut self, variant: &Ident) -> TokenStream {
-        self.0.print_token(variant)
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+        self.0.print_leaf(leaf)
     }
 
     fn print_fallback(&mut self) -> TokenStream {
@@ -552,8 +560,8 @@ where
         self.0.print(node)
     }
 
-    fn print_token(&mut self, variant: &Ident) -> TokenStream {
-        self.0.print_token(variant)
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+        self.0.print_leaf(leaf)
     }
 
     fn print_fallback(&mut self) -> TokenStream {

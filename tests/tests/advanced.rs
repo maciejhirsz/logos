@@ -8,10 +8,10 @@ use std::ops::Range;
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
     #[error]
-    InvalidToken,
+    Error,
 
     #[end]
-    EndOfProgram,
+    End,
 
     #[regex = "\"([^\"\\\\]|\\\\.)*\""]
     LiteralString,
@@ -50,7 +50,7 @@ where
         lex.advance();
     }
 
-    assert_eq!(lex.token, Token::EndOfProgram);
+    assert_eq!(lex.token, Token::End);
 }
 
 mod advanced {
@@ -69,8 +69,8 @@ mod advanced {
     #[test]
     fn hex() {
         assert_lex("0x 0X 0x0 0x9 0xa 0xf 0X0 0X9 0XA 0XF 0x123456789abcdefABCDEF 0xdeadBEEF", &[
-            (Token::InvalidToken, "0x", 0..2),
-            (Token::InvalidToken, "0X", 3..5),
+            (Token::Error, "0x", 0..2),
+            (Token::Error, "0X", 3..5),
             (Token::LiteralHex, "0x0", 6..9),
             (Token::LiteralHex, "0x9", 10..13),
             (Token::LiteralHex, "0xa", 14..17),

@@ -10,6 +10,7 @@ struct MockExtras {
     spaces: usize,
     tokens: usize,
     numbers: usize,
+    byte_size: u8,
 }
 
 impl Extras for MockExtras {
@@ -26,14 +27,26 @@ fn count_numbers<S>(lex: &mut Lexer<Token, S>) {
     lex.extras.numbers += 1;
 }
 
+fn byte_size_1<S>(lex: &mut Lexer<Token, S>) {
+    lex.extras.byte_size = 1;
+}
+
+fn byte_size_2<S>(lex: &mut Lexer<Token, S>) {
+    lex.extras.byte_size = 2;
+}
+
+fn byte_size_4<S>(lex: &mut Lexer<Token, S>) {
+    lex.extras.byte_size = 4;
+}
+
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 #[extras = "MockExtras"]
 enum Token {
     #[error]
-    InvalidToken,
+    Error,
 
     #[end]
-    EndOfProgram,
+    End,
 
     #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
     Identifier,
@@ -75,13 +88,18 @@ enum Token {
     #[regex = "byte|bytes[1-9][0-9]?"]
     Byte,
 
-    #[regex = "int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"]
+    #[regex("int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)")]
     Int,
+
+    #[token("uint8", callback = "byte_size_1")]
+    #[token("uint16", callback = "byte_size_2")]
+    #[token("uint32", callback = "byte_size_4")]
+    Uint,
 
     #[token = "."]
     Accessor,
 
-    #[token = "..."]
+    #[token("...")]
     Ellipsis,
 
     #[token = "{"]
@@ -121,7 +139,7 @@ where
         lex.advance();
     }
 
-    assert_eq!(lex.token, Token::EndOfProgram);
+    assert_eq!(lex.token, Token::End);
 }
 
 mod simple {
@@ -131,7 +149,7 @@ mod simple {
     fn empty() {
         let lex = Token::lexer("");
 
-        assert_eq!(lex.token, Token::EndOfProgram);
+        assert_eq!(lex.token, Token::End);
         assert_eq!(lex.range(), 0..0);
     }
 
@@ -139,7 +157,7 @@ mod simple {
     fn whitespace() {
         let lex = Token::lexer("     ");
 
-        assert_eq!(lex.token, Token::EndOfProgram);
+        assert_eq!(lex.token, Token::End);
         assert_eq!(lex.range(), 5..5);
     }
 
@@ -212,7 +230,7 @@ mod simple {
     #[test]
     fn numbers() {
         assert_lex("0 1 2 3 4 10 42 1337", &[
-            (Token::InvalidToken, "0", 0..1),
+            (Token::Error, "0", 0..1),
             (Token::Number, "1", 2..3),
             (Token::Number, "2", 4..5),
             (Token::Number, "3", 6..7),
@@ -226,10 +244,10 @@ mod simple {
     #[test]
     fn invalid_tokens() {
         assert_lex("@-/!", &[
-            (Token::InvalidToken, "@", 0..1),
-            (Token::InvalidToken, "-", 1..2),
-            (Token::InvalidToken, "/", 2..3),
-            (Token::InvalidToken, "!", 3..4),
+            (Token::Error, "@", 0..1),
+            (Token::Error, "-", 1..2),
+            (Token::Error, "/", 2..3),
+            (Token::Error, "!", 3..4),
         ]);
     }
 
@@ -244,8 +262,8 @@ mod simple {
     #[test]
     fn invalid_hex_and_binary() {
         assert_lex("0x 0b", &[
-            (Token::InvalidToken, "0x", 0..2),
-            (Token::InvalidToken, "0b", 3..5),
+            (Token::Error, "0x", 0..2),
+            (Token::Error, "0b", 3..5),
         ]);
     }
 
@@ -285,7 +303,7 @@ mod simple {
         let source = "foo  bar       42      HAL=9000";
         let mut lex = Token::lexer(source);
 
-        while lex.token != Token::EndOfProgram {
+        while lex.token != Token::End {
             lex.advance();
         }
 
@@ -354,5 +372,30 @@ mod simple {
                 (Token::Int, "int256", 204..210),
             ]
         );
+    }
+
+    #[test]
+    fn uints() {
+        let mut lex = Token::lexer("uint8 uint16 uint32");
+
+        assert_eq!(lex.token, Token::Uint);
+        assert_eq!(lex.range(), 0..5);
+        assert_eq!(lex.extras.byte_size, 1);
+
+        lex.advance();
+
+        assert_eq!(lex.token, Token::Uint);
+        assert_eq!(lex.range(), 6..12);
+        assert_eq!(lex.extras.byte_size, 2);
+
+        lex.advance();
+
+        assert_eq!(lex.token, Token::Uint);
+        assert_eq!(lex.range(), 13..19);
+        assert_eq!(lex.extras.byte_size, 4);
+
+        lex.advance();
+
+        assert_eq!(lex.token, Token::End);
     }
 }

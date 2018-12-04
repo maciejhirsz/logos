@@ -1,5 +1,5 @@
-pub use syn::{Attribute, LitStr, Ident, PathArguments, Lifetime};
-pub use proc_macro2::{Span, TokenTree};
+pub use syn::{Attribute, Lit, Ident, Meta, NestedMeta};
+pub use proc_macro2::Span;
 use quote::quote;
 
 pub trait OptionExt<T> {
@@ -15,32 +15,92 @@ impl<T> OptionExt<T> for Option<T> {
     }
 }
 
-pub fn value_from_attr(name: &str, attr: &Attribute) -> Option<String> {
-    if &attr.path.segments[0].ident == name {
-        let mut tts = attr.tts.clone().into_iter();
+pub struct VariantDefinition {
+    pub value: String,
+    pub callback: Option<Ident>,
+}
 
-        match tts.next() {
-            Some(TokenTree::Punct(ref punct)) if punct.as_char() == '=' => {},
-            Some(invalid) => panic!("#[{}] Expected '=', got {}", name, invalid),
-            _ => panic!("Invalid token")
+pub trait Value {
+    fn value(value: String) -> Self;
+
+    fn nested(&mut self, nested: &NestedMeta) {
+        panic!("Unexpected nested attribute: {}", quote!(#nested));
+    }
+}
+
+impl Value for String {
+    fn value(value: String) -> Self {
+        value
+    }
+}
+
+impl Value for Ident {
+    fn value(value: String) -> Self {
+        ident(&value)
+    }
+}
+
+impl Value for VariantDefinition {
+    fn value(value: String) -> Self {
+        VariantDefinition {
+            value,
+            callback: None,
         }
+    }
 
-        let value = match tts.next() {
-            Some(TokenTree::Literal(literal)) => {
-                match syn::parse::<LitStr>(quote!{ #literal }.into()) {
-                    Ok(v)  => v.value(),
-                    Err(_) => panic!("#[{}] value must be a literal string", name),
-                }
+    fn nested(&mut self, nested: &NestedMeta) {
+        match nested {
+            NestedMeta::Meta(Meta::NameValue(ref nval)) if nval.ident == "callback" => {
+                let callback = match nval.lit {
+                    Lit::Str(ref c) => ident(&c.value()),
+                    ref lit => panic!("Invalid callback value: {}", quote!(#lit)),
+                };
+
+                self.callback.insert(callback, |_| panic!("Only one callback can be defined per variant definition!"));
             },
-            Some(invalid) => panic!("#[{}] Invalid value: {}", name, invalid),
-            None => panic!("Invalid token")
-        };
+            _ => panic!("Unexpected nested attribute: {}", quote!(#nested)),
+        }
+    }
+}
 
-        assert!(tts.next().is_none(), "Unexpected token!");
+pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Option<V>
+where
+    V: Value,
+{
+    let meta = match attr.parse_meta() {
+        Ok(meta) => meta,
+        Err(_) => panic!("Couldn't parse attribute: {}", quote!(#attr)),
+    };
 
-        Some(value)
-    } else {
-        None
+    match meta {
+        Meta::Word(ref ident) if ident == name => {
+            panic!("Expected #[{} = ...], or #[{}(...)]", name, name);
+        },
+        Meta::NameValue(ref nval) if nval.ident == name => {
+            let value = match nval.lit {
+                Lit::Str(ref v) => v.value(),
+                _ => panic!("#[{}] value must be a literal string", name),
+            };
+
+            Some(V::value(value))
+        },
+        Meta::List(ref list) if list.ident == name => {
+            let mut iter = list.nested.iter();
+
+            let value = match iter.next() {
+                Some(NestedMeta::Literal(Lit::Str(ref v))) => v.value(),
+                _ => panic!("#[{}] first argument must be a literal string, got: {}", name, quote!(#attr)),
+            };
+
+            let mut value = V::value(value);
+
+            for nested in iter {
+                value.nested(nested);
+            }
+
+            Some(value)
+        },
+        _ => None,
     }
 }
 

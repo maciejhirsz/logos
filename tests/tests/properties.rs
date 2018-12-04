@@ -8,10 +8,10 @@ use std::ops::Range;
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
     #[error]
-    InvalidToken,
+    Error,
 
     #[end]
-    EndOfProgram,
+    End,
 
     #[regex = r"[a-zA-Z]+"]
     Ascii,
@@ -35,7 +35,7 @@ where
         lex.advance();
     }
 
-    assert_eq!(lex.token, Token::EndOfProgram);
+    assert_eq!(lex.token, Token::End);
 }
 
 mod properties {
