@@ -393,7 +393,7 @@ impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
         let name = self.gen().enum_name;
 
         let variant = leaf.token;
-        let callback = leaf.callback.or_else(|| self.gen().callbacks.get(variant));
+        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
 
         match callback {
             Some(callback) => {
@@ -430,7 +430,7 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
         let name = self.gen().enum_name;
 
         let variant = leaf.token;
-        let callback = leaf.callback.or_else(|| self.gen().callbacks.get(variant));
+        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
 
         match callback {
             Some(callback) => {
@@ -469,7 +469,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
         let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
 
         let variant = leaf.token;
-        let callback = leaf.callback.or_else(|| self.gen().callbacks.get(variant));
+        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
 
         match callback {
             Some(callback) => {

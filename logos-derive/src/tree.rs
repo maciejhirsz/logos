@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use regex::{Regex, RepetitionFlag};
 
 pub type Token<'a> = &'a ::syn::Ident;
-pub type Callback<'a> = &'a ::syn::Ident;
+pub type Callback = ::syn::Ident;
 
 #[derive(Clone, Default, PartialEq)]
 pub struct Branch<'a> {
@@ -11,10 +11,10 @@ pub struct Branch<'a> {
     pub then: Option<Box<Node<'a>>>,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Leaf<'a> {
     pub token: Token<'a>,
-    pub callback: Option<Callback<'a>>,
+    pub callback: Option<Callback>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -71,7 +71,7 @@ impl<'a> fmt::Debug for Leaf<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.token)?;
 
-        if let Some(callback) = self.callback {
+        if let Some(ref callback) = self.callback {
             write!(f, " ({})", callback)?;
         }
 
@@ -156,6 +156,15 @@ impl<'a> From<Fork<'a>> for Node<'a> {
 impl<'a> From<Fork<'a>> for Box<Node<'a>> {
     fn from(fork: Fork<'a>) -> Self {
         Node::from(fork).boxed()
+    }
+}
+
+impl<'a> Leaf<'a> {
+    fn take(&mut self) -> Leaf<'a> {
+        Leaf {
+            token: self.token,
+            callback: self.callback.take(),
+        }
     }
 }
 
@@ -474,7 +483,7 @@ impl<'a> Node<'a> {
                 Fork {
                     kind: ForkKind::Maybe,
                     arms: vec![],
-                    then: Some(Node::Leaf(*leaf).boxed()),
+                    then: Some(Node::Leaf(leaf.take()).boxed()),
                 }
             }
         };
@@ -702,27 +711,25 @@ mod tests {
     #[test]
     fn empty_branch_with_then_to_node() {
         let token = token("mock");
-        let token = Leaf::from(&token);
+
         let branch = Branch {
             regex: Regex::default(),
-            then: Some(Node::Leaf(token).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token)).boxed()),
         };
 
-        assert_eq!(branch.to_node(), Some(Node::Leaf(token)));
+        assert_eq!(branch.to_node(), Some(Node::Leaf(Leaf::from(&token))));
     }
 
     #[test]
     fn insert_branch_into_branch() {
         let token_a = token("ABC");
         let token_b = token("DEF");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
 
-        let branch_a = branch("abc", token_a);
-        let branch_b = branch("def", token_b);
+        let branch_a = branch("abc", Leaf::from(&token_a));
+        let branch_b = branch("def", Leaf::from(&token_b));
 
-        let mut parent = branch("abc", token_a).to_node().unwrap();
-        let child = branch("def", token_b).to_node().unwrap();
+        let mut parent = branch("abc", Leaf::from(&token_a)).to_node().unwrap();
+        let child = branch("def", Leaf::from(&token_b)).to_node().unwrap();
 
         parent.insert(child);
 
@@ -737,18 +744,16 @@ mod tests {
     fn insert_a_token_into_a_branch() {
         let token_a = token("ABC");
         let token_b = token("DEF");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
 
-        let mut parent = branch("abc", token_a).to_node().unwrap();
-        let child = Node::Leaf(token_b);
+        let mut parent = branch("abc", Leaf::from(&token_a)).to_node().unwrap();
+        let child = Node::Leaf(Leaf::from(&token_b));
 
         parent.insert(child);
 
         assert_eq!(parent, Node::Fork(Fork {
             kind: ForkKind::Maybe,
-            arms: vec![branch("abc", token_a)],
-            then: Some(Node::Leaf(token_b).boxed()),
+            arms: vec![branch("abc", Leaf::from(&token_a))],
+            then: Some(Node::Leaf(Leaf::from(&token_b)).boxed()),
         }));
     }
 
@@ -756,18 +761,16 @@ mod tests {
     fn insert_a_branch_into_a_token() {
         let token_a = token("ABC");
         let token_b = token("DEF");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
 
-        let mut parent = Node::Leaf(token_a);
-        let child = branch("xyz", token_b).to_node().unwrap();
+        let mut parent = Node::Leaf(Leaf::from(&token_a));
+        let child = branch("xyz", Leaf::from(&token_b)).to_node().unwrap();
 
         parent.insert(child);
 
         assert_eq!(parent, Node::Fork(Fork {
             kind: ForkKind::Maybe,
-            arms: vec![branch("xyz", token_b)],
-            then: Some(Node::Leaf(token_a).boxed()),
+            arms: vec![branch("xyz", Leaf::from(&token_b))],
+            then: Some(Node::Leaf(Leaf::from(&token_a)).boxed()),
         }));
     }
 
@@ -775,18 +778,16 @@ mod tests {
     fn insert_a_fork_into_a_fork() {
         let token_a = token("ABC");
         let token_b = token("DEF");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
 
         let mut parent = Node::Fork(Fork {
             kind: ForkKind::Plain,
-            arms: vec![branch("abc", token_a)],
+            arms: vec![branch("abc", Leaf::from(&token_a))],
             then: None,
         });
 
         let child = Node::Fork(Fork {
             kind: ForkKind::Plain,
-            arms: vec![branch("def", token_b)],
+            arms: vec![branch("def", Leaf::from(&token_b))],
             then: None,
         });
 
@@ -795,8 +796,8 @@ mod tests {
         assert_eq!(parent, Node::Fork(Fork {
             kind: ForkKind::Plain,
             arms: vec![
-                branch("abc", token_a),
-                branch("def", token_b),
+                branch("abc", Leaf::from(&token_a)),
+                branch("def", Leaf::from(&token_b)),
             ],
             then: None,
         }));
@@ -807,20 +808,17 @@ mod tests {
         let token_a = token("ABC");
         let token_b = token("DEF");
         let token_x = token("XYZ");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
-        let token_x = Leaf::from(&token_x);
 
         let mut parent = Node::Fork(Fork {
             kind: ForkKind::Plain,
-            arms: vec![branch("abc", token_a)],
+            arms: vec![branch("abc", Leaf::from(&token_a))],
             then: None,
         });
 
         let child = Node::Fork(Fork {
             kind: ForkKind::Maybe,
-            arms: vec![branch("def", token_b)],
-            then: Some(Node::Leaf(token_x).boxed()),
+            arms: vec![branch("def", Leaf::from(&token_b))],
+            then: Some(Node::Leaf(Leaf::from(&token_x)).boxed()),
         });
 
         parent.insert(child);
@@ -828,10 +826,10 @@ mod tests {
         assert_eq!(parent, Node::Fork(Fork {
             kind: ForkKind::Maybe,
             arms: vec![
-                branch("abc", token_a),
-                branch("def", token_b),
+                branch("abc", Leaf::from(&token_a)),
+                branch("def", Leaf::from(&token_b)),
             ],
-            then: Some(Node::Leaf(token_x).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_x)).boxed()),
         }));
     }
 
@@ -840,19 +838,16 @@ mod tests {
         let token_a = token("ABC");
         let token_b = token("DEF");
         let token_x = token("XYZ");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
-        let token_x = Leaf::from(&token_x);
 
         let mut parent = Node::Fork(Fork {
             kind: ForkKind::Maybe,
-            arms: vec![branch("abc", token_a)],
-            then: Some(Node::Leaf(token_x).boxed()),
+            arms: vec![branch("abc", Leaf::from(&token_a))],
+            then: Some(Node::Leaf(Leaf::from(&token_x)).boxed()),
         });
 
         let child = Node::Fork(Fork {
             kind: ForkKind::Plain,
-            arms: vec![branch("def", token_b)],
+            arms: vec![branch("def", Leaf::from(&token_b))],
             then: None,
         });
 
@@ -861,28 +856,27 @@ mod tests {
         assert_eq!(parent, Node::Fork(Fork {
             kind: ForkKind::Maybe,
             arms: vec![
-                branch("abc", token_a),
-                branch("def", token_b),
+                branch("abc", Leaf::from(&token_a)),
+                branch("def", Leaf::from(&token_b)),
             ],
-            then: Some(Node::Leaf(token_x).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_x)).boxed()),
         }));
     }
 
     #[test]
     fn collapsing_a_fork() {
         let token_a = token("ABC");
-        let token_a = Leaf::from(&token_a);
 
         let mut fork = Fork {
             kind: ForkKind::Maybe,
             arms: vec![Branch::new(Regex::sequence("abc"))],
-            then: Some(Node::Leaf(token_a).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_a)).boxed()),
         };
 
         let expected = Fork {
             kind: ForkKind::Maybe,
-            arms: vec![branch("abc", token_a)],
-            then: Some(Node::Leaf(token_a).boxed()),
+            arms: vec![branch("abc", Leaf::from(&token_a))],
+            then: Some(Node::Leaf(Leaf::from(&token_a)).boxed()),
         };
 
         fork.collapse();
@@ -893,12 +887,11 @@ mod tests {
     #[test]
     fn unwinding_a_fork() {
         let token_a = token("ABC");
-        let token_a = Leaf::from(&token_a);
 
         let mut fork = Fork {
             kind: ForkKind::Repeat,
             arms: vec![Branch::new(Regex::sequence("abc"))],
-            then: Some(Node::Leaf(token_a).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_a)).boxed()),
         };
 
         let expected = Fork {
@@ -907,7 +900,7 @@ mod tests {
                 regex: Regex::sequence("abc"),
                 then: Some(Node::Fork(fork.clone()).boxed()),
             }],
-            then: Some(Node::Leaf(token_a).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_a)).boxed()),
         };
 
         fork.unwind();
@@ -919,31 +912,29 @@ mod tests {
     fn insert_a_repeat_fork_into_a_fork() {
         let token_a = token("ABC");
         let token_b = token("DEF");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
 
         let mut parent = Node::Fork(Fork {
             kind: ForkKind::Plain,
-            arms: vec![branch("abc", token_a)],
+            arms: vec![branch("abc", Leaf::from(&token_a))],
             then: None,
         });
 
         let child = Node::Fork(Fork {
             kind: ForkKind::Repeat,
             arms: vec![Branch::new(Regex::sequence("def"))],
-            then: Some(Node::Leaf(token_b).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_b)).boxed()),
         });
 
         let expected = Node::Fork(Fork {
             kind: ForkKind::Maybe,
             arms: vec![
-                branch("abc", token_a),
+                branch("abc", Leaf::from(&token_a)),
                 Branch {
                     regex: Regex::sequence("def"),
                     then: Some(child.clone().boxed()),
                 }
             ],
-            then: Some(Node::Leaf(token_b).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_b)).boxed()),
         });
 
         parent.insert(child);
@@ -955,31 +946,29 @@ mod tests {
     fn insert_a_fork_into_a_repeat_fork() {
         let token_a = token("ABC");
         let token_b = token("DEF");
-        let token_a = Leaf::from(&token_a);
-        let token_b = Leaf::from(&token_b);
 
         let mut parent = Node::Fork(Fork {
             kind: ForkKind::Repeat,
             arms: vec![Branch::new(Regex::sequence("def"))],
-            then: Some(Node::Leaf(token_b).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_b)).boxed()),
         });
 
         let child = Node::Fork(Fork {
             kind: ForkKind::Plain,
-            arms: vec![branch("abc", token_a)],
+            arms: vec![branch("abc", Leaf::from(&token_a))],
             then: None,
         });
 
         let expected = Node::Fork(Fork {
             kind: ForkKind::Maybe,
             arms: vec![
-                branch("abc", token_a),
+                branch("abc", Leaf::from(&token_a)),
                 Branch {
                     regex: Regex::sequence("def"),
                     then: Some(parent.clone().boxed()),
                 }
             ],
-            then: Some(Node::Leaf(token_b).boxed()),
+            then: Some(Node::Leaf(Leaf::from(&token_b)).boxed()),
         });
 
         parent.insert(child);

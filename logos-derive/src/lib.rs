@@ -23,13 +23,13 @@ mod handlers;
 mod generator;
 
 use tree::{Node, Fork, Leaf};
-use util::{OptionExt, value_from_attr};
+use util::{OptionExt, VariantDefinition, value_from_attr};
 use handlers::Handlers;
 use generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
-use syn::{ItemEnum, Fields};
+use syn::{ItemEnum, Fields, Ident};
 
 #[proc_macro_derive(Logos, attributes(
     extras,
@@ -46,13 +46,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let size = item.variants.len();
     let name = &item.ident;
 
-    let mut extras = None;
+    let mut extras: Option<Ident> = None;
     let mut error = None;
     let mut end = None;
 
     for attr in &item.attrs {
         if let Some(ext) = value_from_attr("extras", attr) {
-            extras.insert(util::ident(&ext), |_| panic!("Only one #[extras] attribute can be declared."));
+            extras.insert(ext, |_| panic!("Only one #[extras] attribute can be declared."));
         }
     }
 
@@ -93,21 +93,23 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 end.insert(variant, |_| panic!("Only one #[end] variant can be declared."));
             }
 
-            let leaf = Leaf {
+            let mut leaf = Leaf {
                 token: variant,
                 callback: None,
             };
 
-            if let Some(path) = value_from_attr("token", attr) {
-                fork.insert(Node::from_sequence(&path, leaf));
-            }
+            if let Some(mut definition) = value_from_attr::<VariantDefinition>("token", attr) {
+                leaf.callback = definition.callback;
 
-            if let Some(path) = value_from_attr("regex", attr) {
-                fork.insert(Node::from_regex(&path, leaf));
+                fork.insert(Node::from_sequence(&definition.value, leaf));
+            } else if let Some(mut definition) = value_from_attr::<VariantDefinition>("regex", attr) {
+                leaf.callback = definition.callback;
+
+                fork.insert(Node::from_regex(&definition.value, leaf));
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {
-                generator.set_callback(variant, util::ident(&callback));
+                generator.set_callback(variant, callback);
             }
         }
     }
