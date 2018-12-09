@@ -1,8 +1,5 @@
-extern crate logos;
-#[macro_use]
-extern crate logos_derive;
-
 use logos::Logos;
+use logos_derive::Logos;
 use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]

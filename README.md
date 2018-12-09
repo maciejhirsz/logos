@@ -16,8 +16,6 @@ of tokens defined in the grammar. Or, in other words, **it is really fast**.
 ## Usage
 
 ```rust
-extern crate logos;
-
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]

@@ -88,13 +88,7 @@
 extern crate core as std;
 
 #[cfg(feature = "export_derive")]
-extern crate logos_derive;
-
-#[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
-
-#[cfg(feature = "nul_term_source")]
-extern crate toolshed;
 
 mod lexer;
 mod source;
@@ -102,8 +96,8 @@ mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use lexer::{Lexer, Lexicon, Extras};
-pub use source::{Source, Slice};
+pub use self::lexer::{Lexer, Lexicon, Extras};
+pub use self::source::{Source, Slice};
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
@@ -146,8 +140,6 @@ pub trait Logos: Sized {
 /// indirection.
 ///
 /// ```rust
-/// extern crate logos;
-///
 /// use logos::{Logos, lookup};
 ///
 /// #[derive(Logos, Clone, Copy, PartialEq, Debug)]

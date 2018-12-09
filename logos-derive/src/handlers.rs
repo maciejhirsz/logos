@@ -1,5 +1,6 @@
 use std::rc::Rc;
-use tree::{Node, Branch};
+
+use crate::tree::{Node, Branch};
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {

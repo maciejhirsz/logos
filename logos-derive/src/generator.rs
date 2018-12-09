@@ -5,8 +5,8 @@ use syn::Ident;
 use quote::{quote, ToTokens};
 use proc_macro2::{TokenStream, Span};
 
-use tree::{Node, Branch, ForkKind, Leaf};
-use regex::{Regex, Pattern};
+use crate::tree::{Node, Branch, ForkKind, Leaf};
+use crate::regex::{Regex, Pattern};
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,

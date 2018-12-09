@@ -1,14 +1,8 @@
 #![feature(test)]
-
-extern crate toolshed;
 extern crate test;
-extern crate logos;
-
-#[macro_use]
-extern crate logos_derive;
 
 use test::Bencher;
-use logos::Logos;
+use logos_derive::Logos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {

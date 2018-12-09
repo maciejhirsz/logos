@@ -9,12 +9,7 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
 
-extern crate syn;
-extern crate quote;
 extern crate proc_macro;
-extern crate proc_macro2;
-extern crate regex_syntax;
-extern crate utf8_ranges;
 
 mod util;
 mod tree;
@@ -22,10 +17,10 @@ mod regex;
 mod handlers;
 mod generator;
 
-use tree::{Node, Fork, Leaf};
-use util::{OptionExt, VariantDefinition, value_from_attr};
-use handlers::Handlers;
-use generator::Generator;
+use self::tree::{Node, Fork, Leaf};
+use self::util::{OptionExt, VariantDefinition, value_from_attr};
+use self::handlers::{Handlers, Handler};
+use self::generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
@@ -98,11 +93,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 callback: None,
             };
 
-            if let Some(mut definition) = value_from_attr::<VariantDefinition>("token", attr) {
+            if let Some(definition) = value_from_attr::<VariantDefinition>("token", attr) {
                 leaf.callback = definition.callback;
 
                 fork.insert(Node::from_sequence(&definition.value, leaf));
-            } else if let Some(mut definition) = value_from_attr::<VariantDefinition>("regex", attr) {
+            } else if let Some(definition) = value_from_attr::<VariantDefinition>("regex", attr) {
                 leaf.callback = definition.callback;
 
                 fork.insert(Node::from_regex(&definition.value, leaf));
@@ -138,8 +133,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     // panic!("{:#?}", handlers);
 
     let handlers = handlers.into_iter().map(|handler| {
-        use handlers::Handler;
-
         match handler {
             Handler::Eof        => quote! { Some(eof) },
             Handler::Error      => quote! { Some(_error) },

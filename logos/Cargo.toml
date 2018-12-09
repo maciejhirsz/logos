@@ -9,6 +9,7 @@ documentation = "https://docs.rs/logos"
 keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 categories = ["parsing", "text-processing"]
 readme = "../README.md"
+edition = "2018"
 
 [dependencies]
 toolshed = { version = "0.6", optional = true }

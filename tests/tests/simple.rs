@@ -1,8 +1,5 @@
-extern crate logos;
-#[macro_use]
-extern crate logos_derive;
-
 use logos::{Logos, Extras, Lexer};
+use logos_derive::Logos;
 use std::ops::Range;
 
 #[derive(Default)]
