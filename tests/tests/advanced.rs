@@ -10,7 +10,7 @@ enum Token {
     #[end]
     End,
 
-    #[regex = "\"([^\"\\\\]|\\\\.)*\""]
+    #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
     LiteralString,
 
     #[regex = "0[xX][0-9a-fA-F]+"]
@@ -25,10 +25,10 @@ enum Token {
     #[token="~"]
     LiteralNull,
 
-    #[regex="~[a-z][a-z]+"]
+    #[regex="~[a-z]+"]
     LiteralUrbitAddress,
 
-    #[regex="~[mhs][0-9]+"]
+    #[regex="~(m|h|s)[0-9]+"]
     LiteralRelDate,
 
     #[regex = "🦀+"]
@@ -64,11 +64,14 @@ mod advanced {
 
     #[test]
     fn string() {
-        assert_lex(r#" "" "foobar" "escaped\"quote" "escaped\nnew line" "#, &[
+        assert_lex(r#" "" "foobar" "escaped\"quote" "escaped\nnew line" "\x" "#, &[
             (Token::LiteralString, "\"\"", 1..3),
             (Token::LiteralString, "\"foobar\"", 4..12),
             (Token::LiteralString, "\"escaped\\\"quote\"", 13..29),
             (Token::LiteralString, "\"escaped\\nnew line\"", 30..49),
+            (Token::Error, "\"\\", 50..52),
+            (Token::Error, "x", 52..53),
+            (Token::Error, "\" ", 53..55),
         ]);
     }
 
