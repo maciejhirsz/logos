@@ -1,6 +1,7 @@
 use std::{mem, fmt};
 use std::cmp::Ordering;
-use regex::{Regex, RepetitionFlag};
+
+use crate::regex::{Regex, RepetitionFlag};
 
 pub type Token<'a> = &'a ::syn::Ident;
 pub type Callback = ::syn::Ident;

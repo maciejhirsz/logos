@@ -1,6 +1,6 @@
 [package]
 name = "logos"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -9,9 +9,10 @@ documentation = "https://docs.rs/logos"
 keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 categories = ["parsing", "text-processing"]
 readme = "../README.md"
+edition = "2018"
 
 [dependencies]
-toolshed = { version = "0.6", optional = true }
+toolshed = { version = "0.8", optional = true }
 logos-derive = { version = "0.8.0", optional = true }
 
 [features]

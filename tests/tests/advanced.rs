@@ -1,8 +1,5 @@
-extern crate logos;
-#[macro_use]
-extern crate logos_derive;
-
 use logos::{Logos, lookup};
+use logos_derive::Logos;
 use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
@@ -13,7 +10,7 @@ enum Token {
     #[end]
     End,
 
-    #[regex = "\"([^\"\\\\]|\\\\.)*\""]
+    #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
     LiteralString,
 
     #[regex = "0[xX][0-9a-fA-F]+"]
@@ -24,6 +21,15 @@ enum Token {
 
     #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
     LiteralFloat,
+
+    #[token="~"]
+    LiteralNull,
+
+    #[regex="~[a-z][a-z]+"]
+    LiteralUrbitAddress,
+
+    #[regex="~(m|h|s)[0-9]+"]
+    LiteralRelDate,
 
     #[regex = "🦀+"]
     Rustaceans,
@@ -58,11 +64,14 @@ mod advanced {
 
     #[test]
     fn string() {
-        assert_lex(r#" "" "foobar" "escaped\"quote" "escaped\nnew line" "#, &[
+        assert_lex(r#" "" "foobar" "escaped\"quote" "escaped\nnew line" "\x" "#, &[
             (Token::LiteralString, "\"\"", 1..3),
             (Token::LiteralString, "\"foobar\"", 4..12),
             (Token::LiteralString, "\"escaped\\\"quote\"", 13..29),
             (Token::LiteralString, "\"escaped\\nnew line\"", 30..49),
+            (Token::Error, "\"\\", 50..52),
+            (Token::Error, "x", 52..53),
+            (Token::Error, "\" ", 53..55),
         ]);
     }
 
@@ -156,6 +165,19 @@ mod advanced {
             (Token::Keyword, "try", 0..3),
             (Token::Keyword, "type", 4..8),
             (Token::Keyword, "typeof", 9..15),
+        ]);
+    }
+
+    #[test]
+    fn sigs(){
+        assert_lex("~ ~m23 ~s42 ~h23 ~sod ~myd ~songname", &[
+            (Token::LiteralNull, "~", 0..1),
+            (Token::LiteralRelDate, "~m23", 2..6),
+            (Token::LiteralRelDate, "~s42", 7..11),
+            (Token::LiteralRelDate, "~h23", 12..16),
+            (Token::LiteralUrbitAddress, "~sod", 17..21),
+            (Token::LiteralUrbitAddress, "~myd", 22..26),
+            (Token::LiteralUrbitAddress, "~songname",27..36),
         ]);
     }
 }

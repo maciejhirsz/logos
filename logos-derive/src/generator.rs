@@ -5,8 +5,8 @@ use syn::Ident;
 use quote::{quote, ToTokens};
 use proc_macro2::{TokenStream, Span};
 
-use tree::{Node, Branch, ForkKind, Leaf};
-use regex::{Regex, Pattern};
+use crate::tree::{Node, Branch, ForkKind, Leaf};
+use crate::regex::{Regex, Pattern};
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,
@@ -185,6 +185,10 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
+    fn print_then_plain(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        self.print_then(then)
+    }
+
     fn print_branch(&mut self, branch: &mut Branch) -> TokenStream {
         if branch.regex.len() == 0 {
             return self.print_then(&mut branch.then);
@@ -327,7 +331,10 @@ pub trait SubGenerator<'a>: Sized {
                     }, }
                 }).collect::<TokenStream>();
 
-                let default = self.print_then(&mut fork.then);
+                let default = match kind {
+                    ForkKind::Plain => self.print_then_plain(&mut fork.then),
+                    _               => self.print_then(&mut fork.then),
+                };
 
                 if fork.kind == ForkKind::Plain
                     || (fork.kind == ForkKind::Maybe && is_bounded)
@@ -517,6 +524,10 @@ where
         } else {
             quote!(continue)
         }
+    }
+
+    fn print_then_plain(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+        self.0.print_then(then)
     }
 
     fn print(&mut self, node: &mut Node) -> TokenStream {

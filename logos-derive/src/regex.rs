@@ -1,9 +1,10 @@
 use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
 use regex_syntax::hir::{self, Hir, HirKind, Class};
 use regex_syntax::Parser;
-use tree::{Node, Fork, ForkKind, Branch, Leaf};
 use std::cmp::Ordering;
 use std::fmt;
+
+use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
 
 static NO_ZERO_BYTE: &str = "Tokens mustn't include the `0` byte.";
 
