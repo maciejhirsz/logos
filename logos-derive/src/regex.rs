@@ -459,8 +459,11 @@ impl Pattern {
         }
     }
 
-    // FIXME: this can be more robust
     pub fn intersect(&self, other: &Pattern) -> Option<Pattern> {
+        if self == other {
+            return None;
+        }
+
         if self.contains(other) {
             Some(other.clone())
         } else if other.contains(self) {
@@ -471,20 +474,24 @@ impl Pattern {
     }
 
     pub fn contains(&self, other: &Pattern) -> bool {
-        use self::Pattern::*;
+        match other {
+            Pattern::Byte(x) => self.contains_range(*x, *x),
+            Pattern::Range(a, b) => self.contains_range(*a, *b),
+            Pattern::Class(class) => {
+                class.iter().all(|pat| self.contains(pat))
+            },
+        }
+    }
 
-        if let Byte(x) = other {
-            match self {
-                Byte(_) => false,
-                Range(a, b) => {
-                    *a <= *x && *x <= *b
-                },
-                Class(class) => {
-                    class.iter().any(|pat| pat.contains(other))
-                },
-            }
-        } else {
-            false
+    fn contains_range(&self, xa: u8, xb: u8) -> bool {
+        match self {
+            Pattern::Byte(a) => *a == xa && *a == xb,
+            Pattern::Range(a, b) => {
+                (*a <= xa && xa <= *b) && (*a <= xb && xb <= *b)
+            },
+            Pattern::Class(class) => {
+                class.iter().any(|pat| pat.contains_range(xa, xb))
+            },
         }
     }
 

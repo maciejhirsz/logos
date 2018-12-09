@@ -28,7 +28,7 @@ enum Token {
     #[regex="~[a-z][a-z]+"]
     LiteralUrbitAddress,
 
-    #[regex="~(m|h|s)[0-9]+"]
+    #[regex="~[mhs][0-9]+"]
     LiteralRelDate,
 
     #[regex = "🦀+"]
