@@ -593,6 +593,8 @@ impl<'a> Node<'a> {
         }
     }
 
+    /// Checks if the fork contains one branch that is a generalization of all other branches,
+    /// and if so removes and returns that branch.
     pub fn fallback(&mut self) -> Option<Branch<'a>> {
         match self {
             Node::Fork(fork) => {
@@ -603,23 +605,35 @@ impl<'a> Node<'a> {
                 // This is a bit weird, but it basically checks if the fork
                 // has one and only one branch that is heavy and if so, it
                 // removes that branch and returns it.
-                //
-                // FIXME: This should check if all other branches in the tree
-                //        are specializations of that regex
                 let mut index = None;
+                let mut len = 1;
 
                 for (idx, branch) in fork.arms.iter().enumerate() {
-                    if branch.regex.first().weight() > 1 {
-                        // Make sure we only get one
-                        if index.is_some() {
-                            return None;
-                        }
+                    let other_len = branch.regex.first().len();
 
+                    if other_len > len {
                         index = Some(idx);
+                        len = other_len;
                     }
                 }
 
-                index.map(|idx| fork.arms.remove(idx))
+                let index = index?;
+                let selected = &fork.arms[index];
+
+                // FIXME: Specialization check should be deeper than first Pattern
+                let specialization = fork.arms.iter().enumerate().all(|(idx, branch)| {
+                    if idx == index {
+                        return true;
+                    }
+
+                    selected.regex.first().contains(branch.regex.first())
+                });
+
+                if specialization {
+                    Some(fork.arms.remove(index))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
