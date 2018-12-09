@@ -25,7 +25,7 @@ enum Token {
     #[token="~"]
     LiteralNull,
 
-    #[regex="~[a-z]+"]
+    #[regex="~[a-z][a-z]+"]
     LiteralUrbitAddress,
 
     #[regex="~(m|h|s)[0-9]+"]
