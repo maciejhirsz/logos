@@ -43,6 +43,12 @@ enum Token {
     #[regex="~[mhs][0-9]+"]
     LiteralRelDate,
 
+    #[token="'"]
+    SingleQuote,
+
+    #[token="'''"]
+    TripleQuote, 
+
     #[regex = "🦀+"]
     Rustaceans,
 
@@ -190,6 +196,15 @@ mod advanced {
             (Token::LiteralUrbitAddress, "~sod", 17..21),
             (Token::LiteralUrbitAddress, "~myd", 22..26),
             (Token::LiteralUrbitAddress, "~songname",27..36),
+        ]);
+    }
+    #[test]
+    fn subquotes(){
+        assert_lex("' ''' ''", &[
+            (Token::SingleQuote, "'", 0..1),
+            (Token::TripleQuote, "'''", 2..5),
+            (Token::SingleQuote, "'", 6..7),
+            (Token::SingleQuote, "'", 7..8),
         ]);
     }
 }
