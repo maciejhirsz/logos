@@ -34,14 +34,52 @@ enum Token {
     #[token="~["]
     Sglc,
 
+
     #[regex="~[a-z][a-z]+"]
     LiteralUrbitAddress,
+
+    #[regex="~[0-9]+-?[\\.0-9a-f]+"]
+    LiteralAbsDate, 
 
     #[regex="~[mhs][0-9]+"]
     LiteralRelDate,
 
-    #[regex="~[0-9]+-?[\\.0-9a-f]+"]
-    LiteralAbsDate, 
+
+    #[token="~|"]
+    Sgbr, // ~| sell on trace
+
+    #[token="~_"]
+    Sgcb, // ~_ tank on trace
+
+    #[token="~^"]
+    Sgkt, // ~^ cast hint (?)
+
+    #[token="~/"]
+    Sgnt, // ~/ function j-hint
+
+    #[token="~<"]
+    Sgld, // ~< backward hint
+
+    #[token="~>"]
+    Sgbn, // ~> forward hint
+
+    #[token="~$"]
+    Sgbs, // ~$ profiler hint
+
+    #[token="~+"]
+    Sgls, // ~+ cache/memoize
+
+    #[token="~&"]
+    Sgpd, // ~& printf/priority
+
+    #[token="~="]
+    Sgts, // ~= don't duplicate
+
+    #[token="~!"]
+    Sgzp, // ~! type on trace 
+
+    #[token="]~"]
+    Rcsg,    // ]~, null terminated tuple reverse
 
     #[regex = "🦀+"]
     Rustaceans,
