@@ -172,11 +172,13 @@ mod simple {
 
     #[test]
     fn punctation() {
-        assert_lex("{ . ... }", &[
+        assert_lex("{ . .. ... }", &[
             (Token::BraceOpen, "{", 0..1),
             (Token::Accessor, ".", 2..3),
-            (Token::Ellipsis, "...", 4..7),
-            (Token::BraceClose, "}", 8..9),
+            (Token::Accessor, ".", 4..5),
+            (Token::Accessor, ".", 5..6),
+            (Token::Ellipsis, "...", 7..10),
+            (Token::BraceClose, "}", 11..12),
         ]);
     }
 

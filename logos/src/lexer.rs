@@ -1,6 +1,7 @@
 use std::ops::Range;
 
-use super::{Logos, Source};
+use crate::source::{Source, ByteArray};
+use super::{Logos};
 use super::internal::LexerInternal;
 
 /// A Lookup Table used internally. It maps indices for every valid
@@ -71,21 +72,23 @@ where
 
             if let Some(handler) = Token::lexicon()[ch as usize] {
                 self.token_start = self.token_end;
+
                 return handler(self);
             }
 
             self.extras.on_whitespace(ch);
-
-            self.bump();
+            self.bump(1);
         }
     }
 
     /// Get the range for the current token in `Source`.
+    #[inline]
     pub fn range(&self) -> Range<usize> {
         self.token_start .. self.token_end
     }
 
     /// Get a string slice of the current token.
+    #[inline]
     pub fn slice(&self) -> Source::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
@@ -96,9 +99,11 @@ where
 /// in JavaScript.
 pub trait Extras: Sized + Default {
     /// Method called by the `Lexer` when a new token is about to be produced.
+    #[inline]
     fn on_advance(&mut self) {}
 
     /// Method called by the `Lexer` when a white space byte has been encountered.
+    #[inline]
     fn on_whitespace(&mut self, _byte: u8) {}
 }
 
@@ -110,7 +115,7 @@ impl Extras for () { }
 ///
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
-impl<'source, Token, Source> LexerInternal for Lexer<Token, Source>
+impl<'source, Token, Source> LexerInternal<'source> for Lexer<Token, Source>
 where
     Token: self::Logos,
     Source: self::Source<'source>,
@@ -122,8 +127,17 @@ where
     ///
     /// This should never be called as public API, and is instead
     /// meant to be called by the implementor of the `Logos` trait.
+    #[inline]
     fn read(&self) -> u8 {
         unsafe { self.source.read(self.token_end) }
+    }
+
+    #[inline]
+    fn read_bytes<Array>(&self) -> Option<&'source Array>
+    where
+        Array: ByteArray<'source>
+    {
+        self.source.read_bytes(self.token_end)
     }
 
     /// Convenience method that bumps the position `Lexer` is
@@ -138,8 +152,9 @@ where
     /// can lead to undefined behavior!**
     ///
     /// **This method will panic in debug mode if that happens!**
+    #[inline]
     fn next(&mut self) -> u8 {
-        self.bump();
+        self.bump(1);
         self.read()
     }
 
@@ -154,9 +169,10 @@ where
     /// can lead to undefined behavior!**
     ///
     /// **This method will panic in debug mode if that happens!**
-    fn bump(&mut self) {
-        debug_assert!(self.token_end + 1 <= self.source.len(), "Bumping out of bounds!");
+    #[inline]
+    fn bump(&mut self, size: usize) {
+        debug_assert!(self.token_end + size <= self.source.len(), "Bumping out of bounds!");
 
-        self.token_end += 1;
+        self.token_end += size;
     }
 }

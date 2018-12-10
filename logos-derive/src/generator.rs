@@ -62,7 +62,7 @@ impl<'a> Generator<'a> {
             self.fns.extend(quote! {
                 #[allow(unreachable_code)]
                 fn #handler<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
-                    lex.bump();
+                    lex.bump(1);
                     #body
                 }
             });
@@ -194,12 +194,12 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_then(&mut branch.then);
         }
 
-        let (first, rest) = self.regex_to_test(branch.regex.consume());
+        let (first, rest, bump) = self.regex_to_test(branch.regex.consume());
         let next = self.print_branch(branch);
 
         quote! {
             if #first #(&& #rest)* {
-                lex.bump();
+                lex.bump(#bump);
 
                 #next
             }
@@ -219,36 +219,51 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_then(then);
         }
 
-        let (first, rest) = self.regex_to_test(regex.patterns());
+        let (first, rest, bump) = self.regex_to_test(regex.patterns());
         let next = self.print_then(then);
 
         quote!({
             while #first #(&& #rest)* {
-                lex.bump();
+                lex.bump(#bump);
             }
 
             #next
         })
     }
 
-    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
-        if regex.len() == 0 {
-            return self.print_then(then);
+    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>) -> TokenStream {
+        let (first, rest, bump) = self.regex_to_test(regex.patterns());
+
+        if then.is_some() {
+            let then = self.print_then(then);
+            let otherwise = self.print_then(otherwise);
+
+            quote!({
+                if #first #(&& #rest)* {
+                    lex.bump(#bump);
+                    #then
+                } else {
+                    #otherwise
+                }
+            })
+        } else {
+            let next = self.print_then(otherwise);
+
+            quote!({
+                if #first #(&& #rest)* {
+                    lex.bump(#bump);
+                }
+
+                #next
+            })
+        }
+    }
+
+    fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, Vec<TokenStream>, usize) {
+        if patterns.len() > 1 && patterns.len() <= 8 && patterns.iter().all(|pat| pat.is_byte()) {
+            return (quote!(lex.read_bytes() == Some(&[#( #patterns ),*])), Vec::new(), patterns.len());
         }
 
-        let (first, rest) = self.regex_to_test(regex.patterns());
-        let next = self.print_then(then);
-
-        quote!({
-            if #first #(&& #rest)* {
-                lex.bump();
-            }
-
-            #next
-        })
-    }
-
-    fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, Vec<TokenStream>) {
         let first = &patterns[0];
         let rest = &patterns[1..];
 
@@ -270,7 +285,7 @@ pub trait SubGenerator<'a>: Sized {
             }
         });
 
-        (quote!(#first), rest.collect())
+        (quote!(#first), rest.collect(), 1)
     }
 
     fn print_node(&mut self, node: &mut Node) -> TokenStream {
@@ -285,19 +300,34 @@ pub trait SubGenerator<'a>: Sized {
                     return self.print_then(&mut fork.then);
                 }
 
-                if fork.kind != ForkKind::Plain
-                    && fork.arms.len() == 1
-                    && fork.arms[0].regex.len() == 1
-                    && fork.arms[0].then.is_none()
-                {
-                    let regex = &fork.arms[0].regex;
-                    let then = &mut fork.then;
+                if fork.arms.len() == 1 {
+                    let arm = &mut fork.arms[0];
 
-                    return if fork.kind == ForkKind::Repeat {
-                        self.print_simple_repeat(regex, then)
-                    } else {
-                        self.print_simple_maybe(regex, then)
-                    };
+                    match fork.kind {
+                        ForkKind::Plain => {},
+                        ForkKind::Maybe => {
+                            if (arm.regex.len() == 1 && arm.then.is_none())
+                                || (arm.regex.len() > 1 && arm.regex.len() <= 8 && arm.regex.patterns().iter().all(|pat| pat.is_byte()))
+                            {
+                                let regex = &arm.regex;
+                                let then = &mut arm.then;
+                                let otherwise = &mut fork.then;
+
+                                return self.print_simple_maybe(regex, then, otherwise);
+                            }
+                        },
+                        ForkKind::Repeat => {
+                            if (arm.regex.len() == 1
+                                || (arm.regex.len() > 1 && arm.regex.len() <= 8 && arm.regex.patterns().iter().all(|pat| pat.is_byte())))
+                                && arm.then.is_none()
+                            {
+                                let regex = &arm.regex;
+                                let then = &mut fork.then;
+
+                                return self.print_simple_repeat(regex, then);
+                            }
+                        }
+                    }
                 }
 
                 fork.collapse();
@@ -326,7 +356,7 @@ pub trait SubGenerator<'a>: Sized {
                     };
 
                     quote! { #test {
-                        lex.bump();
+                        lex.bump(1);
                         #branch
                     }, }
                 }).collect::<TokenStream>();
@@ -605,7 +635,7 @@ impl ToTokens for Pattern {
                 b'{', b'}', b'[', b']', b'<', b'>', b'-', b'=', b'_', b'+',
                 b':', b';', b',', b'.', b'/', b'?', b'|', b'"', b'\'', b'\\',
             }),
-            Pattern::Range(from, to) => tokens.extend(quote!(#from...#to)),
+            Pattern::Range(from, to) => tokens.extend(quote!(#from..=#to)),
             Pattern::Class(ref class) => tokens.extend(quote!(#( #class )|*)),
         }
     }

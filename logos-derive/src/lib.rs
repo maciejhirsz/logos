@@ -163,6 +163,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
+            const END: Self = #name::#end;
 
             fn lexicon<'lexicon, 'source, S: ::logos::Source<'source>>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
                 use ::logos::internal::LexerInternal;
@@ -174,7 +175,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 }
 
                 fn _error<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
-                    lex.bump();
+                    lex.bump(1);
 
                     lex.token = #name::#error;
                 }
