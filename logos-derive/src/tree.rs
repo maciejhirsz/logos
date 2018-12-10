@@ -209,6 +209,16 @@ impl<'a> Branch<'a> {
             Some(Node::Branch(self))
         }
     }
+
+    fn is_finite(&self) -> bool {
+        match self.then {
+            Some(ref node) => match **node {
+                Node::Fork(ref fork) => fork.kind == ForkKind::Plain,
+                _ => true,
+            },
+            None => false,
+        }
+    }
 }
 
 impl<'a> Fork<'a> {
@@ -277,30 +287,24 @@ impl<'a> Fork<'a> {
             return self.insert_then(branch.then);
         }
 
-        // FIXME!
-        //
-        // This is kind of a hack that prevents us from creating intersections for
-        // identifiers all the way down, blowing up the stack!
-        if self.is_finite() {
-            // Looking for intersection prefixes, that is: A ≠ B & (A ⊂ B | B ⊂ A)
-            for other in self.arms.iter_mut() {
-                if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
-                    let mut intersection = Branch::new(Regex::from(prefix));
+        // Looking for intersection prefixes, that is: A ≠ B & (A ⊂ B | B ⊂ A)
+        for other in self.arms.iter_mut().filter(|arm| arm.is_finite()) {
+            if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
+                let mut intersection = Branch::new(Regex::from(prefix));
 
-                    let mut a = branch.clone();
-                    let mut b = other.clone();
+                let mut a = branch.clone();
+                let mut b = other.clone();
 
-                    a.regex.unshift();
-                    b.regex.unshift();
+                a.regex.unshift();
+                b.regex.unshift();
 
-                    intersection.insert_then(a.to_node().map(Box::new));
-                    intersection.insert_then(b.to_node().map(Box::new));
+                intersection.insert_then(a.to_node().map(Box::new));
+                intersection.insert_then(b.to_node().map(Box::new));
 
-                    if intersection.regex.first() == branch.regex.first() {
-                        branch = intersection;
-                    } else {
-                        mem::swap(other, &mut intersection);
-                    }
+                if intersection.regex.first() == branch.regex.first() {
+                    branch = intersection;
+                } else {
+                    mem::swap(other, &mut intersection);
                 }
             }
         }
@@ -449,22 +453,6 @@ impl<'a> Fork<'a> {
                     self.then = Some(then.clone().boxed());
                 },
             }
-        }
-    }
-
-    fn is_finite(&self) -> bool {
-        match self.kind {
-            ForkKind::Plain => true,
-            ForkKind::Repeat => false,
-            ForkKind::Maybe => self.arms.iter().all(|arm| {
-                match arm.then {
-                    Some(ref node) => match **node {
-                        Node::Fork(ref fork) => fork.kind == ForkKind::Plain,
-                        _ => true,
-                    },
-                    None => false,
-                }
-            }),
         }
     }
 }

@@ -118,11 +118,31 @@ static IDENTIFIERS: &str = "It was the year when they finally immanentized the E
 fn identifiers(b: &mut Bencher) {
     use logos::Logos;
 
-
     b.bytes = IDENTIFIERS.len() as u64;
 
     b.iter(|| {
         let mut lex = Token::lexer(IDENTIFIERS);
+
+        while lex.token != Token::EndOfProgram {
+            lex.advance();
+        }
+
+        lex.token
+    });
+}
+
+#[bench]
+fn identifiers_nul_terminated(b: &mut Bencher) {
+    use logos::Logos;
+    use toolshed::Arena;
+
+    let arena = Arena::new();
+    let nts = arena.alloc_nul_term_str(IDENTIFIERS);
+
+    b.bytes = IDENTIFIERS.len() as u64;
+
+    b.iter(|| {
+        let mut lex = Token::lexer(nts);
 
         while lex.token != Token::EndOfProgram {
             lex.advance();
