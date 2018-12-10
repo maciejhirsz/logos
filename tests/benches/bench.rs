@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 
-use test::Bencher;
+use test::{Bencher, black_box};
 use logos_derive::Logos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
@@ -127,7 +127,7 @@ fn identifiers(b: &mut Bencher) {
             lex.advance();
         }
 
-        lex.token
+        black_box(lex.token)
     });
 }
 
@@ -148,7 +148,7 @@ fn identifiers_nul_terminated(b: &mut Bencher) {
             lex.advance();
         }
 
-        lex.token
+        black_box(lex.token)
     });
 }
 
@@ -165,7 +165,7 @@ fn logos(b: &mut Bencher) {
             lex.advance();
         }
 
-        lex.token
+        black_box(lex.token)
     });
 }
 
@@ -186,6 +186,6 @@ fn logos_nul_terminated(b: &mut Bencher) {
             lex.advance();
         }
 
-        lex.token
+        black_box(lex.token)
     });
 }

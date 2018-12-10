@@ -114,6 +114,9 @@ pub trait Logos: Sized {
     /// This can be extremely useful for creating `Logos` Lookup Tables.
     const SIZE: usize;
 
+    /// Helper `const` of the variant marked as `#[end]`.
+    const END: Self;
+
     /// Helper `const` of the variant marked as `#[error]`.
     const ERROR: Self;
 
