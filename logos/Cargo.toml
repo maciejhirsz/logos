@@ -13,7 +13,8 @@ edition = "2018"
 
 [dependencies]
 toolshed = { version = "0.8", optional = true }
-logos-derive = { version = "0.9.3", optional = true }
+# logos-derive = { version = "0.9.3", optional = true }
+logos-derive = { path = "../logos-derive", optional = true }
 
 [features]
 default = ["export_derive", "std"]
