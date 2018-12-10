@@ -25,6 +25,12 @@ enum Token {
     #[token="~"]
     LiteralNull,
 
+    #[token="~?"]
+    Sgwt, 
+
+    #[token="~%"]
+    Sgcn, 
+
     #[token="~["]
     Sglc,
 
