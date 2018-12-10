@@ -281,7 +281,7 @@ impl<'a> Fork<'a> {
         //
         // This is kind of a hack that prevents us from creating intersections for
         // identifiers all the way down, blowing up the stack!
-        if self.kind == ForkKind::Plain {
+        if self.is_finite() {
             // Looking for intersection prefixes, that is: A ≠ B & (A ⊂ B | B ⊂ A)
             for other in self.arms.iter_mut() {
                 if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
@@ -449,6 +449,22 @@ impl<'a> Fork<'a> {
                     self.then = Some(then.clone().boxed());
                 },
             }
+        }
+    }
+
+    fn is_finite(&self) -> bool {
+        match self.kind {
+            ForkKind::Plain => true,
+            ForkKind::Repeat => false,
+            ForkKind::Maybe => self.arms.iter().all(|arm| {
+                match arm.then {
+                    Some(ref node) => match **node {
+                        Node::Fork(ref fork) => fork.kind == ForkKind::Plain,
+                        _ => true,
+                    },
+                    None => false,
+                }
+            }),
         }
     }
 }
