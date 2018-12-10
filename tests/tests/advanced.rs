@@ -40,6 +40,9 @@ enum Token {
     #[regex="~[mhs][0-9]+"]
     LiteralRelDate,
 
+    #[regex="~[0-9]+-?[\\.0-9a-f]+"]
+    LiteralAbsDate, 
+
     #[regex = "🦀+"]
     Rustaceans,
 
