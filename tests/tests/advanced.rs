@@ -25,6 +25,15 @@ enum Token {
     #[token="~"]
     LiteralNull,
 
+    #[token="~?"]
+    Sgwt, 
+
+    #[token="~%"]
+    Sgcn, 
+
+    #[token="~["]
+    Sglc,
+
     #[regex="~[a-z][a-z]+"]
     LiteralUrbitAddress,
 
