@@ -1,6 +1,6 @@
 [package]
 name = "logos"
-version = "0.9.4"
+version = "0.9.5"
 authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 toolshed = { version = "0.8", optional = true }
-logos-derive = { version = "0.9.4", optional = true }
+logos-derive = { version = "0.9.5", optional = true }
 
 [features]
 default = ["export_derive", "std"]
