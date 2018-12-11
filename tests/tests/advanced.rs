@@ -47,7 +47,7 @@ enum Token {
     SingleQuote,
 
     #[token="'''"]
-    TripleQuote, 
+    TripleQuote,
 
     #[regex = "🦀+"]
     Rustaceans,
