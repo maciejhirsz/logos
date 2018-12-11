@@ -241,6 +241,7 @@ impl<'a> Fork<'a> {
                     self.kind = ForkKind::Maybe;
                     self.then = Some(Node::Leaf(leaf).boxed());
                 } else {
+                    self.unwind();
                     self.collapse();
 
                     assert!(
@@ -469,6 +470,13 @@ impl<'a> Node<'a> {
         }
     }
 
+    pub fn is_leaf(&self) -> bool {
+        match self {
+            Node::Leaf(_) => true,
+            _ => false,
+        }
+    }
+
     fn to_mut_fork(&mut self) -> &mut Fork<'a> {
         let fork = match self {
             Node::Fork(fork) => return fork,
@@ -528,6 +536,10 @@ impl<'a> Node<'a> {
     }
 
     pub fn insert(&mut self, then: Node<'a>) {
+        if self.is_leaf() && then.is_leaf() {
+            return;
+        }
+
         self.to_mut_fork().insert(then);
 
         let then = match self {
