@@ -222,6 +222,98 @@ pub trait SubGenerator<'a>: Sized {
         let (first, rest, bump) = self.regex_to_test(regex.patterns());
         let next = self.print_then(then);
 
+        if regex.len() == 1 {
+            let function = self.gen().pattern_to_fn(regex.first());
+
+            return quote!({
+                loop {
+                    if let Some(arr) = lex.read::<&'source [u8; 16]>() {
+                        // let count = arr.iter().take_while(|item| #function(**item)).count();
+
+                        // lex.bump(count);
+
+                        // match count {
+                        //     16 => continue,
+                        //     _ => break,
+                        // }
+                        if #function(arr[0]) {
+                            if #function(arr[1]) {
+                                if #function(arr[2]) {
+                                    if #function(arr[3]) {
+                                        if #function(arr[4]) {
+                                            if #function(arr[5]) {
+                                                if #function(arr[6]) {
+                                                    if #function(arr[7]) {
+                                                        if #function(arr[8]) {
+                                                            if #function(arr[9]) {
+                                                                if #function(arr[10]) {
+                                                                    if #function(arr[11]) {
+                                                                        if #function(arr[12]) {
+                                                                            if #function(arr[13]) {
+                                                                                if #function(arr[14]) {
+                                                                                    if #function(arr[15]) {
+                                                                                        lex.bump(16);
+                                                                                        continue;
+                                                                                    }
+                                                                                    lex.bump(15);
+                                                                                    break;
+                                                                                }
+                                                                                lex.bump(14);
+                                                                                break;
+                                                                            }
+                                                                            lex.bump(13);
+                                                                            break;
+                                                                        }
+                                                                        lex.bump(12);
+                                                                        break;
+                                                                    }
+                                                                    lex.bump(11);
+                                                                    break;
+                                                                }
+                                                                lex.bump(10);
+                                                                break;
+                                                            }
+                                                            lex.bump(9);
+                                                            break;
+                                                        }
+                                                        lex.bump(8);
+                                                        break;
+                                                    }
+                                                    lex.bump(7);
+                                                    break;
+                                                }
+                                                lex.bump(6);
+                                                break;
+                                            }
+                                            lex.bump(5);
+                                            break;
+                                        }
+                                        lex.bump(4);
+                                        break;
+                                    }
+                                    lex.bump(3);
+                                    break;
+                                }
+                                lex.bump(2);
+                                break;
+                            }
+                            lex.bump(1);
+                            break;
+                        }
+                        break;
+                    } else {
+                        while lex.read().map(#function).unwrap_or(false) {
+                            lex.bump(1);
+                        }
+
+                        break;
+                    }
+                }
+
+                #next
+            })
+        }
+
         quote!({
             while #first #(&& #rest)* {
                 lex.bump(#bump);
@@ -260,28 +352,28 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, Vec<TokenStream>, usize) {
-        if patterns.len() > 1 && patterns.len() <= 8 && patterns.iter().all(|pat| pat.is_byte()) {
-            return (quote!(lex.read_bytes() == Some(&[#( #patterns ),*])), Vec::new(), patterns.len());
+        if patterns.len() > 1 && patterns.len() <= 16 && patterns.iter().all(|pat| pat.is_byte()) {
+            return (quote!(lex.read() == Some(&[#( #patterns ),*])), Vec::new(), patterns.len());
         }
 
         let first = &patterns[0];
         let rest = &patterns[1..];
 
         let first = if first.is_byte() {
-            quote!(lex.read() == #first)
+            quote!(lex.read() == Some(#first))
         } else {
             let function = self.gen().pattern_to_fn(first);
 
-            quote!(#function(lex.read()))
+            quote!(lex.read().map(#function).unwrap_or(false))
         };
 
         let rest = rest.iter().map(|pat| {
             if pat.is_byte() {
-                quote!(lex.next() == #pat)
+                quote!(lex.next() == Some(#pat))
             } else {
                 let function = self.gen().pattern_to_fn(pat);
 
-                quote!(#function(lex.next()))
+                quote!(lex.next().map(#function).unwrap_or(false))
             }
         });
 
@@ -307,7 +399,7 @@ pub trait SubGenerator<'a>: Sized {
                         ForkKind::Plain => {},
                         ForkKind::Maybe => {
                             if (arm.regex.len() == 1 && arm.then.is_none())
-                                || (arm.regex.len() > 1 && arm.regex.len() <= 8 && arm.regex.patterns().iter().all(|pat| pat.is_byte()))
+                                || (arm.regex.len() > 1 && arm.regex.len() <= 16 && arm.regex.patterns().iter().all(|pat| pat.is_byte()))
                             {
                                 let regex = &arm.regex;
                                 let then = &mut arm.then;
@@ -318,7 +410,7 @@ pub trait SubGenerator<'a>: Sized {
                         },
                         ForkKind::Repeat => {
                             if (arm.regex.len() == 1
-                                || (arm.regex.len() > 1 && arm.regex.len() <= 8 && arm.regex.patterns().iter().all(|pat| pat.is_byte())))
+                                || (arm.regex.len() > 1 && arm.regex.len() <= 16 && arm.regex.patterns().iter().all(|pat| pat.is_byte())))
                                 && arm.then.is_none()
                             {
                                 let regex = &arm.regex;
@@ -340,12 +432,12 @@ pub trait SubGenerator<'a>: Sized {
                                             .unshift()
                                             .expect("Invalid tree structure, please make an issue on GitHub!");
 
-                        if pattern.weight() <= 2 {
-                            quote!(#pattern =>)
+                        if pattern.weight() == 1 {
+                            quote!(Some(#pattern) =>)
                         } else {
                             let test = self.gen().pattern_to_fn(&pattern);
 
-                            quote!(byte if #test(byte) =>)
+                            quote!(Some(byte) if #test(byte) =>)
                         }
                     };
 
@@ -511,7 +603,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
         match callback {
             Some(callback) => {
                 quote! {
-                    if !#pattern_fn(lex.read()) {
+                    if !lex.read().map(#pattern_fn).unwrap_or(false) {
                         lex.token = #name::#variant;
                         return #callback(lex);
                     }
@@ -519,7 +611,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
             },
             None => {
                 quote! {
-                    if !#pattern_fn(lex.read()) {
+                    if !lex.read().map(#pattern_fn).unwrap_or(false) {
                         return lex.token = #name::#variant;
                     }
                 }

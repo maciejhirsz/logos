@@ -24,22 +24,44 @@ impl<'source> Slice<'source> for &'source [u8] {
     }
 }
 
-pub trait ByteArray<'source>: Sized {
+pub trait ByteArray<'source>: Sized + Copy {
     const SIZE: usize;
 
-    unsafe fn from_ptr(ptr: *const u8) -> &'source Self {
-        &*(ptr as *const Self)
+    unsafe fn from_ptr(ptr: *const u8) -> Self;
+}
+
+impl<'source> ByteArray<'source> for u8 {
+    const SIZE: usize = 1;
+
+    #[inline]
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
+        *ptr
     }
 }
 
-impl<'source> ByteArray<'source> for u8 { const SIZE: usize = 1; }
-impl<'source> ByteArray<'source> for [u8; 2] { const SIZE: usize = 2; }
-impl<'source> ByteArray<'source> for [u8; 3] { const SIZE: usize = 3; }
-impl<'source> ByteArray<'source> for [u8; 4] { const SIZE: usize = 4; }
-impl<'source> ByteArray<'source> for [u8; 5] { const SIZE: usize = 5; }
-impl<'source> ByteArray<'source> for [u8; 6] { const SIZE: usize = 6; }
-impl<'source> ByteArray<'source> for [u8; 7] { const SIZE: usize = 7; }
-impl<'source> ByteArray<'source> for [u8; 8] { const SIZE: usize = 8; }
+macro_rules! impl_array {
+    ($($size:tt),*) => ($(
+        impl<'source> ByteArray<'source> for [u8; $size] {
+            const SIZE: usize = $size;
+
+            #[inline]
+            unsafe fn from_ptr(ptr: *const u8) -> Self {
+                *(ptr as *const [u8; $size])
+            }
+        }
+
+        impl<'source> ByteArray<'source> for &'source [u8; $size] {
+            const SIZE: usize = $size;
+
+            #[inline]
+            unsafe fn from_ptr(ptr: *const u8) -> Self {
+                &*(ptr as *const [u8; $size])
+            }
+        }
+    )*)
+}
+
+impl_array!(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
 
 /// Trait for types the `Lexer` can read from.
 ///
@@ -86,13 +108,13 @@ pub trait Source<'source> {
     /// unsafe {
     ///     assert_eq!(foo.read_bytes(0), Some(b"foo")); // Option<&[u8; 3]>
     ///     assert_eq!(foo.read_bytes(0), Some(b"fo"));  // Option<&[u8; 2]>
-    ///     assert_eq!(foo.read_bytes(2), Some(&b'o'));  // Option<&u8>
-    ///     assert_eq!(foo.read_bytes::<[u8; 4]>(0), None);
-    ///     assert_eq!(foo.read_bytes::<[u8; 2]>(2), None);
+    ///     assert_eq!(foo.read_bytes(2), Some(b'o'));   // Option<u8>
+    ///     assert_eq!(foo.read_bytes::<&[u8; 4]>(0), None);
+    ///     assert_eq!(foo.read_bytes::<&[u8; 2]>(2), None);
     /// }
     /// # }
     /// ```
-    fn read_bytes<Array>(&self, offset: usize) -> Option<&'source Array>
+    fn read_bytes<Array>(&self, offset: usize) -> Option<Array>
     where
         Array: ByteArray<'source>;
 
@@ -148,7 +170,7 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    fn read_bytes<Array>(&self, offset: usize) -> Option<&'source Array>
+    fn read_bytes<Array>(&self, offset: usize) -> Option<Array>
     where
         Array: ByteArray<'source>
     {
@@ -194,7 +216,7 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    fn read_bytes<Array>(&self, offset: usize) -> Option<&'source Array>
+    fn read_bytes<Array>(&self, offset: usize) -> Option<Array>
     where
         Array: ByteArray<'source>
     {
@@ -212,58 +234,6 @@ impl<'source> Source<'source> for &'source [u8] {
 
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source [u8] {
-        debug_assert!(
-            range.start <= self.len() && range.end <= self.len(),
-            "Reading out of bounds {:?} for {}!", range, self.len()
-        );
-
-        self.get_unchecked(range)
-    }
-}
-
-/// `Source` implemented on `NulTermStr` from the
-/// [`toolshed`](https://crates.io/crates/toolshed) crate.
-///
-/// **This requires the `"nul_term_source"` feature to be enabled.**
-#[cfg(feature = "nul_term_source")]
-impl<'source> Source<'source> for toolshed::NulTermStr<'source> {
-    type Slice = &'source str;
-
-    #[inline]
-    fn len(&self) -> usize {
-        (**self).len()
-    }
-
-    #[inline]
-    unsafe fn read(&self, offset: usize) -> u8 {
-        debug_assert!(offset <= self.len(), "Reading out founds!");
-
-        self.byte_unchecked(offset)
-    }
-
-    #[inline]
-    fn read_bytes<Array>(&self, offset: usize) -> Option<&'source Array>
-    where
-        Array: ByteArray<'source>
-    {
-        if offset + (Array::SIZE - 1) < (**self).len() {
-            Some(unsafe { Array::from_ptr((**self).as_ptr().add(offset)) })
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn slice(&self, range: Range<usize>) -> Option<&'source str> {
-        if range.start <= self.len() && range.end <= self.len() {
-            Some(unsafe { self.get_unchecked(range) })
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!", range, self.len()

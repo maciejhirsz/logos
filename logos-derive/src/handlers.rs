@@ -4,7 +4,6 @@ use crate::tree::{Node, Branch};
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
-    Eof,
     Error,
     Whitespace,
     Tree(Rc<Node<'a>>),
@@ -19,8 +18,7 @@ impl<'a> Handlers<'a> {
     pub fn new() -> Self {
         let mut handlers = vec![Handler::Error; 256];
 
-        handlers[0] = Handler::Eof;
-        handlers[1..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
+        handlers[0..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
 
         Handlers {
             handlers

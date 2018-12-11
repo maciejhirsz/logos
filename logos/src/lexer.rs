@@ -64,20 +64,27 @@ where
 
     /// Advance the `Lexer` and attempt to produce the next `Token`.
     pub fn advance(&mut self) {
-        let mut ch;
+        let mut byte;
 
         self.extras.on_advance();
 
         unroll! {
-            ch = self.read();
+            byte = match self.read::<u8>() {
+                Some(byte) => byte,
+                None => {
+                    self.token_start = self.token_end;
 
-            if let Some(handler) = Token::lexicon()[ch as usize] {
+                    return self.token = Token::END;
+                },
+            };
+
+            if let Some(handler) = Token::lexicon()[byte as usize] {
                 self.token_start = self.token_end;
 
                 return handler(self);
             }
 
-            self.extras.on_whitespace(ch);
+            self.extras.on_whitespace(byte);
             self.bump(1);
         }
     }
@@ -159,20 +166,10 @@ where
     Token: self::Logos,
     Source: self::Source<'source>,
 {
-    /// Read a byte at current position of the `Lexer`. If end
+    /// Read a byte(s) at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
-    ///
-    /// # WARNING!
-    ///
-    /// This should never be called as public API, and is instead
-    /// meant to be called by the implementor of the `Logos` trait.
     #[inline]
-    fn read(&self) -> u8 {
-        unsafe { self.source.read(self.token_end) }
-    }
-
-    #[inline]
-    fn read_bytes<Array>(&self) -> Option<&'source Array>
+    fn read<Array>(&self) -> Option<Array>
     where
         Array: ByteArray<'source>
     {
@@ -181,33 +178,13 @@ where
 
     /// Convenience method that bumps the position `Lexer` is
     /// reading from and then reads the following byte.
-    ///
-    /// # WARNING!
-    ///
-    /// This should never be called as public API, and is instead
-    /// meant to be called by the implementor of the `Logos` trait.
-    ///
-    /// **If the end position has been reached, further bumps
-    /// can lead to undefined behavior!**
-    ///
-    /// **This method will panic in debug mode if that happens!**
     #[inline]
-    fn next(&mut self) -> u8 {
+    fn next(&mut self) -> Option<u8> {
         self.bump(1);
         self.read()
     }
 
-    /// Bump the position `Lexer` is reading from by `1`.
-    ///
-    /// # WARNING!
-    ///
-    /// This should never be called as public API, and is instead
-    /// meant to be called by the implementor of the `Logos` trait.
-    ///
-    /// **If the end position has been reached, further bumps
-    /// can lead to undefined behavior!**
-    ///
-    /// **This method will panic in debug mode if that happens!**
+    /// Bump the position `Lexer` is reading from by `size`.
     #[inline]
     fn bump(&mut self, size: usize) {
         debug_assert!(self.token_end + size <= self.source.len(), "Bumping out of bounds!");

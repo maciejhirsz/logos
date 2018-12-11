@@ -134,7 +134,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let handlers = handlers.into_iter().map(|handler| {
         match handler {
-            Handler::Eof        => quote! { Some(eof) },
             Handler::Error      => quote! { Some(_error) },
             Handler::Whitespace => quote! { None },
             Handler::Tree(tree) => generator.print_tree(tree),
@@ -169,10 +168,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 use ::logos::internal::LexerInternal;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
-
-                fn eof<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
-                    lex.token = #name::#end;
-                }
 
                 fn _error<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
                     lex.bump(1);

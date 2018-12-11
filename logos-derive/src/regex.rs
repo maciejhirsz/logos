@@ -6,8 +6,6 @@ use std::fmt;
 
 use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
 
-static NO_ZERO_BYTE: &str = "Tokens mustn't include the `0` byte.";
-
 #[derive(Clone, Default)]
 pub struct Regex {
     patterns: Vec<Pattern>,
@@ -166,8 +164,6 @@ impl Regex {
     pub fn sequence(source: &str) -> Self {
         Regex {
             patterns: source.bytes().map(|byte| {
-                assert!(byte != 0, NO_ZERO_BYTE);
-
                 Pattern::Byte(byte)
             }).collect(),
             offset: 0,
@@ -182,8 +178,6 @@ impl Regex {
 
                 match literal {
                     Literal::Unicode(unicode) => {
-                        assert!(*unicode != 0 as char, NO_ZERO_BYTE);
-
                         let mut buf = [0u8; 4];
 
                         regex.patterns.extend(
@@ -208,22 +202,16 @@ impl Regex {
                         let mut class = unicode
                             .iter()
                             .map(|range| {
-                                let (mut start, mut end) = (range.start(), range.end());
-
-                                assert!(end != 0 as char, NO_ZERO_BYTE);
+                                let (start, mut end) = (range.start(), range.end());
 
                                 static NON_ASCII: &str = "Non-ASCII ranges in #[regex] classes are currently unsupported.";
 
                                 match end as u32 {
-                                    0        => panic!("{}", NO_ZERO_BYTE),
                                     0x10FFFF => end = 0xFF as char,
                                     _        => assert!(end.is_ascii(), NON_ASCII),
                                 }
 
-                                match start as u32 {
-                                    0 => start = 1 as char,
-                                    _ => assert!(start.is_ascii(), NON_ASCII),
-                                }
+                                assert!(start.is_ascii(), NON_ASCII);
 
                                 if start == end {
                                     Pattern::Byte(start as u8)
@@ -338,7 +326,7 @@ fn class_is_ascii(class: &Class) -> bool {
                 let start = range.start() as u32;
                 let end = range.end() as u32;
 
-                start < 128 && end > 0 && (end < 128 || end == 0x10FFFF)
+                start < 128 && (end < 128 || end == 0x10FFFF)
             })
         },
         Class::Bytes(_) => false,
@@ -346,15 +334,7 @@ fn class_is_ascii(class: &Class) -> bool {
 }
 
 impl From<Utf8Range> for Pattern {
-    fn from(mut range: Utf8Range) -> Pattern {
-        if range.end == 0 {
-            panic!("Invalid Unicode codepoint in #[regex]");
-        }
-
-        if range.start == 0 {
-            range.start = 1;
-        }
-
+    fn from(range: Utf8Range) -> Pattern {
         if range.start == range.end {
             Pattern::Byte(range.start)
         } else {

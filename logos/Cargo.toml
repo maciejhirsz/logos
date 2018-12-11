@@ -12,17 +12,13 @@ readme = "../README.md"
 edition = "2018"
 
 [dependencies]
-toolshed = { version = "0.8", optional = true }
-logos-derive = { version = "0.9.7", optional = true }
+logos-derive = { path = "../logos-derive", optional = true }
 
 [features]
 default = ["export_derive", "std"]
 
 # Should the crate use the standard library?
 std = []
-
-# Provides an `impl Source for NulTermStr` from the `toolshed` crate.
-nul_term_source = ["toolshed"]
 
 # Re-exports the `Logos` derive macro, so that end user only needs to
 # import this crate and `use logos::Logos` to get both the trait and
