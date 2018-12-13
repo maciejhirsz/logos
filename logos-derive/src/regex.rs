@@ -2,7 +2,7 @@ use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
 use regex_syntax::hir::{self, Hir, HirKind, Class};
 use regex_syntax::Parser;
 use std::cmp::Ordering;
-use std::fmt;
+use std::{fmt, mem};
 
 use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
 
@@ -291,6 +291,10 @@ impl Regex {
 
         &self.patterns[offset..]
     }
+
+    pub fn extend(&mut self, patterns: &[Pattern]) {
+        self.patterns.extend(patterns.iter().cloned());
+    }
 }
 
 impl From<Pattern> for Regex {
@@ -437,6 +441,24 @@ impl Pattern {
             Pattern::Range(a, b) => target.extend(*a..=*b),
             Pattern::Class(class) => class.iter().for_each(|pat| pat.write_bytes(target)),
         }
+    }
+
+    pub fn combine(&mut self, other: Pattern) {
+        let mut class = match self {
+            Pattern::Class(class) => mem::replace(class, Vec::new()),
+            _ => {
+                let old = mem::replace(self, Pattern::Class(Vec::new()));
+
+                vec![old]
+            },
+        };
+
+        match other {
+            Pattern::Class(other) => class.extend(other),
+            _ => class.push(other),
+        }
+
+        mem::replace(self, Pattern::Class(class));
     }
 
     pub fn intersect(&self, other: &Pattern) -> Option<Pattern> {

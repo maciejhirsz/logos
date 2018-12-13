@@ -219,6 +219,25 @@ impl<'a> Branch<'a> {
             None => false,
         }
     }
+
+    fn pack(&mut self) {
+        if let Some(ref mut then) = self.then {
+            then.pack();
+
+            match &mut **then {
+                Node::Branch(branch) => {
+                    if let Some(next) = &mut branch.then {
+                        next.pack();
+                    }
+
+                    self.regex.extend(branch.regex.patterns());
+                    self.then = branch.then.take();
+                },
+                Node::Fork(fork) => fork.pack(),
+                Node::Leaf(_) => {},
+            }
+        }
+    }
 }
 
 impl<'a> Fork<'a> {
@@ -454,6 +473,27 @@ impl<'a> Fork<'a> {
                     self.then = Some(then.clone().boxed());
                 },
             }
+        }
+    }
+
+    pub fn pack(&mut self) {
+        if let Some(then) = &mut self.then {
+            then.pack();
+        }
+
+        self.collapse();
+
+        self.arms.iter_mut().for_each(Branch::pack);
+
+        // FIXME: This should categorize all 1-length arms by their `then`s, and then combine those
+        if self.arms.len() > 2 && self.arms.iter().all(|arm| arm.regex.len() == 1 && arm.then.is_none()) {
+            let mut new = self.arms[0].regex.first().clone();
+
+            for old in self.arms.drain(1..) {
+                new.combine(old.regex.first().clone());
+            }
+
+            self.arms[0].regex = new.into();
         }
     }
 }
@@ -700,6 +740,23 @@ impl<'a> Node<'a> {
 
     pub fn boxed(self) -> Box<Self> {
         Box::new(self)
+    }
+
+    pub fn pack(&mut self) {
+        match self {
+            Node::Fork(fork) => {
+                fork.pack();
+
+                if fork.kind == ForkKind::Plain && fork.arms.len() == 1 && fork.arms[0].then.is_none() {
+                    let mut branch = fork.arms.remove(0);
+                    branch.then = fork.then.take();
+
+                    *self = Node::Branch(branch);
+                }
+            },
+            Node::Branch(branch) => branch.pack(),
+            Node::Leaf(_) => {}
+        }
     }
 }
 

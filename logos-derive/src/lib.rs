@@ -109,6 +109,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
+    fork.pack();
+
     // panic!("{:#?}", fork);
 
     for branch in fork.arms.drain(..) {
