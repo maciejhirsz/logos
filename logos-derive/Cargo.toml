@@ -16,6 +16,7 @@ name = "logos_derive"
 proc-macro = true
 
 [dependencies]
+rustc-hash = "1.0.1"
 syn = { version = "0.15", features = ["extra-traits", "full"] }
 quote = "0.6"
 proc-macro2 = "0.4"

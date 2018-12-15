@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use syn::Ident;
 use quote::{quote, ToTokens};
 use proc_macro2::{TokenStream, Span};
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::tree::{Node, Branch, ForkKind, Leaf};
 use crate::regex::{Regex, Pattern};
@@ -29,9 +29,9 @@ impl<'a> Generator<'a> {
         Generator {
             enum_name,
             fns: TokenStream::new(),
-            fns_constructed: HashMap::new(),
-            patterns: HashMap::new(),
-            callbacks: HashMap::new(),
+            fns_constructed: HashMap::default(),
+            patterns: HashMap::default(),
+            callbacks: HashMap::default(),
         }
     }
 

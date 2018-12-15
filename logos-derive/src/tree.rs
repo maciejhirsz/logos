@@ -1,6 +1,6 @@
 use std::{mem, fmt};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::regex::{Regex, RepetitionFlag};
 
@@ -475,7 +475,7 @@ impl<'a> Fork<'a> {
         self.arms.iter_mut().for_each(Branch::pack);
 
         if self.arms.len() > 1 {
-            let mut scan: HashMap<&Option<Box<Node>>, usize> = HashMap::new();
+            let mut scan: HashMap<&Option<Box<Node>>, usize> = HashMap::default();
             let mut remove = Vec::new();
 
             for (index, arm) in self.arms.iter_mut().enumerate() {

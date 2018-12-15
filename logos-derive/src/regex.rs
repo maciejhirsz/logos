@@ -156,7 +156,7 @@ impl Regex {
 
     pub fn sequence(source: &str) -> Self {
         Regex {
-            patterns: source.bytes().map(|byte| Pattern::Byte(byte)).collect(),
+            patterns: source.bytes().map(Pattern::Byte).collect(),
         }
     }
 
