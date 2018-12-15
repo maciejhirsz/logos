@@ -468,6 +468,8 @@ impl<'a> Fork<'a> {
     }
 
     pub fn pack(&mut self) {
+        self.collapse();
+
         if let Some(then) = &mut self.then {
             then.pack();
         }
