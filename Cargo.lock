@@ -5,15 +5,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "logos"
-version = "0.9.5"
+version = "0.9.6"
 dependencies = [
- "logos-derive 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "logos-derive 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "toolshed 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "logos-derive"
-version = "0.9.5"
+version = "0.9.6"
 dependencies = [
  "proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "logos-derive"
-version = "0.9.5"
+version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -80,8 +80,8 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.9.5",
- "logos-derive 0.9.5",
+ "logos 0.9.6",
+ "logos-derive 0.9.6",
  "toolshed 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -110,7 +110,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "94f88df23a25417badc922ab0f5716cc1330e87f71ddd9203b3a3ccd9cedf75d"
-"checksum logos-derive 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)" = "922d56103d821eb414cb46af6e0b691c30db504770da348ae814c17da99af183"
+"checksum logos-derive 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)" = "31dd30acb2a7e7f5d328f26f697cb0e42fbbfc04ba6c0cb3e50183a84a6beb66"
 "checksum proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)" = "77619697826f31a02ae974457af0b29b723e5619e113e9397b8b82c6bd253f09"
 "checksum quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "53fa22a1994bd0f9372d7a816207d8a2677ad0325b073f5c5332760f0fb62b5c"
 "checksum regex-syntax 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "fbc557aac2b708fe84121caf261346cc2eed71978024337e42eb46b8a252ac6e"
