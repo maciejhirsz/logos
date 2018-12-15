@@ -298,29 +298,22 @@ pub trait SubGenerator<'a>: Sized {
     /// an `if ____ {` or `while ____ {`. Also returns a number of bytes to
     /// bump if the test is successful.
     fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, usize) {
-        let mut chunks = patterns.chunks(16).enumerate();
-
-        let (_, chunk) = chunks.next().expect("Internal Error: No Patterns Defined");
-        let chunk_type = Self::chunk_type(chunk.len());
-
-        let test = self.chunk_to_test(quote!(lex.read::<#chunk_type>()), chunk);
-        let rest = chunks.map(|(idx, chunk)| {
-            let chunk_type = Self::chunk_type(chunk.len());
+        let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
             let offset = 16 * idx;
+            let chunk_type = match chunk.len() {
+                1 => quote!(u8),
+                _ => quote!(&[u8; #len]),
+            };
 
-            self.chunk_to_test(quote!(lex.lookahead::<#chunk_type>(#offset)), chunk)
+            let source = match offset {
+                0 => quote!(lex.read::<#chunk_type>()),
+                _ => quote!(lex.lookahead::<#chunk_type>(#offset)),
+            };
+
+            self.chunk_to_test(source, chunk)
         });
 
-        (quote!(#test #(#rest)&&*), patterns.len())
-    }
-
-    /// Helper function for getting the correct chunk type
-    fn chunk_type(len: usize) -> TokenStream {
-        if len == 1 {
-            quote!(u8)
-        } else {
-            quote!(&[u8; #len])
-        }
+        (quote!(#(#test)&&*), patterns.len())
     }
 
     /// Convert a chunk of up to 16 `Pattern`s into a test
@@ -328,17 +321,15 @@ pub trait SubGenerator<'a>: Sized {
         let first = &chunk[0];
 
         if chunk.iter().all(Pattern::is_byte) {
-            if chunk.len() == 1 {
-                quote!(#source == Some(#first))
-            } else {
-                quote!(#source == Some(&[#( #chunk ),*]))
+            match chunk.len() {
+                1 => quote!(#source == Some(#first)),
+                _ => quote!(#source == Some(&[#( #chunk ),*])),
             }
         } else {
             let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
-                let source = if chunk.len() == 1 {
-                    quote!(chunk)
-                } else {
-                    quote!(chunk[#idx])
+                let source = match chunk.len() {
+                    1 => quote!(chunk),
+                    _ => quote!(chunk[#idx]),
                 };
 
                 self.pattern_to_test(source, pat)
