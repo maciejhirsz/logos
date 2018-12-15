@@ -380,7 +380,7 @@ impl<'a> Fork<'a> {
                     None => node.make_maybe_fork(),
                 }
             }
-            ref mut then => {
+            None => {
                 if other.is_some() {
                     assert!(
                         self.kind != ForkKind::Repeat,
@@ -388,8 +388,7 @@ impl<'a> Fork<'a> {
                     );
 
                     self.kind = ForkKind::Maybe;
-
-                    *then = other;
+                    self.then = other;
                 }
             },
         }
@@ -407,34 +406,25 @@ impl<'a> Fork<'a> {
             branch.chain(&repeat);
         }
 
-        let mut then = self.then.take();
-
-        let move_back = if let Some(ref mut then) = then {
-            match **then {
+        if let Some(mut then) = self.then.take() {
+            match *then {
                 Node::Fork(ref mut fork) if fork.kind == ForkKind::Plain => {
                     for branch in fork.arms.drain(..) {
                         self.insert_branch(branch);
                     }
 
-                    false
+                    return self.kind = ForkKind::Plain;
                 },
                 Node::Branch(ref mut branch) => {
                     self.insert_branch(branch.clone());
 
-                    false
+                    return self.kind = ForkKind::Plain;
                 },
-                _ => true,
+                _ => self.then = Some(then),
             }
-        } else {
-            true
-        };
-
-        if move_back {
-            self.then = then;
-            self.kind = ForkKind::Maybe;
-        } else {
-            self.kind = ForkKind::Plain;
         }
+
+        self.kind = ForkKind::Maybe;
     }
 
     // Attempts to collapse a Maybe fork into a Plain fork.
@@ -743,9 +733,10 @@ impl<'a> Node<'a> {
             Node::Fork(fork) => {
                 fork.pack();
 
-                // let mut set = HashSet::new();
-
-                if fork.kind == ForkKind::Plain && fork.arms.len() == 1 && (fork.then.is_none() || fork.arms[0].then.is_none()) {
+                if fork.kind == ForkKind::Plain
+                    && fork.arms.len() == 1
+                    && (fork.then.is_none() || fork.arms[0].then.is_none())
+                {
                     let mut branch = fork.arms.remove(0);
                     branch.then = branch.then.or(fork.then.take());
 
