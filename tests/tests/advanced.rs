@@ -22,32 +22,32 @@ enum Token {
     #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
     LiteralFloat,
 
-    #[token="~"]
+    #[token = "~"]
     LiteralNull,
 
-    #[token="~?"]
+    #[token = "~?"]
     Sgwt,
 
-    #[token="~%"]
+    #[token = "~%"]
     Sgcn,
 
-    #[token="~["]
+    #[token = "~["]
     Sglc,
 
-    #[regex="~[a-z][a-z]+"]
+    #[regex = "~[a-z][a-z]+"]
     LiteralUrbitAddress,
 
-    #[regex="~[0-9]+-?[\\.0-9a-f]+"]
+    #[regex = "~[0-9]+-?[\\.0-9a-f]+"]
     LiteralAbsDate,
 
-    #[regex="~s[0-9]+(\\.\\.[0-9a-f\\.]+)?"]
-    #[regex="~[hm][0-9]+"]
+    #[regex = "~s[0-9]+(\\.\\.[0-9a-f\\.]+)?"]
+    #[regex = "~[hm][0-9]+"]
     LiteralRelDate,
 
-    #[token="'"]
+    #[token = "'"]
     SingleQuote,
 
-    #[token="'''"]
+    #[token = "'''"]
     TripleQuote,
 
     #[regex = "🦀+"]
