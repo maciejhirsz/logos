@@ -301,8 +301,8 @@ pub trait SubGenerator<'a>: Sized {
         let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
             let offset = 16 * idx;
             let chunk_type = match chunk.len() {
-                1 => quote!(u8),
-                _ => quote!(&[u8; #len]),
+                1   => quote!(u8),
+                len => quote!(&[u8; #len]),
             };
 
             let source = match offset {
