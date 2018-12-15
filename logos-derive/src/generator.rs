@@ -195,7 +195,7 @@ pub trait SubGenerator<'a>: Sized {
         }
 
         let (first, rest, bump) = self.regex_to_test(branch.regex.consume());
-        let next = self.print_branch(branch);
+        let next = self.print_then(&mut branch.then);
 
         quote! {
             if #first #(&& #rest)* {
