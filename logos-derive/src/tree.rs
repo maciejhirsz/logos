@@ -636,24 +636,6 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Tests whether the branch produces a token on all leaves without any tests.
-    pub fn is_exhaustive(&self) -> bool {
-        match self {
-            Node::Leaf(_) => true,
-            Node::Branch(_) => false,
-            Node::Fork(fork) => {
-                let exhaustive_nones = if fork.kind == ForkKind::Repeat { true } else { false };
-
-                fork.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(false)
-                    && (fork.kind != ForkKind::Repeat || fork.arms.len() == 1)
-                    && fork.arms.iter().all(|branch| {
-                        branch.regex.len() == 1
-                            && branch.then.as_ref().map(|then| then.is_exhaustive()).unwrap_or(exhaustive_nones)
-                    })
-            },
-        }
-    }
-
     /// Tests whether all branches have a `then` node set to `Some`.
     pub fn is_bounded(&self) -> bool {
         match self {
@@ -1078,44 +1060,5 @@ mod tests {
         parent.insert(child);
 
         assert!(parent == expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", parent, expected);
-    }
-
-    #[test]
-    fn tree_is_exhaustive() {
-        // '=' -> MAYBE [
-        //     '=' -> MAYBE [
-        //         '=' -> TOKEN "OpStrictEquality"
-        //     ] -> TOKEN "OpEquality",
-        //     '>' -> TOKEN "FatArrow"
-        // ] -> TOKEN "OpAssign",
-        //
-        let arrow = token("FatArrow");
-        let assign = token("OpAssign");
-        let eq = token("OpEquality");
-        let seq = token("OpStrictEquality");
-        let arrow = Leaf::from(&arrow);
-        let assign = Leaf::from(&assign);
-        let eq = Leaf::from(&eq);
-        let seq = Leaf::from(&seq);
-
-        let seq_or_eq = Node::Fork(Fork {
-            kind: ForkKind::Maybe,
-            arms: vec![branch("=", seq)],
-            then: Some(Node::Leaf(eq).boxed()),
-        });
-
-        let tree = Node::Fork(Fork {
-            kind: ForkKind::Maybe,
-            arms: vec![
-                Branch {
-                    regex: Regex::sequence("="),
-                    then: Some(Box::new(seq_or_eq)),
-                },
-                branch(">", arrow),
-            ],
-            then: Some(Node::Leaf(assign).boxed()),
-        });
-
-        assert!(tree.is_exhaustive(), "Tree is not is_exhaustive! {:#?}", tree);
     }
 }

@@ -79,9 +79,7 @@ impl<'a> Generator<'a> {
         // At this point all Rc pointers should be unique
         let tree = Rc::make_mut(&mut tree);
 
-        if tree.is_exhaustive() {
-            ExhaustiveGenerator(self).print(tree)
-        } else if let Some(mut fallback) = tree.fallback() {
+        if let Some(mut fallback) = tree.fallback() {
             let boundary = fallback.regex.first().clone();
             let fallback = LooseGenerator(self).print_then(&mut fallback.then);
 
@@ -362,7 +360,6 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn print_node(&mut self, node: &mut Node) -> TokenStream {
-        let is_exhaustive = node.is_exhaustive();
         let is_bounded = node.is_bounded();
 
         match node {
@@ -380,8 +377,8 @@ pub trait SubGenerator<'a>: Sized {
                     match fork.kind {
                         ForkKind::Plain => {},
                         ForkKind::Maybe => {
-                            // FIXME: The check seems unnecessary, but removing it
-                            // produces invalid code in ExhaustiveGenerator
+                            // The check seems unnecessary, but removing it
+                            // reduces performance
                             if regex.len() > 1 || arm.then.is_none() {
                                 let then = &mut arm.then;
                                 let otherwise = &mut fork.then;
@@ -435,7 +432,6 @@ pub trait SubGenerator<'a>: Sized {
 
                 if fork.kind == ForkKind::Plain
                     || (fork.kind == ForkKind::Maybe && is_bounded)
-                    || (fork.kind == ForkKind::Repeat && is_exhaustive)
                 {
                     quote! {
                         match lex.read() {
@@ -466,7 +462,6 @@ pub trait SubGenerator<'a>: Sized {
     fn print_fallback(&mut self) -> TokenStream;
 }
 
-pub struct ExhaustiveGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct LooseGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
 pub struct FallbackGenerator<'a: 'b, 'b> {
     gen: &'b mut Generator<'a>,
@@ -482,39 +477,6 @@ pub struct MaybeGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomDat
 where
     SubGen: SubGenerator<'a> + 'c;
 
-impl<'a, 'b> SubGenerator<'a> for ExhaustiveGenerator<'a, 'b> {
-    fn gen(&mut self) -> &mut Generator<'a> {
-        self.0
-    }
-
-    fn print(&mut self, node: &mut Node) -> TokenStream {
-        let body = self.print_node(node);
-
-        quote!(lex.token = #body;)
-    }
-
-    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
-        let name = self.gen().enum_name;
-
-        let variant = leaf.token;
-        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
-
-        match callback {
-            Some(callback) => {
-                quote!({
-                    lex.token = #name::#variant;
-                    return #callback(lex)
-                })
-            },
-            None => quote!(#name::#variant),
-        }
-    }
-
-    fn print_fallback(&mut self) -> TokenStream {
-        quote!(return lex.token = ::logos::Logos::ERROR;)
-    }
-}
-
 impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
     fn gen(&mut self) -> &mut Generator<'a> {
         self.0
@@ -524,7 +486,7 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
         let body = self.print_node(node);
 
         quote! {
-            #body
+            #body;
 
             lex.token = ::logos::Logos::ERROR;
         }
