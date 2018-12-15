@@ -24,13 +24,13 @@ impl<'source> Slice<'source> for &'source [u8] {
     }
 }
 
-pub trait ByteArray<'source>: Sized + Copy {
+pub trait Chunk<'source>: Sized + Copy {
     const SIZE: usize;
 
     unsafe fn from_ptr(ptr: *const u8) -> Self;
 }
 
-impl<'source> ByteArray<'source> for u8 {
+impl<'source> Chunk<'source> for u8 {
     const SIZE: usize = 1;
 
     #[inline]
@@ -41,7 +41,7 @@ impl<'source> ByteArray<'source> for u8 {
 
 macro_rules! impl_array {
     ($($size:tt),*) => ($(
-        impl<'source> ByteArray<'source> for [u8; $size] {
+        impl<'source> Chunk<'source> for [u8; $size] {
             const SIZE: usize = $size;
 
             #[inline]
@@ -50,7 +50,7 @@ macro_rules! impl_array {
             }
         }
 
-        impl<'source> ByteArray<'source> for &'source [u8; $size] {
+        impl<'source> Chunk<'source> for &'source [u8; $size] {
             const SIZE: usize = $size;
 
             #[inline]
@@ -114,9 +114,9 @@ pub trait Source<'source> {
     /// }
     /// # }
     /// ```
-    fn read_bytes<Array>(&self, offset: usize) -> Option<Array>
+    fn read_bytes<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
-        Array: ByteArray<'source>;
+        Chunk: self::Chunk<'source>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
@@ -170,12 +170,12 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    fn read_bytes<Array>(&self, offset: usize) -> Option<Array>
+    fn read_bytes<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
-        Array: ByteArray<'source>
+        Chunk: self::Chunk<'source>
     {
-        if offset + (Array::SIZE - 1) < (*self).len() {
-            Some(unsafe { Array::from_ptr((*self).as_ptr().add(offset)) })
+        if offset + (Chunk::SIZE - 1) < (*self).len() {
+            Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
         } else {
             None
         }
@@ -216,12 +216,12 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    fn read_bytes<Array>(&self, offset: usize) -> Option<Array>
+    fn read_bytes<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
-        Array: ByteArray<'source>
+        Chunk: self::Chunk<'source>
     {
-        if offset + (Array::SIZE - 1) < (*self).len() {
-            Some(unsafe { Array::from_ptr((*self).as_ptr().add(offset)) })
+        if offset + (Chunk::SIZE - 1) < (*self).len() {
+            Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
         } else {
             None
         }

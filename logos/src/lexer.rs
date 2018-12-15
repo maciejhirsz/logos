@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::source::{Source, ByteArray};
+use crate::source::{self, Source};
 use super::{Logos};
 use super::internal::LexerInternal;
 
@@ -169,9 +169,9 @@ where
     /// Read a byte(s) at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
     #[inline]
-    fn read<Array>(&self) -> Option<Array>
+    fn read<Chunk>(&self) -> Option<Chunk>
     where
-        Array: ByteArray<'source>
+        Chunk: source::Chunk<'source>
     {
         self.source.read_bytes(self.token_end)
     }

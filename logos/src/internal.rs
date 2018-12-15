@@ -1,4 +1,4 @@
-use crate::source::ByteArray;
+use crate::source;
 
 /// Trait used by the functions contained in the `Lexicon`.
 ///
@@ -8,7 +8,7 @@ use crate::source::ByteArray;
 /// code produced by `#[derive(Logos)]` macro.**
 pub trait LexerInternal<'source> {
     /// Read the byte(s) at current position.
-    fn read<Array: ByteArray<'source>>(&self) -> Option<Array>;
+    fn read<Chunk: source::Chunk<'source>>(&self) -> Option<Chunk>;
 
     /// Bump the position by 1 and read the following byte.
     fn next(&mut self) -> Option<u8>;
