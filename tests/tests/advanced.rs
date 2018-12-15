@@ -1,5 +1,5 @@
 use logos::{Logos, lookup};
-//use logos_derive::Logos;
+use logos_derive::Logos;
 use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
