@@ -1,5 +1,5 @@
 use logos::{Logos, Extras, Lexer};
-use logos_derive::Logos;
+//use logos_derive::Logos;
 use std::ops::Range;
 
 #[derive(Default)]
