@@ -22,31 +22,32 @@ enum Token {
     #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
     LiteralFloat,
 
-    #[token="~"]
+    #[token = "~"]
     LiteralNull,
 
-    #[token="~?"]
+    #[token = "~?"]
     Sgwt,
 
-    #[token="~%"]
+    #[token = "~%"]
     Sgcn,
 
-    #[token="~["]
+    #[token = "~["]
     Sglc,
 
-    #[regex="~[a-z][a-z]+"]
+    #[regex = "~[a-z][a-z]+"]
     LiteralUrbitAddress,
 
-    #[regex="~[0-9]+-?[\\.0-9a-f]+"]
+    #[regex = "~[0-9]+-?[\\.0-9a-f]+"]
     LiteralAbsDate,
 
-    #[regex="~[mhs][0-9]+"]
+    #[regex = "~s[0-9]+(\\.\\.[0-9a-f\\.]+)?"]
+    #[regex = "~[hm][0-9]+"]
     LiteralRelDate,
 
-    #[token="'"]
+    #[token = "'"]
     SingleQuote,
 
-    #[token="'''"]
+    #[token = "'''"]
     TripleQuote,
 
     #[regex = "🦀+"]
@@ -188,14 +189,15 @@ mod advanced {
 
     #[test]
     fn sigs(){
-        assert_lex("~ ~m23 ~s42 ~h23 ~sod ~myd ~songname", &[
+        assert_lex("~ ~m23 ~s42 ~s42..cafe.babe ~h23 ~sod ~myd ~songname", &[
             (Token::LiteralNull, "~", 0..1),
             (Token::LiteralRelDate, "~m23", 2..6),
             (Token::LiteralRelDate, "~s42", 7..11),
-            (Token::LiteralRelDate, "~h23", 12..16),
-            (Token::LiteralUrbitAddress, "~sod", 17..21),
-            (Token::LiteralUrbitAddress, "~myd", 22..26),
-            (Token::LiteralUrbitAddress, "~songname",27..36),
+            (Token::LiteralRelDate, "~s42..cafe.babe", 12..27),
+            (Token::LiteralRelDate, "~h23", 28..32),
+            (Token::LiteralUrbitAddress, "~sod", 33..37),
+            (Token::LiteralUrbitAddress, "~myd", 38..42),
+            (Token::LiteralUrbitAddress, "~songname",43..52),
         ]);
     }
     #[test]

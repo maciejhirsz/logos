@@ -242,9 +242,9 @@ pub trait SubGenerator<'a>: Sized {
                 if #first #(&& #rest)* {
                     lex.bump(#bump);
                     #then
-                } else {
-                    #otherwise
                 }
+
+                #otherwise
             })
         } else {
             let next = self.print_then(otherwise);
