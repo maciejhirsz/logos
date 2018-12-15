@@ -192,8 +192,29 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_then(&mut branch.then);
         }
 
-        let (test, bump) = self.regex_to_test(branch.regex.patterns());
+        let min_bytes = branch.min_bytes();
+        let bump = branch.regex.len();
+
+        if min_bytes > bump && min_bytes <= 16 {
+            let test = self.lookahead_to_test(quote!(chunk), branch.regex.patterns());
+            let next = self.print_then(&mut branch.then);
+            let arr_type = Self::chunk_type(bump);
+
+            return quote! {
+                if let Some(arr) = lex.read::<&[u8; #min_bytes]>() {
+                    let (chunk, rest): (#arr_type, _) = arr.split();
+
+                    if #test {
+                        lex.bump(#bump);
+
+                        #next
+                    }
+                }
+            };
+        }
+
         let next = self.print_then(&mut branch.then);
+        let test = self.regex_to_test(branch.regex.patterns());
 
         quote! {
             if #test {
@@ -253,7 +274,8 @@ pub trait SubGenerator<'a>: Sized {
                 })
             },
             _ => {
-                let (test, bump) = self.regex_to_test(regex.patterns());
+                let bump = regex.len();
+                let test = self.regex_to_test(regex.patterns());
 
                 quote!({
                     while #test {
@@ -267,7 +289,8 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>) -> TokenStream {
-        let (test, bump) = self.regex_to_test(regex.patterns());
+        let bump = regex.len();
+        let test = self.regex_to_test(regex.patterns());
 
         if then.is_some() {
             let then = self.print_then(then);
@@ -294,16 +317,19 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
+    fn chunk_type(len: usize) -> TokenStream {
+        match len {
+            1 => quote!(u8),
+            _ => quote!(&[u8; #len]),
+        }
+    }
+
     /// Convert a slice of `Pattern`s into a test that can be inserted into
-    /// an `if ____ {` or `while ____ {`. Also returns a number of bytes to
-    /// bump if the test is successful.
-    fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, usize) {
+    /// an `if ____ {` or `while ____ {`.
+    fn regex_to_test(&mut self, patterns: &[Pattern]) -> TokenStream {
         let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
             let offset = 16 * idx;
-            let chunk_type = match chunk.len() {
-                1   => quote!(u8),
-                len => quote!(&[u8; #len]),
-            };
+            let chunk_type = Self::chunk_type(chunk.len());
 
             let source = match offset {
                 0 => quote!(lex.read::<#chunk_type>()),
@@ -313,7 +339,7 @@ pub trait SubGenerator<'a>: Sized {
             self.chunk_to_test(source, chunk)
         });
 
-        (quote!(#(#test)&&*), patterns.len())
+        quote!(#(#test)&&*)
     }
 
     /// Convert a chunk of up to 16 `Pattern`s into a test
@@ -336,6 +362,30 @@ pub trait SubGenerator<'a>: Sized {
             });
 
             quote!(#source.map(|chunk| #(#chunk)&&*).unwrap_or(false))
+        }
+    }
+
+    /// Convert a chunk of up to 16 `Pattern`s into a test for a lookahead array
+    fn lookahead_to_test(&mut self, source: TokenStream, chunk: &[Pattern]) -> TokenStream {
+        let first = &chunk[0];
+        let source = &source;
+
+        if chunk.iter().all(Pattern::is_byte) {
+            match chunk.len() {
+                1 => quote!(#source == #first),
+                _ => quote!(#source == &[#( #chunk ),*]),
+            }
+        } else {
+            let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
+                let source = match chunk.len() {
+                    1 => quote!(#source),
+                    _ => quote!(#source[#idx]),
+                };
+
+                self.pattern_to_test(source, pat)
+            });
+
+            quote!(#(#chunk)&&*)
         }
     }
 

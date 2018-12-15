@@ -168,6 +168,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             fn lexicon<'lexicon, 'source, S: ::logos::Source<'source>>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
                 use ::logos::internal::LexerInternal;
+                use ::logos::source::Split;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
 

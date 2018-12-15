@@ -221,7 +221,11 @@ impl<'a> Branch<'a> {
         }
     }
 
-    fn pack(&mut self) {
+    pub fn min_bytes(&self) -> usize {
+        self.regex.len() + self.then.as_ref().map(|node| node.min_bytes()).unwrap_or(0)
+    }
+
+    pub fn pack(&mut self) {
         if let Some(ref mut then) = self.then {
             then.pack();
 
@@ -463,6 +467,20 @@ impl<'a> Fork<'a> {
                 None => {
                     self.then = Some(then.clone().boxed());
                 },
+            }
+        }
+    }
+
+    /// Minimum amount of bytes that will satisfy this Fork
+    pub fn min_bytes(&self) -> usize {
+        match self.kind {
+            ForkKind::Repeat | ForkKind::Maybe => 0,
+            ForkKind::Plain => {
+                self.arms
+                    .iter()
+                    .map(|arm| arm.min_bytes())
+                    .min()
+                    .unwrap_or(0)
             }
         }
     }
@@ -728,6 +746,14 @@ impl<'a> Node<'a> {
 
     pub fn boxed(self) -> Box<Self> {
         Box::new(self)
+    }
+
+    pub fn min_bytes(&self) -> usize {
+        match self {
+            Node::Fork(fork) => fork.min_bytes(),
+            Node::Branch(branch) => branch.min_bytes(),
+            Node::Leaf(_) => 0,
+        }
     }
 
     pub fn pack(&mut self) {

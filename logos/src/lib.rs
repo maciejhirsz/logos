@@ -91,7 +91,7 @@ extern crate core as std;
 pub use logos_derive::Logos;
 
 mod lexer;
-mod source;
+pub mod source;
 
 #[doc(hidden)]
 pub mod internal;
