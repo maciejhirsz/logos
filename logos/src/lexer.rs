@@ -166,7 +166,7 @@ where
     Token: self::Logos,
     Source: self::Source<'source>,
 {
-    /// Read a byte(s) at current position of the `Lexer`. If end
+    /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
     #[inline]
     fn read<Chunk>(&self) -> Option<Chunk>
@@ -176,12 +176,13 @@ where
         self.source.read_bytes(self.token_end)
     }
 
-    /// Convenience method that bumps the position `Lexer` is
-    /// reading from and then reads the following byte.
+    /// Read a `Chunk` at a position offset by `size`.
     #[inline]
-    fn next(&mut self) -> Option<u8> {
-        self.bump(1);
-        self.read()
+    fn lookahead<Chunk>(&mut self, size: usize) -> Option<Chunk>
+    where
+        Chunk: source::Chunk<'source>
+    {
+        self.source.read_bytes(self.token_end + size)
     }
 
     /// Bump the position `Lexer` is reading from by `size`.

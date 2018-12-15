@@ -7,11 +7,11 @@ use crate::source;
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
 pub trait LexerInternal<'source> {
-    /// Read the byte(s) at current position.
+    /// Read a chunk at current position.
     fn read<Chunk: source::Chunk<'source>>(&self) -> Option<Chunk>;
 
-    /// Bump the position by 1 and read the following byte.
-    fn next(&mut self) -> Option<u8>;
+    /// Read a chunk at current position offset by `size`.
+    fn lookahead<Chunk: source::Chunk<'source>>(&mut self, size: usize) -> Option<Chunk>;
 
     /// Bump the position by `size`.
     fn bump(&mut self, size: usize);

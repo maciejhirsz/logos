@@ -59,6 +59,9 @@ enum Token {
     #[regex = r"[\u0400-\u04FF]+"]
     Cyrillic,
 
+    #[regex = r"([#@!\\?][#@!\\?][#@!\\?][#@!\\?])+"]
+    WhatTheHeck,
+
     #[regex = "try|type|typeof"]
     Keyword,
 }
@@ -188,7 +191,7 @@ mod advanced {
     }
 
     #[test]
-    fn sigs(){
+    fn sigs() {
         assert_lex("~ ~m23 ~s42 ~s42..cafe.babe ~h23 ~sod ~myd ~songname", &[
             (Token::LiteralNull, "~", 0..1),
             (Token::LiteralRelDate, "~m23", 2..6),
@@ -200,13 +203,23 @@ mod advanced {
             (Token::LiteralUrbitAddress, "~songname",43..52),
         ]);
     }
+
     #[test]
-    fn subquotes(){
+    fn subquotes() {
         assert_lex("' ''' ''", &[
             (Token::SingleQuote, "'", 0..1),
             (Token::TripleQuote, "'''", 2..5),
             (Token::SingleQuote, "'", 6..7),
             (Token::SingleQuote, "'", 7..8),
+        ]);
+    }
+
+    #[test]
+    fn what_the_heck() {
+        assert_lex("!#@? #!!!?!@? ????####@@@@!!!!", &[
+            (Token::WhatTheHeck, "!#@?", 0..4),
+            (Token::WhatTheHeck, "#!!!?!@?", 5..13),
+            (Token::WhatTheHeck, "????####@@@@!!!!", 14..30),
         ]);
     }
 }

@@ -194,11 +194,11 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_then(&mut branch.then);
         }
 
-        let (first, rest, bump) = self.regex_to_test(branch.regex.patterns());
+        let (test, bump) = self.regex_to_test(branch.regex.patterns());
         let next = self.print_then(&mut branch.then);
 
         quote! {
-            if #first #(&& #rest)* {
+            if #test {
                 lex.bump(#bump);
 
                 #next
@@ -215,67 +215,68 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
-        if regex.len() == 0 {
-            return self.print_then(then);
-        }
-
-        let (first, rest, bump) = self.regex_to_test(regex.patterns());
         let next = self.print_then(then);
 
-        if regex.len() == 1 {
-            let fun = self.gen().pattern_to_fn(regex.first());
+        match regex.len() {
+            0 => next,
+            1 => {
+                let fun = self.gen().pattern_to_fn(regex.first());
 
-            return quote!({
-                loop {
-                    if let Some(arr) = lex.read::<&'source [u8; 16]>() {
-                        // There is at least 16 bytes left until EOF, so we get a pointer to a fixed size array.
-                        //
-                        // All those reads are now virtually free, all of the calls should be inlined.
-                        if #fun(arr[0])  { if #fun(arr[1])  { if #fun(arr[2])  { if #fun(arr[3])  {
-                        if #fun(arr[4])  { if #fun(arr[5])  { if #fun(arr[6])  { if #fun(arr[7])  {
-                        if #fun(arr[8])  { if #fun(arr[9])  { if #fun(arr[10]) { if #fun(arr[11]) {
-                        if #fun(arr[12]) { if #fun(arr[13]) { if #fun(arr[14]) { if #fun(arr[15]) {
+                quote!({
+                    loop {
+                        if let Some(arr) = lex.read::<&[u8; 16]>() {
+                            // There is at least 16 bytes left until EOF, so we get a pointer to a fixed size array.
+                            //
+                            // All those reads are now virtually free, all of the calls should be inlined.
+                            if #fun(arr[0])  { if #fun(arr[1])  { if #fun(arr[2])  { if #fun(arr[3])  {
+                            if #fun(arr[4])  { if #fun(arr[5])  { if #fun(arr[6])  { if #fun(arr[7])  {
+                            if #fun(arr[8])  { if #fun(arr[9])  { if #fun(arr[10]) { if #fun(arr[11]) {
+                            if #fun(arr[12]) { if #fun(arr[13]) { if #fun(arr[14]) { if #fun(arr[15]) {
 
-                        // Continue the loop if all 16 bytes are matching, else break at appropriate branching
-                        lex.bump(16); continue; } lex.bump(15); break; } lex.bump(14); break; } lex.bump(13); break; }
-                        lex.bump(12); break;    } lex.bump(11); break; } lex.bump(10); break; } lex.bump(9);  break; }
-                        lex.bump(8);  break;    } lex.bump(7);  break; } lex.bump(6);  break; } lex.bump(5);  break; }
-                        lex.bump(4);  break;    } lex.bump(3);  break; } lex.bump(2);  break; } lex.bump(1);  break; }
+                            // Continue the loop if all 16 bytes are matching, else break at appropriate branching
+                            lex.bump(16); continue; } lex.bump(15); break; } lex.bump(14); break; } lex.bump(13); break; }
+                            lex.bump(12); break;    } lex.bump(11); break; } lex.bump(10); break; } lex.bump(9);  break; }
+                            lex.bump(8);  break;    } lex.bump(7);  break; } lex.bump(6);  break; } lex.bump(5);  break; }
+                            lex.bump(4);  break;    } lex.bump(3);  break; } lex.bump(2);  break; } lex.bump(1);  break; }
 
-                        break;
-                    } else {
-                        // There weren't enough bytes for the fast path.
-                        // handle the remainder by looping one byte at a time.
-                        while lex.read().map(#fun).unwrap_or(false) {
-                            lex.bump(1);
+                            break;
+                        } else {
+                            // There weren't enough bytes for the fast path.
+                            // handle the remainder by looping one byte at a time.
+                            while lex.read().map(#fun).unwrap_or(false) {
+                                lex.bump(1);
+                            }
+
+                            break;
                         }
-
-                        break;
                     }
-                }
 
-                #next
-            })
-        }
+                    #next
+                })
+            },
+            _ => {
+                let (test, bump) = self.regex_to_test(regex.patterns());
 
-        quote!({
-            while #first #(&& #rest)* {
-                lex.bump(#bump);
+                quote!({
+                    while #test {
+                        lex.bump(#bump);
+                    }
+
+                    #next
+                })
             }
-
-            #next
-        })
+        }
     }
 
     fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>) -> TokenStream {
-        let (first, rest, bump) = self.regex_to_test(regex.patterns());
+        let (test, bump) = self.regex_to_test(regex.patterns());
 
         if then.is_some() {
             let then = self.print_then(then);
             let otherwise = self.print_then(otherwise);
 
             quote!({
-                if #first #(&& #rest)* {
+                if #test {
                     lex.bump(#bump);
                     #then
                 }
@@ -286,7 +287,7 @@ pub trait SubGenerator<'a>: Sized {
             let next = self.print_then(otherwise);
 
             quote!({
-                if #first #(&& #rest)* {
+                if #test {
                     lex.bump(#bump);
                 }
 
@@ -295,33 +296,69 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
-    fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, Vec<TokenStream>, usize) {
-        if patterns.len() > 1 && patterns.len() <= 16 && patterns.iter().all(|pat| pat.is_byte()) {
-            return (quote!(lex.read() == Some(&[#( #patterns ),*])), Vec::new(), patterns.len());
-        }
+    /// Convert a slice of `Pattern`s into a test that can be inserted into
+    /// an `if ____ {` or `while ____ {`. Also returns a number of bytes to
+    /// bump if the test is successful.
+    fn regex_to_test(&mut self, patterns: &[Pattern]) -> (TokenStream, usize) {
+        let mut chunks = patterns.chunks(16).enumerate();
 
-        let first = &patterns[0];
-        let rest = &patterns[1..];
+        let (_, chunk) = chunks.next().expect("Internal Error: No Patterns Defined");
+        let chunk_type = Self::chunk_type(chunk.len());
 
-        let first = if first.is_byte() {
-            quote!(lex.read() == Some(#first))
-        } else {
-            let function = self.gen().pattern_to_fn(first);
+        let test = self.chunk_to_test(quote!(lex.read::<#chunk_type>()), chunk);
+        let rest = chunks.map(|(idx, chunk)| {
+            let chunk_type = Self::chunk_type(chunk.len());
+            let offset = 16 * idx;
 
-            quote!(lex.read().map(#function).unwrap_or(false))
-        };
-
-        let rest = rest.iter().map(|pat| {
-            if pat.is_byte() {
-                quote!(lex.next() == Some(#pat))
-            } else {
-                let function = self.gen().pattern_to_fn(pat);
-
-                quote!(lex.next().map(#function).unwrap_or(false))
-            }
+            self.chunk_to_test(quote!(lex.lookahead::<#chunk_type>(#offset)), chunk)
         });
 
-        (quote!(#first), rest.collect(), 1)
+        (quote!(#test #(#rest)&&*), patterns.len())
+    }
+
+    /// Helper function for getting the correct chunk type
+    fn chunk_type(len: usize) -> TokenStream {
+        if len == 1 {
+            quote!(u8)
+        } else {
+            quote!(&[u8; #len])
+        }
+    }
+
+    /// Convert a chunk of up to 16 `Pattern`s into a test
+    fn chunk_to_test(&mut self, source: TokenStream, chunk: &[Pattern]) -> TokenStream {
+        let first = &chunk[0];
+
+        if chunk.iter().all(Pattern::is_byte) {
+            if chunk.len() == 1 {
+                quote!(#source == Some(#first))
+            } else {
+                quote!(#source == Some(&[#( #chunk ),*]))
+            }
+        } else {
+            let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
+                let source = if chunk.len() == 1 {
+                    quote!(chunk)
+                } else {
+                    quote!(chunk[#idx])
+                };
+
+                self.pattern_to_test(source, pat)
+            });
+
+            quote!(#source.map(|chunk| #(#chunk)&&*).unwrap_or(false))
+        }
+    }
+
+    /// Convert an individual `Pattern` into a test
+    fn pattern_to_test(&mut self, source: TokenStream, pattern: &Pattern) -> TokenStream {
+        if pattern.is_byte() {
+            quote!(#source == #pattern)
+        } else {
+            let fun = self.gen().pattern_to_fn(pattern);
+
+            quote!(#fun(#source))
+        }
     }
 
     fn print_node(&mut self, node: &mut Node) -> TokenStream {
@@ -338,14 +375,14 @@ pub trait SubGenerator<'a>: Sized {
 
                 if fork.arms.len() == 1 {
                     let arm = &mut fork.arms[0];
+                    let regex = &arm.regex;
 
                     match fork.kind {
                         ForkKind::Plain => {},
                         ForkKind::Maybe => {
-                            if (arm.regex.len() == 1 && arm.then.is_none())
-                                || (arm.regex.len() > 1 && arm.regex.len() <= 16 && arm.regex.patterns().iter().all(|pat| pat.is_byte()))
-                            {
-                                let regex = &arm.regex;
+                            // FIXME: The check seems unnecessary, but removing it
+                            // produces invalid code in ExhaustiveGenerator
+                            if regex.len() > 1 || arm.then.is_none() {
                                 let then = &mut arm.then;
                                 let otherwise = &mut fork.then;
 
@@ -353,11 +390,7 @@ pub trait SubGenerator<'a>: Sized {
                             }
                         },
                         ForkKind::Repeat => {
-                            if (arm.regex.len() == 1
-                                || (arm.regex.len() > 1 && arm.regex.len() <= 16 && arm.regex.patterns().iter().all(|pat| pat.is_byte())))
-                                && arm.then.is_none()
-                            {
-                                let regex = &arm.regex;
+                            if arm.then.is_none() {
                                 let then = &mut fork.then;
 
                                 return self.print_simple_repeat(regex, then);
