@@ -6,16 +6,9 @@ use std::{fmt, mem};
 
 use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Regex {
     patterns: Vec<Pattern>,
-    offset: usize,
-}
-
-impl PartialEq for Regex {
-    fn eq(&self, other: &Regex) -> bool {
-        self.patterns() == other.patterns()
-    }
 }
 
 impl<'a> Node<'a> {
@@ -163,10 +156,7 @@ impl Regex {
 
     pub fn sequence(source: &str) -> Self {
         Regex {
-            patterns: source.bytes().map(|byte| {
-                Pattern::Byte(byte)
-            }).collect(),
-            offset: 0,
+            patterns: source.bytes().map(|byte| Pattern::Byte(byte)).collect(),
         }
     }
 
@@ -239,11 +229,15 @@ impl Regex {
     }
 
     pub fn patterns(&self) -> &[Pattern] {
-        &self.patterns[self.offset..]
+        &self.patterns
     }
 
     pub fn first(&self) -> &Pattern {
-        self.patterns().get(0).unwrap()
+        self.patterns.first().unwrap()
+    }
+
+    pub fn first_mut(&mut self) -> &mut Pattern {
+        self.patterns.first_mut().unwrap()
     }
 
     pub fn match_split(&mut self, other: &mut Regex) -> Option<Regex> {
@@ -258,12 +252,11 @@ impl Regex {
         match patterns.len() {
             0 => None,
             len => {
-                self.offset += len;
-                other.offset += len;
+                self.patterns.drain(..len).count();
+                other.patterns.drain(..len).count();
 
                 Some(Regex {
                     patterns,
-                    offset: 0
                 })
             }
         }
@@ -273,23 +266,8 @@ impl Regex {
         self.first().intersect(other.first())
     }
 
-    pub fn unshift(&mut self) -> Option<&Pattern> {
-        if self.len() == 0 {
-            return None;
-        }
-
-        let offset = self.offset;
-
-        self.offset += 1;
-
-        self.patterns.get(offset)
-    }
-
-    pub fn consume(&mut self) -> &[Pattern] {
-        let offset = self.offset;
-        self.offset = self.patterns.len();
-
-        &self.patterns[offset..]
+    pub fn unshift(&mut self) -> Pattern {
+        self.patterns.remove(0)
     }
 
     pub fn extend(&mut self, patterns: &[Pattern]) {
@@ -318,7 +296,6 @@ impl From<Utf8Sequence> for Regex {
 
         Regex {
             patterns,
-            offset: 0,
         }
     }
 }
@@ -669,19 +646,18 @@ mod test {
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.unshift(), Pattern::Byte(b'a'));
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'b'),
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
+        assert_eq!(r.unshift(), Pattern::Byte(b'b'));
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
+        assert_eq!(r.unshift(), Pattern::Byte(b'c'));
         assert_eq!(r.patterns(), &[]);
-        assert_eq!(r.unshift(), None);
     }
 }

@@ -194,8 +194,8 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_then(&mut branch.then);
         }
 
-        let (first, rest, bump) = self.regex_to_test(branch.regex.consume());
-        let next = self.print_then(&mut branch.then);
+        let (first, rest, bump) = self.regex_to_test(branch.regex.patterns());
+        let next = self.print_branch(branch);
 
         quote! {
             if #first #(&& #rest)* {
@@ -223,86 +223,30 @@ pub trait SubGenerator<'a>: Sized {
         let next = self.print_then(then);
 
         if regex.len() == 1 {
-            let function = self.gen().pattern_to_fn(regex.first());
+            let fun = self.gen().pattern_to_fn(regex.first());
 
             return quote!({
                 loop {
                     if let Some(arr) = lex.read::<&'source [u8; 16]>() {
-                        // let count = arr.iter().take_while(|item| #function(**item)).count();
+                        // There is at least 16 bytes left until EOF, so we get a pointer to a fixed size array.
+                        //
+                        // All those reads are now virtually free, all of the calls should be inlined.
+                        if #fun(arr[0])  { if #fun(arr[1])  { if #fun(arr[2])  { if #fun(arr[3])  {
+                        if #fun(arr[4])  { if #fun(arr[5])  { if #fun(arr[6])  { if #fun(arr[7])  {
+                        if #fun(arr[8])  { if #fun(arr[9])  { if #fun(arr[10]) { if #fun(arr[11]) {
+                        if #fun(arr[12]) { if #fun(arr[13]) { if #fun(arr[14]) { if #fun(arr[15]) {
 
-                        // lex.bump(count);
+                        // Continue the loop if all 16 bytes are matching, else break at appropriate branching
+                        lex.bump(16); continue; } lex.bump(15); break; } lex.bump(14); break; } lex.bump(13); break; }
+                        lex.bump(12); break;    } lex.bump(11); break; } lex.bump(10); break; } lex.bump(9);  break; }
+                        lex.bump(8);  break;    } lex.bump(7);  break; } lex.bump(6);  break; } lex.bump(5);  break; }
+                        lex.bump(4);  break;    } lex.bump(3);  break; } lex.bump(2);  break; } lex.bump(1);  break; }
 
-                        // match count {
-                        //     16 => continue,
-                        //     _ => break,
-                        // }
-                        if #function(arr[0]) {
-                            if #function(arr[1]) {
-                                if #function(arr[2]) {
-                                    if #function(arr[3]) {
-                                        if #function(arr[4]) {
-                                            if #function(arr[5]) {
-                                                if #function(arr[6]) {
-                                                    if #function(arr[7]) {
-                                                        if #function(arr[8]) {
-                                                            if #function(arr[9]) {
-                                                                if #function(arr[10]) {
-                                                                    if #function(arr[11]) {
-                                                                        if #function(arr[12]) {
-                                                                            if #function(arr[13]) {
-                                                                                if #function(arr[14]) {
-                                                                                    if #function(arr[15]) {
-                                                                                        lex.bump(16);
-                                                                                        continue;
-                                                                                    }
-                                                                                    lex.bump(15);
-                                                                                    break;
-                                                                                }
-                                                                                lex.bump(14);
-                                                                                break;
-                                                                            }
-                                                                            lex.bump(13);
-                                                                            break;
-                                                                        }
-                                                                        lex.bump(12);
-                                                                        break;
-                                                                    }
-                                                                    lex.bump(11);
-                                                                    break;
-                                                                }
-                                                                lex.bump(10);
-                                                                break;
-                                                            }
-                                                            lex.bump(9);
-                                                            break;
-                                                        }
-                                                        lex.bump(8);
-                                                        break;
-                                                    }
-                                                    lex.bump(7);
-                                                    break;
-                                                }
-                                                lex.bump(6);
-                                                break;
-                                            }
-                                            lex.bump(5);
-                                            break;
-                                        }
-                                        lex.bump(4);
-                                        break;
-                                    }
-                                    lex.bump(3);
-                                    break;
-                                }
-                                lex.bump(2);
-                                break;
-                            }
-                            lex.bump(1);
-                            break;
-                        }
                         break;
                     } else {
-                        while lex.read().map(#function).unwrap_or(false) {
+                        // There weren't enough bytes for the fast path.
+                        // handle the remainder by looping one byte at a time.
+                        while lex.read().map(#fun).unwrap_or(false) {
                             lex.bump(1);
                         }
 
@@ -428,9 +372,7 @@ pub trait SubGenerator<'a>: Sized {
 
                 let branches = fork.arms.iter_mut().map(|branch| {
                     let test = {
-                        let pattern = branch.regex
-                                            .unshift()
-                                            .expect("Invalid tree structure, please make an issue on GitHub!");
+                        let pattern = branch.regex.unshift();
 
                         if pattern.weight() == 1 {
                             quote!(Some(#pattern) =>)

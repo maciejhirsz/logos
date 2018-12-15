@@ -1,24 +1,25 @@
 use std::{mem, fmt};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 use crate::regex::{Regex, RepetitionFlag};
 
 pub type Token<'a> = &'a ::syn::Ident;
 pub type Callback = ::syn::Ident;
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Branch<'a> {
     pub regex: Regex,
     pub then: Option<Box<Node<'a>>>,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Leaf<'a> {
     pub token: Token<'a>,
     pub callback: Option<Callback>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ForkKind {
     Plain  = 0,
     Maybe  = 1,
@@ -31,14 +32,14 @@ impl Default for ForkKind {
     }
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Fork<'a> {
     pub kind: ForkKind,
     pub arms: Vec<Branch<'a>>,
     pub then: Option<Box<Node<'a>>>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Node<'a> {
     Branch(Branch<'a>),
     Fork(Fork<'a>),
@@ -481,19 +482,32 @@ impl<'a> Fork<'a> {
             then.pack();
         }
 
-        self.collapse();
-
         self.arms.iter_mut().for_each(Branch::pack);
 
-        // FIXME: This should categorize all 1-length arms by their `then`s, and then combine those
-        if self.arms.len() > 2 && self.arms.iter().all(|arm| arm.regex.len() == 1 && arm.then.is_none()) {
-            let mut new = self.arms[0].regex.first().clone();
+        if self.arms.len() > 1 {
+            let mut scan: HashMap<&Option<Box<Node>>, usize> = HashMap::new();
+            let mut remove = Vec::new();
 
-            for old in self.arms.drain(1..) {
-                new.combine(old.regex.first().clone());
+            for (index, arm) in self.arms.iter_mut().enumerate() {
+                if arm.regex.len() > 1 {
+                    continue;
+                }
+
+                let retain = *scan.entry(&arm.then).or_insert(index);
+
+                if retain != index {
+                    remove.push((retain, index, arm.regex.unshift()));
+                }
             }
 
-            self.arms[0].regex = new.into();
+            for (retain, index, pattern) in remove.into_iter().rev() {
+                self.arms[retain].regex.first_mut().combine(pattern);
+                self.arms.remove(index);
+            }
+        }
+
+        if self.kind == ForkKind::Maybe && self.arms.len() == 1 && self.arms[0].then == self.then {
+            self.arms[0].then = None;
         }
     }
 }
@@ -747,9 +761,11 @@ impl<'a> Node<'a> {
             Node::Fork(fork) => {
                 fork.pack();
 
-                if fork.kind == ForkKind::Plain && fork.arms.len() == 1 && fork.arms[0].then.is_none() {
+                // let mut set = HashSet::new();
+
+                if fork.kind == ForkKind::Plain && fork.arms.len() == 1 && (fork.then.is_none() || fork.arms[0].then.is_none()) {
                     let mut branch = fork.arms.remove(0);
-                    branch.then = fork.then.take();
+                    branch.then = branch.then.or(fork.then.take());
 
                     *self = Node::Branch(branch);
                 }
