@@ -24,6 +24,46 @@ fn get_rc_ptr<T>(rc: &Rc<T>) -> usize {
     Rc::into_raw(rc.clone()) as usize
 }
 
+/// This struct keeps track of bytes available to be read without
+/// bounds checking across the tree.
+///
+/// For example, a branch that matches 4 bytes followed by a fork
+/// with smallest branch containing of 2 bytes can do a bounds check
+/// for 6 bytes ahead, and leave the remaining 2 byte array (fixed size)
+/// to be handled by the fork, avoiding bound checks there.
+#[derive(Clone, Copy, Default)]
+pub struct Context {
+    /// Amount of bytes available at local `arr` variable
+    pub available: usize,
+
+    /// Amount of bytes that haven't been bumped yet but should
+    /// before a new read is performed
+    pub unbumped: usize,
+}
+
+impl Context {
+    pub const fn new(available: usize) -> Self {
+        Context {
+            available,
+            unbumped: 0,
+        }
+    }
+
+    pub const fn advance(self, n: usize) -> Self {
+        Context {
+            available: self.available - n,
+            unbumped: self.unbumped + n,
+        }
+    }
+
+    pub const fn bump(self) -> Self {
+        Context {
+            available: self.available,
+            unbumped: 0,
+        }
+    }
+}
+
 impl<'a> Generator<'a> {
     pub fn new(enum_name: &'a Ident) -> Self {
         Generator {
@@ -81,7 +121,7 @@ impl<'a> Generator<'a> {
 
         if let Some(mut fallback) = tree.fallback() {
             let boundary = fallback.regex.first().clone();
-            let fallback = LooseGenerator(self).print_then(&mut fallback.then);
+            let fallback = LooseGenerator(self).print_then(&mut fallback.then, Context::default());
 
             FallbackGenerator {
                 gen: self,
@@ -175,65 +215,75 @@ pub trait SubGenerator<'a>: Sized {
 
     fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream;
 
-    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+    fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
-            self.print_node(&mut **node)
+            self.print_node(&mut **node, ctx)
         } else {
-            quote!( {} )
+            match ctx.unbumped {
+                0 => quote!({}),
+                n => quote!(lex.bump(#n)),
+            }
         }
     }
 
     fn print_then_plain(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
-        self.print_then(then)
+        self.print_then(then, Context::default())
     }
 
-    fn print_branch(&mut self, branch: &mut Branch) -> TokenStream {
+    fn print_branch(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
         if branch.regex.len() == 0 {
-            return self.print_then(&mut branch.then);
+            return self.print_then(&mut branch.then, ctx);
         }
 
+        // FIXME: Cap `min_bytes` to 16
         let min_bytes = branch.min_bytes();
         let bump = branch.regex.len();
 
-        if min_bytes > bump && min_bytes <= 16 {
-            let test = self.chunk_to_test(quote!(chunk), branch.regex.patterns());
-            let next = self.print_then(&mut branch.then);
+        if ctx.available < bump {
+            let branch = self.print_branch(branch, Context::new(min_bytes));
+            let bump = match ctx.unbumped {
+                0    => TokenStream::new(),
+                bump => quote!(lex.bump(#bump);),
+            };
 
             return quote! {
+                #bump
+
                 if let Some(arr) = lex.read::<&[u8; #min_bytes]>() {
-                    let (chunk, arr): (&[u8; #bump], _) = arr.split();
-
-                    if #test {
-                        lex.bump(#bump);
-
-                        #next
-                    }
+                    #branch
                 }
             };
         }
 
-        let next = self.print_then(&mut branch.then);
-        let test = self.regex_to_test(branch.regex.patterns());
+        let (source, split) = if ctx.available > bump {
+            (quote!(chunk), quote!(let (chunk, arr): (&[u8; #bump], _) = arr.split();))
+        } else {
+            (quote!(arr), TokenStream::new())
+        };
+
+        // FIXME: Handle chunks larger than 16 bytes!
+        let test = self.chunk_to_test(source, branch.regex.patterns());
+        let next = self.print_then(&mut branch.then, ctx.advance(bump));
 
         quote! {
-            if #test {
-                lex.bump(#bump);
+            #split
 
+            if #test {
                 #next
             }
         }
     }
 
     fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        MaybeGenerator(self, PhantomData).print_branch(branch)
+        MaybeGenerator(self, PhantomData).print_branch(branch, Context::default())
     }
 
     fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        LoopGenerator(self, PhantomData).print_branch(branch)
+        LoopGenerator(self, PhantomData).print_branch(branch, Context::default())
     }
 
     fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
-        let next = self.print_then(then);
+        let next = self.print_then(then, Context::default());
 
         match regex.len() {
             0 => next,
@@ -292,8 +342,8 @@ pub trait SubGenerator<'a>: Sized {
         let test = self.regex_to_test(regex.patterns());
 
         if then.is_some() {
-            let then = self.print_then(then);
-            let otherwise = self.print_then(otherwise);
+            let then = self.print_then(then, Context::default());
+            let otherwise = self.print_then(otherwise, Context::default());
 
             quote!({
                 if #test {
@@ -304,7 +354,7 @@ pub trait SubGenerator<'a>: Sized {
                 #otherwise
             })
         } else {
-            let next = self.print_then(otherwise);
+            let next = self.print_then(otherwise, Context::default());
 
             quote!({
                 if #test {
@@ -362,15 +412,25 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
-    fn print_node(&mut self, node: &mut Node) -> TokenStream {
+    fn print_node(&mut self, node: &mut Node, ctx: Context) -> TokenStream {
+        if ctx.unbumped > 0 {
+            let node = self.print_node(node, ctx.bump());
+            let bump = ctx.unbumped;
+
+            return quote!({
+                lex.bump(#bump);
+                #node
+            });
+        }
+
         let is_bounded = node.is_bounded();
 
         match node {
             Node::Leaf(leaf) => self.print_leaf(leaf),
-            Node::Branch(branch) => self.print_branch(branch),
+            Node::Branch(branch) => self.print_branch(branch, ctx),
             Node::Fork(fork) => {
                 if fork.arms.len() == 0 {
-                    return self.print_then(&mut fork.then);
+                    return self.print_then(&mut fork.then, ctx);
                 }
 
                 if fork.arms.len() == 1 {
@@ -417,7 +477,7 @@ pub trait SubGenerator<'a>: Sized {
                     };
 
                     let branch = match kind {
-                        ForkKind::Plain  => self.print_branch(branch),
+                        ForkKind::Plain  => self.print_branch(branch, Context::default()),
                         ForkKind::Maybe  => self.print_branch_maybe(branch),
                         ForkKind::Repeat => self.print_branch_loop(branch),
                     };
@@ -430,7 +490,7 @@ pub trait SubGenerator<'a>: Sized {
 
                 let default = match kind {
                     ForkKind::Plain => self.print_then_plain(&mut fork.then),
-                    _               => self.print_then(&mut fork.then),
+                    _               => self.print_then(&mut fork.then, Context::default()),
                 };
 
                 if fork.kind == ForkKind::Plain
@@ -486,7 +546,7 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
     }
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
-        let body = self.print_node(node);
+        let body = self.print_node(node, Context::new(0));
 
         quote! {
             #body;
@@ -523,7 +583,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
     }
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
-        let body = self.print_node(node);
+        let body = self.print_node(node, Context::new(0));
         let fallback = &self.fallback;
 
         quote! {
@@ -573,23 +633,29 @@ where
     }
 
     fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        MaybeGenerator(self.0, PhantomData).print_branch(branch)
+        MaybeGenerator(self.0, PhantomData).print_branch(branch, Context::default())
     }
 
     fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        self.print_branch(branch)
+        self.print_branch(branch, Context::default())
     }
 
-    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+    fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
-            self.print_node(&mut **node)
+            self.print_node(&mut **node, ctx)
         } else {
-            quote!(continue)
+            match ctx.unbumped {
+                0 => quote!(continue),
+                n => quote!({
+                    lex.bump(#n);
+                    continue;
+                }),
+            }
         }
     }
 
     fn print_then_plain(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
-        self.0.print_then(then)
+        self.0.print_then(then, Context::default())
     }
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
@@ -614,18 +680,27 @@ where
     }
 
     fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        self.print_branch(branch)
+        self.print_branch(branch, Context::default())
     }
 
     fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        LoopGenerator(self.0, PhantomData).print_branch(branch)
+        LoopGenerator(self.0, PhantomData).print_branch(branch, Context::default())
     }
 
-    fn print_then(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
+    fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
-            self.0.print_node(&mut **node)
+            self.0.print_node(&mut **node, ctx)
         } else {
             quote!(break)
+
+            // FIXME: Maybe shouldn't bump on misses, right???
+            // match ctx.unbumped {
+            //     0 => quote!(break)
+            //     n => quote!( {
+            //         lex.bump(#n);
+            //         break;
+            //     } )
+            // }
         }
     }
 

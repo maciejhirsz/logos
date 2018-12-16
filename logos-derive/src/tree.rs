@@ -473,16 +473,11 @@ impl<'a> Fork<'a> {
 
     /// Minimum amount of bytes that will satisfy this Fork
     pub fn min_bytes(&self) -> usize {
-        match self.kind {
-            ForkKind::Repeat | ForkKind::Maybe => 0,
-            ForkKind::Plain => {
-                self.arms
-                    .iter()
-                    .map(|arm| arm.min_bytes())
-                    .min()
-                    .unwrap_or(0)
-            }
-        }
+        self.arms
+            .iter()
+            .map(|arm| arm.min_bytes())
+            .min()
+            .unwrap_or(0)
     }
 
     pub fn pack(&mut self) {
@@ -750,7 +745,8 @@ impl<'a> Node<'a> {
 
     pub fn min_bytes(&self) -> usize {
         match self {
-            Node::Fork(fork) => fork.min_bytes(),
+            Node::Fork(fork) if fork.kind == ForkKind::Plain => fork.min_bytes(),
+            Node::Fork(_) => 0,
             Node::Branch(branch) => branch.min_bytes(),
             Node::Leaf(_) => 0,
         }
