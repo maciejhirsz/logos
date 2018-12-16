@@ -2,7 +2,8 @@ use std::{mem, fmt};
 use std::cmp::Ordering;
 use rustc_hash::FxHashMap as HashMap;
 
-use crate::regex::{Regex, RepetitionFlag};
+use crate::handlers::Fallback;
+use crate::regex::{Regex, Pattern, RepetitionFlag};
 
 pub type Token<'a> = &'a ::syn::Ident;
 pub type Callback = ::syn::Ident;
@@ -219,6 +220,13 @@ impl<'a> Branch<'a> {
             },
             None => false,
         }
+    }
+
+    pub fn matches(&self, pattern: &Pattern) -> bool {
+        self.regex
+            .patterns()
+            .iter()
+            .all(|pat| pattern.contains(pat))
     }
 
     pub fn min_bytes(&self) -> usize {
@@ -641,49 +649,44 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Checks if the fork contains one branch that is a generalization of all other branches,
-    /// and if so removes and returns that branch.
-    pub fn fallback(&mut self) -> Option<Branch<'a>> {
+    /// Checks if all branches in the node match a specific pattern
+    pub fn matches(&self, pattern: &Pattern) -> bool {
+        match self {
+            Node::Branch(branch) => branch.matches(pattern),
+            Node::Fork(fork) => {
+                fork.arms.iter().all(|arm| arm.matches(pattern))
+                    && fork.then.as_ref().map(|then| then.matches(pattern)).unwrap_or(true)
+            },
+            Node::Leaf(_) => true,
+        }
+    }
+
+    pub fn fallback(&self) -> Option<Fallback<'a>> {
         match self {
             Node::Fork(fork) => {
-                if fork.kind != ForkKind::Maybe {
-                    return None;
-                }
+                let arm = &fork.arms[0];
+                let leaf = match &fork.then {
+                    Some(node) => match **node {
+                        Node::Leaf(ref leaf) => leaf,
+                        _ => return None,
+                    },
+                    _ => return None,
+                };
 
-                // This is a bit weird, but it basically checks if the fork
-                // has one and only one branch that is heavy and if so, it
-                // removes that branch and returns it.
-                let mut index = None;
-                let mut len = 1;
-
-                for (idx, branch) in fork.arms.iter().enumerate() {
-                    let other_len = branch.regex.first().len();
-
-                    if other_len > len {
-                        index = Some(idx);
-                        len = other_len;
-                    }
-                }
-
-                let index = index?;
-                let selected = &fork.arms[index];
-
-                // FIXME: Specialization check should be deeper than first Pattern
-                let specialization = fork.arms.iter().enumerate().all(|(idx, branch)| {
-                    if idx == index {
-                        return true;
-                    }
-
-                    selected.regex.first().contains(branch.regex.first())
-                });
-
-                if specialization {
-                    Some(fork.arms.remove(index))
+                if fork.kind == ForkKind::Repeat
+                    && fork.arms.len() == 1
+                    && arm.regex.len() == 1
+                    && arm.then.is_none()
+                {
+                    Some(Fallback {
+                        boundary: arm.regex.first().clone(),
+                        leaf: leaf.clone()
+                    })
                 } else {
                     None
                 }
-            }
-            _ => None,
+            },
+            _ => None
         }
     }
 

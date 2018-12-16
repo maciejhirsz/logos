@@ -136,8 +136,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let handlers = handlers.into_iter().map(|handler| {
         match handler {
-            Handler::Error      => quote! { Some(_error) },
-            Handler::Whitespace => quote! { None },
+            Handler::Error      => quote!(Some(_error)),
+            Handler::Whitespace => quote!(None),
             Handler::Tree(tree) => generator.print_tree(tree),
         }
     }).collect::<Vec<_>>();

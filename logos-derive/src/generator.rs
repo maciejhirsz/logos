@@ -1,10 +1,11 @@
 use std::marker::PhantomData;
 use std::rc::Rc;
-use syn::Ident;
+use syn::{Ident, parse_str};
 use quote::{quote, ToTokens};
 use proc_macro2::{TokenStream, Span};
 use rustc_hash::FxHashMap as HashMap;
 
+use crate::handlers::{Tree, Fallback};
 use crate::tree::{Node, Branch, Fork, ForkKind, Leaf};
 use crate::regex::{Regex, Pattern};
 
@@ -79,12 +80,12 @@ impl<'a> Generator<'a> {
         self.callbacks.insert(variant, func);
     }
 
-    pub fn print_tree(&mut self, tree: Rc<Node<'a>>) -> TokenStream {
+    pub fn print_tree(&mut self, tree: Rc<Tree<'a>>) -> TokenStream {
         let ptr = get_rc_ptr(&tree);
 
         if !self.fns_constructed.contains_key(&ptr) {
             let mut tokens = Vec::new();
-            tree.get_tokens(&mut tokens);
+            tree.node.get_tokens(&mut tokens);
             let body = self.tree_to_fn_body(tree.clone());
 
             let handler = Some(format!("_handle_{}", self.fns_constructed.len()))
@@ -115,21 +116,23 @@ impl<'a> Generator<'a> {
         quote!(Some(#handler))
     }
 
-    fn tree_to_fn_body(&mut self, mut tree: Rc<Node<'a>>) -> TokenStream {
+    fn tree_to_fn_body(&mut self, mut tree: Rc<Tree<'a>>) -> TokenStream {
         // At this point all Rc pointers should be unique
         let tree = Rc::make_mut(&mut tree);
 
-        if let Some(mut fallback) = tree.fallback() {
-            let boundary = fallback.regex.first().clone();
-            let fallback = LooseGenerator(self).print_then(&mut fallback.then, Context::default());
+        if let Some(Fallback { boundary, leaf }) = &tree.fallback {
+            let regex = Regex::from(boundary.clone());
+            let mut then = Some(Node::Leaf(leaf.clone()).boxed());
+
+            let fallback = LooseGenerator(self).print_simple_repeat(&regex, &mut then, Context::new(0));
 
             FallbackGenerator {
                 gen: self,
                 fallback,
-                boundary,
-            }.print(tree)
+                boundary: boundary.clone(),
+            }.print(&mut tree.node)
         } else {
-            LooseGenerator(self).print(tree)
+            LooseGenerator(self).print(&mut tree.node)
         }
     }
 
@@ -251,16 +254,15 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_then(&mut branch.then, ctx);
         }
 
-        let bump = branch.regex.len();
+        let len = branch.regex.len();
 
-        if ctx.available < bump {
+        if ctx.available < len {
             let read = branch.min_bytes();
 
-            if read == bump || bump > 16 {
+            if read == len || len > 16 {
                 let test = self.regex_to_test(branch.regex.patterns());
                 let next = self.print_then(&mut branch.then, Context::new(0));
                 let bump = ctx.bump();
-                let len = branch.regex.len();
 
                 return quote! {
                     #bump
@@ -277,14 +279,14 @@ pub trait SubGenerator<'a>: Sized {
             return self.print_lex_read(branch, None, read, ctx);
         }
 
-        let (source, split) = if ctx.available > bump {
-            (quote!(chunk), quote!(let (chunk, arr): (&[u8; #bump], _) = arr.split();))
+        let (source, split) = if ctx.available > len {
+            (quote!(chunk), quote!(let (chunk, arr): (&[u8; #len], _) = arr.split();))
         } else {
             (quote!(arr), TokenStream::new())
         };
 
         let test = self.chunk_to_test(source, branch.regex.patterns());
-        let next = self.print_then(&mut branch.then, ctx.advance(bump));
+        let next = self.print_then(&mut branch.then, ctx.advance(len));
 
         quote! {
             #split
@@ -317,12 +319,12 @@ pub trait SubGenerator<'a>: Sized {
                 ForkKind::Maybe => {
                     // The check seems unnecessary, but removing it
                     // reduces performance
-                    if regex.len() > 1 || arm.then.is_none() {
+                    // if regex.len() > 1 || arm.then.is_none() {
                         let then = &mut arm.then;
                         let otherwise = &mut fork.then;
 
                         return self.print_simple_maybe(regex, then, otherwise, ctx);
-                    }
+                    // }
                 },
                 ForkKind::Repeat => {
                     if arm.then.is_none() {
@@ -520,6 +522,31 @@ pub trait SubGenerator<'a>: Sized {
     /// Convert a slice of `Pattern`s into a test that can be inserted into
     /// an `if ____ {` or `while ____ {`.
     fn regex_to_test(&mut self, patterns: &[Pattern]) -> TokenStream {
+        // Fast path optimization for bytes
+        if patterns.iter().all(Pattern::is_byte) {
+            match patterns.len() {
+                1 => {
+                    let pattern = &patterns[0];
+
+                    return quote!(lex.read() == Some(#pattern));
+                },
+                2...16 => {
+                    let literal = byte_literal(patterns);
+
+                    return quote!(lex.read() == Some(#literal));
+                },
+                _ => {}
+            }
+        }
+
+        // Fast path optimization for single pattern
+        if patterns.len() == 1 {
+            let pattern = &patterns[0];
+            let fun = self.gen().pattern_to_fn(pattern);
+
+            return quote!(lex.read().map(#fun).unwrap_or(false));
+        }
+
         let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
             let offset = 16 * idx;
             let len = chunk.len();
@@ -542,7 +569,9 @@ pub trait SubGenerator<'a>: Sized {
         let source = &source;
 
         if chunk.iter().all(Pattern::is_byte) {
-            quote!(#source == &[#( #chunk ),*])
+            let literal = byte_literal(chunk);
+
+            quote!(#source == #literal)
         } else {
             let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
                 self.pattern_to_test(quote!(#source[#idx]), pat)
@@ -598,7 +627,7 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
         let body = self.print_node(node, Context::new(0));
 
         quote! {
-            #body;
+            #body
 
             lex.token = ::logos::Logos::ERROR;
         }
@@ -776,6 +805,30 @@ macro_rules! match_quote {
         $( $byte => quote!($byte), )*
         byte => quote!(#byte),
     }}
+}
+
+fn byte_literal(patterns: &[Pattern]) -> TokenStream {
+    assert!(
+        patterns.iter().all(Pattern::is_byte),
+        "Internal Error: Trying to create a byte literal from non-byte patterns"
+    );
+
+    let chars: String = patterns.iter().filter_map(|pat| {
+        match pat {
+            Pattern::Byte(byte) if *byte >= 0x20 && *byte < 0x80 => {
+                Some(*byte as char)
+            },
+            _ => None
+        }
+    }).collect();
+
+    if chars.len() == patterns.len() {
+        let literal = format!("b{:?}", chars);
+
+        return parse_str(&literal).unwrap();
+    }
+
+    quote!(&[#(#patterns),*])
 }
 
 impl ToTokens for Pattern {
