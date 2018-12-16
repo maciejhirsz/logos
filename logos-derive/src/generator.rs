@@ -198,11 +198,10 @@ pub trait SubGenerator<'a>: Sized {
         if min_bytes > bump && min_bytes <= 16 {
             let test = self.lookahead_to_test(quote!(chunk), branch.regex.patterns());
             let next = self.print_then(&mut branch.then);
-            let arr_type = Self::chunk_type(bump);
 
             return quote! {
                 if let Some(arr) = lex.read::<&[u8; #min_bytes]>() {
-                    let (chunk, rest): (#arr_type, _) = arr.split();
+                    let (chunk, rest): (&[u8; #bump], _) = arr.split();
 
                     if #test {
                         lex.bump(#bump);
@@ -317,23 +316,16 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
-    fn chunk_type(len: usize) -> TokenStream {
-        match len {
-            1 => quote!(u8),
-            _ => quote!(&[u8; #len]),
-        }
-    }
-
     /// Convert a slice of `Pattern`s into a test that can be inserted into
     /// an `if ____ {` or `while ____ {`.
     fn regex_to_test(&mut self, patterns: &[Pattern]) -> TokenStream {
         let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
             let offset = 16 * idx;
-            let chunk_type = Self::chunk_type(chunk.len());
+            let len = chunk.len();
 
             let source = match offset {
-                0 => quote!(lex.read::<#chunk_type>()),
-                _ => quote!(lex.lookahead::<#chunk_type>(#offset)),
+                0 => quote!(lex.read::<&[u8; #len]>()),
+                _ => quote!(lex.lookahead::<&[u8; #len]>(#offset)),
             };
 
             self.chunk_to_test(source, chunk)
@@ -347,18 +339,10 @@ pub trait SubGenerator<'a>: Sized {
         let first = &chunk[0];
 
         if chunk.iter().all(Pattern::is_byte) {
-            match chunk.len() {
-                1 => quote!(#source == Some(#first)),
-                _ => quote!(#source == Some(&[#( #chunk ),*])),
-            }
+            quote!(#source == Some(&[#( #chunk ),*]))
         } else {
             let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
-                let source = match chunk.len() {
-                    1 => quote!(chunk),
-                    _ => quote!(chunk[#idx]),
-                };
-
-                self.pattern_to_test(source, pat)
+                self.pattern_to_test(quote!(chunk[#idx]), pat)
             });
 
             quote!(#source.map(|chunk| #(#chunk)&&*).unwrap_or(false))
@@ -371,18 +355,10 @@ pub trait SubGenerator<'a>: Sized {
         let source = &source;
 
         if chunk.iter().all(Pattern::is_byte) {
-            match chunk.len() {
-                1 => quote!(#source == #first),
-                _ => quote!(#source == &[#( #chunk ),*]),
-            }
+            quote!(#source == &[#( #chunk ),*])
         } else {
             let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
-                let source = match chunk.len() {
-                    1 => quote!(#source),
-                    _ => quote!(#source[#idx]),
-                };
-
-                self.pattern_to_test(source, pat)
+                self.pattern_to_test(quote!(#source[#idx]), pat)
             });
 
             quote!(#(#chunk)&&*)

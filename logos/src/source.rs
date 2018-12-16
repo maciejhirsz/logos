@@ -56,30 +56,6 @@ macro_rules! impl_array {
             }
         }
 
-        impl<'source> Split<u8> for &'source [u8; $size] {
-            type Remainder = &'source [u8; $size - 1];
-
-            #[inline]
-            fn split(self) -> (u8, &'source [u8; $size - 1]) {
-                unsafe {(
-                    self[0],
-                    Chunk::from_ptr((self as *const u8).add(1)),
-                )}
-            }
-        }
-
-        impl<'source> Split<&'source [u8; $size - 1]> for &'source [u8; $size] {
-            type Remainder = u8;
-
-            #[inline]
-            fn split(self) -> (&'source [u8; $size - 1], u8) {
-                unsafe {(
-                    Chunk::from_ptr(self as *const u8),
-                    self[$size - 1],
-                )}
-            }
-        }
-
         $(
             impl<'source> Split<&'source [u8; $split]> for &'source [u8; $size] {
                 type Remainder = &'source [u8; $size - $split];
@@ -96,39 +72,23 @@ macro_rules! impl_array {
     )*)
 }
 
-impl<'source> Chunk<'source> for &'source [u8; 2] {
-    const SIZE: usize = 2;
-
-    #[inline]
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        &*(ptr as *const [u8; 2])
-    }
-}
-
-impl<'source> Split<u8> for &'source [u8; 2] {
-    type Remainder = u8;
-
-    #[inline]
-    fn split(self) -> (u8, u8) {
-        (self[0], self[1])
-    }
-}
-
 impl_array! {
-    3  > ()
-    4  > (2)
-    5  > (2, 3)
-    6  > (2, 3, 4)
-    7  > (2, 3, 4, 5)
-    8  > (2, 3, 4, 5, 6)
-    9  > (2, 3, 4, 5, 6, 7)
-    10 > (2, 3, 4, 5, 6, 7, 8)
-    11 > (2, 3, 4, 5, 6, 7, 8, 9)
-    12 > (2, 3, 4, 5, 6, 7, 8, 9, 10)
-    13 > (2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-    14 > (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    15 > (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
-    16 > (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    1  > ()
+    2  > (1)
+    3  > (1, 2)
+    4  > (1, 2, 3)
+    5  > (1, 2, 3, 4)
+    6  > (1, 2, 3, 4, 5)
+    7  > (1, 2, 3, 4, 5, 6)
+    8  > (1, 2, 3, 4, 5, 6, 7)
+    9  > (1, 2, 3, 4, 5, 6, 7, 8)
+    10 > (1, 2, 3, 4, 5, 6, 7, 8, 9)
+    11 > (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    12 > (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    13 > (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+    14 > (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+    15 > (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    16 > (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 }
 
 /// Trait for types the `Lexer` can read from.
