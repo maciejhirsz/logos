@@ -50,6 +50,13 @@ impl Context {
         }
     }
 
+    pub const fn unbumped(unbumped: usize) -> Self {
+        Context {
+            available: 0,
+            unbumped,
+        }
+    }
+
     pub const fn advance(self, n: usize) -> Self {
         Context {
             available: self.available - n,
@@ -267,15 +274,14 @@ pub trait SubGenerator<'a>: Sized {
             let read = branch.min_bytes();
 
             if read == len || len > 16 {
-                let test = self.regex_to_test(branch.regex.patterns());
-                let next = self.print_then(&mut branch.then, Context::new(0));
+                let test = self.regex_to_test(branch.regex.patterns(), Context::new(0));
+                let next = self.print_then(&mut branch.then, Context::unbumped(len));
                 let bump = ctx.bump();
 
                 return quote! {
                     #bump
 
                     if #test {
-                        lex.bump(#len);
                         #next
                     }
                 };
@@ -324,14 +330,10 @@ pub trait SubGenerator<'a>: Sized {
             match fork.kind {
                 ForkKind::Plain => {},
                 ForkKind::Maybe => {
-                    // The check seems unnecessary, but removing it
-                    // reduces performance
-                    // if regex.len() > 1 || arm.then.is_none() {
-                        let then = &mut arm.then;
-                        let otherwise = &mut fork.then;
+                    let then = &mut arm.then;
+                    let otherwise = &mut fork.then;
 
-                        return self.print_simple_maybe(regex, then, otherwise, ctx);
-                    // }
+                    return self.print_simple_maybe(regex, then, otherwise, ctx);
                 },
                 ForkKind::Repeat => {
                     if arm.then.is_none() {
@@ -349,7 +351,7 @@ pub trait SubGenerator<'a>: Sized {
 
     fn print_fork_as_match(&mut self, fork: &mut Fork, ctx: Context) -> TokenStream {
         let inside_a_loop = fork.kind == ForkKind::Repeat
-            || (fork.kind == ForkKind::Maybe && fork.arms.iter().any(|branch| branch.then.is_none()));
+            || (fork.kind == ForkKind::Maybe && fork.arms.iter().any(|arm| arm.then.is_none()));
 
         if ctx.available < 1 {
             // FIXME: Cap `read` to 16
@@ -479,8 +481,8 @@ pub trait SubGenerator<'a>: Sized {
             },
             _ => {
                 let bump = ctx.bump();
-                let next = self.print_then(then, Context::default());
-                let test = self.regex_to_test(regex.patterns());
+                let next = self.print_then(then, Context::new(0));
+                let test = self.regex_to_test(regex.patterns(), Context::new(0));
                 let len = regex.len();
 
                 quote! {
@@ -498,53 +500,61 @@ pub trait SubGenerator<'a>: Sized {
 
     fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         let len = regex.len();
-        let test = self.regex_to_test(regex.patterns());
         let bump = ctx.bump();
+        let test = self.regex_to_test(regex.patterns(), Context::new(0));
 
-        if then.is_some() {
-            let then = self.print_then(then, Context::default());
-            let otherwise = self.print_then(otherwise, Context::default());
+        match then.is_some() {
+            true => {
+                let otherwise = self.print_then(otherwise, Context::new(0));
+                let then = self.print_then(then, Context::unbumped(len));
 
-            quote! {
-                #bump
+                quote! {
+                    #bump
 
-                if #test {
-                    lex.bump(#len);
-                    #then
+                    if #test {
+                        #then
+                    }
+
+                    #otherwise
                 }
+            },
+            false => {
+                let next = self.print_then(otherwise, Context::new(0));
+                let test = self.regex_to_test(regex.patterns(), Context::new(0));
 
-                #otherwise
-            }
-        } else {
-            let next = self.print_then(otherwise, Context::default());
+                quote! {
+                    #bump
 
-            quote! {
-                #bump
+                    if #test {
+                        lex.bump(#len);
+                    }
 
-                if #test {
-                    lex.bump(#len);
+                    #next
                 }
-
-                #next
-            }
+            },
         }
     }
 
     /// Convert a slice of `Pattern`s into a test that can be inserted into
     /// an `if ____ {` or `while ____ {`.
-    fn regex_to_test(&mut self, patterns: &[Pattern]) -> TokenStream {
+    fn regex_to_test(&mut self, patterns: &[Pattern], ctx: Context) -> TokenStream {
+        let read = match ctx.unbumped {
+            0 => quote!(lex.read()),
+            n => quote!(lex.lookahead(#n)),
+        };
+
         // Fast path optimization for bytes
         if patterns.iter().all(Pattern::is_byte) {
             match patterns.len() {
                 1 => {
                     let pattern = &patterns[0];
 
-                    return quote!(lex.read() == Some(#pattern));
+                    return quote!(#read == Some(#pattern));
                 },
                 2...16 => {
                     let literal = byte_literal(patterns);
 
-                    return quote!(lex.read() == Some(#literal));
+                    return quote!(#read == Some(#literal));
                 },
                 _ => {}
             }
@@ -555,11 +565,11 @@ pub trait SubGenerator<'a>: Sized {
             let pattern = &patterns[0];
             let fun = self.gen().pattern_to_fn(pattern);
 
-            return quote!(lex.read().map(#fun).unwrap_or(false));
+            return quote!(#read.map(#fun).unwrap_or(false));
         }
 
         let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
-            let offset = 16 * idx;
+            let offset = 16 * idx + ctx.unbumped;
             let len = chunk.len();
 
             let source = match offset {
@@ -786,15 +796,6 @@ where
             self.0.print_node(&mut **node, ctx)
         } else {
             quote!(break;)
-
-            // FIXME: Maybe shouldn't bump on misses, right???
-            // match ctx.unbumped {
-            //     0 => quote!(break)
-            //     n => quote!( {
-            //         lex.bump(#n);
-            //         break;
-            //     } )
-            // }
         }
     }
 
