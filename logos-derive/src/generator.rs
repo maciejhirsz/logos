@@ -65,6 +65,12 @@ impl Context {
     }
 }
 
+pub enum MatchDefault {
+    Repeat(TokenStream),
+    Once(TokenStream),
+    None,
+}
+
 impl<'a> Generator<'a> {
     pub fn new(enum_name: &'a Ident) -> Self {
         Generator {
@@ -230,12 +236,13 @@ pub trait SubGenerator<'a>: Sized {
         self.print_then(then, ctx)
     }
 
-    fn print_lex_read(&mut self, code: TokenStream, default: Option<TokenStream>, bytes: usize, ctx: Context) -> TokenStream {
+    fn print_lex_read(&mut self, code: TokenStream, default: MatchDefault, bytes: usize, ctx: Context) -> TokenStream {
         let bump = ctx.bump();
 
         let (cond, default) = match default {
-            Some(default) => (quote!(while), default),
-            None          => (quote!(if), TokenStream::new()),
+            MatchDefault::Repeat(default) => (quote!(while), default),
+            MatchDefault::Once(default)   => (quote!(if), default),
+            MatchDefault::None            => (quote!(if), TokenStream::new()),
         };
 
         quote! {
@@ -276,7 +283,7 @@ pub trait SubGenerator<'a>: Sized {
 
             let branch = self.print_branch(branch, Context::new(read));
 
-            return self.print_lex_read(branch, None, read, ctx);
+            return self.print_lex_read(branch, MatchDefault::None, read, ctx);
         }
 
         let (source, split) = if ctx.available > len {
@@ -347,11 +354,15 @@ pub trait SubGenerator<'a>: Sized {
         if ctx.available < 1 {
             // FIXME: Cap `read` to 16
             let read = fork.min_bytes();
-            let default = if inside_a_loop {
-                Some(self.print_then(&mut fork.then, Context::default()))
-            } else {
-                None
+
+            let default = match fork.then.take() {
+                None => MatchDefault::None,
+                Some(then) => match inside_a_loop {
+                    false => MatchDefault::Once(self.print_then(&mut Some(then), Context::new(0))),
+                    true => MatchDefault::Repeat(self.print_then(&mut Some(then), Context::new(0))),
+                },
             };
+
             let fork = self.print_fork_as_match(fork, Context::new(read));
 
             return self.print_lex_read(fork, default, read, ctx);

@@ -48,7 +48,7 @@ enum Token {
     #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
     Identifier,
 
-    #[regex = "[1-9][0-9]*"]
+    #[regex = "[1-9][0-9]*|0"]
     #[callback = "count_numbers"]
     Number,
 
@@ -229,7 +229,7 @@ mod simple {
     #[test]
     fn numbers() {
         assert_lex("0 1 2 3 4 10 42 1337", &[
-            (Token::Error, "0", 0..1),
+            (Token::Number, "0", 0..1),
             (Token::Number, "1", 2..3),
             (Token::Number, "2", 4..5),
             (Token::Number, "3", 6..7),
@@ -261,8 +261,10 @@ mod simple {
     #[test]
     fn invalid_hex_and_binary() {
         assert_lex("0x 0b", &[
-            (Token::Error, "0x", 0..2),
-            (Token::Error, "0b", 3..5),
+            (Token::Number, "0", 0..1),
+            (Token::Identifier, "x", 1..2),
+            (Token::Number, "0", 3..4),
+            (Token::Identifier, "b", 4..5),
         ]);
     }
 
