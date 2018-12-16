@@ -196,12 +196,12 @@ pub trait SubGenerator<'a>: Sized {
         let bump = branch.regex.len();
 
         if min_bytes > bump && min_bytes <= 16 {
-            let test = self.lookahead_to_test(quote!(chunk), branch.regex.patterns());
+            let test = self.chunk_to_test(quote!(chunk), branch.regex.patterns());
             let next = self.print_then(&mut branch.then);
 
             return quote! {
                 if let Some(arr) = lex.read::<&[u8; #min_bytes]>() {
-                    let (chunk, rest): (&[u8; #bump], _) = arr.split();
+                    let (chunk, arr): (&[u8; #bump], _) = arr.split();
 
                     if #test {
                         lex.bump(#bump);
@@ -328,7 +328,9 @@ pub trait SubGenerator<'a>: Sized {
                 _ => quote!(lex.lookahead::<&[u8; #len]>(#offset)),
             };
 
-            self.chunk_to_test(source, chunk)
+            let test = self.chunk_to_test(quote!(chunk), chunk);
+
+            quote!(#source.map(|chunk| #test).unwrap_or(false))
         });
 
         quote!(#(#test)&&*)
@@ -336,22 +338,6 @@ pub trait SubGenerator<'a>: Sized {
 
     /// Convert a chunk of up to 16 `Pattern`s into a test
     fn chunk_to_test(&mut self, source: TokenStream, chunk: &[Pattern]) -> TokenStream {
-        let first = &chunk[0];
-
-        if chunk.iter().all(Pattern::is_byte) {
-            quote!(#source == Some(&[#( #chunk ),*]))
-        } else {
-            let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
-                self.pattern_to_test(quote!(chunk[#idx]), pat)
-            });
-
-            quote!(#source.map(|chunk| #(#chunk)&&*).unwrap_or(false))
-        }
-    }
-
-    /// Convert a chunk of up to 16 `Pattern`s into a test for a lookahead array
-    fn lookahead_to_test(&mut self, source: TokenStream, chunk: &[Pattern]) -> TokenStream {
-        let first = &chunk[0];
         let source = &source;
 
         if chunk.iter().all(Pattern::is_byte) {
