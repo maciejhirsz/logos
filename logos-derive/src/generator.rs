@@ -56,10 +56,10 @@ impl Context {
         }
     }
 
-    pub const fn bump(self) -> Self {
-        Context {
-            available: self.available,
-            unbumped: 0,
+    pub fn bump(self) -> TokenStream {
+        match self.unbumped {
+            0 => quote!(),
+            n => quote!(lex.bump(#n);),
         }
     }
 }
@@ -213,35 +213,36 @@ pub trait SubGenerator<'a>: Sized {
 
     fn print(&mut self, node: &mut Node) -> TokenStream;
 
-    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream;
+    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream;
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
             self.print_node(&mut **node, ctx)
         } else {
-            match ctx.unbumped {
-                0 => quote!({}),
-                n => quote!(lex.bump(#n)),
-            }
+            ctx.bump()
         }
     }
 
-    fn print_then_plain(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
-        self.print_then(then, Context::default())
+    fn print_then_plain(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
+        self.print_then(then, ctx)
     }
 
-    fn print_lex_read(&mut self, code: TokenStream, bytes: usize, ctx: Context) -> TokenStream {
-        let bump = match ctx.unbumped {
-            0    => TokenStream::new(),
-            bump => quote!(lex.bump(#bump);),
+    fn print_lex_read(&mut self, code: TokenStream, default: Option<TokenStream>, bytes: usize, ctx: Context) -> TokenStream {
+        let bump = ctx.bump();
+
+        let (cond, default) = match default {
+            Some(default) => (quote!(while), default),
+            None          => (quote!(if), TokenStream::new()),
         };
 
         quote! {
             #bump
 
-            if let Some(arr) = lex.read::<&[u8; #bytes]>() {
+            #cond let Some(arr) = lex.read::<&[u8; #bytes]>() {
                 #code
             }
+
+            #default
         }
     }
 
@@ -253,11 +254,27 @@ pub trait SubGenerator<'a>: Sized {
         let bump = branch.regex.len();
 
         if ctx.available < bump {
-            // FIXME: Cap `read` to 16
             let read = branch.min_bytes();
+
+            if read == bump || bump > 16 {
+                let test = self.regex_to_test(branch.regex.patterns());
+                let next = self.print_then(&mut branch.then, Context::new(0));
+                let bump = ctx.bump();
+                let len = branch.regex.len();
+
+                return quote! {
+                    #bump
+
+                    if #test {
+                        lex.bump(#len);
+                        #next
+                    }
+                };
+            }
+
             let branch = self.print_branch(branch, Context::new(read));
 
-            return self.print_lex_read(branch, read, ctx);
+            return self.print_lex_read(branch, None, read, ctx);
         }
 
         let (source, split) = if ctx.available > bump {
@@ -266,7 +283,6 @@ pub trait SubGenerator<'a>: Sized {
             (quote!(arr), TokenStream::new())
         };
 
-        // FIXME: Handle chunks larger than 16 bytes!
         let test = self.chunk_to_test(source, branch.regex.patterns());
         let next = self.print_then(&mut branch.then, ctx.advance(bump));
 
@@ -279,12 +295,12 @@ pub trait SubGenerator<'a>: Sized {
         }
     }
 
-    fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        MaybeGenerator(self, PhantomData).print_branch(branch, Context::default())
+    fn print_branch_maybe(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        MaybeGenerator(self, PhantomData).print_branch(branch, ctx)
     }
 
-    fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        LoopGenerator(self, PhantomData).print_branch(branch, Context::default())
+    fn print_branch_loop(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        LoopGenerator(self, PhantomData).print_branch(branch, ctx)
     }
 
     fn print_fork(&mut self, fork: &mut Fork, ctx: Context) -> TokenStream {
@@ -305,20 +321,39 @@ pub trait SubGenerator<'a>: Sized {
                         let then = &mut arm.then;
                         let otherwise = &mut fork.then;
 
-                        return self.print_simple_maybe(regex, then, otherwise);
+                        return self.print_simple_maybe(regex, then, otherwise, ctx);
                     }
                 },
                 ForkKind::Repeat => {
                     if arm.then.is_none() {
                         let then = &mut fork.then;
 
-                        return self.print_simple_repeat(regex, then);
+                        // FIXME: Pass on ctx
+                        return self.print_simple_repeat(regex, then, ctx);
                     }
                 }
             }
         }
 
-        fork.collapse();
+        self.print_fork_as_match(fork, ctx)
+    }
+
+    fn print_fork_as_match(&mut self, fork: &mut Fork, ctx: Context) -> TokenStream {
+        let inside_a_loop = fork.kind == ForkKind::Repeat
+            || (fork.kind == ForkKind::Maybe && fork.arms.iter().any(|branch| branch.then.is_none()));
+
+        if ctx.available < 1 {
+            // FIXME: Cap `read` to 16
+            let read = fork.min_bytes();
+            let default = if inside_a_loop {
+                Some(self.print_then(&mut fork.then, Context::default()))
+            } else {
+                None
+            };
+            let fork = self.print_fork_as_match(fork, Context::new(read));
+
+            return self.print_lex_read(fork, default, read, ctx);
+        }
 
         let kind = fork.kind;
 
@@ -326,68 +361,78 @@ pub trait SubGenerator<'a>: Sized {
             let test = {
                 let pattern = branch.regex.unshift();
 
-                if pattern.weight() == 1 {
-                    quote!(Some(#pattern) =>)
+                if pattern.weight() <= 2 {
+                    quote!(#pattern)
                 } else {
                     let test = self.gen().pattern_to_fn(&pattern);
 
-                    quote!(Some(byte) if #test(byte) =>)
+                    quote!(byte if #test(byte))
                 }
             };
 
             let branch = match kind {
-                ForkKind::Plain  => self.print_branch(branch, Context::default()),
-                ForkKind::Maybe  => self.print_branch_maybe(branch),
-                ForkKind::Repeat => self.print_branch_loop(branch),
+                ForkKind::Plain  => self.print_branch(branch, ctx.advance(1)),
+                ForkKind::Maybe  => self.print_branch_maybe(branch, ctx.advance(1)),
+                ForkKind::Repeat => self.print_branch_loop(branch, ctx.advance(1)),
             };
 
-            quote! { #test {
-                lex.bump(1);
-                #branch
-            }, }
+            quote! {
+                #test => {
+                    #branch
+                },
+            }
         }).collect::<TokenStream>();
 
-        let default = match kind {
-            ForkKind::Plain => self.print_then_plain(&mut fork.then),
-            _               => self.print_then(&mut fork.then, Context::default()),
+        let (source, split) = if ctx.available > 1 {
+            (quote!(byte), quote!(let (byte, arr): (u8, _) = arr.split();))
+        } else {
+            (quote!(arr[0]), TokenStream::new())
         };
 
-        if fork.kind == ForkKind::Plain
-            || (fork.kind == ForkKind::Maybe && fork.arms.iter().all(|branch| branch.then.is_some()))
-        {
+        if !inside_a_loop {
+            let default = match kind {
+                ForkKind::Plain => self.print_then_plain(&mut fork.then, ctx),
+                _               => self.print_then(&mut fork.then, ctx),
+            };
+
             quote! {
-                match lex.read() {
+                #split
+
+                match #source {
                     #branches
-                    _ => #default,
+                    _ => {
+                        #default
+                    },
                 }
             }
         } else {
+            // FIXME: bump before fallback?
             let fallback = self.print_fallback();
 
-            quote!({
-                loop {
-                    match lex.read() {
-                        #branches
-                        _ => break,
-                    }
+            quote! {
+                #split
 
-                    #fallback
+                match #source {
+                    #branches
+                    _ => break,
                 }
 
-                #default
-            })
+                #fallback
+            }
         }
     }
 
-    fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
-        let next = self.print_then(then, Context::default());
-
+    fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         match regex.len() {
-            0 => next,
+            0 => self.print_then(then, ctx),
             1 => {
+                let bump = ctx.bump();
+                let next = self.print_then(then, Context::default());
                 let fun = self.gen().pattern_to_fn(regex.first());
 
-                quote!({
+                quote! {
+                    #bump
+
                     loop {
                         if let Some(arr) = lex.read::<&[u8; 16]>() {
                             // There is at least 16 bytes left until EOF, so we get a pointer to a fixed size array.
@@ -417,49 +462,58 @@ pub trait SubGenerator<'a>: Sized {
                     }
 
                     #next
-                })
+                }
             },
             _ => {
-                let bump = regex.len();
+                let bump = ctx.bump();
+                let next = self.print_then(then, Context::default());
                 let test = self.regex_to_test(regex.patterns());
+                let len = regex.len();
 
-                quote!({
+                quote! {
+                    #bump
+
                     while #test {
-                        lex.bump(#bump);
+                        lex.bump(#len);
                     }
 
                     #next
-                })
+                }
             }
         }
     }
 
-    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>) -> TokenStream {
-        let bump = regex.len();
+    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
+        let len = regex.len();
         let test = self.regex_to_test(regex.patterns());
+        let bump = ctx.bump();
 
         if then.is_some() {
             let then = self.print_then(then, Context::default());
             let otherwise = self.print_then(otherwise, Context::default());
 
-            quote!({
+            quote! {
+                #bump
+
                 if #test {
-                    lex.bump(#bump);
+                    lex.bump(#len);
                     #then
                 }
 
                 #otherwise
-            })
+            }
         } else {
             let next = self.print_then(otherwise, Context::default());
 
-            quote!({
+            quote! {
+                #bump
+
                 if #test {
-                    lex.bump(#bump);
+                    lex.bump(#len);
                 }
 
                 #next
-            })
+            }
         }
     }
 
@@ -510,18 +564,8 @@ pub trait SubGenerator<'a>: Sized {
     }
 
     fn print_node(&mut self, node: &mut Node, ctx: Context) -> TokenStream {
-        if ctx.unbumped > 0 {
-            let node = self.print_node(node, ctx.bump());
-            let bump = ctx.unbumped;
-
-            return quote!({
-                lex.bump(#bump);
-                #node
-            });
-        }
-
         match node {
-            Node::Leaf(leaf) => self.print_leaf(leaf),
+            Node::Leaf(leaf) => self.print_leaf(leaf, ctx),
             Node::Branch(branch) => self.print_branch(branch, ctx),
             Node::Fork(fork) => self.print_fork(fork, ctx),
         }
@@ -560,20 +604,23 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
         }
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
         let name = self.gen().enum_name;
+        let bump = ctx.bump();
 
         let variant = leaf.token;
         let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
 
         match callback {
-            Some(callback) => {
-                quote!({
-                    lex.token = #name::#variant;
-                    return #callback(lex)
-                })
+            Some(callback) => quote! {
+                #bump
+                lex.token = #name::#variant;
+                return #callback(lex);
             },
-            None => quote!(return lex.token = #name::#variant),
+            None => quote! {
+                #bump
+                return lex.token = #name::#variant;
+            },
         }
     }
 
@@ -598,9 +645,10 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
         }
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
         let name = self.gen().enum_name;
         let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
+        let bump = ctx.bump();
 
         let variant = leaf.token;
         let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
@@ -608,6 +656,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
         match callback {
             Some(callback) => {
                 quote! {
+                    #bump
                     if !lex.read().map(#pattern_fn).unwrap_or(false) {
                         lex.token = #name::#variant;
                         return #callback(lex);
@@ -616,6 +665,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
             },
             None => {
                 quote! {
+                    #bump
                     if !lex.read().map(#pattern_fn).unwrap_or(false) {
                         return lex.token = #name::#variant;
                     }
@@ -637,38 +687,37 @@ where
         self.0.gen()
     }
 
-    fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        MaybeGenerator(self.0, PhantomData).print_branch(branch, Context::default())
+    fn print_branch_maybe(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        MaybeGenerator(self.0, PhantomData).print_branch(branch, ctx)
     }
 
-    fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        self.print_branch(branch, Context::default())
+    fn print_branch_loop(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        self.print_branch(branch, ctx)
     }
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
             self.print_node(&mut **node, ctx)
         } else {
-            match ctx.unbumped {
-                0 => quote!(continue),
-                n => quote!({
-                    lex.bump(#n);
-                    continue;
-                }),
+            let bump = ctx.bump();
+
+            quote! {
+                #bump
+                continue;
             }
         }
     }
 
-    fn print_then_plain(&mut self, then: &mut Option<Box<Node>>) -> TokenStream {
-        self.0.print_then(then, Context::default())
+    fn print_then_plain(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
+        self.0.print_then(then, ctx)
     }
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
         self.0.print(node)
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
-        self.0.print_leaf(leaf)
+    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
+        self.0.print_leaf(leaf, ctx)
     }
 
     fn print_fallback(&mut self) -> TokenStream {
@@ -684,19 +733,19 @@ where
         self.0.gen()
     }
 
-    fn print_branch_maybe(&mut self, branch: &mut Branch) -> TokenStream {
-        self.print_branch(branch, Context::default())
+    fn print_branch_maybe(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        self.print_branch(branch, ctx)
     }
 
-    fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
-        LoopGenerator(self.0, PhantomData).print_branch(branch, Context::default())
+    fn print_branch_loop(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        LoopGenerator(self.0, PhantomData).print_branch(branch, ctx)
     }
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
             self.0.print_node(&mut **node, ctx)
         } else {
-            quote!(break)
+            quote!(break;)
 
             // FIXME: Maybe shouldn't bump on misses, right???
             // match ctx.unbumped {
@@ -713,8 +762,8 @@ where
         self.0.print(node)
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
-        self.0.print_leaf(leaf)
+    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
+        self.0.print_leaf(leaf, ctx)
     }
 
     fn print_fallback(&mut self) -> TokenStream {
