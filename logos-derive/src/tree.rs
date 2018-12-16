@@ -641,15 +641,6 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Tests whether all branches have a `then` node set to `Some`.
-    pub fn is_bounded(&self) -> bool {
-        match self {
-            Node::Leaf(_) => true,
-            Node::Branch(branch) => branch.then.is_some(),
-            Node::Fork(fork) => fork.arms.iter().all(|branch| branch.then.is_some()),
-        }
-    }
-
     /// Checks if the fork contains one branch that is a generalization of all other branches,
     /// and if so removes and returns that branch.
     pub fn fallback(&mut self) -> Option<Branch<'a>> {

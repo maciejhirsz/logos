@@ -5,7 +5,7 @@ use quote::{quote, ToTokens};
 use proc_macro2::{TokenStream, Span};
 use rustc_hash::FxHashMap as HashMap;
 
-use crate::tree::{Node, Branch, ForkKind, Leaf};
+use crate::tree::{Node, Branch, Fork, ForkKind, Leaf};
 use crate::regex::{Regex, Pattern};
 
 pub struct Generator<'a> {
@@ -230,29 +230,34 @@ pub trait SubGenerator<'a>: Sized {
         self.print_then(then, Context::default())
     }
 
+    fn print_lex_read(&mut self, code: TokenStream, bytes: usize, ctx: Context) -> TokenStream {
+        let bump = match ctx.unbumped {
+            0    => TokenStream::new(),
+            bump => quote!(lex.bump(#bump);),
+        };
+
+        quote! {
+            #bump
+
+            if let Some(arr) = lex.read::<&[u8; #bytes]>() {
+                #code
+            }
+        }
+    }
+
     fn print_branch(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
         if branch.regex.len() == 0 {
             return self.print_then(&mut branch.then, ctx);
         }
 
-        // FIXME: Cap `min_bytes` to 16
-        let min_bytes = branch.min_bytes();
         let bump = branch.regex.len();
 
         if ctx.available < bump {
-            let branch = self.print_branch(branch, Context::new(min_bytes));
-            let bump = match ctx.unbumped {
-                0    => TokenStream::new(),
-                bump => quote!(lex.bump(#bump);),
-            };
+            // FIXME: Cap `read` to 16
+            let read = branch.min_bytes();
+            let branch = self.print_branch(branch, Context::new(read));
 
-            return quote! {
-                #bump
-
-                if let Some(arr) = lex.read::<&[u8; #min_bytes]>() {
-                    #branch
-                }
-            };
+            return self.print_lex_read(branch, read, ctx);
         }
 
         let (source, split) = if ctx.available > bump {
@@ -280,6 +285,98 @@ pub trait SubGenerator<'a>: Sized {
 
     fn print_branch_loop(&mut self, branch: &mut Branch) -> TokenStream {
         LoopGenerator(self, PhantomData).print_branch(branch, Context::default())
+    }
+
+    fn print_fork(&mut self, fork: &mut Fork, ctx: Context) -> TokenStream {
+        if fork.arms.len() == 0 {
+            return self.print_then(&mut fork.then, ctx);
+        }
+
+        if fork.arms.len() == 1 {
+            let arm = &mut fork.arms[0];
+            let regex = &arm.regex;
+
+            match fork.kind {
+                ForkKind::Plain => {},
+                ForkKind::Maybe => {
+                    // The check seems unnecessary, but removing it
+                    // reduces performance
+                    if regex.len() > 1 || arm.then.is_none() {
+                        let then = &mut arm.then;
+                        let otherwise = &mut fork.then;
+
+                        return self.print_simple_maybe(regex, then, otherwise);
+                    }
+                },
+                ForkKind::Repeat => {
+                    if arm.then.is_none() {
+                        let then = &mut fork.then;
+
+                        return self.print_simple_repeat(regex, then);
+                    }
+                }
+            }
+        }
+
+        fork.collapse();
+
+        let kind = fork.kind;
+
+        let branches = fork.arms.iter_mut().map(|branch| {
+            let test = {
+                let pattern = branch.regex.unshift();
+
+                if pattern.weight() == 1 {
+                    quote!(Some(#pattern) =>)
+                } else {
+                    let test = self.gen().pattern_to_fn(&pattern);
+
+                    quote!(Some(byte) if #test(byte) =>)
+                }
+            };
+
+            let branch = match kind {
+                ForkKind::Plain  => self.print_branch(branch, Context::default()),
+                ForkKind::Maybe  => self.print_branch_maybe(branch),
+                ForkKind::Repeat => self.print_branch_loop(branch),
+            };
+
+            quote! { #test {
+                lex.bump(1);
+                #branch
+            }, }
+        }).collect::<TokenStream>();
+
+        let default = match kind {
+            ForkKind::Plain => self.print_then_plain(&mut fork.then),
+            _               => self.print_then(&mut fork.then, Context::default()),
+        };
+
+        if fork.kind == ForkKind::Plain
+            || (fork.kind == ForkKind::Maybe && fork.arms.iter().all(|branch| branch.then.is_some()))
+        {
+            quote! {
+                match lex.read() {
+                    #branches
+                    _ => #default,
+                }
+            }
+        } else {
+            let fallback = self.print_fallback();
+
+            quote!({
+                loop {
+                    match lex.read() {
+                        #branches
+                        _ => break,
+                    }
+
+                    #fallback
+                }
+
+                #default
+            })
+        }
     }
 
     fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>) -> TokenStream {
@@ -423,102 +520,10 @@ pub trait SubGenerator<'a>: Sized {
             });
         }
 
-        let is_bounded = node.is_bounded();
-
         match node {
             Node::Leaf(leaf) => self.print_leaf(leaf),
             Node::Branch(branch) => self.print_branch(branch, ctx),
-            Node::Fork(fork) => {
-                if fork.arms.len() == 0 {
-                    return self.print_then(&mut fork.then, ctx);
-                }
-
-                if fork.arms.len() == 1 {
-                    let arm = &mut fork.arms[0];
-                    let regex = &arm.regex;
-
-                    match fork.kind {
-                        ForkKind::Plain => {},
-                        ForkKind::Maybe => {
-                            // The check seems unnecessary, but removing it
-                            // reduces performance
-                            if regex.len() > 1 || arm.then.is_none() {
-                                let then = &mut arm.then;
-                                let otherwise = &mut fork.then;
-
-                                return self.print_simple_maybe(regex, then, otherwise);
-                            }
-                        },
-                        ForkKind::Repeat => {
-                            if arm.then.is_none() {
-                                let then = &mut fork.then;
-
-                                return self.print_simple_repeat(regex, then);
-                            }
-                        }
-                    }
-                }
-
-                fork.collapse();
-
-                let kind = fork.kind;
-
-                let branches = fork.arms.iter_mut().map(|branch| {
-                    let test = {
-                        let pattern = branch.regex.unshift();
-
-                        if pattern.weight() == 1 {
-                            quote!(Some(#pattern) =>)
-                        } else {
-                            let test = self.gen().pattern_to_fn(&pattern);
-
-                            quote!(Some(byte) if #test(byte) =>)
-                        }
-                    };
-
-                    let branch = match kind {
-                        ForkKind::Plain  => self.print_branch(branch, Context::default()),
-                        ForkKind::Maybe  => self.print_branch_maybe(branch),
-                        ForkKind::Repeat => self.print_branch_loop(branch),
-                    };
-
-                    quote! { #test {
-                        lex.bump(1);
-                        #branch
-                    }, }
-                }).collect::<TokenStream>();
-
-                let default = match kind {
-                    ForkKind::Plain => self.print_then_plain(&mut fork.then),
-                    _               => self.print_then(&mut fork.then, Context::default()),
-                };
-
-                if fork.kind == ForkKind::Plain
-                    || (fork.kind == ForkKind::Maybe && is_bounded)
-                {
-                    quote! {
-                        match lex.read() {
-                            #branches
-                            _ => #default,
-                        }
-                    }
-                } else {
-                    let fallback = self.print_fallback();
-
-                    quote!({
-                        loop {
-                            match lex.read() {
-                                #branches
-                                _ => break,
-                            }
-
-                            #fallback
-                        }
-
-                        #default
-                    })
-                }
-            },
+            Node::Fork(fork) => self.print_fork(fork, ctx),
         }
     }
 
