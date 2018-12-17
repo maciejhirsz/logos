@@ -39,7 +39,7 @@ impl<'a> Handlers<'a> {
     }
 
     pub fn insert(&mut self, mut branch: Branch<'a>) {
-        let bytes = branch.regex.unshift().to_bytes();
+        let pattern = branch.regex.unshift();
 
         let tree = Rc::new(Tree {
             node: Node::from(branch),
@@ -48,8 +48,8 @@ impl<'a> Handlers<'a> {
 
         let fallback = tree.node.fallback();
 
-        for byte in bytes {
-            match self.handlers[byte as usize] {
+        for byte in pattern.to_bytes(&mut [0; 256]) {
+            match self.handlers[*byte as usize] {
                 Handler::Tree(ref mut tree) => {
                     let tree = Rc::make_mut(tree);
 

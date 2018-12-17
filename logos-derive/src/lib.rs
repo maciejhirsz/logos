@@ -100,7 +100,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             } else if let Some(definition) = value_from_attr::<VariantDefinition>("regex", attr) {
                 leaf.callback = definition.callback;
 
-                fork.insert(Node::from_regex(&definition.value, leaf));
+                fork.insert(Node::from_regex(&definition.value, Some(leaf)));
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {

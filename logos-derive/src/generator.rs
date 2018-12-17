@@ -193,12 +193,10 @@ impl<'a> Generator<'a> {
                     }
                 },
                 _ => {
-                    let bytes: Vec<u8> = pattern.to_bytes();
-
                     let mut table = [false; 256];
 
-                    for byte in bytes {
-                        table[byte as usize] = true;
+                    for byte in pattern.to_bytes(&mut [0; 256]) {
+                        table[*byte as usize] = true;
                     }
 
                     let ltrue = quote!(TT);
