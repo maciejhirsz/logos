@@ -10,8 +10,14 @@ pub trait LexerInternal<'source> {
     /// Read a chunk at current position.
     fn read<Chunk: source::Chunk<'source>>(&self) -> Option<Chunk>;
 
-    /// Read a chunk at current position offset by `size`.
-    fn lookahead<Chunk: source::Chunk<'source>>(&mut self, size: usize) -> Option<Chunk>;
+    /// Read a chunk at current position offset by `n`.
+    fn read_at<Chunk: source::Chunk<'source>>(&self, n: usize) -> Option<Chunk>;
+
+    /// Test a chunk at current position with a closure.
+    fn test<T: source::Chunk<'source>, F: FnOnce(T) -> bool>(&self, test: F) -> bool;
+
+    /// Test a chunk at current position offset by `n` with a closure.
+    fn test_at<T: source::Chunk<'source>, F: FnOnce(T) -> bool>(&self, n: usize, test: F) -> bool;
 
     /// Bump the position by `size`.
     fn bump(&mut self, size: usize);

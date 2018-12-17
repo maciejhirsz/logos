@@ -100,8 +100,10 @@ mod advanced {
     #[test]
     fn hex() {
         assert_lex("0x 0X 0x0 0x9 0xa 0xf 0X0 0X9 0XA 0XF 0x123456789abcdefABCDEF 0xdeadBEEF", &[
-            (Token::Error, "0x", 0..2),
-            (Token::Error, "0X", 3..5),
+            (Token::LiteralInteger, "0", 0..1),
+            (Token::Error, "x", 1..2),
+            (Token::LiteralInteger, "0", 3..4),
+            (Token::Error, "X", 4..5),
             (Token::LiteralHex, "0x0", 6..9),
             (Token::LiteralHex, "0x9", 10..13),
             (Token::LiteralHex, "0xa", 14..17),

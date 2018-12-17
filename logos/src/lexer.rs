@@ -171,18 +171,44 @@ where
     #[inline]
     fn read<Chunk>(&self) -> Option<Chunk>
     where
-        Chunk: source::Chunk<'source>
+        Chunk: source::Chunk<'source>,
     {
-        self.source.read_bytes(self.token_end)
+        self.source.read(self.token_end)
     }
 
-    /// Read a `Chunk` at a position offset by `size`.
+    /// Read a `Chunk` at a position offset by `n`.
     #[inline]
-    fn lookahead<Chunk>(&mut self, size: usize) -> Option<Chunk>
+    fn read_at<Chunk>(&self, n: usize) -> Option<Chunk>
     where
-        Chunk: source::Chunk<'source>
+        Chunk: source::Chunk<'source>,
     {
-        self.source.read_bytes(self.token_end + size)
+        self.source.read(self.token_end + n)
+    }
+
+    /// Test a chunk at current position with a closure.
+    #[inline]
+    fn test<T, F>(&self, test: F) -> bool
+    where
+        T: source::Chunk<'source>,
+        F: FnOnce(T) -> bool,
+    {
+        match self.source.read::<T>(self.token_end) {
+            Some(chunk) => test(chunk),
+            None        => false,
+        }
+    }
+
+    /// Test a chunk at current position offset by `n` with a closure.
+    #[inline]
+    fn test_at<T, F>(&self, n: usize, test: F) -> bool
+    where
+        T: source::Chunk<'source>,
+        F: FnOnce(T) -> bool,
+    {
+        match self.source.read::<T>(self.token_end + n) {
+            Some(chunk) => test(chunk),
+            None        => false,
+        }
     }
 
     /// Bump the position `Lexer` is reading from by `size`.

@@ -78,6 +78,15 @@ pub enum MatchDefault {
     None,
 }
 
+impl MatchDefault {
+    pub fn is_none(&self) -> bool {
+        match self {
+            MatchDefault::None => true,
+            _ => false,
+        }
+    }
+}
+
 impl<'a> Generator<'a> {
     pub fn new(enum_name: &'a Ident) -> Self {
         Generator {
@@ -137,7 +146,7 @@ impl<'a> Generator<'a> {
             let regex = Regex::from(boundary.clone());
             let mut then = Some(Node::Leaf(leaf.clone()).boxed());
 
-            let fallback = LooseGenerator(self).print_simple_repeat(&regex, &mut then, Context::new(0));
+            let fallback = self.print_simple_repeat(&regex, &mut then, Context::new(0));
 
             FallbackGenerator {
                 gen: self,
@@ -145,7 +154,7 @@ impl<'a> Generator<'a> {
                 boundary: boundary.clone(),
             }.print(&mut tree.node)
         } else {
-            LooseGenerator(self).print(&mut tree.node)
+            self.print(&mut tree.node)
         }
     }
 
@@ -224,7 +233,7 @@ impl<'a> Generator<'a> {
     }
 }
 
-pub trait SubGenerator<'a>: Sized {
+pub trait CodeGenerator<'a>: Sized {
     fn gen(&mut self) -> &mut Generator<'a>;
 
     fn print(&mut self, node: &mut Node) -> TokenStream;
@@ -274,17 +283,7 @@ pub trait SubGenerator<'a>: Sized {
             let read = branch.min_bytes();
 
             if read == len || len > 16 {
-                let test = self.regex_to_test(branch.regex.patterns(), Context::new(0));
-                let next = self.print_then(&mut branch.then, Context::unbumped(len));
-                let bump = ctx.bump();
-
-                return quote! {
-                    #bump
-
-                    if #test {
-                        #next
-                    }
-                };
+                return self.print_simple_branch(branch, ctx);
             }
 
             let branch = self.print_branch(branch, Context::new(read));
@@ -308,6 +307,21 @@ pub trait SubGenerator<'a>: Sized {
                 #next
             }
         }
+    }
+
+    fn print_simple_branch(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        let len = branch.regex.len();
+        let test = self.regex_to_test(branch.regex.patterns(), Context::new(0));
+        let next = self.print_then(&mut branch.then, Context::unbumped(len));
+        let bump = ctx.bump();
+
+        return quote! {
+            #bump
+
+            if #test {
+                #next
+            }
+        };
     }
 
     fn print_branch_maybe(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
@@ -468,7 +482,7 @@ pub trait SubGenerator<'a>: Sized {
                         } else {
                             // There weren't enough bytes for the fast path.
                             // handle the remainder by looping one byte at a time.
-                            while lex.read().map(#fun).unwrap_or(false) {
+                            while lex.test(#fun) {
                                 lex.bump(1);
                             }
 
@@ -538,25 +552,18 @@ pub trait SubGenerator<'a>: Sized {
     /// Convert a slice of `Pattern`s into a test that can be inserted into
     /// an `if ____ {` or `while ____ {`.
     fn regex_to_test(&mut self, patterns: &[Pattern], ctx: Context) -> TokenStream {
-        let read = match ctx.unbumped {
-            0 => quote!(lex.read()),
-            n => quote!(lex.lookahead(#n)),
-        };
-
         // Fast path optimization for bytes
         if patterns.iter().all(Pattern::is_byte) {
-            match patterns.len() {
-                1 => {
-                    let pattern = &patterns[0];
+            if patterns.len() <= 16 {
+                let literal = match patterns.len() {
+                    0 => (&patterns[0]).into_token_stream(),
+                    _ => byte_literal(patterns),
+                };
 
-                    return quote!(#read == Some(#pattern));
-                },
-                2...16 => {
-                    let literal = byte_literal(patterns);
-
-                    return quote!(#read == Some(#literal));
-                },
-                _ => {}
+                return match ctx.unbumped {
+                    0 => quote!(lex.read() == Some(#literal)),
+                    n => quote!(lex.read_at(#n) == Some(#literal)),
+                };
             }
         }
 
@@ -565,21 +572,21 @@ pub trait SubGenerator<'a>: Sized {
             let pattern = &patterns[0];
             let fun = self.gen().pattern_to_fn(pattern);
 
-            return quote!(#read.map(#fun).unwrap_or(false));
+            return match ctx.unbumped {
+                0 => quote!(lex.test(#fun)),
+                n => quote!(lex.test_at(#n, #fun)),
+            };
         }
 
         let test = patterns.chunks(16).enumerate().map(|(idx, chunk)| {
             let offset = 16 * idx + ctx.unbumped;
             let len = chunk.len();
-
-            let source = match offset {
-                0 => quote!(lex.read::<&[u8; #len]>()),
-                _ => quote!(lex.lookahead::<&[u8; #len]>(#offset)),
-            };
-
             let test = self.chunk_to_test(quote!(chunk), chunk);
 
-            quote!(#source.map(|chunk| #test).unwrap_or(false))
+            match offset {
+                0 => quote!(lex.test::<&[u8; #len], _>(|chunk| #test)),
+                n => quote!(lex.test_at::<&[u8; #len], _>(#n, |chunk| #test)),
+            }
         });
 
         quote!(#(#test)&&*)
@@ -624,24 +631,23 @@ pub trait SubGenerator<'a>: Sized {
     fn print_fallback(&mut self) -> TokenStream;
 }
 
-pub struct LooseGenerator<'a: 'b, 'b>(&'b mut Generator<'a>);
-pub struct FallbackGenerator<'a: 'b, 'b> {
+pub struct FallbackGenerator<'a, 'b> {
     gen: &'b mut Generator<'a>,
     boundary: Pattern,
     fallback: TokenStream,
 }
 
-pub struct LoopGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
+pub struct LoopGenerator<'a, 'b, Parent>(&'b mut Parent, PhantomData<Generator<'a>>)
 where
-    SubGen: SubGenerator<'a> + 'c;
+    Parent: CodeGenerator<'a>;
 
-pub struct MaybeGenerator<'a: 'b, 'b: 'c, 'c, SubGen>(&'c mut SubGen, PhantomData<LooseGenerator<'a, 'b>>)
+pub struct MaybeGenerator<'a, 'b, Parent>(&'b mut Parent, PhantomData<Generator<'a>>)
 where
-    SubGen: SubGenerator<'a> + 'c;
+    Parent: CodeGenerator<'a>;
 
-impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
+impl<'a> CodeGenerator<'a> for Generator<'a> {
     fn gen(&mut self) -> &mut Generator<'a> {
-        self.0
+        self
     }
 
     fn print(&mut self, node: &mut Node) -> TokenStream {
@@ -679,7 +685,7 @@ impl<'a, 'b> SubGenerator<'a> for LooseGenerator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
+impl<'a, 'b> CodeGenerator<'a> for FallbackGenerator<'a, 'b> {
     fn gen(&mut self) -> &mut Generator<'a> {
         self.gen
     }
@@ -707,7 +713,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
             Some(callback) => {
                 quote! {
                     #bump
-                    if !lex.read().map(#pattern_fn).unwrap_or(false) {
+                    if !lex.test(#pattern_fn) {
                         lex.token = #name::#variant;
                         return #callback(lex);
                     }
@@ -716,7 +722,7 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
             None => {
                 quote! {
                     #bump
-                    if !lex.read().map(#pattern_fn).unwrap_or(false) {
+                    if !lex.test(#pattern_fn) {
                         return lex.token = #name::#variant;
                     }
                 }
@@ -729,9 +735,9 @@ impl<'a, 'b> SubGenerator<'a> for FallbackGenerator<'a, 'b> {
     }
 }
 
-impl<'a, 'b, 'c, SubGen> SubGenerator<'a> for LoopGenerator<'a, 'b, 'c, SubGen>
+impl<'a, 'b, Parent> CodeGenerator<'a> for LoopGenerator<'a, 'b, Parent>
 where
-    SubGen: SubGenerator<'a>
+    Parent: CodeGenerator<'a>
 {
     fn gen(&mut self) -> &mut Generator<'a> {
         self.0.gen()
@@ -775,12 +781,54 @@ where
     }
 }
 
-impl<'a, 'b, 'c, SubGen> SubGenerator<'a> for MaybeGenerator<'a, 'b, 'c, SubGen>
+impl<'a, 'b, Parent> CodeGenerator<'a> for MaybeGenerator<'a, 'b, Parent>
 where
-    SubGen: SubGenerator<'a>
+    Parent: CodeGenerator<'a>
 {
     fn gen(&mut self) -> &mut Generator<'a> {
         self.0.gen()
+    }
+
+    fn print_simple_branch(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {
+        let len = branch.regex.len();
+        let test = self.regex_to_test(branch.regex.patterns(), ctx);
+        let next = self.print_then(&mut branch.then, Context::unbumped(len + ctx.unbumped));
+
+        return quote! {
+            if #test {
+                #next
+            }
+        };
+    }
+
+    fn print_lex_read(&mut self, code: TokenStream, default: MatchDefault, bytes: usize, ctx: Context) -> TokenStream {
+        let bump = ctx.bump();
+        let skip = ctx.unbumped;
+
+        if skip > 0 && default.is_none() {
+            return quote! {
+                if let Some(arr) = lex.read_at::<&[u8; #bytes]>(#skip) {
+                    #bump
+                    #code
+                }
+            };
+        }
+
+        let (cond, default) = match default {
+            MatchDefault::Repeat(default) => (quote!(while), default),
+            MatchDefault::Once(default)   => (quote!(if), default),
+            MatchDefault::None            => (quote!(if), TokenStream::new()),
+        };
+
+        quote! {
+            #bump
+
+            #cond let Some(arr) = lex.read::<&[u8; #bytes]>() {
+                #code
+            }
+
+            #default
+        }
     }
 
     fn print_branch_maybe(&mut self, branch: &mut Branch, ctx: Context) -> TokenStream {

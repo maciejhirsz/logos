@@ -24,7 +24,7 @@ impl<'source> Slice<'source> for &'source [u8] {
     }
 }
 
-pub trait Chunk<'source>: Sized + Copy {
+pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     const SIZE: usize;
 
     unsafe fn from_ptr(ptr: *const u8) -> Self;
@@ -121,30 +121,12 @@ pub trait Source<'source> {
     /// Length of the source
     fn len(&self) -> usize;
 
-    /// Read a single byte from source.
-    ///
-    /// **Implementors of this method must guarantee it to return `0` when
-    /// `offset` is set to length of the `Source` (one byte after last)!**
-    ///
-    /// ```rust
-    /// # fn main() {
-    /// use logos::Source;
-    ///
-    /// let foo = "foo";
-    ///
-    /// unsafe {
-    ///     assert_eq!(foo.read(0), b'f');
-    ///     assert_eq!(foo.read(1), b'o');
-    ///     assert_eq!(foo.read(2), b'o');
-    ///     assert_eq!(foo.read(3), 0);
-    /// }
-    /// # }
-    /// ```
-    unsafe fn read(&self, offset: usize) -> u8;
-
-    /// Read a fixed number of bytes into an array. Returns `None` when reading
+    /// Read a chunk of bytes into an array. Returns `None` when reading
     /// out of bounds would occur.
     ///
+    /// This is very useful for matching fixed-size byte arrays, and tends
+    /// to be very fast at it too, since the compiler knows the byte lengths.
+    ///
     /// ```rust
     /// # fn main() {
     /// use logos::Source;
@@ -152,15 +134,15 @@ pub trait Source<'source> {
     /// let foo = "foo";
     ///
     /// unsafe {
-    ///     assert_eq!(foo.read_bytes(0), Some(b"foo")); // Option<&[u8; 3]>
-    ///     assert_eq!(foo.read_bytes(0), Some(b"fo"));  // Option<&[u8; 2]>
-    ///     assert_eq!(foo.read_bytes(2), Some(b'o'));   // Option<u8>
-    ///     assert_eq!(foo.read_bytes::<&[u8; 4]>(0), None);
-    ///     assert_eq!(foo.read_bytes::<&[u8; 2]>(2), None);
+    ///     assert_eq!(foo.read(0), Some(b"foo"));     // Option<&[u8; 3]>
+    ///     assert_eq!(foo.read(0), Some(b"fo"));      // Option<&[u8; 2]>
+    ///     assert_eq!(foo.read(2), Some(b'o'));       // Option<u8>
+    ///     assert_eq!(foo.read::<&[u8; 4]>(0), None); // Out of bounds
+    ///     assert_eq!(foo.read::<&[u8; 2]>(2), None); // Out of bounds
     /// }
     /// # }
     /// ```
-    fn read_bytes<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
         Chunk: self::Chunk<'source>;
 
@@ -206,17 +188,7 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    unsafe fn read(&self, offset: usize) -> u8 {
-        debug_assert!(offset <= self.len(), "Reading out founds!");
-
-        match self.as_bytes().get(offset) {
-            Some(byte) => *byte,
-            None       => 0,
-        }
-    }
-
-    #[inline]
-    fn read_bytes<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
         Chunk: self::Chunk<'source>
     {
@@ -252,17 +224,7 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    unsafe fn read(&self, offset: usize) -> u8 {
-        debug_assert!(offset <= self.len(), "Reading out founds!");
-
-        match self.as_bytes().get(offset) {
-            Some(byte) => *byte,
-            None       => 0,
-        }
-    }
-
-    #[inline]
-    fn read_bytes<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
         Chunk: self::Chunk<'source>
     {
