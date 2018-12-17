@@ -102,34 +102,19 @@ where
 {
     /// Turn this lexer into a lexer for a new token type.
     ///
-    /// The new lexer is in an error state pointing at the end of the token
-    /// this lexer is currently pointing at. If you want to start reading from
-    /// the new lexer immediately, consider using `Lexer::advance_as`.
-    pub fn morph<Token2: Logos>(self) -> Lexer<Token2, Source> {
-        Lexer {
-            source: self.source,
-            token: Token2::ERROR,
-            extras: Default::default(),
-            token_start: self.token_end,
-            token_end: self.token_end,
-        }
-    }
-
-    /// Turn this lexer into a lexer for a new token type, preserving your extras.
-    ///
-    /// This is useful if your extras contain some persistent information,
-    /// but won't work if the new token uses a different extras type.
-    ///
-    /// Otherwise behaves identically to `Lexer::morph`.
-    pub fn morph_extras<Token2>(self) -> Lexer<Token2, Source>
+    /// The new lexer continues to point at the same span as the current lexer,
+    /// and the current token becomes the error token of the new token type.
+    /// If you want to start reading from the new lexer immediately,
+    /// consider using `Lexer::advance_as` instead.
+    pub fn morph<Token2: Logos>(self) -> Lexer<Token2, Source>
     where
-        Token2: Logos<Extras = Token::Extras>,
+        Token::Extras: Into<Token2::Extras>,
     {
         Lexer {
             source: self.source,
             token: Token2::ERROR,
-            extras: self.extras,
-            token_start: self.token_end,
+            extras: self.extras.into(),
+            token_start: self.token_start,
             token_end: self.token_end,
         }
     }
@@ -138,7 +123,10 @@ where
     ///
     /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
     /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    pub fn advance_as<Token2: Logos>(self) -> Lexer<Token2, Source> {
+    pub fn advance_as<Token2: Logos>(self) -> Lexer<Token2, Source>
+    where
+        Token::Extras: Into<Token2::Extras>,
+    {
         let mut lex = self.morph();
         lex.advance();
         lex
