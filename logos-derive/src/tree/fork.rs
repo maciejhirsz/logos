@@ -121,7 +121,7 @@ impl<'a> Fork<'a> {
         }
 
         // Looking for intersection prefixes, that is: A ≠ B & (A ⊂ B | B ⊂ A)
-        for other in self.arms.iter_mut().filter(|arm| arm.is_finite()) {
+        for other in self.arms.iter_mut() {
             if let Some(prefix) = branch.regex.common_prefix(&other.regex) {
                 let mut intersection = Branch::new(prefix);
 
@@ -131,13 +131,16 @@ impl<'a> Fork<'a> {
                 a.regex.unshift();
                 b.regex.unshift();
 
+                intersection.fallback = a.fallback.take().or(b.fallback.take());
                 intersection.insert_then(a);
                 intersection.insert_then(b);
 
                 if intersection.regex.first() == branch.regex.first() {
+                    other.regex.first_mut().subtract(intersection.regex.first());
                     branch = intersection;
                 } else {
-                    mem::swap(other, &mut intersection);
+                    branch.regex.first_mut().subtract(intersection.regex.first());
+                    *other = intersection;
                 }
             }
         }
@@ -146,7 +149,9 @@ impl<'a> Fork<'a> {
         for other in self.arms.iter_mut() {
             // We got a match!
             if let Some(regex) = branch.regex.match_split(&mut other.regex) {
-                let old = mem::replace(other, Branch::new(regex));
+                let mut old = mem::replace(other, Branch::new(regex));
+
+                other.fallback = old.fallback.take();
 
                 let a = branch.to_node().map(Box::new);
                 let b = old.to_node().map(Box::new);
@@ -304,7 +309,7 @@ impl<'a> Fork<'a> {
             let mut remove = Vec::new();
 
             for (index, arm) in self.arms.iter_mut().enumerate() {
-                let first = &arm.regex.patterns()[0];
+                let first = arm.regex.first();
                 let tail = &arm.regex.patterns()[1..];
 
                 let retain = *scan.entry((&arm.then, tail)).or_insert(index);
@@ -315,12 +320,8 @@ impl<'a> Fork<'a> {
             }
 
             for (retain, index, pattern) in remove.into_iter().rev() {
-                self.arms[retain].regex.first_mut().combine(pattern);
+                self.arms[retain].regex.first_mut().combine(&pattern);
                 self.arms.remove(index);
-            }
-
-            for arm in self.arms.iter_mut() {
-                arm.regex.first_mut().pack();
             }
         }
 

@@ -3,7 +3,6 @@ use std::{mem, fmt};
 use super::{Branch, Leaf, Fork, Token};
 use super::ForkKind::*;
 
-use crate::handlers::Fallback;
 use crate::regex::{Regex, Pattern, RepetitionFlag};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -26,6 +25,13 @@ impl<'a> Node<'a> {
         match self {
             Node::Leaf(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn as_mut_fork(&mut self) -> Option<&mut Fork<'a>> {
+        match self {
+            Node::Fork(fork) => Some(fork),
+            _ => None,
         }
     }
 
@@ -126,33 +132,51 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub fn fallback(&self) -> Option<Fallback<'a>> {
-        match self {
-            Node::Fork(fork) => {
-                let arm = &fork.arms[0];
-                let leaf = match &fork.then {
-                    Some(node) => match **node {
-                        Node::Leaf(ref leaf) => leaf,
-                        _ => return None,
-                    },
-                    _ => return None,
-                };
-
-                if fork.kind == Repeat
-                    && fork.arms.len() == 1
-                    && arm.regex.len() == 1
-                    && arm.then.is_none()
-                {
-                    Some(Fallback {
-                        boundary: arm.regex.first().clone(),
-                        leaf: leaf.clone(),
-                    })
-                } else {
-                    None
-                }
-            },
-            _ => None
+    pub fn find_fallback(&mut self, other: &mut Fork<'a>) -> Option<Fork<'a>> {
+        if other.kind != Repeat {
+            return None;
         }
+
+        let patterns = match self {
+            Node::Fork(fork) => fork.arms.iter().map(|arm| arm.regex.first()).collect(),
+            Node::Branch(branch) => vec![branch.regex.first()],
+            Node::Leaf(_) => return None,
+        };
+
+        let mut remove = Vec::new();
+        let mut fallback: Option<Fork<'a>> = None;
+
+        for a in patterns {
+            for (index, arm) in other.arms.iter().enumerate() {
+                let b = arm.regex.first();
+
+                if b != a && b.contains(a) {
+                    if let Some(ref mut fallback) = fallback {
+                        let mut tokens = Vec::new();
+
+                        other.then.iter().chain(fallback.then.iter())
+                            .for_each(|node| node.get_tokens(&mut tokens));
+
+                        let tokens = tokens.into_iter().map(|t| t.to_string()).collect::<Vec<_>>().join(", ");
+
+                        panic!("Failed to disambiguate: {}", tokens);
+                    } else {
+                        fallback =
+                            Some(Fork::new(Repeat)
+                                .arm(arm.clone())
+                                .then(*other.then.clone().unwrap()));
+                    }
+
+                    remove.push(index);
+                }
+            }
+
+            for index in remove.drain(..).rev() {
+                other.arms.remove(index);
+            }
+        }
+
+        fallback
     }
 
     /// Get all tokens in this tree

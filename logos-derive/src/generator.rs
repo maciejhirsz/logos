@@ -142,11 +142,8 @@ impl<'a> Generator<'a> {
         // At this point all Rc pointers should be unique
         let tree = Rc::make_mut(&mut tree);
 
-        if let Some(Fallback { boundary, leaf }) = &tree.fallback {
-            let regex = Regex::from(boundary.clone());
-            let mut then = Some(Node::Leaf(leaf.clone()).boxed());
-
-            let fallback = self.print_simple_repeat(&regex, &mut then, Context::new(0));
+        if let Some(Fallback { boundary, fork }) = &mut tree.fallback {
+            let fallback = self.print_fork(fork, Context::new(0));
 
             FallbackGenerator {
                 gen: self,

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::tree::{Node, Branch, Leaf};
+use crate::tree::{Node, Branch, Fork};
 use crate::regex::Pattern;
 
 #[derive(Debug, Clone)]
@@ -13,7 +13,7 @@ pub enum Handler<'a> {
 #[derive(Debug, Clone)]
 pub struct Fallback<'a> {
     pub boundary: Pattern,
-    pub leaf: Leaf<'a>,
+    pub fork: Fork<'a>,
 }
 
 #[derive(Debug, Clone)]
@@ -40,30 +40,22 @@ impl<'a> Handlers<'a> {
 
     pub fn insert(&mut self, mut branch: Branch<'a>) {
         let pattern = branch.regex.unshift();
+        let fallback = branch.fallback.take().map(|fork| {
+            let boundary = fork.arms[0].regex.first().clone();
+
+            Fallback {
+                boundary,
+                fork,
+            }
+        });
 
         let tree = Rc::new(Tree {
             node: Node::from(branch),
-            fallback: None,
+            fallback,
         });
 
-        let fallback = tree.node.fallback();
-
         for byte in pattern.to_bytes(&mut [0; 256]) {
-            match self.handlers[*byte as usize] {
-                Handler::Tree(ref mut tree) => {
-                    let tree = Rc::make_mut(tree);
-
-                    if let Some(ref fallback) = fallback {
-                        if tree.node.matches(&fallback.boundary) {
-                            tree.fallback = Some(fallback.clone());
-                            continue;
-                        }
-                    }
-
-                    tree.node.insert(tree.node.clone());
-                },
-                ref mut slot => *slot = Handler::Tree(tree.clone()),
-            }
+            self.handlers[*byte as usize] = Handler::Tree(tree.clone());
         }
     }
 

@@ -2,7 +2,7 @@ use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
 use regex_syntax::hir::{self, Hir, HirKind, Class};
 use regex_syntax::Parser;
 use std::cmp::Ordering;
-use std::{fmt, mem};
+use std::fmt;
 
 use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
 
@@ -431,60 +431,6 @@ impl Pattern {
         }
     }
 
-    pub fn combine(&mut self, other: Pattern) {
-        let mut class = match self {
-            Pattern::Class(class) => mem::replace(class, Vec::new()),
-            _ => {
-                let old = mem::replace(self, Pattern::Class(Vec::new()));
-
-                vec![old]
-            },
-        };
-
-        fn ordering_key(pat: &Pattern) -> usize {
-            match pat {
-                Pattern::Byte(byte) => *byte as usize,
-                Pattern::Range(a, _) => (*a as usize) + 0x100,
-                Pattern::Class(class) => {
-                    class.first().map(ordering_key).unwrap_or(0x100) + 0x100
-                }
-            }
-        }
-
-        match other {
-            Pattern::Class(other) => class.extend(other),
-            _ => class.push(other),
-        }
-
-        class.sort_by_key(ordering_key);
-
-        mem::replace(self, Pattern::Class(class));
-    }
-
-    pub fn pack(&mut self) {
-        match self {
-            Pattern::Range(a, b) if a == b => {
-                *self = Pattern::Byte(*a);
-            },
-            Pattern::Class(class) if class.len() == 1 => {
-                let mut pattern = class.remove(0);
-
-                pattern.pack();
-
-                mem::replace(self, pattern);
-            },
-            Pattern::Class(_) => {
-                let mut bytes = [0; 256];
-                let bytes = self.to_bytes(&mut bytes);
-
-                bytes.sort_unstable();
-
-                *self = Pattern::from(&*bytes)
-            }
-            _ => {},
-        }
-    }
-
     pub fn intersect(&self, other: &Pattern) -> Option<Pattern> {
         if self == other {
             return None;
@@ -499,29 +445,48 @@ impl Pattern {
         }
     }
 
+    pub fn combine(&mut self, other: &Pattern) {
+        let len1 = self.len();
+        let len2 = other.len();
+
+        let mut bytes = vec![0; len1 + len2];
+
+        self.to_bytes(&mut bytes);
+        other.to_bytes(&mut bytes[len1..]);
+
+        bytes.sort_unstable();
+        bytes.dedup();
+
+        *self = Pattern::from(&bytes[..]);
+    }
+
+    pub fn subtract(&mut self, other: &Pattern) {
+        let mut bytes = vec![0; self.len()];
+
+        self.to_bytes(&mut bytes);
+        bytes.sort_unstable();
+
+        for byte in other.to_bytes(&mut [0; 256]) {
+            if let Ok(index) = bytes.binary_search(byte) {
+                bytes.remove(index);
+            }
+        }
+
+        assert!(bytes.len() > 0, "Internal Error: Subtract removed all elements!");
+
+        *self = Pattern::from(&bytes[..]);
+    }
+
     pub fn contains(&self, other: &Pattern) -> bool {
-        match other {
-            Pattern::Byte(x) => self.contains_range(*x, *x),
-            Pattern::Range(a, b) => self.contains_range(*a, *b),
-            Pattern::Class(class) => {
-                class.iter().all(|pat| self.contains(pat))
-            },
-        }
+        let mut buffer = [0; 256];
+        let bytes = self.to_bytes(&mut buffer);
+
+        bytes.sort_unstable();
+
+        other.to_bytes(&mut [0; 256]).iter().all(|byte| bytes.binary_search(byte).is_ok())
     }
 
-    fn contains_range(&self, xa: u8, xb: u8) -> bool {
-        match self {
-            Pattern::Byte(a) => *a == xa && *a == xb,
-            Pattern::Range(a, b) => {
-                (*a <= xa && xa <= *b) && (*a <= xb && xb <= *b)
-            },
-            Pattern::Class(class) => {
-                class.iter().any(|pat| pat.contains_range(xa, xb))
-            },
-        }
-    }
-
-    pub fn to_bytes<'a>(&self, buffer: &'a mut [u8; 256]) -> &'a mut [u8] {
+    pub fn to_bytes<'a>(&self, buffer: &'a mut [u8]) -> &'a mut [u8] {
         let len = self.write_bytes(buffer);
 
         &mut buffer[..len]

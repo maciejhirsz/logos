@@ -3,10 +3,10 @@ mod leaf;
 mod fork;
 mod branch;
 
-pub use self::node::Node;
 pub use self::fork::ForkKind::*;
 pub use self::fork::{Fork, ForkKind};
 pub use self::leaf::{Leaf, Token};
+pub use self::node::Node;
 pub use self::branch::Branch;
 
 #[cfg(test)]
@@ -426,7 +426,7 @@ mod tests {
                                 ][..]).then(
                                     Fork::new(Repeat)
                                         .arm(Branch::new(Pattern::from(&b"0123456789abcdef"[..])))
-                                        .then(&int)
+                                        .then(&hex)
                                 )
                             )
                             .arm(
@@ -441,7 +441,7 @@ mod tests {
                     )
                 )
                 .arm(
-                    Branch::new(Pattern::Range(b'0', b'9')).then(
+                    Branch::new(Pattern::Range(b'1', b'9')).then(
                         Fork::new(Repeat)
                             .arm(Branch::new(Pattern::Range(b'0', b'9')))
                             .then(&int)
@@ -453,6 +453,35 @@ mod tests {
         packed.pack();
 
         assert_eq!(packed, expected, "Not equal:\n\nPACKED {:#?}\n\nEXPECTED {:#?}", packed, expected);
+        assert_eq!(fork, expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", fork, expected);
+    }
+
+    #[test]
+    fn fork_insert_fallback() {
+        let ab = token("AB");
+        let a  = token("A");
+
+        let ab_node = Node::from_regex("[ab]+", Some(Leaf::from(&ab)));
+        let ac_node = Node::from_regex("a+", Some(Leaf::from(&a)));
+
+        let mut fork = Fork::new(Plain);
+
+        fork.insert(ab_node);
+        fork.insert(ac_node);
+        fork.pack();
+
+        let expected =
+            Fork::new(Plain)
+                .arm(
+                    Branch::new("a")
+                        .then(Fork::new(Repeat).arm(Branch::new("a")).then(&a))
+                        .fallback(Fork::new(Repeat).arm(Branch::new(Pattern::from(&b"ab"[..]))).then(&ab))
+                )
+                .arm(
+                    Branch::new("b")
+                        .then(Fork::new(Repeat).arm(Branch::new(Pattern::from(&b"ab"[..]))).then(&ab))
+                );
+
         assert_eq!(fork, expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", fork, expected);
     }
 

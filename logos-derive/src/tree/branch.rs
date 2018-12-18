@@ -1,7 +1,7 @@
 use std::fmt;
 use std::cmp::Ordering;
 
-use super::Node;
+use super::{Node, Fork};
 use super::ForkKind::*;
 use crate::regex::{Regex, Pattern};
 
@@ -9,6 +9,7 @@ use crate::regex::{Regex, Pattern};
 pub struct Branch<'a> {
     pub regex: Regex,
     pub then: Option<Box<Node<'a>>>,
+    pub fallback: Option<Fork<'a>>,
 }
 
 impl<'a> Branch<'a> {
@@ -19,17 +20,24 @@ impl<'a> Branch<'a> {
         Branch {
             regex: regex.into(),
             then: None,
+            fallback: None,
         }
     }
 
-    pub fn then<Then>(self, then: Then) -> Self
+    pub fn then<Then>(mut self, then: Then) -> Self
     where
         Then: Into<Node<'a>>
     {
-        Branch {
-            regex: self.regex,
-            then: Some(then.into().boxed())
-        }
+        self.then = Some(then.into().boxed());
+        self
+    }
+
+    pub fn fallback<Fallback>(mut self, fallback: Fallback) -> Self
+    where
+        Fallback: Into<Fork<'a>>
+    {
+        self.fallback = Some(fallback.into());
+        self
     }
 
     pub fn compare(&self, other: &Branch<'a>) -> Ordering {
@@ -54,7 +62,19 @@ impl<'a> Branch<'a> {
         match self.then {
             Some(ref mut node) => {
                 match other {
-                    Some(other) => node.insert(*other),
+                    Some(mut other) => {
+                        if let Some(fork) = other.as_mut_fork() {
+                            if let Some(fork) = node.find_fallback(fork) {
+                                return self.fallback = Some(fork);
+                            }
+
+                            if fork.arms.len() == 0 {
+                                return;
+                            }
+                        }
+
+                        node.insert(*other);
+                    },
                     None => node.make_maybe_fork(),
                 }
             }
@@ -70,11 +90,15 @@ impl<'a> Branch<'a> {
         }
     }
 
-    pub fn is_finite(&self) -> bool {
+    pub fn is_repeating(&self) -> bool {
+        if self.regex.len() > 1 {
+            return true;
+        }
+
         match self.then {
             Some(ref node) => match **node {
-                Node::Fork(ref fork) => fork.kind == Plain,
-                _ => true,
+                Node::Fork(ref fork) => fork.kind == Repeat,
+                _ => false,
             },
             None => false,
         }
@@ -114,6 +138,10 @@ impl<'a> Branch<'a> {
 impl<'a> fmt::Debug for Branch<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.regex.fmt(f)?;
+
+        if let Some(ref fallback) = self.fallback {
+            write!(f, "<[{:#?}]>", fallback)?;
+        }
 
         if let Some(ref then) = self.then {
             f.write_str(" -> ")?;
