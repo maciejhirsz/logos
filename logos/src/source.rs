@@ -1,3 +1,9 @@
+//! This module contains a bunch of traits necessary for processing byte strings.
+//!
+//! Most notable are:
+//! * `Source` - implemented by default for `&str` and `&[u8]`, used by the `Lexer`.
+//! * `Slice` - slices of `Source`, returned by `Lexer::slice`.
+
 use std::ops::Range;
 use std::fmt::Debug;
 
@@ -24,91 +30,6 @@ impl<'source> Slice<'source> for &'source [u8] {
     }
 }
 
-pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
-    const SIZE: usize;
-
-    unsafe fn from_ptr(ptr: *const u8) -> Self;
-}
-
-pub trait Split<Target> {
-    type Remainder;
-
-    fn split(self) -> (Target, Self::Remainder);
-}
-
-impl<'source> Chunk<'source> for u8 {
-    const SIZE: usize = 1;
-
-    #[inline]
-    unsafe fn from_ptr(ptr: *const u8) -> Self {
-        *ptr
-    }
-}
-
-macro_rules! impl_array {
-    (@byte $size:expr, 1) => (
-        impl<'source> Split<u8> for &'source [u8; $size] {
-            type Remainder = &'source [u8; $size - 1];
-
-            #[inline]
-            fn split(self) -> (u8, &'source [u8; $size - 1]) {
-                unsafe {(
-                    self[0],
-                    Chunk::from_ptr((self as *const u8).add(1)),
-                )}
-            }
-        }
-    );
-
-    (@byte $size:expr, $ignore:tt) => ();
-
-    ($($size:expr => ( $( $split:tt ),* ))*) => ($(
-        impl<'source> Chunk<'source> for &'source [u8; $size] {
-            const SIZE: usize = $size;
-
-            #[inline]
-            unsafe fn from_ptr(ptr: *const u8) -> Self {
-                &*(ptr as *const [u8; $size])
-            }
-        }
-
-        $(
-            impl_array! { @byte $size, $split }
-
-            impl<'source> Split<&'source [u8; $split]> for &'source [u8; $size] {
-                type Remainder = &'source [u8; $size - $split];
-
-                #[inline]
-                fn split(self) -> (&'source [u8; $split], &'source [u8; $size - $split]) {
-                    unsafe {(
-                        Chunk::from_ptr(self as *const u8),
-                        Chunk::from_ptr((self as *const u8).add($split)),
-                    )}
-                }
-            }
-        )*
-    )*);
-}
-
-impl_array! {
-    1  => ()
-    2  => (1)
-    3  => (1, 2)
-    4  => (1, 2, 3)
-    5  => (1, 2, 3, 4)
-    6  => (1, 2, 3, 4, 5)
-    7  => (1, 2, 3, 4, 5, 6)
-    8  => (1, 2, 3, 4, 5, 6, 7)
-    9  => (1, 2, 3, 4, 5, 6, 7, 8)
-    10 => (1, 2, 3, 4, 5, 6, 7, 8, 9)
-    11 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-    12 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-    13 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    14 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
-    15 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
-    16 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
-}
-
 /// Trait for types the `Lexer` can read from.
 ///
 /// Most notably this is implemented for `&str`. It is unlikely you will
@@ -128,19 +49,17 @@ pub trait Source<'source> {
     /// to be very fast at it too, since the compiler knows the byte lengths.
     ///
     /// ```rust
-    /// # fn main() {
     /// use logos::Source;
     ///
-    /// let foo = "foo";
+    /// fn main() {
+    ///     let foo = "foo";
     ///
-    /// unsafe {
     ///     assert_eq!(foo.read(0), Some(b"foo"));     // Option<&[u8; 3]>
     ///     assert_eq!(foo.read(0), Some(b"fo"));      // Option<&[u8; 2]>
     ///     assert_eq!(foo.read(2), Some(b'o'));       // Option<u8>
     ///     assert_eq!(foo.read::<&[u8; 4]>(0), None); // Out of bounds
     ///     assert_eq!(foo.read::<&[u8; 2]>(2), None); // Out of bounds
     /// }
-    /// # }
     /// ```
     fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
@@ -150,31 +69,31 @@ pub trait Source<'source> {
     /// `slice::get(range)`.
     ///
     /// ```rust
-    /// # extern crate logos;
-    /// # fn main() {
     /// use logos::Source;
     ///
-    /// let foo = "It was the year when they finally immanentized the Eschaton.";
+    /// fn main() {
+    ///     let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
-    /// assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
-    /// # }
+    ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
+    /// }
     /// ```
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
     ///
+    /// **Using this method with range out of bounds is undefined behavior!**
+    ///
     /// ```rust
-    /// # extern crate logos;
-    /// # fn main() {
     /// use logos::Source;
     ///
-    /// let foo = "It was the year when they finally immanentized the Eschaton.";
+    /// fn main() {
+    ///     let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
-    /// unsafe {
-    ///     assert_eq!(Source::slice_unchecked(&foo, 51..59), "Eschaton");
+    ///     unsafe {
+    ///         assert_eq!(Source::slice_unchecked(&foo, 51..59), "Eschaton");
+    ///     }
     /// }
-    /// # }
     /// ```
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice;
 }
@@ -249,4 +168,115 @@ impl<'source> Source<'source> for &'source [u8] {
 
         self.get_unchecked(range)
     }
+}
+
+/// A fixed, statically sized chunk of data that can be read from the `Source`.
+///
+/// This is implemented for `u8`, as well as byte arrays `&[u8; 1]` to `&[u8; 16]`.
+pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
+    /// Size of the chunk being accessed in bytes.
+    const SIZE: usize;
+
+    /// Create a chunk from a raw byte pointer.
+    unsafe fn from_ptr(ptr: *const u8) -> Self;
+}
+
+/// A trait implemented for byte arrays that allow splitting them into two,
+/// with the resulting sizes known at compile time.
+pub trait Split<Target> {
+    /// Remainder after splitting. This must be statically safe so that
+    /// `Target` + `Remainder` = `Self`.
+    ///
+    /// **Implementations must guarantee that these are not overlapping!**
+    type Remainder;
+
+    /// Split self into `Target` and `Remainder`.
+    ///
+    /// ```rust
+    /// use logos::source::Split;
+    ///
+    /// fn main() {
+    ///     let bytes = b"foobar";
+    ///
+    ///     assert_eq!(bytes.split(), (b'f', b"oobar")); // (u8,       &[u8; 5])
+    ///     assert_eq!(bytes.split(), (b"f", b"oobar")); // (&[u8; 1], &[u8; 5])
+    ///     assert_eq!(bytes.split(), (b"fo", b"obar")); // ...
+    ///     assert_eq!(bytes.split(), (b"foo", b"bar"));
+    ///     assert_eq!(bytes.split(), (b"foob", b"ar"));
+    ///     assert_eq!(bytes.split(), (b"fooba", b"r"));
+    /// }
+    fn split(self) -> (Target, Self::Remainder);
+}
+
+impl<'source> Chunk<'source> for u8 {
+    const SIZE: usize = 1;
+
+    #[inline]
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
+        *ptr
+    }
+}
+
+macro_rules! impl_array {
+    (@byte $size:expr, 1) => (
+        impl<'source> Split<u8> for &'source [u8; $size] {
+            type Remainder = &'source [u8; $size - 1];
+
+            #[inline]
+            fn split(self) -> (u8, &'source [u8; $size - 1]) {
+                unsafe {(
+                    self[0],
+                    Chunk::from_ptr((self as *const u8).add(1)),
+                )}
+            }
+        }
+    );
+
+    (@byte $size:expr, $ignore:tt) => ();
+
+    ($($size:expr => ( $( $split:tt ),* ))*) => ($(
+        impl<'source> Chunk<'source> for &'source [u8; $size] {
+            const SIZE: usize = $size;
+
+            #[inline]
+            unsafe fn from_ptr(ptr: *const u8) -> Self {
+                &*(ptr as *const [u8; $size])
+            }
+        }
+
+        $(
+            impl_array! { @byte $size, $split }
+
+            impl<'source> Split<&'source [u8; $split]> for &'source [u8; $size] {
+                type Remainder = &'source [u8; $size - $split];
+
+                #[inline]
+                fn split(self) -> (&'source [u8; $split], &'source [u8; $size - $split]) {
+                    unsafe {(
+                        Chunk::from_ptr(self as *const u8),
+                        Chunk::from_ptr((self as *const u8).add($split)),
+                    )}
+                }
+            }
+        )*
+    )*);
+}
+
+impl_array! {
+    1  => ()
+    2  => (1)
+    3  => (1, 2)
+    4  => (1, 2, 3)
+    5  => (1, 2, 3, 4)
+    6  => (1, 2, 3, 4, 5)
+    7  => (1, 2, 3, 4, 5, 6)
+    8  => (1, 2, 3, 4, 5, 6, 7)
+    9  => (1, 2, 3, 4, 5, 6, 7, 8)
+    10 => (1, 2, 3, 4, 5, 6, 7, 8, 9)
+    11 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    12 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    13 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+    14 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+    15 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    16 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 }
