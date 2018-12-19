@@ -84,10 +84,6 @@ impl<'a> Fork<'a> {
                     self.kind = Maybe;
                     self.then = Some(Node::Leaf(leaf).boxed());
                 }
-
-                // FIXME: look up through all tokens produced by `self.then`,
-                //        if they point at a token different from `token`,
-                //        panic with an error about conflicting definitions!
             },
             Node::Fork(mut other) => {
                 if self.kind == other.kind && self.arms == other.arms {
@@ -198,7 +194,7 @@ impl<'a> Fork<'a> {
                     Some(other) => node.insert(*other),
                     None => node.make_maybe_fork(),
                 }
-            }
+            },
             None => {
                 if other.is_some() {
                     assert!(
