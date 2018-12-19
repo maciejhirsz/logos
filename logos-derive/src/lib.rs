@@ -161,6 +161,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let tokens = quote! {
         impl ::logos::Logos for #name {
             type Extras = #extras;
+            type SourceMarker = ::logos::source::AnySource;
 
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;

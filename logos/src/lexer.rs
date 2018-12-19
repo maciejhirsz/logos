@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::source::{self, Source};
+use crate::source::{self, Source, SourceMarker};
 use super::{Logos};
 use super::internal::LexerInternal;
 
@@ -49,6 +49,8 @@ where
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
     pub fn new(source: Source) -> Self {
+        Token::SourceMarker::check_source::<Source>();
+
         let mut lex = Lexer {
             source,
             token: Token::ERROR,
@@ -100,13 +102,7 @@ where
     pub fn slice(&self) -> Source::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
-}
 
-impl<'source, Token, Source> Lexer<Token, Source>
-where
-    Token: self::Logos,
-    Source: self::Source<'source>,
-{
     /// Turn this lexer into a lexer for a new token type.
     ///
     /// The new lexer continues to point at the same span as the current lexer,
@@ -117,6 +113,8 @@ where
     where
         Token::Extras: Into<Token2::Extras>,
     {
+        Token2::SourceMarker::check_source::<Source>();
+
         Lexer {
             source: self.source,
             token: Token2::ERROR,

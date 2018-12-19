@@ -107,6 +107,9 @@ pub trait Logos: Sized {
     /// in JavaScript.
     type Extras: self::Extras;
 
+    /// Marker that tells us which `Source`s can be used with this `Logos`.
+    type SourceMarker: crate::source::SourceMarker;
+
     /// `SIZE` is simply a number of possible variants of the `Logos` enum. The
     /// `derive` macro will make sure that all variants don't hold values larger
     /// or equal to `SIZE`.
