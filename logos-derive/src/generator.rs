@@ -170,46 +170,63 @@ impl<'a> Generator<'a> {
             let function = Ident::new(&format!("_pattern_{}_{}", idx, chars), Span::call_site());
 
             let tokens = match pattern.weight() {
-                1 => {
-                    quote! {
-                        #[inline]
-                        fn #function(byte: u8) -> bool {
-                            byte == #pattern
-                        }
+                1 => quote! {
+                    #[inline]
+                    fn #function(byte: u8) -> bool {
+                        byte == #pattern
                     }
                 },
-                2 => {
-                    quote! {
-                        #[inline]
-                        fn #function(byte: u8) -> bool {
-                            match byte {
-                                #pattern => true,
-                                _ => false,
-                            }
+                2 => quote! {
+                    #[inline]
+                    fn #function(byte: u8) -> bool {
+                        match byte {
+                            #pattern => true,
+                            _ => false,
                         }
                     }
                 },
                 _ => {
-                    let mut table = [false; 256];
+                    let negative = pattern.negate();
 
-                    for byte in pattern.to_bytes(&mut [0; 256]) {
-                        table[*byte as usize] = true;
-                    }
+                    match negative.weight() {
+                        1 => quote! {
+                            #[inline]
+                            fn #function(byte: u8) -> bool {
+                                byte != #negative
+                            }
+                        },
+                        2 => quote! {
+                            #[inline]
+                            fn #function(byte: u8) -> bool {
+                                match byte {
+                                    #negative => false,
+                                    _ => true,
+                                }
+                            }
+                        },
+                        _ => {
+                            let mut table = [false; 256];
 
-                    let ltrue = quote!(TT);
-                    let lfalse = quote!(__);
+                            for byte in pattern.bytes() {
+                                table[byte as usize] = true;
+                            }
 
-                    let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
+                            let ltrue = quote!(TT);
+                            let lfalse = quote!(__);
 
-                    quote! {
-                        #[inline]
-                        fn #function(byte: u8) -> bool {
-                            const #ltrue: bool = true;
-                            const #lfalse: bool = false;
+                            let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
 
-                            static LUT: [bool; 256] = [#( #table ),*];
+                            quote! {
+                                #[inline]
+                                fn #function(byte: u8) -> bool {
+                                    const #ltrue: bool = true;
+                                    const #lfalse: bool = false;
 
-                            LUT[byte as usize]
+                                    static LUT: [bool; 256] = [#( #table ),*];
+
+                                    LUT[byte as usize]
+                                }
+                            }
                         }
                     }
                 }

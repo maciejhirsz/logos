@@ -4,6 +4,7 @@ use regex_syntax::Parser;
 use std::cmp::Ordering;
 use std::fmt;
 
+use crate::util::{MergeAscending, DiffAscending};
 use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -408,6 +409,58 @@ impl fmt::Debug for Regex {
 }
 
 impl Pattern {
+    pub fn new<I>(bytes: I) -> Self
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        let mut bytes = bytes.into_iter();
+        let mut first = bytes.next().expect("Internal Error: Emtpy Pattern");
+        let mut last  = first;
+        let mut class = Vec::new();
+
+        let mut push = |first, last| {
+            if first == last {
+                class.push(Pattern::Byte(first));
+            } else {
+                class.push(Pattern::Range(first, last));
+            }
+        };
+
+        for byte in bytes {
+            if byte == last + 1 {
+                last = byte;
+
+                continue;
+            }
+
+            push(first, last);
+
+            first = byte;
+            last = byte;
+        }
+
+        // Handle last values
+        push(first, last);
+
+        if class.len() == 1 {
+            class.remove(0)
+        } else {
+            Pattern::Class(class)
+        }
+    }
+
+    pub fn bytes(&self) -> Bytes {
+        let mut bytes = Bytes {
+            buf: [0; 256],
+            len: 0,
+            index: 0,
+        };
+
+        bytes.len = self.write_bytes(&mut bytes.buf) as u8;
+
+        bytes
+    }
+
     pub fn is_byte(&self) -> bool {
         match self {
             Pattern::Byte(_) => true,
@@ -446,53 +499,26 @@ impl Pattern {
     }
 
     pub fn combine(&mut self, other: &Pattern) {
-        let len1 = self.len();
-        let len2 = other.len();
-
-        let mut bytes = vec![0; len1 + len2];
-
-        self.to_bytes(&mut bytes);
-        other.to_bytes(&mut bytes[len1..]);
-
-        bytes.sort_unstable();
-        bytes.dedup();
-
-        *self = Pattern::from(&bytes[..]);
+        *self = Pattern::new(MergeAscending::new(&*self, other));
     }
 
     pub fn subtract(&mut self, other: &Pattern) {
-        let mut bytes = vec![0; self.len()];
+        *self = Pattern::new(DiffAscending::new(&*self, other));
+    }
 
-        self.to_bytes(&mut bytes);
-        bytes.sort_unstable();
-
-        for byte in other.to_bytes(&mut [0; 256]) {
-            if let Ok(index) = bytes.binary_search(byte) {
-                bytes.remove(index);
-            }
-        }
-
-        assert!(bytes.len() > 0, "Internal Error: Subtract removed all elements!");
-
-        *self = Pattern::from(&bytes[..]);
+    pub fn negate(&self) -> Pattern {
+        Pattern::new(DiffAscending::new(0..=255, &*self))
     }
 
     pub fn contains(&self, other: &Pattern) -> bool {
         let mut buffer = [0; 256];
-        let bytes = self.to_bytes(&mut buffer);
+        let offset = self.write_bytes(&mut buffer);
+        let bytes = &buffer[..offset];
 
-        bytes.sort_unstable();
-
-        other.to_bytes(&mut [0; 256]).iter().all(|byte| bytes.binary_search(byte).is_ok())
+        other.bytes().all(|byte| bytes.binary_search(&byte).is_ok())
     }
 
-    pub fn to_bytes<'a>(&self, buffer: &'a mut [u8]) -> &'a mut [u8] {
-        let len = self.write_bytes(buffer);
-
-        &mut buffer[..len]
-    }
-
-    pub fn write_bytes(&self, mut target: &mut [u8]) -> usize {
+    fn write_bytes(&self, mut target: &mut [u8]) -> usize {
         let len = self.len();
 
         match self {
@@ -517,40 +543,33 @@ impl Pattern {
     }
 }
 
-impl<'a> From<&'a [u8]> for Pattern {
-    fn from(bytes: &'a [u8]) -> Pattern {
-        let mut class = Vec::new();
-        let mut first = bytes[0];
-        let mut last = first;
-        let mut push = |first, last| {
-            if first == last {
-                class.push(Pattern::Byte(first));
-            } else {
-                class.push(Pattern::Range(first, last));
-            }
-        };
+/// Iterator of all the bytes within the `Pattern`
+pub struct Bytes {
+    buf: [u8; 256],
+    len: u8,
+    index: u8,
+}
 
-        for byte in bytes[1..].iter().cloned() {
-            if byte == last + 1 {
-                last = byte;
+impl Iterator for Bytes {
+    type Item = u8;
 
-                continue;
-            }
-
-            push(first, last);
-
-            first = byte;
-            last = byte;
-        }
-
-        // Handle last values
-        push(first, last);
-
-        if class.len() == 1 {
-            class.remove(0)
+    fn next(&mut self) -> Option<u8> {
+        if self.index < self.len {
+            let byte = self.buf[self.index as usize];
+            self.index += 1;
+            Some(byte)
         } else {
-            Pattern::Class(class)
+            None
         }
+    }
+}
+
+impl<'a> IntoIterator for &'a Pattern {
+    type Item = u8;
+    type IntoIter = Bytes;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.bytes()
     }
 }
 
@@ -577,14 +596,14 @@ mod test {
     fn pattern_bytes_byte() {
         let pattern = Pattern::Byte(b'a');
 
-        assert_eq!(b"a", pattern.to_bytes(&mut [0; 256]));
+        assert!(pattern.bytes().eq("a".bytes()));
     }
 
     #[test]
     fn pattern_bytes_range() {
         let pattern = Pattern::Range(b'a', b'f');
 
-        assert_eq!(b"abcdef", pattern.to_bytes(&mut [0; 256]));
+        assert!(pattern.bytes().eq("abcdef".bytes()));
     }
 
     #[test]
@@ -595,7 +614,7 @@ mod test {
             Pattern::Byte(b'!'),
         ]);
 
-        assert_eq!(b"_$!", pattern.to_bytes(&mut [0; 256]));
+        assert!(pattern.bytes().eq("_$!".bytes()));
     }
 
     #[test]
@@ -608,7 +627,7 @@ mod test {
             Pattern::Byte(b'!'),
         ]);
 
-        assert_eq!(b"abcdef0123456789_$!", pattern.to_bytes(&mut [0; 256]));
+        assert!(pattern.bytes().eq("abcdef0123456789_$!".bytes()));
     }
 
     fn branch(node: Node) -> Option<Branch> {

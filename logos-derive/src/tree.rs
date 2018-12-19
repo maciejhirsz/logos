@@ -318,8 +318,8 @@ mod tests {
 
         let expected = Node::Fork(
             Fork::new(Plain)
-                .arm(Branch::new(Pattern::from(&b"ace"[..])).then(&token))
-                .arm(Branch::new(Pattern::from(&b"bdf"[..])))
+                .arm(Branch::new(Pattern::new("ace".bytes())).then(&token))
+                .arm(Branch::new(Pattern::new("bdf".bytes())))
         );
 
         assert_eq!(node, expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", node, expected);
@@ -422,10 +422,10 @@ mod tests {
                             .arm(
                                 Branch::new(&[
                                     Pattern::Byte(b'x'),
-                                    Pattern::from(&b"0123456789abcdef"[..]),
+                                    Pattern::new("0123456789abcdef".bytes()),
                                 ][..]).then(
                                     Fork::new(Repeat)
-                                        .arm(Branch::new(Pattern::from(&b"0123456789abcdef"[..])))
+                                        .arm(Branch::new(Pattern::new("0123456789abcdef".bytes())))
                                         .then(&hex)
                                 )
                             )
@@ -475,11 +475,11 @@ mod tests {
                 .arm(
                     Branch::new("a")
                         .then(Fork::new(Repeat).arm(Branch::new("a")).then(&a))
-                        .fallback(Fork::new(Repeat).arm(Branch::new(Pattern::from(&b"ab"[..]))).then(&ab))
+                        .fallback(Fork::new(Repeat).arm(Branch::new(Pattern::new("ab".bytes()))).then(&ab))
                 )
                 .arm(
                     Branch::new("b")
-                        .then(Fork::new(Repeat).arm(Branch::new(Pattern::from(&b"ab"[..]))).then(&ab))
+                        .then(Fork::new(Repeat).arm(Branch::new(Pattern::new("ab".bytes()))).then(&ab))
                 );
 
         assert_eq!(fork, expected, "Not equal:\n\nGOT {:#?}\n\nEXPECTED {:#?}", fork, expected);

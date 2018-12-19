@@ -54,8 +54,8 @@ impl<'a> Handlers<'a> {
             fallback,
         });
 
-        for byte in pattern.to_bytes(&mut [0; 256]) {
-            self.handlers[*byte as usize] = Handler::Tree(tree.clone());
+        for byte in pattern.bytes() {
+            self.handlers[byte as usize] = Handler::Tree(tree.clone());
         }
     }
 

@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+use std::iter::Peekable;
+
 pub use syn::{Attribute, Lit, Ident, Meta, NestedMeta};
 pub use proc_macro2::Span;
 use quote::quote;
@@ -108,5 +111,117 @@ pub fn ident(ident: &str) -> Ident {
     match syn::parse_str::<Ident>(ident) {
         Ok(ident) => ident,
         Err(_)    => panic!("Unable to parse {:?} into a Rust identifier.", ident),
+    }
+}
+
+pub struct MergeAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    left: Peekable<L>,
+    right: Peekable<R>,
+}
+
+impl<L, R> MergeAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    pub fn new<LI, RI>(left: LI, right: RI) -> Self
+    where
+        LI: IntoIterator<IntoIter = L, Item = L::Item>,
+        RI: IntoIterator<IntoIter = R, Item = R::Item>,
+    {
+        MergeAscending {
+            left: left.into_iter().peekable(),
+            right: right.into_iter().peekable(),
+        }
+    }
+}
+
+impl<L, R> Iterator for MergeAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+    L::Item: Ord,
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<L::Item> {
+        let which = match (self.left.peek(), self.right.peek()) {
+            (Some(l), Some(r)) => Some(l.cmp(r)),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+
+        match which {
+            Some(Ordering::Less) => self.left.next(),
+            Some(Ordering::Equal) => {
+                // Advance both
+                self.left.next();
+                self.right.next()
+            },
+            Some(Ordering::Greater) => self.right.next(),
+            None => None,
+        }
+    }
+}
+
+pub struct DiffAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    left: Peekable<L>,
+    right: Peekable<R>,
+}
+
+impl<L, R> DiffAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    pub fn new<LI, RI>(left: LI, right: RI) -> Self
+    where
+        LI: IntoIterator<IntoIter = L, Item = L::Item>,
+        RI: IntoIterator<IntoIter = R, Item = R::Item>,
+    {
+        DiffAscending {
+            left: left.into_iter().peekable(),
+            right: right.into_iter().peekable(),
+        }
+    }
+}
+
+impl<L, R> Iterator for DiffAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+    L::Item: Ord,
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<L::Item> {
+        let which = match (self.left.peek(), self.right.peek()) {
+            (Some(l), Some(r)) => Some(l.cmp(r)),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+
+        match which {
+            Some(Ordering::Less) => self.left.next(),
+            Some(Ordering::Equal) => {
+                // Advance both to skip matches
+                self.left.next();
+                self.right.next();
+
+                self.next()
+            },
+            Some(Ordering::Greater) => self.right.next(),
+            None => None,
+        }
     }
 }
