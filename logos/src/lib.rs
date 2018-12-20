@@ -97,7 +97,7 @@ pub mod source;
 pub mod internal;
 
 pub use self::lexer::{Lexer, Lexicon, Extras};
-pub use self::source::{Source, Slice, WithSource};
+pub use self::source::{Source, Slice};
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
@@ -124,14 +124,14 @@ pub trait Logos: Sized {
     fn lexicon<'lexicon, 'source, Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>
     where
         Source: self::Source<'source>,
-        Self: WithSource<Source>;
+        Self: source::WithSource<Source>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
     fn lexer<'source, Source>(source: Source) -> Lexer<Self, Source>
     where
         Source: self::Source<'source>,
-        Self: WithSource<Source>,
+        Self: source::WithSource<Source>,
     {
         Lexer::new(source)
     }

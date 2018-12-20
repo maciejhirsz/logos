@@ -91,7 +91,8 @@ mod advanced {
             (Token::LiteralString, "\"foobar\"", 4..12),
             (Token::LiteralString, "\"escaped\\\"quote\"", 13..29),
             (Token::LiteralString, "\"escaped\\nnew line\"", 30..49),
-            (Token::Error, "\"\\", 50..52),
+            (Token::Error, "\"", 50..51),
+            (Token::Error, "\\", 51..52),
             (Token::Error, "x", 52..53),
             (Token::Error, "\" ", 53..55),
         ]);

@@ -98,15 +98,19 @@ pub trait Source<'source> {
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice;
 }
 
-/// Marker trait for any `Source` that can be sliced into arbitrary byte chunks.
+/// Marker trait for any `Source` that can be sliced into arbitrary byte chunks,
+/// with no regard for UTF-8 (or any other) character encoding.
 pub trait BinarySource<'source>: Source<'source> {}
 
-/// Marker trait for any `Logos`, which can constrain it to a specific subset of
-/// `Source`s, should using a particular `Source` produce unsafety.
+/// Marker trait for any `Logos`, which will constrain it to a specific subset of
+/// `Source`s.
 ///
 /// In particular, if your token definitions would allow reading invalid UTF-8,
 /// the `Logos` derive macro will restrict you to lexing on `Source`s that also
 /// implement the `BinarySource` marker (`&[u8]` is provided).
+///
+/// **Note:** You shouldn't implement this trait yourself, `#[derive(Logos)]` will
+/// do it for you.
 pub trait WithSource<Source> {}
 
 impl<'source> Source<'source> for &'source str {

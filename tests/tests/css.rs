@@ -85,15 +85,15 @@ mod advanced {
     #[test]
     fn test_letter_spacing() {
         assert_lex(
-            "h3 { letter-spacing: 1Q }",
+            "h3 { letter-spacing: 42em }",
             &[
                 (Token::Ident, "h3", 0..2),
                 (Token::CurlyBracketOpen, "{", 3..4),
                 (Token::Ident, "letter-spacing", 5..19),
                 (Token::Colon, ":", 19..20),
-                (Token::Number, "1", 21..22),
-                (Token::AbsoluteLength, "Q", 22..23),
-                (Token::CurlyBracketClose, "}", 24..25),
+                (Token::Number, "42", 21..23),
+                (Token::RelativeLength, "em", 23..25),
+                (Token::CurlyBracketClose, "}", 26..27),
             ],
         );
     }
