@@ -39,9 +39,6 @@ pub trait Source<'source> {
     /// A type this `Source` can be sliced into.
     type Slice: self::Slice<'source>;
 
-    /// Marks if this source is valid UTF8.
-    const UTF8: bool;
-
     /// Length of the source
     fn len(&self) -> usize;
 
@@ -101,10 +98,19 @@ pub trait Source<'source> {
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice;
 }
 
+/// Marker trait for any `Source` that can be sliced into arbitrary byte chunks.
+pub trait BinarySource<'source>: Source<'source> {}
+
+/// Marker trait for any `Logos`, which can constrain it to a specific subset of
+/// `Source`s, should using a particular `Source` produce unsafety.
+///
+/// In particular, if your token definitions would allow reading invalid UTF-8,
+/// the `Logos` derive macro will restrict you to lexing on `Source`s that also
+/// implement the `BinarySource` marker (`&[u8]` is provided).
+pub trait WithSource<Source> {}
+
 impl<'source> Source<'source> for &'source str {
     type Slice = &'source str;
-
-    const UTF8: bool = true;
 
     #[inline]
     fn len(&self) -> usize {
@@ -142,8 +148,6 @@ impl<'source> Source<'source> for &'source str {
 impl<'source> Source<'source> for &'source [u8] {
     type Slice = &'source [u8];
 
-    const UTF8: bool = false;
-
     #[inline]
     fn len(&self) -> usize {
         (*self).len()
@@ -177,31 +181,7 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 }
 
-/// Trait for markers that check if a given `Logos` can be used with a given `Source`.
-pub trait SourceMarker {
-    /// Injects an assert that makes sure we aren't doing breaking encoding assumptions.
-    fn check_source<'source, Source: self::Source<'source>>() {}
-}
-
-/// Marks `Logos` that can be used with either UTF-8 or binary sources.
-pub struct AnySource;
-
-/// Marks `Logos` that can only be used with binary sources.
-pub struct BinaryOnly;
-
-impl SourceMarker for AnySource {}
-impl SourceMarker for BinaryOnly {
-    fn check_source<'source, Source: self::Source<'source>>() {
-        // FIXME: It would be nice if this was a compile time check instead of a panic
-        if Source::UTF8 {
-            panic!(
-                "You are trying to use a UTF-8 source, but your token definitions can\n\
-                 read invalid UTF-8 binary.\n\n\
-                 Convert your source to a byte slice &[u8] to continue."
-            );
-        }
-    }
-}
+impl<'source> BinarySource<'source> for &'source [u8] {}
 
 /// A fixed, statically sized chunk of data that can be read from the `Source`.
 ///

@@ -97,7 +97,7 @@ pub mod source;
 pub mod internal;
 
 pub use self::lexer::{Lexer, Lexicon, Extras};
-pub use self::source::{Source, Slice};
+pub use self::source::{Source, Slice, WithSource};
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
@@ -106,9 +106,6 @@ pub trait Logos: Sized {
     /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
     /// in JavaScript.
     type Extras: self::Extras;
-
-    /// Marker that tells us which `Source`s can be used with this `Logos`.
-    type SourceMarker: crate::source::SourceMarker;
 
     /// `SIZE` is simply a number of possible variants of the `Logos` enum. The
     /// `derive` macro will make sure that all variants don't hold values larger
@@ -126,13 +123,15 @@ pub trait Logos: Sized {
     /// Returns a lookup table for the `Lexer`
     fn lexicon<'lexicon, 'source, Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>
     where
-        Source: self::Source<'source>;
+        Source: self::Source<'source>,
+        Self: WithSource<Source>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
     fn lexer<'source, Source>(source: Source) -> Lexer<Self, Source>
     where
         Source: self::Source<'source>,
+        Self: WithSource<Source>,
     {
         Lexer::new(source)
     }

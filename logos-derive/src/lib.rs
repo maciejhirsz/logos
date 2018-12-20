@@ -161,13 +161,16 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let tokens = quote! {
         impl ::logos::Logos for #name {
             type Extras = #extras;
-            type SourceMarker = ::logos::source::AnySource;
 
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
-            fn lexicon<'lexicon, 'source, S: ::logos::Source<'source>>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
+            fn lexicon<'lexicon, 'source, Source>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, Source>>
+            where
+                Source: ::logos::Source<'source>,
+                Self: ::logos::source::WithSource<Source>,
+            {
                 use ::logos::internal::LexerInternal;
                 use ::logos::source::Split;
 
@@ -184,6 +187,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 &[#(#handlers),*]
             }
         }
+
+        impl<'source, Source: ::logos::Source<'source>> ::logos::source::WithSource<Source> for #name {}
 
         #[macro_export]
         #[doc(hidden)]

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::source::{self, Source, SourceMarker};
+use crate::source::{self, Source, WithSource};
 use super::{Logos};
 use super::internal::LexerInternal;
 
@@ -41,7 +41,7 @@ macro_rules! unroll {
 
 impl<'source, Token, Source> Lexer<Token, Source>
 where
-    Token: self::Logos,
+    Token: self::Logos + WithSource<Source>,
     Source: self::Source<'source>,
 {
     /// Create a new `Lexer`.
@@ -49,8 +49,6 @@ where
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
     pub fn new(source: Source) -> Self {
-        Token::SourceMarker::check_source::<Source>();
-
         let mut lex = Lexer {
             source,
             token: Token::ERROR,
@@ -109,12 +107,11 @@ where
     /// and the current token becomes the error token of the new token type.
     /// If you want to start reading from the new lexer immediately,
     /// consider using `Lexer::advance_as` instead.
-    pub fn morph<Token2: Logos>(self) -> Lexer<Token2, Source>
+    pub fn morph<Token2>(self) -> Lexer<Token2, Source>
     where
+        Token2: Logos + WithSource<Source>,
         Token::Extras: Into<Token2::Extras>,
     {
-        Token2::SourceMarker::check_source::<Source>();
-
         Lexer {
             source: self.source,
             token: Token2::ERROR,
@@ -128,8 +125,9 @@ where
     ///
     /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
     /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    pub fn advance_as<Token2: Logos>(self) -> Lexer<Token2, Source>
+    pub fn advance_as<Token2>(self) -> Lexer<Token2, Source>
     where
+        Token2: Logos + WithSource<Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         let mut lex = self.morph();
