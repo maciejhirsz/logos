@@ -32,6 +32,7 @@ enum Mode {
 }
 
 #[proc_macro_derive(Logos, attributes(
+    logos,
     extras,
     error,
     end,
@@ -112,10 +113,29 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 };
 
                 fork.insert(Node::from_sequence(bytes, leaf));
-            } else if let Some(definition) = value_from_attr::<Definition<String>>("regex", attr) {
+            } else if let Some(definition) = value_from_attr::<Definition<Literal>>("regex", attr) {
                 leaf.callback = definition.callback;
 
-                fork.insert(Node::from_regex(&definition.value, Some(leaf)));
+                let (utf8, regex): (bool, String) = match definition.value {
+                    Literal::Utf8(string) => (true, string),
+                    Literal::Bytes(bytes) => {
+                        mode = Mode::Binary;
+
+                        let mut string = String::with_capacity(bytes.len());
+
+                        for byte in bytes {
+                            if byte < 0x7F {
+                                string.push(byte as char);
+                            } else {
+                                string.push_str(&format!("\\x{:02x}", byte));
+                            }
+                        }
+
+                        (false, string)
+                    },
+                };
+
+                fork.insert(Node::from_regex(&regex, utf8, Some(leaf)));
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {

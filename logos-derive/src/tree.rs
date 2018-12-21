@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn pack_branches_with_a_fork() {
-        let mut node = Node::from_regex("abc(1|2|3|4|5)xyz", None);
+        let mut node = Node::from_regex("abc(1|2|3|4|5)xyz", true, None);
 
         assert_eq!(node, Node::Branch(
             Branch::new("abc").then(
@@ -405,8 +405,8 @@ mod tests {
         let int = token("INTEGER");
         let hex = token("HEX");
 
-        let int_node = Node::from_regex("[0-9]+", Some(Leaf::from(&int)));
-        let hex_node = Node::from_regex("0x[0-9a-f]+", Some(Leaf::from(&hex)));
+        let int_node = Node::from_regex("[0-9]+", true, Some(Leaf::from(&int)));
+        let hex_node = Node::from_regex("0x[0-9a-f]+", true, Some(Leaf::from(&hex)));
 
         let mut fork = Fork::new(Plain);
 
@@ -461,8 +461,8 @@ mod tests {
         let ab = token("AB");
         let a  = token("A");
 
-        let ab_node = Node::from_regex("[ab]+", Some(Leaf::from(&ab)));
-        let ac_node = Node::from_regex("a+", Some(Leaf::from(&a)));
+        let ab_node = Node::from_regex("[ab]+", true, Some(Leaf::from(&ab)));
+        let ac_node = Node::from_regex("a+", true, Some(Leaf::from(&a)));
 
         let mut fork = Fork::new(Plain);
 
@@ -491,9 +491,9 @@ mod tests {
         let hex   = token("HEX");
         let float = token("FLOAT");
 
-        let int_node = Node::from_regex("[0-9]+", Some(Leaf::from(&int)));
-        let hex_node = Node::from_regex("0x[0-9a-f]+", Some(Leaf::from(&hex)));
-        let float_node = Node::from_regex("[0-9]+\\.[0-9]+", Some(Leaf::from(&float)));
+        let int_node = Node::from_regex("[0-9]+", true, Some(Leaf::from(&int)));
+        let hex_node = Node::from_regex("0x[0-9a-f]+", true, Some(Leaf::from(&hex)));
+        let float_node = Node::from_regex("[0-9]+\\.[0-9]+", true, Some(Leaf::from(&float)));
 
         let mut fork_a = Fork::new(Plain);
         let mut fork_b = Fork::new(Plain);

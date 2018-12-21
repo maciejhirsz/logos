@@ -1,6 +1,6 @@
 use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
 use regex_syntax::hir::{self, Hir, HirKind, Class};
-use regex_syntax::Parser;
+use regex_syntax::ParserBuilder;
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -26,8 +26,14 @@ impl<'a> Node<'a> {
         Node::new(regex, leaf)
     }
 
-    pub fn from_regex(source: &str, leaf: Option<Leaf<'a>>) -> Self {
-        let hir = match Parser::new().parse(source) {
+    pub fn from_regex(source: &str, utf8: bool, leaf: Option<Leaf<'a>>) -> Self {
+        let mut builder = ParserBuilder::new();
+
+        if !utf8 {
+            builder.allow_invalid_utf8(true).unicode(false);
+        }
+
+        let hir = match builder.build().parse(source) {
             Ok(hir) => hir.into_kind(),
             Err(err) => {
                 if let Some(leaf) = leaf {
@@ -126,7 +132,7 @@ impl<'a> Node<'a> {
                 Some(Node::from(fork))
             },
             // This handles classes with non-ASCII Unicode ranges
-            HirKind::Class(ref class) if !class_is_ascii(class) => {
+            HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
                 match class {
                     Class::Unicode(unicode) => {
                         let mut branches =
@@ -144,7 +150,11 @@ impl<'a> Node<'a> {
                             node
                         })
                     },
-                    Class::Bytes(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                    Class::Bytes(_) => {
+                        // `is_ascii_or_bytes` check shouldn't permit us to branch here
+
+                        panic!("Internal Error")
+                    },
                 }
             },
             _ => {
@@ -191,47 +201,56 @@ impl Regex {
                                 .map(Pattern::Byte)
                         );
                     },
-                    Literal::Byte(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                    Literal::Byte(byte) => {
+                        regex.patterns.push(Pattern::Byte(*byte));
+                    },
                 };
 
                 true
             },
             HirKind::Class(class) => {
-                if !class_is_ascii(&class) {
+                if !is_ascii_or_bytes(&class) {
                     return false;
                 }
 
-                match class {
+                let mut class: Vec<_> = match class {
                     Class::Unicode(unicode) => {
-                        let mut class = unicode
+                        unicode
                             .iter()
                             .map(|range| {
-                                let (start, mut end) = (range.start(), range.end());
+                                let (start, end) = (range.start(), range.end());
 
-                                static NON_ASCII: &str = "Non-ASCII ranges in #[regex] classes are currently unsupported.";
-
-                                match end as u32 {
-                                    0x10FFFF => end = 0xFF as char,
-                                    _        => assert!(end.is_ascii(), NON_ASCII),
-                                }
-
-                                assert!(start.is_ascii(), NON_ASCII);
+                                let start = start as u8;
+                                let end = if end == '\u{10FFFF}' { 0xFF } else { end as u8 };
 
                                 if start == end {
-                                    Pattern::Byte(start as u8)
+                                    Pattern::Byte(start)
                                 } else {
-                                    Pattern::Range(start as u8, end as u8)
+                                    Pattern::Range(start, end)
                                 }
                             })
-                            .collect::<Vec<_>>();
-
-                        match class.len() {
-                            0 => {},
-                            1 => regex.patterns.push(class.remove(0)),
-                            _ => regex.patterns.push(Pattern::Class(class)),
-                        }
+                            .collect()
                     },
-                    Class::Bytes(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                    Class::Bytes(bytes) => {
+                        bytes
+                            .iter()
+                            .map(|range| {
+                                let (start, end) = (range.start(), range.end());
+
+                                if start == end {
+                                    Pattern::Byte(start)
+                                } else {
+                                    Pattern::Range(start, end)
+                                }
+                            })
+                            .collect()
+                    },
+                };
+
+                match class.len() {
+                    0 => {},
+                    1 => regex.patterns.push(class.remove(0)),
+                    _ => regex.patterns.push(Pattern::Class(class)),
                 }
 
                 true
@@ -326,7 +345,7 @@ impl<'a> From<&'a str> for Regex {
     }
 }
 
-fn class_is_ascii(class: &Class) -> bool {
+fn is_ascii_or_bytes(class: &Class) -> bool {
     match class {
         Class::Unicode(unicode) => {
             unicode.iter().all(|range| {
@@ -336,7 +355,7 @@ fn class_is_ascii(class: &Class) -> bool {
                 start < 128 && (end < 128 || end == 0x10FFFF)
             })
         },
-        Class::Bytes(_) => false,
+        Class::Bytes(_) => true,
     }
 }
 
@@ -647,7 +666,7 @@ mod test {
     #[test]
     fn branch_regex_number() {
         let regex = "[1-9][0-9]*";
-        let b = branch(Node::from_regex(regex, None)).unwrap();
+        let b = branch(Node::from_regex(regex, true, None)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
 
@@ -659,7 +678,7 @@ mod test {
     #[test]
     fn regex_ident() {
         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
-        let b = branch(Node::from_regex(regex, None)).unwrap();
+        let b = branch(Node::from_regex(regex, true, None)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Class(vec![
@@ -686,7 +705,7 @@ mod test {
     #[test]
     fn regex_hex() {
         let regex = "0x[0-9a-fA-F]+";
-        let b = branch(Node::from_regex(regex, None)).unwrap();
+        let b = branch(Node::from_regex(regex, true, None)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Byte(b'0'),
@@ -707,7 +726,7 @@ mod test {
     #[test]
     fn regex_unshift() {
         let regex = "abc";
-        let mut r = branch(Node::from_regex(regex, None)).unwrap().regex;
+        let mut r = branch(Node::from_regex(regex, true, None)).unwrap().regex;
 
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'a'),

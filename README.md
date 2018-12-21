@@ -84,8 +84,8 @@ fn main() {
 Ridiculously fast!
 
 ```
-test identifiers                       ... bench:         677 ns/iter (+/- 2) = 1150 MB/s
-test keywords_operators_and_punctators ... bench:       1,780 ns/iter (+/- 27) = 1197 MB/s
+test identifiers                       ... bench:         675 ns/iter (+/- 3) = 1154 MB/s
+test keywords_operators_and_punctators ... bench:       1,814 ns/iter (+/- 16) = 1174 MB/s
 ```
 
 ## License
