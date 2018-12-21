@@ -6,11 +6,13 @@ use logos_derive::Logos;
 enum Outer {
     #[end]
     End,
+
     #[error]
     Error,
 
     #[token = "\""]
     StartString,
+
     #[regex = r"\p{White_Space}"]
     WhiteSpace,
 }
@@ -20,17 +22,22 @@ enum Outer {
 enum Inner {
     #[end]
     End,
+
     #[error]
     Error,
 
     #[regex = r#"[^\\"]+"#]
     Text,
+
     #[token = "\\n"]
     EscapedNewline,
+
     #[regex = r"\\u\{[^}]*\}"]
     EscapedCodepoint,
+
     #[token = r#"\""#]
     EscapedQuote,
+
     #[token = "\""]
     EndString,
 }
@@ -47,12 +54,16 @@ fn main() {
     let mut inner = outer.advance_as::<Inner>();
     assert_eq!(inner.token, Inner::Text);
     inner.advance();
+
     assert_eq!(inner.token, Inner::EscapedCodepoint);
     inner.advance();
+
     assert_eq!(inner.token, Inner::Text);
     inner.advance();
+
     assert_eq!(inner.token, Inner::EscapedNewline);
     inner.advance();
+
     assert_eq!(inner.token, Inner::EndString);
 
     // We've exited the string, parser returns to outer lexer

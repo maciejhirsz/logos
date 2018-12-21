@@ -270,7 +270,7 @@ pub trait CodeGenerator<'a>: Sized {
         self.print_then(then, ctx)
     }
 
-    fn print_lex_read<Code>(&mut self, code: Code, default: MatchDefault, bytes: usize, ctx: Context) -> TokenStream
+    fn print_lex_read<Code>(&mut self, default: MatchDefault, bytes: usize, ctx: Context, code: Code) -> TokenStream
     where
         Code: FnOnce(&mut Self, Context) -> TokenStream,
     {
@@ -309,10 +309,9 @@ pub trait CodeGenerator<'a>: Sized {
                 return self.print_simple_branch(branch, ctx);
             }
 
-            // let branch = self.print_branch(branch, Context::new(read));
-            let branch = |gen: &mut Self, ctx| gen.print_branch(branch, ctx);
-
-            return self.print_lex_read(branch, MatchDefault::None, read, ctx);
+            return self.print_lex_read(MatchDefault::None, read, ctx, |gen: &mut Self, ctx| {
+                gen.print_branch(branch, ctx)
+            });
         }
 
         let (source, split) = if ctx.available > len {
@@ -395,9 +394,9 @@ pub trait CodeGenerator<'a>: Sized {
                 },
             };
 
-            let fork = |gen: &mut Self, ctx| gen.print_fork_as_match(fork, ctx);
-
-            return self.print_lex_read(fork, default, read, ctx);
+            return self.print_lex_read(default, read, ctx, |gen, ctx| {
+                gen.print_fork_as_match(fork, ctx)
+            });
         }
 
         let kind = fork.kind;
@@ -801,7 +800,7 @@ where
         };
     }
 
-    fn print_lex_read<Code>(&mut self, code: Code, default: MatchDefault, bytes: usize, ctx: Context) -> TokenStream
+    fn print_lex_read<Code>(&mut self, default: MatchDefault, bytes: usize, ctx: Context, code: Code) -> TokenStream
     where
         Code: FnOnce(&mut Self, Context) -> TokenStream,
     {
@@ -900,7 +899,7 @@ where
         };
     }
 
-    fn print_lex_read<Code>(&mut self, code: Code, default: MatchDefault, bytes: usize, ctx: Context) -> TokenStream
+    fn print_lex_read<Code>(&mut self, default: MatchDefault, bytes: usize, ctx: Context, code: Code) -> TokenStream
     where
         Code: FnOnce(&mut Self, Context) -> TokenStream,
     {

@@ -13,7 +13,10 @@ pub struct Regex {
 }
 
 impl<'a> Node<'a> {
-    pub fn from_sequence(source: &str, leaf: Leaf<'a>) -> Self {
+    pub fn from_sequence<Source>(source: Source, leaf: Leaf<'a>) -> Self
+    where
+        Source: AsRef<[u8]>,
+    {
         let regex = Regex::sequence(source);
 
         if regex.len() == 0 {
@@ -164,9 +167,12 @@ impl Regex {
         self.patterns().len()
     }
 
-    pub fn sequence(source: &str) -> Self {
+    pub fn sequence<Source>(source: Source) -> Self
+    where
+        Source: AsRef<[u8]>,
+    {
         Regex {
-            patterns: source.bytes().map(Pattern::Byte).collect(),
+            patterns: source.as_ref().iter().cloned().map(Pattern::Byte).collect(),
         }
     }
 

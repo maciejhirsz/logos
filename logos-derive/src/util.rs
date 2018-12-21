@@ -18,35 +18,49 @@ impl<T> OptionExt<T> for Option<T> {
     }
 }
 
-pub struct VariantDefinition {
-    pub value: String,
+pub struct Definition<V: Value> {
+    pub value: V,
     pub callback: Option<Ident>,
 }
 
+pub enum Literal {
+    Utf8(String),
+    Bytes(Vec<u8>),
+}
+
 pub trait Value {
-    fn value(value: String) -> Self;
+    fn value(value: Literal) -> Self;
 
     fn nested(&mut self, nested: &NestedMeta) {
         panic!("Unexpected nested attribute: {}", quote!(#nested));
     }
 }
 
-impl Value for String {
-    fn value(value: String) -> Self {
+impl Value for Literal {
+    fn value(value: Literal) -> Self {
         value
     }
 }
 
-impl Value for Ident {
-    fn value(value: String) -> Self {
-        ident(&value)
+impl Value for String {
+    fn value(value: Literal) -> Self {
+        match value {
+            Literal::Utf8(value)  => value,
+            Literal::Bytes(bytes) => panic!("Expected a string, got a bytes instead: {:02X?}", bytes),
+        }
     }
 }
 
-impl Value for VariantDefinition {
-    fn value(value: String) -> Self {
-        VariantDefinition {
-            value,
+impl Value for Ident {
+    fn value(value: Literal) -> Self {
+        ident(&String::value(value))
+    }
+}
+
+impl<V: Value> Value for Definition<V> {
+    fn value(value: Literal) -> Self {
+        Definition {
+            value: V::value(value),
             callback: None,
         }
     }
@@ -81,8 +95,9 @@ where
         },
         Meta::NameValue(ref nval) if nval.ident == name => {
             let value = match nval.lit {
-                Lit::Str(ref v) => v.value(),
-                _ => panic!("#[{}] value must be a literal string", name),
+                Lit::Str(ref v)     => Literal::Utf8(v.value()),
+                Lit::ByteStr(ref v) => Literal::Bytes(v.value()),
+                _ => panic!("#[{}] value must be a literal string or byte string", name),
             };
 
             Some(V::value(value))
@@ -91,8 +106,9 @@ where
             let mut iter = list.nested.iter();
 
             let value = match iter.next() {
-                Some(NestedMeta::Literal(Lit::Str(ref v))) => v.value(),
-                _ => panic!("#[{}] first argument must be a literal string, got: {}", name, quote!(#attr)),
+                Some(NestedMeta::Literal(Lit::Str(ref v)))     => Literal::Utf8(v.value()),
+                Some(NestedMeta::Literal(Lit::ByteStr(ref v))) => Literal::Bytes(v.value()),
+                _ => panic!("#[{}] first argument must be a literal string or byte string, got: {}", name, quote!(#attr)),
             };
 
             let mut value = V::value(value);

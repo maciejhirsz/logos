@@ -1,6 +1,5 @@
-use logos::{Logos, Extras, Lexer};
+use logos::{Extras, Lexer};
 use logos_derive::Logos;
-use std::ops::Range;
 
 #[derive(Default)]
 struct MockExtras {
@@ -124,22 +123,9 @@ enum Token {
     FatArrow,
 }
 
-fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
-where
-    Source: logos::Source<'a>,
-{
-    let mut lex = Token::lexer(source);
-
-    for tuple in tokens {
-        assert_eq!(&(lex.token, lex.slice(), lex.range()), tuple);
-
-        lex.advance();
-    }
-
-    assert_eq!(lex.token, Token::End);
-}
-
 mod simple {
+    use logos::Logos;
+    use tests::assert_lex;
     use super::*;
 
     #[test]

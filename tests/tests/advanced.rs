@@ -1,6 +1,5 @@
-use logos::{Logos, lookup};
+use logos::lookup;
 use logos_derive::Logos;
-use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
@@ -66,22 +65,9 @@ enum Token {
     Keyword,
 }
 
-fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
-where
-    Source: logos::Source<'a>,
-{
-    let mut lex = Token::lexer(source);
-
-    for tuple in tokens {
-        assert_eq!(&(lex.token, lex.slice(), lex.range()), tuple);
-
-        lex.advance();
-    }
-
-    assert_eq!(lex.token, Token::End);
-}
-
 mod advanced {
+    use logos::Logos;
+    use tests::assert_lex;
     use super::*;
 
     #[test]

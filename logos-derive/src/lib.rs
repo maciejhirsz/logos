@@ -18,13 +18,18 @@ mod handlers;
 mod generator;
 
 use self::tree::{Node, Fork, Leaf};
-use self::util::{OptionExt, VariantDefinition, value_from_attr};
+use self::util::{OptionExt, Definition, Literal, value_from_attr};
 use self::handlers::{Handlers, Handler};
 use self::generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
 use syn::{ItemEnum, Fields, Ident};
+
+enum Mode {
+    Utf8,
+    Binary,
+}
 
 #[proc_macro_derive(Logos, attributes(
     extras,
@@ -44,6 +49,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut extras: Option<Ident> = None;
     let mut error = None;
     let mut end = None;
+    let mut mode = Mode::Utf8;
 
     for attr in &item.attrs {
         if let Some(ext) = value_from_attr("extras", attr) {
@@ -93,11 +99,20 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 callback: None,
             };
 
-            if let Some(definition) = value_from_attr::<VariantDefinition>("token", attr) {
+            if let Some(definition) = value_from_attr::<Definition<Literal>>("token", attr) {
                 leaf.callback = definition.callback;
 
-                fork.insert(Node::from_sequence(&definition.value, leaf));
-            } else if let Some(definition) = value_from_attr::<VariantDefinition>("regex", attr) {
+                let bytes = match definition.value {
+                    Literal::Utf8(ref string) => string.as_bytes(),
+                    Literal::Bytes(ref bytes) => {
+                        mode = Mode::Binary;
+
+                        &bytes
+                    },
+                };
+
+                fork.insert(Node::from_sequence(bytes, leaf));
+            } else if let Some(definition) = value_from_attr::<Definition<String>>("regex", attr) {
                 leaf.callback = definition.callback;
 
                 fork.insert(Node::from_regex(&definition.value, Some(leaf)));
@@ -158,6 +173,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
         variants.iter()
             .map(|variant| quote!( ($num:tt; #name::#variant => $val:expr; $( $rest:tt )* ) => (#name!($num; $($rest)*)); ));
 
+    let source = match mode {
+        Mode::Utf8   => quote!(Source),
+        Mode::Binary => quote!(BinarySource),
+    };
+
     let tokens = quote! {
         impl ::logos::Logos for #name {
             type Extras = #extras;
@@ -188,7 +208,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl<'source, Source: ::logos::Source<'source>> ::logos::source::WithSource<Source> for #name {}
+        impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
 
         #[macro_export]
         #[doc(hidden)]
