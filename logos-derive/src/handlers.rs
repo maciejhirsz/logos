@@ -27,11 +27,21 @@ pub struct Handlers<'a> {
     handlers: Vec<Handler<'a>>,
 }
 
+pub enum Trivia {
+    Default,
+    None,
+}
+
 impl<'a> Handlers<'a> {
-    pub fn new() -> Self {
+    pub fn new(trivia: Trivia) -> Self {
         let mut handlers = vec![Handler::Error; 256];
 
-        handlers[0..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
+        match trivia {
+            Trivia::Default => {
+                handlers[0..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
+            },
+            Trivia::None => {}
+        }
 
         Handlers {
             handlers

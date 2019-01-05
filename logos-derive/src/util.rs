@@ -23,13 +23,14 @@ pub struct Definition<V: Value> {
     pub callback: Option<Ident>,
 }
 
+#[derive(Debug)]
 pub enum Literal {
     Utf8(String),
     Bytes(Vec<u8>),
 }
 
 pub trait Value {
-    fn value(value: Literal) -> Self;
+    fn value(value: Option<Literal>) -> Self;
 
     fn nested(&mut self, nested: &NestedMeta) {
         panic!("Unexpected nested attribute: {}", quote!(#nested));
@@ -37,28 +38,40 @@ pub trait Value {
 }
 
 impl Value for Literal {
-    fn value(value: Literal) -> Self {
+    fn value(value: Option<Literal>) -> Self {
+        match value {
+            Some(value) => value,
+            None        => panic!("Expected a string or bytes to be the first field to attribute."),
+        }
+    }
+}
+
+impl Value for Option<Literal> {
+    fn value(value: Option<Literal>) -> Self {
         value
     }
 }
 
 impl Value for String {
-    fn value(value: Literal) -> Self {
+    fn value(value: Option<Literal>) -> Self {
         match value {
-            Literal::Utf8(value)  => value,
-            Literal::Bytes(bytes) => panic!("Expected a string, got a bytes instead: {:02X?}", bytes),
+            Some(Literal::Utf8(value))  => value,
+
+            // TODO: Better errors
+            Some(Literal::Bytes(bytes)) => panic!("Expected a string, got a bytes instead: {:02X?}", bytes),
+            None                        => panic!("Expected a string"),
         }
     }
 }
 
 impl Value for Ident {
-    fn value(value: Literal) -> Self {
+    fn value(value: Option<Literal>) -> Self {
         ident(&String::value(value))
     }
 }
 
 impl<V: Value> Value for Definition<V> {
-    fn value(value: Literal) -> Self {
+    fn value(value: Option<Literal>) -> Self {
         Definition {
             value: V::value(value),
             callback: None,
@@ -80,47 +93,79 @@ impl<V: Value> Value for Definition<V> {
     }
 }
 
-pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Option<V>
-where
-    V: Value,
-{
+pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {
     let meta = match attr.parse_meta() {
         Ok(meta) => meta,
         Err(_) => panic!("Couldn't parse attribute: {}", quote!(#attr)),
     };
 
+    read_meta(name, meta)
+}
+
+pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
+    if let NestedMeta::Meta(meta) = nested {
+        read_meta(name, meta)
+    } else {
+        None
+    }
+}
+
+pub fn read_meta(name: &str, meta: Meta) -> Option<Vec<NestedMeta>> {
     match meta {
         Meta::Word(ref ident) if ident == name => {
             panic!("Expected #[{} = ...], or #[{}(...)]", name, name);
         },
-        Meta::NameValue(ref nval) if nval.ident == name => {
-            let value = match nval.lit {
-                Lit::Str(ref v)     => Literal::Utf8(v.value()),
-                Lit::ByteStr(ref v) => Literal::Bytes(v.value()),
-                _ => panic!("#[{}] value must be a literal string or byte string", name),
-            };
-
-            Some(V::value(value))
-        },
-        Meta::List(ref list) if list.ident == name => {
-            let mut iter = list.nested.iter();
-
-            let value = match iter.next() {
-                Some(NestedMeta::Literal(Lit::Str(ref v)))     => Literal::Utf8(v.value()),
-                Some(NestedMeta::Literal(Lit::ByteStr(ref v))) => Literal::Bytes(v.value()),
-                _ => panic!("#[{}] first argument must be a literal string or byte string, got: {}", name, quote!(#attr)),
-            };
-
-            let mut value = V::value(value);
-
-            for nested in iter {
-                value.nested(nested);
+        Meta::NameValue(nval) => {
+            if nval.ident == name {
+                Some(vec![NestedMeta::Literal(nval.lit)])
+            } else {
+                None
             }
-
-            Some(value)
+        },
+        Meta::List(list) => {
+            if list.ident == name {
+                Some(list.nested.into_iter().collect())
+            } else {
+                None
+            }
         },
         _ => None,
     }
+}
+
+pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Option<V>
+where
+    V: Value,
+{
+    read_attr(name, attr).map(parse_value)
+}
+
+pub fn value_from_nested<V>(name: &str, nested: NestedMeta) -> Option<V>
+where
+    V: Value,
+{
+    read_nested(name, nested).map(parse_value)
+}
+
+fn parse_value<V>(items: Vec<NestedMeta>) -> V
+where
+    V: Value,
+{
+    let mut iter = items.iter();
+
+    let value = match iter.next() {
+        Some(NestedMeta::Literal(Lit::Str(ref v)))     => Some(Literal::Utf8(v.value())),
+        Some(NestedMeta::Literal(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value())),
+        _ => None,
+    };
+
+    let mut value = V::value(value);
+
+    for nested in iter {
+        value.nested(nested);
+    }
+
+    value
 }
 
 pub fn ident(ident: &str) -> Ident {
@@ -236,7 +281,12 @@ where
 
                 self.next()
             },
-            Some(Ordering::Greater) => self.right.next(),
+            Some(Ordering::Greater) => {
+                // Skip right side
+                self.right.next();
+
+                self.next()
+            },
             None => None,
         }
     }

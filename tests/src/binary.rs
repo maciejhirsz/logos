@@ -73,7 +73,7 @@ enum Token {
 #[test]
 fn handles_non_utf8() {
     assert_lex(
-        &[0, 0, 0xCA, 0xFE, 0xBE, 0xEF, b'f', b'o', b'o', 0x42, 0x42, 0x42, 0xAA, 0xAA, 0xA2, 0xAE][..],
+        &[0, 0, 0xCA, 0xFE, 0xBE, 0xEF, b'f', b'o', b'o', 0x42, 0x42, 0x42, 0xAA, 0xAA, 0xA2, 0xAE, 0x10, 0x20, 0][..],
         &[
             (Token::Zero, &[0], 0..1),
             (Token::Zero, &[0], 1..2),
@@ -81,6 +81,9 @@ fn handles_non_utf8() {
             (Token::Foo, b"foo", 6..9),
             (Token::Life, &[0x42, 0x42, 0x42], 9..12),
             (Token::Aaaaaaa, &[0xAA, 0xAA, 0xA2, 0xAE], 12..16),
+            (Token::Error, &[0x10], 16..17),
+            (Token::Error, &[0x20], 17..18),
+            (Token::Zero, &[0], 18..19),
         ],
     );
 }

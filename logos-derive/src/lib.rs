@@ -19,7 +19,7 @@ mod generator;
 
 use self::tree::{Node, Fork, Leaf};
 use self::util::{OptionExt, Definition, Literal, value_from_attr};
-use self::handlers::{Handlers, Handler};
+use self::handlers::{Handlers, Handler, Trivia};
 use self::generator::Generator;
 
 use quote::quote;
@@ -51,10 +51,22 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut end = None;
     let mut mode = Mode::Utf8;
+    let mut trivia = Trivia::Default;
 
     for attr in &item.attrs {
         if let Some(ext) = value_from_attr("extras", attr) {
             extras.insert(ext, |_| panic!("Only one #[extras] attribute can be declared."));
+        }
+
+        if let Some(nested) = util::read_attr("logos", attr) {
+            for item in nested {
+                if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
+                    match t {
+                        Some(t) => panic!("TODO"),
+                        None    => trivia = Trivia::None,
+                    }
+                }
+            }
         }
     }
 
@@ -64,7 +76,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // Then the fork is split into handlers using all possible permutations of the first byte of
     // any branch as the index of a 256-entries-long table.
-    let mut handlers = Handlers::new();
+    let mut handlers = Handlers::new(trivia);
 
     // Finally the `Generator` will spit out Rust code for all the handlers.
     let mut generator = Generator::new(name);
