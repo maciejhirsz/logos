@@ -13,7 +13,7 @@ enum Token {
     Number,
 }
 
-mod trivia {
+mod whitespace {
     use tests::assert_lex;
     use super::*;
 
