@@ -61,10 +61,30 @@ pub fn logos(input: TokenStream) -> TokenStream {
         if let Some(nested) = util::read_attr("logos", attr) {
             for item in nested {
                 if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
-                    match t {
-                        Some(t) => panic!("TODO"),
-                        None    => trivia = Trivia::None,
+                    let (utf8, regex) = match t {
+                        Some(Literal::Utf8(string)) => (true, string),
+                        Some(Literal::Bytes(bytes)) => {
+                            mode = Mode::Binary;
+
+                            (false, util::bytes_to_regex_string(&bytes))
+                        },
+                        None => {
+                            trivia = Trivia::None;
+
+                            continue;
+                        }
+                    };
+
+                    match Node::from_regex(&regex, utf8, None) {
+                        Node::Branch(ref mut branch) if branch.then.is_none() && branch.regex.len() == 1 => {
+                            trivia = Trivia::Pattern(branch.regex.unshift());
+
+                            continue;
+                        },
+                        _ => {}
                     }
+
+                    panic!("#[logos] trivia currently only supports single byte patterns!")
                 }
             }
         }
@@ -128,22 +148,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
             } else if let Some(definition) = value_from_attr::<Definition<Literal>>("regex", attr) {
                 leaf.callback = definition.callback;
 
-                let (utf8, regex): (bool, String) = match definition.value {
+                let (utf8, regex) = match definition.value {
                     Literal::Utf8(string) => (true, string),
                     Literal::Bytes(bytes) => {
                         mode = Mode::Binary;
 
-                        let mut string = String::with_capacity(bytes.len());
-
-                        for byte in bytes {
-                            if byte < 0x7F {
-                                string.push(byte as char);
-                            } else {
-                                string.push_str(&format!("\\x{:02x}", byte));
-                            }
-                        }
-
-                        (false, string)
+                        (false, util::bytes_to_regex_string(&bytes))
                     },
                 };
 

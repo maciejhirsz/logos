@@ -28,6 +28,7 @@ pub struct Handlers<'a> {
 }
 
 pub enum Trivia {
+    Pattern(Pattern),
     Default,
     None,
 }
@@ -37,6 +38,11 @@ impl<'a> Handlers<'a> {
         let mut handlers = vec![Handler::Error; 256];
 
         match trivia {
+            Trivia::Pattern(pat) => {
+                for byte in pat.bytes() {
+                    handlers[byte as usize] = Handler::Whitespace;
+                }
+            },
             Trivia::Default => {
                 handlers[0..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
             },

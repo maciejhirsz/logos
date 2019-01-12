@@ -175,6 +175,20 @@ pub fn ident(ident: &str) -> Ident {
     }
 }
 
+pub fn bytes_to_regex_string(bytes: &[u8]) -> String {
+    let mut string = String::with_capacity(bytes.len());
+
+    for &byte in bytes {
+        if byte < 0x7F {
+            string.push(byte as char);
+        } else {
+            string.push_str(&format!("\\x{:02x}", byte));
+        }
+    }
+
+    string
+}
+
 pub struct MergeAscending<L, R>
 where
     L: Iterator<Item = R::Item>,
