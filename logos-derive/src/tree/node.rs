@@ -13,12 +13,18 @@ pub enum Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn new(regex: Regex, leaf: Leaf<'a>) -> Self {
+    pub fn new(regex: Regex) -> Self {
         if regex.len() == 0 {
-            Node::Leaf(leaf)
-        } else {
-            Node::Branch(Branch::new(regex).then(leaf))
+            panic!("Internal error: Trying to create a Node out of an empty Regex");
         }
+
+        Node::Branch(Branch::new(regex))
+    }
+
+    pub fn leaf(mut self, leaf: Leaf<'a>) -> Self {
+        self.chain(&Node::Leaf(leaf));
+
+        self
     }
 
     pub fn is_leaf(&self) -> bool {
@@ -188,7 +194,8 @@ impl<'a> Node<'a> {
         }
 
         match self {
-            Node::Leaf(leaf) => insert(vec, leaf.token),
+            Node::Leaf(Leaf::Token { token, .. }) => insert(vec, token),
+            Node::Leaf(Leaf::Trivia) => {},
             Node::Branch(branch) => {
                 if let Some(ref then) = branch.then {
                     then.get_tokens(vec);

@@ -256,7 +256,7 @@ pub trait CodeGenerator<'a>: Sized {
 
     fn print(&mut self, node: &mut Node) -> TokenStream;
 
-    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream;
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream;
 
     fn print_then(&mut self, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
         if let Some(node) = then {
@@ -637,7 +637,15 @@ pub trait CodeGenerator<'a>: Sized {
 
     fn print_node(&mut self, node: &mut Node, ctx: Context) -> TokenStream {
         match node {
-            Node::Leaf(leaf) => self.print_leaf(leaf, ctx),
+            Node::Leaf(leaf) => {
+                let bump = ctx.bump();
+                let leaf = self.print_leaf(leaf);
+
+                quote! {
+                    #bump
+                    #leaf
+                }
+            },
             Node::Branch(branch) => self.print_branch(branch, ctx),
             Node::Fork(fork) => self.print_fork(fork, ctx),
         }
@@ -685,23 +693,28 @@ impl<'a> CodeGenerator<'a> for Generator<'a> {
         }
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
         let name = self.gen().enum_name;
-        let bump = ctx.bump();
 
-        let variant = leaf.token;
-        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
+        match leaf {
+            Leaf::Token { token, callback } => {
+                let callback = callback.as_ref().or_else(|| self.gen().callbacks.get(token));
 
-        match callback {
-            Some(callback) => quote! {
-                #bump
-                lex.token = #name::#variant;
-                return #callback(lex);
+                match callback {
+                    Some(callback) => quote! {
+                        lex.token = #name::#token;
+                        return #callback(lex);
+                    },
+                    None => quote! {
+                        return lex.token = #name::#token;
+                    },
+                }
             },
-            None => quote! {
-                #bump
-                return lex.token = #name::#variant;
-            },
+            Leaf::Trivia => {
+                quote! {
+                    return lex.advance();
+                }
+            }
         }
     }
 
@@ -736,31 +749,14 @@ impl<'a, 'b> CodeGenerator<'a> for FallbackGenerator<'a, 'b> {
         }
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
-        let name = self.gen().enum_name;
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+        let leaf = self.gen().print_leaf(leaf);
+
         let pattern_fn = self.gen.pattern_to_fn(&self.boundary);
-        let bump = ctx.bump();
 
-        let variant = leaf.token;
-        let callback = leaf.callback.as_ref().or_else(|| self.gen().callbacks.get(variant));
-
-        match callback {
-            Some(callback) => {
-                quote! {
-                    #bump
-                    if !lex.test(#pattern_fn) {
-                        lex.token = #name::#variant;
-                        return #callback(lex);
-                    }
-                }
-            },
-            None => {
-                quote! {
-                    #bump
-                    if !lex.test(#pattern_fn) {
-                        return lex.token = #name::#variant;
-                    }
-                }
+        quote! {
+            if !lex.test(#pattern_fn) {
+                #leaf
             }
         }
     }
@@ -860,8 +856,8 @@ where
         self.0.print(node)
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
-        self.0.print_leaf(leaf, ctx)
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+        self.0.print_leaf(leaf)
     }
 
     fn print_fallback(&mut self) -> TokenStream {
@@ -950,8 +946,8 @@ where
         self.0.print(node)
     }
 
-    fn print_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
-        self.0.print_leaf(leaf, ctx)
+    fn print_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+        self.0.print_leaf(leaf)
     }
 
     fn print_fallback(&mut self) -> TokenStream {

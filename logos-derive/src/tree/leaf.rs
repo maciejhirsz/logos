@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, mem};
 
 use super::Node;
 
@@ -6,26 +6,31 @@ pub type Token<'a> = &'a ::syn::Ident;
 pub type Callback = ::syn::Ident;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Leaf<'a> {
-    pub token: Token<'a>,
-    pub callback: Option<Callback>,
+pub enum Leaf<'a> {
+    Token {
+        token: Token<'a>,
+        callback: Option<Callback>,
+    },
+    Trivia,
 }
 
 impl<'a> Leaf<'a> {
     pub fn take(&mut self) -> Leaf<'a> {
-        Leaf {
-            token: self.token,
-            callback: self.callback.take(),
-        }
+        mem::replace(self, Leaf::Trivia)
     }
 }
 
 impl<'a> fmt::Debug for Leaf<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.token)?;
+        match self {
+            Leaf::Token { token, callback } => {
+                write!(f, "{}", token)?;
 
-        if let Some(ref callback) = self.callback {
-            write!(f, " ({})", callback)?;
+                if let Some(ref callback) = callback {
+                    write!(f, " ({})", callback)?;
+                }
+            },
+            Leaf::Trivia => write!(f, "TRIVIA")?,
         }
 
         Ok(())
@@ -34,7 +39,7 @@ impl<'a> fmt::Debug for Leaf<'a> {
 
 impl<'a> From<Token<'a>> for Leaf<'a> {
     fn from(token: Token<'a>) -> Self {
-        Leaf {
+        Leaf::Token {
             token,
             callback: None,
         }

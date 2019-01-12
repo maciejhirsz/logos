@@ -17,6 +17,7 @@ mod regex;
 mod handlers;
 mod generator;
 
+use self::regex::Regex;
 use self::tree::{Node, Fork, Leaf};
 use self::util::{OptionExt, Definition, Literal, value_from_attr};
 use self::handlers::{Handlers, Handler, Trivia};
@@ -53,6 +54,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut mode = Mode::Utf8;
     let mut trivia = Trivia::Default;
 
+    // Initially we pack all variants into a single fork, this is where all the logic branching
+    // magic happens.
+    let mut fork = Fork::default();
+
     for attr in &item.attrs {
         if let Some(ext) = value_from_attr("extras", attr) {
             extras.insert(ext, |_| panic!("Only one #[extras] attribute can be declared."));
@@ -69,30 +74,36 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             (false, util::bytes_to_regex_string(&bytes))
                         },
                         None => {
-                            trivia = Trivia::None;
+                            match trivia {
+                                Trivia::Patterns(_) => {},
+                                Trivia::Default => trivia = Trivia::Patterns(vec![]),
+                            }
 
                             continue;
                         }
                     };
 
-                    match Node::from_regex(&regex, utf8, None) {
-                        Node::Branch(ref mut branch) if branch.then.is_none() && branch.regex.len() == 1 => {
-                            trivia = Trivia::Pattern(branch.regex.unshift());
+                    let node = Node::from_regex(&regex, utf8);
+
+                    match node {
+                        Node::Branch(ref branch) if branch.then.is_none() && branch.regex.len() == 1 => {
+                            let pattern = branch.regex.first().clone();
+
+                            match trivia {
+                                Trivia::Patterns(ref mut patterns) => patterns.push(pattern),
+                                Trivia::Default => trivia = Trivia::Patterns(vec![pattern]),
+                            }
 
                             continue;
                         },
                         _ => {}
                     }
 
-                    panic!("#[logos] trivia currently only supports single byte patterns!")
+                    fork.insert(node.leaf(Leaf::Trivia));
                 }
             }
         }
     }
-
-    // Initially we pack all variants into a single fork, this is where all the logic branching
-    // magic happens.
-    let mut fork = Fork::default();
 
     // Then the fork is split into handlers using all possible permutations of the first byte of
     // any branch as the index of a 256-entries-long table.
@@ -127,13 +138,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 end.insert(variant, |_| panic!("Only one #[end] variant can be declared."));
             }
 
-            let mut leaf = Leaf {
-                token: variant,
-                callback: None,
-            };
-
             if let Some(definition) = value_from_attr::<Definition<Literal>>("token", attr) {
-                leaf.callback = definition.callback;
+                let leaf = Leaf::Token {
+                    token: variant,
+                    callback: definition.callback,
+                };
 
                 let bytes = match definition.value {
                     Literal::Utf8(ref string) => string.as_bytes(),
@@ -144,9 +153,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     },
                 };
 
-                fork.insert(Node::from_sequence(bytes, leaf));
+                fork.insert(Node::new(Regex::sequence(bytes)).leaf(leaf));
             } else if let Some(definition) = value_from_attr::<Definition<Literal>>("regex", attr) {
-                leaf.callback = definition.callback;
+                let leaf = Leaf::Token {
+                    token: variant,
+                    callback: definition.callback,
+                };
 
                 let (utf8, regex) = match definition.value {
                     Literal::Utf8(string) => (true, string),
@@ -157,7 +169,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     },
                 };
 
-                fork.insert(Node::from_regex(&regex, utf8, Some(leaf)));
+                fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {

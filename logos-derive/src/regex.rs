@@ -3,7 +3,7 @@ use regex_syntax::hir::{self, Hir, HirKind, Class};
 use regex_syntax::ParserBuilder;
 use std::fmt;
 
-use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
+use crate::tree::{Node, Fork, ForkKind, Branch};
 
 mod pattern;
 
@@ -15,20 +15,7 @@ pub struct Regex {
 }
 
 impl<'a> Node<'a> {
-    pub fn from_sequence<Source>(source: Source, leaf: Leaf<'a>) -> Self
-    where
-        Source: AsRef<[u8]>,
-    {
-        let regex = Regex::sequence(source);
-
-        if regex.len() == 0 {
-            panic!("Empty #[token] string in variant: {}!", leaf.token);
-        }
-
-        Node::new(regex, leaf)
-    }
-
-    pub fn from_regex(source: &str, utf8: bool, leaf: Option<Leaf<'a>>) -> Self {
+    pub fn from_regex(source: &str, utf8: bool) -> Self {
         let mut builder = ParserBuilder::new();
 
         if !utf8 {
@@ -38,23 +25,11 @@ impl<'a> Node<'a> {
         let hir = match builder.build().parse(source) {
             Ok(hir) => hir.into_kind(),
             Err(err) => {
-                if let Some(leaf) = leaf {
-                    panic!("Unable to parse #[regex] for variant: {}!\n\n{:#?}", leaf.token, err);
-                } else {
-                    panic!("Unable to parse #[regex]! {:#?}", err);
-                }
+                panic!("Unable to parse #[regex]! {:#?}", err);
             },
         };
 
-        let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
-
-        if let Some(leaf) = leaf {
-            let leaf = Node::Leaf(leaf);
-
-            node.chain(&leaf);
-        }
-
-        node
+        Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]")
     }
 
     fn from_hir(hir: HirKind) -> Option<Self> {
@@ -415,7 +390,7 @@ mod test {
     #[test]
     fn branch_regex_number() {
         let regex = "[1-9][0-9]*";
-        let b = branch(Node::from_regex(regex, true, None)).unwrap();
+        let b = branch(Node::from_regex(regex, true)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
 
@@ -427,7 +402,7 @@ mod test {
     #[test]
     fn regex_ident() {
         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
-        let b = branch(Node::from_regex(regex, true, None)).unwrap();
+        let b = branch(Node::from_regex(regex, true)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Class(vec![
@@ -454,7 +429,7 @@ mod test {
     #[test]
     fn regex_hex() {
         let regex = "0x[0-9a-fA-F]+";
-        let b = branch(Node::from_regex(regex, true, None)).unwrap();
+        let b = branch(Node::from_regex(regex, true)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Byte(b'0'),
@@ -475,7 +450,7 @@ mod test {
     #[test]
     fn regex_unshift() {
         let regex = "abc";
-        let mut r = branch(Node::from_regex(regex, true, None)).unwrap().regex;
+        let mut r = branch(Node::from_regex(regex, true)).unwrap().regex;
 
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'a'),
