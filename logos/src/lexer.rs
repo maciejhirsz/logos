@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::source::{Source, ByteArray};
+use crate::source::{self, Source, WithSource};
 use super::{Logos};
 use super::internal::LexerInternal;
 
@@ -41,7 +41,7 @@ macro_rules! unroll {
 
 impl<'source, Token, Source> Lexer<Token, Source>
 where
-    Token: self::Logos,
+    Token: self::Logos + WithSource<Source>,
     Source: self::Source<'source>,
 {
     /// Create a new `Lexer`.
@@ -64,20 +64,27 @@ where
 
     /// Advance the `Lexer` and attempt to produce the next `Token`.
     pub fn advance(&mut self) {
-        let mut ch;
+        let mut byte;
 
         self.extras.on_advance();
 
         unroll! {
-            ch = self.read();
+            byte = match self.read::<u8>() {
+                Some(byte) => byte,
+                None => {
+                    self.token_start = self.token_end;
 
-            if let Some(handler) = Token::lexicon()[ch as usize] {
+                    return self.token = Token::END;
+                },
+            };
+
+            if let Some(handler) = Token::lexicon()[byte as usize] {
                 self.token_start = self.token_end;
 
                 return handler(self);
             }
 
-            self.extras.on_whitespace(ch);
+            self.extras.on_whitespace(byte);
             self.bump(1);
         }
     }
@@ -93,21 +100,16 @@ where
     pub fn slice(&self) -> Source::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
-}
 
-impl<'source, Token, Source> Lexer<Token, Source>
-where
-    Token: self::Logos,
-    Source: self::Source<'source>,
-{
     /// Turn this lexer into a lexer for a new token type.
     ///
     /// The new lexer continues to point at the same span as the current lexer,
     /// and the current token becomes the error token of the new token type.
     /// If you want to start reading from the new lexer immediately,
     /// consider using `Lexer::advance_as` instead.
-    pub fn morph<Token2: Logos>(self) -> Lexer<Token2, Source>
+    pub fn morph<Token2>(self) -> Lexer<Token2, Source>
     where
+        Token2: Logos + WithSource<Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         Lexer {
@@ -123,8 +125,9 @@ where
     ///
     /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
     /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    pub fn advance_as<Token2: Logos>(self) -> Lexer<Token2, Source>
+    pub fn advance_as<Token2>(self) -> Lexer<Token2, Source>
     where
+        Token2: Logos + WithSource<Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         let mut lex = self.morph();
@@ -159,55 +162,52 @@ where
     Token: self::Logos,
     Source: self::Source<'source>,
 {
-    /// Read a byte at current position of the `Lexer`. If end
+    /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
-    ///
-    /// # WARNING!
-    ///
-    /// This should never be called as public API, and is instead
-    /// meant to be called by the implementor of the `Logos` trait.
     #[inline]
-    fn read(&self) -> u8 {
-        unsafe { self.source.read(self.token_end) }
-    }
-
-    #[inline]
-    fn read_bytes<Array>(&self) -> Option<&'source Array>
+    fn read<Chunk>(&self) -> Option<Chunk>
     where
-        Array: ByteArray<'source>
+        Chunk: source::Chunk<'source>,
     {
-        self.source.read_bytes(self.token_end)
+        self.source.read(self.token_end)
     }
 
-    /// Convenience method that bumps the position `Lexer` is
-    /// reading from and then reads the following byte.
-    ///
-    /// # WARNING!
-    ///
-    /// This should never be called as public API, and is instead
-    /// meant to be called by the implementor of the `Logos` trait.
-    ///
-    /// **If the end position has been reached, further bumps
-    /// can lead to undefined behavior!**
-    ///
-    /// **This method will panic in debug mode if that happens!**
+    /// Read a `Chunk` at a position offset by `n`.
     #[inline]
-    fn next(&mut self) -> u8 {
-        self.bump(1);
-        self.read()
+    fn read_at<Chunk>(&self, n: usize) -> Option<Chunk>
+    where
+        Chunk: source::Chunk<'source>,
+    {
+        self.source.read(self.token_end + n)
     }
 
-    /// Bump the position `Lexer` is reading from by `1`.
-    ///
-    /// # WARNING!
-    ///
-    /// This should never be called as public API, and is instead
-    /// meant to be called by the implementor of the `Logos` trait.
-    ///
-    /// **If the end position has been reached, further bumps
-    /// can lead to undefined behavior!**
-    ///
-    /// **This method will panic in debug mode if that happens!**
+    /// Test a chunk at current position with a closure.
+    #[inline]
+    fn test<T, F>(&self, test: F) -> bool
+    where
+        T: source::Chunk<'source>,
+        F: FnOnce(T) -> bool,
+    {
+        match self.source.read::<T>(self.token_end) {
+            Some(chunk) => test(chunk),
+            None        => false,
+        }
+    }
+
+    /// Test a chunk at current position offset by `n` with a closure.
+    #[inline]
+    fn test_at<T, F>(&self, n: usize, test: F) -> bool
+    where
+        T: source::Chunk<'source>,
+        F: FnOnce(T) -> bool,
+    {
+        match self.source.read::<T>(self.token_end + n) {
+            Some(chunk) => test(chunk),
+            None        => false,
+        }
+    }
+
+    /// Bump the position `Lexer` is reading from by `size`.
     #[inline]
     fn bump(&mut self, size: usize) {
         debug_assert!(self.token_end + size <= self.source.len(), "Bumping out of bounds!");

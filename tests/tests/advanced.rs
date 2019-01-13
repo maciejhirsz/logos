@@ -1,6 +1,5 @@
-use logos::{Logos, lookup};
+use logos::lookup;
 use logos_derive::Logos;
-use std::ops::Range;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
@@ -59,26 +58,16 @@ enum Token {
     #[regex = r"[\u0400-\u04FF]+"]
     Cyrillic,
 
+    #[regex = r"([#@!\\?][#@!\\?][#@!\\?][#@!\\?])+"]
+    WhatTheHeck,
+
     #[regex = "try|type|typeof"]
     Keyword,
 }
 
-fn assert_lex<'a, Source>(source: Source, tokens: &[(Token, Source::Slice, Range<usize>)])
-where
-    Source: logos::Source<'a>,
-{
-    let mut lex = Token::lexer(source);
-
-    for tuple in tokens {
-        assert_eq!(&(lex.token, lex.slice(), lex.range()), tuple);
-
-        lex.advance();
-    }
-
-    assert_eq!(lex.token, Token::End);
-}
-
 mod advanced {
+    use logos::Logos;
+    use tests::assert_lex;
     use super::*;
 
     #[test]
@@ -88,7 +77,8 @@ mod advanced {
             (Token::LiteralString, "\"foobar\"", 4..12),
             (Token::LiteralString, "\"escaped\\\"quote\"", 13..29),
             (Token::LiteralString, "\"escaped\\nnew line\"", 30..49),
-            (Token::Error, "\"\\", 50..52),
+            (Token::Error, "\"", 50..51),
+            (Token::Error, "\\", 51..52),
             (Token::Error, "x", 52..53),
             (Token::Error, "\" ", 53..55),
         ]);
@@ -97,8 +87,10 @@ mod advanced {
     #[test]
     fn hex() {
         assert_lex("0x 0X 0x0 0x9 0xa 0xf 0X0 0X9 0XA 0XF 0x123456789abcdefABCDEF 0xdeadBEEF", &[
-            (Token::Error, "0x", 0..2),
-            (Token::Error, "0X", 3..5),
+            (Token::LiteralInteger, "0", 0..1),
+            (Token::Error, "x", 1..2),
+            (Token::LiteralInteger, "0", 3..4),
+            (Token::Error, "X", 4..5),
             (Token::LiteralHex, "0x0", 6..9),
             (Token::LiteralHex, "0x9", 10..13),
             (Token::LiteralHex, "0xa", 14..17),
@@ -188,7 +180,7 @@ mod advanced {
     }
 
     #[test]
-    fn sigs(){
+    fn sigs() {
         assert_lex("~ ~m23 ~s42 ~s42..cafe.babe ~h23 ~sod ~myd ~songname", &[
             (Token::LiteralNull, "~", 0..1),
             (Token::LiteralRelDate, "~m23", 2..6),
@@ -200,13 +192,23 @@ mod advanced {
             (Token::LiteralUrbitAddress, "~songname",43..52),
         ]);
     }
+
     #[test]
-    fn subquotes(){
+    fn subquotes() {
         assert_lex("' ''' ''", &[
             (Token::SingleQuote, "'", 0..1),
             (Token::TripleQuote, "'''", 2..5),
             (Token::SingleQuote, "'", 6..7),
             (Token::SingleQuote, "'", 7..8),
+        ]);
+    }
+
+    #[test]
+    fn what_the_heck() {
+        assert_lex("!#@? #!!!?!@? ????####@@@@!!!!", &[
+            (Token::WhatTheHeck, "!#@?", 0..4),
+            (Token::WhatTheHeck, "#!!!?!@?", 5..13),
+            (Token::WhatTheHeck, "????####@@@@!!!!", 14..30),
         ]);
     }
 }

@@ -17,16 +17,23 @@ mod regex;
 mod handlers;
 mod generator;
 
+use self::regex::Regex;
 use self::tree::{Node, Fork, Leaf};
-use self::util::{OptionExt, VariantDefinition, value_from_attr};
-use self::handlers::{Handlers, Handler};
+use self::util::{OptionExt, Definition, Literal, value_from_attr};
+use self::handlers::{Handlers, Handler, Trivia};
 use self::generator::Generator;
 
 use quote::quote;
 use proc_macro::TokenStream;
 use syn::{ItemEnum, Fields, Ident};
 
+enum Mode {
+    Utf8,
+    Binary,
+}
+
 #[proc_macro_derive(Logos, attributes(
+    logos,
     extras,
     error,
     end,
@@ -44,20 +51,63 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut extras: Option<Ident> = None;
     let mut error = None;
     let mut end = None;
-
-    for attr in &item.attrs {
-        if let Some(ext) = value_from_attr("extras", attr) {
-            extras.insert(ext, |_| panic!("Only one #[extras] attribute can be declared."));
-        }
-    }
+    let mut mode = Mode::Utf8;
+    let mut trivia = Trivia::Default;
 
     // Initially we pack all variants into a single fork, this is where all the logic branching
     // magic happens.
     let mut fork = Fork::default();
 
+    for attr in &item.attrs {
+        if let Some(ext) = value_from_attr("extras", attr) {
+            extras.insert(ext, |_| panic!("Only one #[extras] attribute can be declared."));
+        }
+
+        if let Some(nested) = util::read_attr("logos", attr) {
+            for item in nested {
+                if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
+                    let (utf8, regex) = match t {
+                        Some(Literal::Utf8(string)) => (true, string),
+                        Some(Literal::Bytes(bytes)) => {
+                            mode = Mode::Binary;
+
+                            (false, util::bytes_to_regex_string(&bytes))
+                        },
+                        None => {
+                            match trivia {
+                                Trivia::Patterns(_) => {},
+                                Trivia::Default => trivia = Trivia::Patterns(vec![]),
+                            }
+
+                            continue;
+                        }
+                    };
+
+                    let node = Node::from_regex(&regex, utf8);
+
+                    match node {
+                        Node::Branch(ref branch) if branch.then.is_none() && branch.regex.len() == 1 => {
+                            let pattern = branch.regex.first().clone();
+
+                            match trivia {
+                                Trivia::Patterns(ref mut patterns) => patterns.push(pattern),
+                                Trivia::Default => trivia = Trivia::Patterns(vec![pattern]),
+                            }
+
+                            continue;
+                        },
+                        _ => {}
+                    }
+
+                    fork.insert(node.leaf(Leaf::Trivia));
+                }
+            }
+        }
+    }
+
     // Then the fork is split into handlers using all possible permutations of the first byte of
     // any branch as the index of a 256-entries-long table.
-    let mut handlers = Handlers::new();
+    let mut handlers = Handlers::new(trivia);
 
     // Finally the `Generator` will spit out Rust code for all the handlers.
     let mut generator = Generator::new(name);
@@ -88,19 +138,38 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 end.insert(variant, |_| panic!("Only one #[end] variant can be declared."));
             }
 
-            let mut leaf = Leaf {
-                token: variant,
-                callback: None,
-            };
+            if let Some(definition) = value_from_attr::<Definition<Literal>>("token", attr) {
+                let leaf = Leaf::Token {
+                    token: variant,
+                    callback: definition.callback,
+                };
 
-            if let Some(definition) = value_from_attr::<VariantDefinition>("token", attr) {
-                leaf.callback = definition.callback;
+                let bytes = match definition.value {
+                    Literal::Utf8(ref string) => string.as_bytes(),
+                    Literal::Bytes(ref bytes) => {
+                        mode = Mode::Binary;
 
-                fork.insert(Node::from_sequence(&definition.value, leaf));
-            } else if let Some(definition) = value_from_attr::<VariantDefinition>("regex", attr) {
-                leaf.callback = definition.callback;
+                        &bytes
+                    },
+                };
 
-                fork.insert(Node::from_regex(&definition.value, leaf));
+                fork.insert(Node::new(Regex::sequence(bytes)).leaf(leaf));
+            } else if let Some(definition) = value_from_attr::<Definition<Literal>>("regex", attr) {
+                let leaf = Leaf::Token {
+                    token: variant,
+                    callback: definition.callback,
+                };
+
+                let (utf8, regex) = match definition.value {
+                    Literal::Utf8(string) => (true, string),
+                    Literal::Bytes(bytes) => {
+                        mode = Mode::Binary;
+
+                        (false, util::bytes_to_regex_string(&bytes))
+                    },
+                };
+
+                fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
             }
 
             if let Some(callback) = value_from_attr("callback", attr) {
@@ -108,6 +177,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
     }
+
+    fork.pack();
 
     // panic!("{:#?}", fork);
 
@@ -134,9 +205,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let handlers = handlers.into_iter().map(|handler| {
         match handler {
-            Handler::Eof        => quote! { Some(eof) },
-            Handler::Error      => quote! { Some(_error) },
-            Handler::Whitespace => quote! { None },
+            Handler::Error      => quote!(Some(_error)),
+            Handler::Whitespace => quote!(None),
             Handler::Tree(tree) => generator.print_tree(tree),
         }
     }).collect::<Vec<_>>();
@@ -157,6 +227,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
         variants.iter()
             .map(|variant| quote!( ($num:tt; #name::#variant => $val:expr; $( $rest:tt )* ) => (#name!($num; $($rest)*)); ));
 
+    let source = match mode {
+        Mode::Utf8   => quote!(Source),
+        Mode::Binary => quote!(BinarySource),
+    };
+
     let tokens = quote! {
         impl ::logos::Logos for #name {
             type Extras = #extras;
@@ -165,14 +240,15 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
-            fn lexicon<'lexicon, 'source, S: ::logos::Source<'source>>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, S>> {
+            fn lexicon<'lexicon, 'source, Source>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, Source>>
+            where
+                Source: ::logos::Source<'source>,
+                Self: ::logos::source::WithSource<Source>,
+            {
                 use ::logos::internal::LexerInternal;
+                use ::logos::source::Split;
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
-
-                fn eof<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
-                    lex.token = #name::#end;
-                }
 
                 fn _error<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
                     lex.bump(1);
@@ -185,6 +261,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 &[#(#handlers),*]
             }
         }
+
+        impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
 
         #[macro_export]
         #[doc(hidden)]

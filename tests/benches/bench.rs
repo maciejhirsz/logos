@@ -132,55 +132,13 @@ fn identifiers(b: &mut Bencher) {
 }
 
 #[bench]
-fn identifiers_nul_terminated(b: &mut Bencher) {
-    use logos::Logos;
-    use toolshed::Arena;
-
-    let arena = Arena::new();
-    let nts = arena.alloc_nul_term_str(IDENTIFIERS);
-
-    b.bytes = IDENTIFIERS.len() as u64;
-
-    b.iter(|| {
-        let mut lex = Token::lexer(nts);
-
-        while lex.token != Token::EndOfProgram {
-            lex.advance();
-        }
-
-        black_box(lex.token)
-    });
-}
-
-#[bench]
-fn logos(b: &mut Bencher) {
+fn keywords_operators_and_punctators(b: &mut Bencher) {
     use logos::Logos;
 
     b.bytes = SOURCE.len() as u64;
 
     b.iter(|| {
         let mut lex = Token::lexer(SOURCE);
-
-        while lex.token != Token::EndOfProgram {
-            lex.advance();
-        }
-
-        black_box(lex.token)
-    });
-}
-
-#[bench]
-fn logos_nul_terminated(b: &mut Bencher) {
-    use logos::Logos;
-    use toolshed::Arena;
-
-    let arena = Arena::new();
-    let nts = arena.alloc_nul_term_str(SOURCE);
-
-    b.bytes = SOURCE.len() as u64;
-
-    b.iter(|| {
-        let mut lex = Token::lexer(nts);
 
         while lex.token != Token::EndOfProgram {
             lex.advance();

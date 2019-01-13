@@ -1,48 +1,35 @@
 use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
 use regex_syntax::hir::{self, Hir, HirKind, Class};
-use regex_syntax::Parser;
-use std::cmp::Ordering;
+use regex_syntax::ParserBuilder;
 use std::fmt;
 
-use crate::tree::{Node, Fork, ForkKind, Branch, Leaf};
+use crate::tree::{Node, Fork, ForkKind, Branch};
 
-static NO_ZERO_BYTE: &str = "Tokens mustn't include the `0` byte.";
+mod pattern;
 
-#[derive(Clone, Default)]
+pub use self::pattern::Pattern;
+
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Regex {
     patterns: Vec<Pattern>,
-    offset: usize,
-}
-
-impl PartialEq for Regex {
-    fn eq(&self, other: &Regex) -> bool {
-        self.patterns() == other.patterns()
-    }
 }
 
 impl<'a> Node<'a> {
-    pub fn from_sequence(source: &str, leaf: Leaf<'a>) -> Self {
-        let regex = Regex::sequence(source);
+    pub fn from_regex(source: &str, utf8: bool) -> Self {
+        let mut builder = ParserBuilder::new();
 
-        if regex.len() == 0 {
-            panic!("Empty #[token] string in variant: {}!", leaf.token);
+        if !utf8 {
+            builder.allow_invalid_utf8(true).unicode(false);
         }
 
-        Node::new(regex, leaf)
-    }
-
-    pub fn from_regex(source: &str, leaf: Leaf<'a>) -> Self {
-        let hir = match Parser::new().parse(source) {
+        let hir = match builder.build().parse(source) {
             Ok(hir) => hir.into_kind(),
-            Err(err) => panic!("Unable to parse #[regex] for variant: {}!\n\n{:#?}", leaf.token, err),
+            Err(err) => {
+                panic!("Unable to parse #[regex]! {:#?}", err);
+            },
         };
 
-        let mut node = Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]");
-        let leaf = Node::Leaf(leaf);
-
-        node.chain(&leaf);
-
-        node
+        Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]")
     }
 
     fn from_hir(hir: HirKind) -> Option<Self> {
@@ -122,13 +109,13 @@ impl<'a> Node<'a> {
                 Some(Node::from(fork))
             },
             // This handles classes with non-ASCII Unicode ranges
-            HirKind::Class(ref class) if !class_is_ascii(class) => {
+            HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
                 match class {
                     Class::Unicode(unicode) => {
                         let mut branches =
                             unicode.iter()
                                 .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-                                .map(|seq| Branch::new(seq.into()));
+                                .map(|seq| Branch::new(seq));
 
                         branches.next().map(|branch| {
                             let mut node = Node::Branch(branch);
@@ -140,7 +127,11 @@ impl<'a> Node<'a> {
                             node
                         })
                     },
-                    Class::Bytes(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                    Class::Bytes(_) => {
+                        // `is_ascii_or_bytes` check shouldn't permit us to branch here
+
+                        panic!("Internal Error")
+                    },
                 }
             },
             _ => {
@@ -163,14 +154,12 @@ impl Regex {
         self.patterns().len()
     }
 
-    pub fn sequence(source: &str) -> Self {
+    pub fn sequence<Source>(source: Source) -> Self
+    where
+        Source: AsRef<[u8]>,
+    {
         Regex {
-            patterns: source.bytes().map(|byte| {
-                assert!(byte != 0, NO_ZERO_BYTE);
-
-                Pattern::Byte(byte)
-            }).collect(),
-            offset: 0,
+            patterns: source.as_ref().iter().cloned().map(Pattern::Byte).collect(),
         }
     }
 
@@ -182,64 +171,63 @@ impl Regex {
 
                 match literal {
                     Literal::Unicode(unicode) => {
-                        assert!(*unicode != 0 as char, NO_ZERO_BYTE);
-
-                        let mut buf = [0u8; 4];
-
                         regex.patterns.extend(
                             unicode
-                                .encode_utf8(&mut buf)
+                                .encode_utf8(&mut [0; 4])
                                 .bytes()
                                 .map(Pattern::Byte)
                         );
                     },
-                    Literal::Byte(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                    Literal::Byte(byte) => {
+                        regex.patterns.push(Pattern::Byte(*byte));
+                    },
                 };
 
                 true
             },
             HirKind::Class(class) => {
-                if !class_is_ascii(&class) {
+                if !is_ascii_or_bytes(&class) {
                     return false;
                 }
 
-                match class {
+                let mut class: Vec<_> = match class {
                     Class::Unicode(unicode) => {
-                        let mut class = unicode
+                        unicode
                             .iter()
                             .map(|range| {
-                                let (mut start, mut end) = (range.start(), range.end());
+                                let (start, end) = (range.start(), range.end());
 
-                                assert!(end != 0 as char, NO_ZERO_BYTE);
-
-                                static NON_ASCII: &str = "Non-ASCII ranges in #[regex] classes are currently unsupported.";
-
-                                match end as u32 {
-                                    0        => panic!("{}", NO_ZERO_BYTE),
-                                    0x10FFFF => end = 0xFF as char,
-                                    _        => assert!(end.is_ascii(), NON_ASCII),
-                                }
-
-                                match start as u32 {
-                                    0 => start = 1 as char,
-                                    _ => assert!(start.is_ascii(), NON_ASCII),
-                                }
+                                let start = start as u8;
+                                let end = if end == '\u{10FFFF}' { 0xFF } else { end as u8 };
 
                                 if start == end {
-                                    Pattern::Byte(start as u8)
+                                    Pattern::Byte(start)
                                 } else {
-                                    Pattern::Range(start as u8, end as u8)
+                                    Pattern::Range(start, end)
                                 }
                             })
-                            .collect::<Vec<_>>();
-
-                        match class.len() {
-                            0 => {},
-                            1 => regex.patterns.push(class.remove(0)),
-                            _ => regex.patterns.push(Pattern::Class(class)),
-                        }
+                            .collect()
                     },
-                    Class::Bytes(_) => panic!("Invalid Unicode codepoint in #[regex]."),
+                    Class::Bytes(bytes) => {
+                        bytes
+                            .iter()
+                            .map(|range| {
+                                let (start, end) = (range.start(), range.end());
+
+                                if start == end {
+                                    Pattern::Byte(start)
+                                } else {
+                                    Pattern::Range(start, end)
+                                }
+                            })
+                            .collect()
+                    },
+                };
+
+                match class.len() {
+                    0 => {},
+                    1 => regex.patterns.push(class.remove(0)),
+                    _ => regex.patterns.push(Pattern::Class(class)),
                 }
 
                 true
@@ -251,11 +239,15 @@ impl Regex {
     }
 
     pub fn patterns(&self) -> &[Pattern] {
-        &self.patterns[self.offset..]
+        &self.patterns
     }
 
     pub fn first(&self) -> &Pattern {
-        self.patterns().get(0).unwrap()
+        self.patterns.first().expect("Internal Error: Empty Regex")
+    }
+
+    pub fn first_mut(&mut self) -> &mut Pattern {
+        self.patterns.first_mut().expect("Internal Error: Empty Regex")
     }
 
     pub fn match_split(&mut self, other: &mut Regex) -> Option<Regex> {
@@ -270,12 +262,11 @@ impl Regex {
         match patterns.len() {
             0 => None,
             len => {
-                self.offset += len;
-                other.offset += len;
+                self.patterns.drain(..len).count();
+                other.patterns.drain(..len).count();
 
                 Some(Regex {
                     patterns,
-                    offset: 0
                 })
             }
         }
@@ -285,33 +276,28 @@ impl Regex {
         self.first().intersect(other.first())
     }
 
-    pub fn unshift(&mut self) -> Option<&Pattern> {
-        if self.len() == 0 {
-            return None;
-        }
-
-        let offset = self.offset;
-
-        self.offset += 1;
-
-        self.patterns.get(offset)
+    pub fn unshift(&mut self) -> Pattern {
+        self.patterns.remove(0)
     }
 
-    pub fn consume(&mut self) -> &[Pattern] {
-        let offset = self.offset;
-        self.offset = self.patterns.len();
-
-        &self.patterns[offset..]
+    pub fn extend(&mut self, patterns: &[Pattern]) {
+        self.patterns.extend(patterns.iter().cloned());
     }
 }
 
 impl From<Pattern> for Regex {
     fn from(pat: Pattern) -> Regex {
-        let mut regex = Regex::default();
+        Regex {
+            patterns: vec![pat],
+        }
+    }
+}
 
-        regex.patterns.push(pat);
-
-        regex
+impl<'a> From<&'a [Pattern]> for Regex {
+    fn from(patterns: &'a [Pattern]) -> Regex {
+        Regex {
+            patterns: patterns.to_vec(),
+        }
     }
 }
 
@@ -326,35 +312,32 @@ impl From<Utf8Sequence> for Regex {
 
         Regex {
             patterns,
-            offset: 0,
         }
     }
 }
 
-fn class_is_ascii(class: &Class) -> bool {
+impl<'a> From<&'a str> for Regex {
+    fn from(seq: &'a str) -> Self {
+        Regex::sequence(seq)
+    }
+}
+
+fn is_ascii_or_bytes(class: &Class) -> bool {
     match class {
         Class::Unicode(unicode) => {
             unicode.iter().all(|range| {
                 let start = range.start() as u32;
                 let end = range.end() as u32;
 
-                start < 128 && end > 0 && (end < 128 || end == 0x10FFFF)
+                start < 128 && (end < 128 || end == 0x10FFFF)
             })
         },
-        Class::Bytes(_) => false,
+        Class::Bytes(_) => true,
     }
 }
 
 impl From<Utf8Range> for Pattern {
-    fn from(mut range: Utf8Range) -> Pattern {
-        if range.end == 0 {
-            panic!("Invalid Unicode codepoint in #[regex]");
-        }
-
-        if range.start == 0 {
-            range.start = 1;
-        }
-
+    fn from(range: Utf8Range) -> Pattern {
         if range.start == range.end {
             Pattern::Byte(range.start)
         } else {
@@ -368,41 +351,6 @@ pub enum RepetitionFlag {
     ZeroOrMore,
     OneOrMore,
     ZeroOrOne,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum Pattern {
-    Byte(u8),
-    Range(u8, u8),
-    Class(Vec<Pattern>),
-}
-
-fn format_ascii(byte: u8, f: &mut fmt::Formatter) -> fmt::Result {
-    if byte >= 0x20 && byte <= 127 {
-        write!(f, "{}", byte as char)
-    } else {
-        write!(f, "{:02X?}", byte)
-    }
-}
-
-impl fmt::Debug for Pattern {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Pattern::Byte(byte) => format_ascii(*byte, f),
-            Pattern::Range(a, b) => {
-                format_ascii(*a, f)?;
-                f.write_str("-")?;
-                format_ascii(*b, f)
-            },
-            Pattern::Class(class) => {
-                f.write_str("[")?;
-                for pat in class.iter() {
-                    write!(f, "{:?}", pat)?;
-                }
-                f.write_str("]")
-            },
-        }
-    }
 }
 
 impl fmt::Debug for RepetitionFlag {
@@ -427,162 +375,9 @@ impl fmt::Debug for Regex {
     }
 }
 
-impl Pattern {
-    pub fn is_byte(&self) -> bool {
-        match self {
-            Pattern::Byte(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn weight(&self) -> usize {
-        match self {
-            Pattern::Byte(_) => 1,
-            Pattern::Range(_, _) => 2,
-            Pattern::Class(pats) => pats.iter().map(Self::weight).sum(),
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        match self {
-            Pattern::Byte(_) => 1,
-            Pattern::Range(a, b) => (*b as usize).saturating_sub(*a as usize) + 1,
-            Pattern::Class(pats) => pats.iter().map(Self::len).sum(),
-        }
-    }
-
-    pub fn write_bytes(&self, target: &mut Vec<u8>) {
-        match self {
-            Pattern::Byte(b) => target.push(*b),
-            Pattern::Range(a, b) => target.extend(*a..=*b),
-            Pattern::Class(class) => class.iter().for_each(|pat| pat.write_bytes(target)),
-        }
-    }
-
-    pub fn intersect(&self, other: &Pattern) -> Option<Pattern> {
-        if self == other {
-            return None;
-        }
-
-        if self.contains(other) {
-            Some(other.clone())
-        } else if other.contains(self) {
-            Some(self.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn contains(&self, other: &Pattern) -> bool {
-        match other {
-            Pattern::Byte(x) => self.contains_range(*x, *x),
-            Pattern::Range(a, b) => self.contains_range(*a, *b),
-            Pattern::Class(class) => {
-                class.iter().all(|pat| self.contains(pat))
-            },
-        }
-    }
-
-    fn contains_range(&self, xa: u8, xb: u8) -> bool {
-        match self {
-            Pattern::Byte(a) => *a == xa && *a == xb,
-            Pattern::Range(a, b) => {
-                (*a <= xa && xa <= *b) && (*a <= xb && xb <= *b)
-            },
-            Pattern::Class(class) => {
-                class.iter().any(|pat| pat.contains_range(xa, xb))
-            },
-        }
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(self.len());
-
-        self.write_bytes(&mut bytes);
-
-        bytes
-    }
-}
-
-impl PartialOrd for Pattern {
-    fn partial_cmp(&self, other: &Pattern) -> Option<Ordering> {
-        match (self, other) {
-            (&Pattern::Byte(ref byte), &Pattern::Byte(ref other)) => Some(byte.cmp(other)),
-
-            // Shorter first
-            _ => match self.len().partial_cmp(&other.len()) {
-                // Equal length != equal patterns, so let's not do that!
-                Some(Ordering::Equal) => None,
-                ordering              => ordering
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use syn::Ident;
-
-    #[test]
-    fn pattern_bytes_byte() {
-        let pattern = Pattern::Byte(b'a');
-
-        assert_eq!(b"a", &pattern.to_bytes()[..]);
-    }
-
-    #[test]
-    fn pattern_bytes_range() {
-        let pattern = Pattern::Range(b'a', b'f');
-
-        assert_eq!(b"abcdef", &pattern.to_bytes()[..]);
-    }
-
-    #[test]
-    fn pattern_bytes_alternative() {
-        let pattern = Pattern::Class(vec![
-            Pattern::Byte(b'_'),
-            Pattern::Byte(b'$'),
-            Pattern::Byte(b'!'),
-        ]);
-
-        assert_eq!(b"_$!", &pattern.to_bytes()[..]);
-    }
-
-    #[test]
-    fn pattern_bytes_complex() {
-        let pattern = Pattern::Class(vec![
-            Pattern::Range(b'a', b'f'),
-            Pattern::Range(b'0', b'9'),
-            Pattern::Byte(b'_'),
-            Pattern::Byte(b'$'),
-            Pattern::Byte(b'!'),
-        ]);
-
-        assert_eq!(b"abcdef0123456789_$!", &pattern.to_bytes()[..]);
-    }
-
-    fn mock_leaf() -> Leaf<'static> {
-        use proc_macro2::Span;
-
-        static mut MOCK_VARIANT: Option<&'static Ident> = None;
-
-        let variant = unsafe {
-            if MOCK_VARIANT.is_none() {
-                let variant = Ident::new("mock", Span::call_site());
-                let variant = Box::into_raw(Box::new(variant));
-
-                MOCK_VARIANT = Some(&*variant);
-            }
-
-            MOCK_VARIANT.unwrap()
-        };
-
-        Leaf {
-            token: variant,
-            callback: None,
-        }
-    }
 
     fn branch(node: Node) -> Option<Branch> {
         match node {
@@ -594,9 +389,8 @@ mod test {
 
     #[test]
     fn branch_regex_number() {
-        let leaf = mock_leaf();
         let regex = "[1-9][0-9]*";
-        let b = branch(Node::from_regex(regex, leaf)).unwrap();
+        let b = branch(Node::from_regex(regex, true)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
 
@@ -607,9 +401,8 @@ mod test {
 
     #[test]
     fn regex_ident() {
-        let leaf = mock_leaf();
         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
-        let b = branch(Node::from_regex(regex, leaf)).unwrap();
+        let b = branch(Node::from_regex(regex, true)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Class(vec![
@@ -635,9 +428,8 @@ mod test {
 
     #[test]
     fn regex_hex() {
-        let leaf = mock_leaf();
         let regex = "0x[0-9a-fA-F]+";
-        let b = branch(Node::from_regex(regex, leaf)).unwrap();
+        let b = branch(Node::from_regex(regex, true)).unwrap();
 
         assert_eq!(b.regex.patterns(), &[
             Pattern::Byte(b'0'),
@@ -657,9 +449,8 @@ mod test {
 
     #[test]
     fn regex_unshift() {
-        let leaf = mock_leaf();
         let regex = "abc";
-        let mut r = branch(Node::from_regex(regex, leaf)).unwrap().regex;
+        let mut r = branch(Node::from_regex(regex, true)).unwrap().regex;
 
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'a'),
@@ -667,19 +458,18 @@ mod test {
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'a')));
+        assert_eq!(r.unshift(), Pattern::Byte(b'a'));
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'b'),
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'b')));
+        assert_eq!(r.unshift(), Pattern::Byte(b'b'));
         assert_eq!(r.patterns(), &[
             Pattern::Byte(b'c'),
         ]);
 
-        assert_eq!(r.unshift(), Some(&Pattern::Byte(b'c')));
+        assert_eq!(r.unshift(), Pattern::Byte(b'c'));
         assert_eq!(r.patterns(), &[]);
-        assert_eq!(r.unshift(), None);
     }
 }

@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+use std::iter::Peekable;
+
 pub use syn::{Attribute, Lit, Ident, Meta, NestedMeta};
 pub use proc_macro2::Span;
 use quote::quote;
@@ -15,35 +18,62 @@ impl<T> OptionExt<T> for Option<T> {
     }
 }
 
-pub struct VariantDefinition {
-    pub value: String,
+pub struct Definition<V: Value> {
+    pub value: V,
     pub callback: Option<Ident>,
 }
 
+#[derive(Debug)]
+pub enum Literal {
+    Utf8(String),
+    Bytes(Vec<u8>),
+}
+
 pub trait Value {
-    fn value(value: String) -> Self;
+    fn value(value: Option<Literal>) -> Self;
 
     fn nested(&mut self, nested: &NestedMeta) {
         panic!("Unexpected nested attribute: {}", quote!(#nested));
     }
 }
 
-impl Value for String {
-    fn value(value: String) -> Self {
+impl Value for Literal {
+    fn value(value: Option<Literal>) -> Self {
+        match value {
+            Some(value) => value,
+            None        => panic!("Expected a string or bytes to be the first field to attribute."),
+        }
+    }
+}
+
+impl Value for Option<Literal> {
+    fn value(value: Option<Literal>) -> Self {
         value
     }
 }
 
-impl Value for Ident {
-    fn value(value: String) -> Self {
-        ident(&value)
+impl Value for String {
+    fn value(value: Option<Literal>) -> Self {
+        match value {
+            Some(Literal::Utf8(value))  => value,
+
+            // TODO: Better errors
+            Some(Literal::Bytes(bytes)) => panic!("Expected a string, got a bytes instead: {:02X?}", bytes),
+            None                        => panic!("Expected a string"),
+        }
     }
 }
 
-impl Value for VariantDefinition {
-    fn value(value: String) -> Self {
-        VariantDefinition {
-            value,
+impl Value for Ident {
+    fn value(value: Option<Literal>) -> Self {
+        ident(&String::value(value))
+    }
+}
+
+impl<V: Value> Value for Definition<V> {
+    fn value(value: Option<Literal>) -> Self {
+        Definition {
+            value: V::value(value),
             callback: None,
         }
     }
@@ -63,50 +93,215 @@ impl Value for VariantDefinition {
     }
 }
 
-pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Option<V>
-where
-    V: Value,
-{
+pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {
     let meta = match attr.parse_meta() {
         Ok(meta) => meta,
         Err(_) => panic!("Couldn't parse attribute: {}", quote!(#attr)),
     };
 
+    read_meta(name, meta)
+}
+
+pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
+    if let NestedMeta::Meta(meta) = nested {
+        read_meta(name, meta)
+    } else {
+        None
+    }
+}
+
+pub fn read_meta(name: &str, meta: Meta) -> Option<Vec<NestedMeta>> {
     match meta {
         Meta::Word(ref ident) if ident == name => {
             panic!("Expected #[{} = ...], or #[{}(...)]", name, name);
         },
-        Meta::NameValue(ref nval) if nval.ident == name => {
-            let value = match nval.lit {
-                Lit::Str(ref v) => v.value(),
-                _ => panic!("#[{}] value must be a literal string", name),
-            };
-
-            Some(V::value(value))
-        },
-        Meta::List(ref list) if list.ident == name => {
-            let mut iter = list.nested.iter();
-
-            let value = match iter.next() {
-                Some(NestedMeta::Literal(Lit::Str(ref v))) => v.value(),
-                _ => panic!("#[{}] first argument must be a literal string, got: {}", name, quote!(#attr)),
-            };
-
-            let mut value = V::value(value);
-
-            for nested in iter {
-                value.nested(nested);
+        Meta::NameValue(nval) => {
+            if nval.ident == name {
+                Some(vec![NestedMeta::Literal(nval.lit)])
+            } else {
+                None
             }
-
-            Some(value)
+        },
+        Meta::List(list) => {
+            if list.ident == name {
+                Some(list.nested.into_iter().collect())
+            } else {
+                None
+            }
         },
         _ => None,
     }
+}
+
+pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Option<V>
+where
+    V: Value,
+{
+    read_attr(name, attr).map(parse_value)
+}
+
+pub fn value_from_nested<V>(name: &str, nested: NestedMeta) -> Option<V>
+where
+    V: Value,
+{
+    read_nested(name, nested).map(parse_value)
+}
+
+fn parse_value<V>(items: Vec<NestedMeta>) -> V
+where
+    V: Value,
+{
+    let mut iter = items.iter();
+
+    let value = match iter.next() {
+        Some(NestedMeta::Literal(Lit::Str(ref v)))     => Some(Literal::Utf8(v.value())),
+        Some(NestedMeta::Literal(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value())),
+        _ => None,
+    };
+
+    let mut value = V::value(value);
+
+    for nested in iter {
+        value.nested(nested);
+    }
+
+    value
 }
 
 pub fn ident(ident: &str) -> Ident {
     match syn::parse_str::<Ident>(ident) {
         Ok(ident) => ident,
         Err(_)    => panic!("Unable to parse {:?} into a Rust identifier.", ident),
+    }
+}
+
+pub fn bytes_to_regex_string(bytes: &[u8]) -> String {
+    let mut string = String::with_capacity(bytes.len());
+
+    for &byte in bytes {
+        if byte < 0x7F {
+            string.push(byte as char);
+        } else {
+            string.push_str(&format!("\\x{:02x}", byte));
+        }
+    }
+
+    string
+}
+
+pub struct MergeAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    left: Peekable<L>,
+    right: Peekable<R>,
+}
+
+impl<L, R> MergeAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    pub fn new<LI, RI>(left: LI, right: RI) -> Self
+    where
+        LI: IntoIterator<IntoIter = L, Item = L::Item>,
+        RI: IntoIterator<IntoIter = R, Item = R::Item>,
+    {
+        MergeAscending {
+            left: left.into_iter().peekable(),
+            right: right.into_iter().peekable(),
+        }
+    }
+}
+
+impl<L, R> Iterator for MergeAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+    L::Item: Ord,
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<L::Item> {
+        let which = match (self.left.peek(), self.right.peek()) {
+            (Some(l), Some(r)) => Some(l.cmp(r)),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+
+        match which {
+            Some(Ordering::Less) => self.left.next(),
+            Some(Ordering::Equal) => {
+                // Advance both
+                self.left.next();
+                self.right.next()
+            },
+            Some(Ordering::Greater) => self.right.next(),
+            None => None,
+        }
+    }
+}
+
+pub struct DiffAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    left: Peekable<L>,
+    right: Peekable<R>,
+}
+
+impl<L, R> DiffAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+{
+    pub fn new<LI, RI>(left: LI, right: RI) -> Self
+    where
+        LI: IntoIterator<IntoIter = L, Item = L::Item>,
+        RI: IntoIterator<IntoIter = R, Item = R::Item>,
+    {
+        DiffAscending {
+            left: left.into_iter().peekable(),
+            right: right.into_iter().peekable(),
+        }
+    }
+}
+
+impl<L, R> Iterator for DiffAscending<L, R>
+where
+    L: Iterator<Item = R::Item>,
+    R: Iterator,
+    L::Item: Ord,
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<L::Item> {
+        let which = match (self.left.peek(), self.right.peek()) {
+            (Some(l), Some(r)) => Some(l.cmp(r)),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+
+        match which {
+            Some(Ordering::Less) => self.left.next(),
+            Some(Ordering::Equal) => {
+                // Advance both to skip matches
+                self.left.next();
+                self.right.next();
+
+                self.next()
+            },
+            Some(Ordering::Greater) => {
+                // Skip right side
+                self.right.next();
+
+                self.next()
+            },
+            None => None,
+        }
     }
 }

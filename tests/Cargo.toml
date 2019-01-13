@@ -7,6 +7,5 @@ repository = "https://github.com/maciejhirsz/logos"
 edition = "2018"
 
 [dependencies]
-logos = { path = "../logos", default-features = false, features = ["nul_term_source"] }
+logos = { path = "../logos", default-features = false, features = ["std"] }
 logos-derive = { path = "../logos-derive" }
-toolshed = "0.8"

@@ -1,13 +1,25 @@
 use std::rc::Rc;
 
-use crate::tree::{Node, Branch};
+use crate::tree::{Node, Branch, Fork};
+use crate::regex::Pattern;
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
-    Eof,
     Error,
     Whitespace,
-    Tree(Rc<Node<'a>>),
+    Tree(Rc<Tree<'a>>),
+}
+
+#[derive(Debug, Clone)]
+pub struct Fallback<'a> {
+    pub boundary: Pattern,
+    pub fork: Fork<'a>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Tree<'a> {
+    pub node: Node<'a>,
+    pub fallback: Option<Fallback<'a>>,
 }
 
 #[derive(Debug)]
@@ -15,12 +27,25 @@ pub struct Handlers<'a> {
     handlers: Vec<Handler<'a>>,
 }
 
+pub enum Trivia {
+    Patterns(Vec<Pattern>),
+    Default,
+}
+
 impl<'a> Handlers<'a> {
-    pub fn new() -> Self {
+    pub fn new(trivia: Trivia) -> Self {
         let mut handlers = vec![Handler::Error; 256];
 
-        handlers[0] = Handler::Eof;
-        handlers[1..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
+        match trivia {
+            Trivia::Patterns(patterns) => {
+                for byte in patterns.iter().map(|pat| pat.bytes()).flatten() {
+                    handlers[byte as usize] = Handler::Whitespace;
+                }
+            },
+            Trivia::Default => {
+                handlers[0..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
+            },
+        }
 
         Handlers {
             handlers
@@ -28,18 +53,23 @@ impl<'a> Handlers<'a> {
     }
 
     pub fn insert(&mut self, mut branch: Branch<'a>) {
-        let bytes = branch.regex
-                          .unshift()
-                          .expect("Cannot assign tokens to empty patterns")
-                          .to_bytes();
+        let pattern = branch.regex.unshift();
+        let fallback = branch.fallback.take().map(|fork| {
+            let boundary = fork.arms[0].regex.first().clone();
 
-        let node = Rc::new(Node::from(branch));
-
-        for byte in bytes {
-            match self.handlers[byte as usize] {
-                Handler::Tree(ref mut root) => Rc::make_mut(root).insert((*node).clone()),
-                ref mut slot => *slot = Handler::Tree(node.clone()),
+            Fallback {
+                boundary,
+                fork,
             }
+        });
+
+        let tree = Rc::new(Tree {
+            node: Node::from(branch),
+            fallback,
+        });
+
+        for byte in pattern.bytes() {
+            self.handlers[byte as usize] = Handler::Tree(tree.clone());
         }
     }
 

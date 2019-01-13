@@ -91,7 +91,7 @@ extern crate core as std;
 pub use logos_derive::Logos;
 
 mod lexer;
-mod source;
+pub mod source;
 
 #[doc(hidden)]
 pub mod internal;
@@ -123,13 +123,15 @@ pub trait Logos: Sized {
     /// Returns a lookup table for the `Lexer`
     fn lexicon<'lexicon, 'source, Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>
     where
-        Source: self::Source<'source>;
+        Source: self::Source<'source>,
+        Self: source::WithSource<Source>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
     fn lexer<'source, Source>(source: Source) -> Lexer<Self, Source>
     where
         Source: self::Source<'source>,
+        Self: source::WithSource<Source>,
     {
         Lexer::new(source)
     }
