@@ -9,6 +9,6 @@ enum Token {
     #[error]
     Error,
 
-    #[regex = r"\w+"]
+    #[regex = r"\w"] // TEST ME WITH r"\w\w"!!!
     Label,
 }

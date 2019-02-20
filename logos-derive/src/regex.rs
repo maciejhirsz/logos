@@ -97,6 +97,7 @@ impl<'a> Node<'a> {
 
                 let mut node = Node::from_hir(repetition.hir.into_kind())?;
 
+                node.pack();
                 node.make_repeat(flag);
 
                 Some(node)
