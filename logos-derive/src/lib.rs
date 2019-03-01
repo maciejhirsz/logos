@@ -213,20 +213,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let fns = generator.fns();
 
-    let macro_lut =
-        variants.iter()
-            .enumerate()
-            .map(|(index, _)| quote!( #name!(#index; $($x::$variant => $val;)* $def), ));
-
-    let macro_matches =
-        variants.iter()
-            .enumerate()
-            .map(|(index, variant)| quote!( (#index; #name::#variant => $val:expr; $( $rest:tt )* ) => ($val); ));
-
-    let macro_shifts =
-        variants.iter()
-            .map(|variant| quote!( ($num:tt; #name::#variant => $val:expr; $( $rest:tt )* ) => (#name!($num; $($rest)*)); ));
-
     let source = match mode {
         Mode::Utf8   => quote!(Source),
         Mode::Binary => quote!(BinarySource),
@@ -263,37 +249,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
 
         impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
-
-        #[macro_export]
-        #[doc(hidden)]
-        macro_rules! #name {
-            // This pattern just handles trailing comma
-            ($( $x:ident::$variant:ident => $val:expr, )+ _ => $def:expr,) => (
-                #name!($( $x::$variant => $val, )* _ => $def)
-            );
-
-            // This pattern creates the actual LUT
-            ($( $x:ident::$variant:ident => $val:expr, )+ _ => $def:expr) => (
-                [
-                    #( #macro_lut )*
-                ]
-            );
-
-            // Patterns below match their variant to the exact index in the LUT
-            #( #macro_matches )*
-
-            // Variant not matching index recursively shifts the token stream
-            // to the next variant in line
-            #( #macro_shifts )*
-
-            // Compile error for unknown variants
-            ($num:tt; $x:ident::$var:ident => $val:expr; $( $rest:tt )*) => (
-                compile_error!(concat!(stringify!($x), "::", stringify!($var), " is not a valid variant of ", stringify!(#name)))
-            );
-
-            // If the pattern above exhausted all possibilities, print default value
-            ($num:expr; $def:expr) => ($def);
-        }
     };
 
     // panic!("{}", tokens);
