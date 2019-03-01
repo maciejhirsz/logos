@@ -170,7 +170,7 @@ pub trait Logos: Sized {
 ///     // pointers here, as long as we don't capture any values.
 ///     Token::Eschaton => |n| n + 40,
 ///     Token::Immanetize => |n| n + 8999,
-///     _ => |_| 0,
+///     _ => (|_| 0) as fn(u32) -> u32, // Might have to hint the type
 /// };
 ///
 /// fn main() {
@@ -192,7 +192,14 @@ pub trait Logos: Sized {
 /// ```
 #[macro_export]
 macro_rules! lookup {
-    ( $token:ident $($rest:tt)* ) => (
-        $token!( $token $($rest)* )
-    );
+    ( $enum:ident::$variant:ident => $value:expr, $( $e:ident::$var:ident => $val:expr ,)* _ => $def:expr $(,)? ) => ({
+        let mut table = [$def; $enum::SIZE];
+
+        table[$enum::$variant as usize] = $value;
+        $(
+            table[$e::$var as usize] = $val;
+        )*
+
+        table
+    })
 }
