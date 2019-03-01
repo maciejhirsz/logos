@@ -689,7 +689,7 @@ impl<'a> CodeGenerator<'a> for Generator<'a> {
         quote! {
             #body
 
-            lex.token = ::logos::Logos::ERROR;
+            lex.error();
         }
     }
 
@@ -719,7 +719,7 @@ impl<'a> CodeGenerator<'a> for Generator<'a> {
     }
 
     fn print_fallback(&mut self) -> TokenStream {
-        quote!(return lex.token = ::logos::Logos::ERROR;)
+        quote!(return lex.error();)
     }
 }
 

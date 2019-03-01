@@ -96,6 +96,14 @@ pub trait Source<'source> {
     /// }
     /// ```
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice;
+
+    /// For `&str` sources attempts to find the closest `char` boundary at which source
+    /// can be sliced, starting from `index`.
+    ///
+    /// For binary sources (`&[u8]`) this should just return `index` back.
+    fn find_boundary(&self, index: usize) -> usize {
+        index
+    }
 }
 
 /// Marker trait for any `Source` that can be sliced into arbitrary byte chunks,
@@ -146,6 +154,15 @@ impl<'source> Source<'source> for &'source str {
         );
 
         self.get_unchecked(range)
+    }
+
+    #[inline]
+    fn find_boundary(&self, mut index: usize) -> usize {
+        while !self.is_char_boundary(index) {
+            index += 1;
+        }
+
+        index
     }
 }
 
