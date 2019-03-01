@@ -4,6 +4,10 @@
 
 ## Create ridiculously fast Lexers.
 
+[![Travis shield](https://travis-ci.org/maciejhirsz/logos.svg)](https://travis-ci.org/maciejhirsz/logos)
+[![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
+[![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
+
 **Logos** works by:
 + Resolving all logical branching of token definitions into a tree.
 + Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).

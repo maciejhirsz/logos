@@ -12,7 +12,7 @@ readme = "../README.md"
 edition = "2018"
 
 [dependencies]
-logos-derive = { version = "0.10.0-rc1", optional = true }
+logos-derive = { version = "0.10.0-rc2", optional = true }
 
 [features]
 default = ["export_derive", "std"]
