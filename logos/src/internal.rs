@@ -21,4 +21,9 @@ pub trait LexerInternal<'source> {
 
     /// Bump the position by `size`.
     fn bump(&mut self, size: usize);
+
+    /// Set the current token to appropriate `#[error]` variant.
+    /// Guarantee that `token_end` is at char boundary for `&str`.
+    #[inline]
+    fn error(&mut self);
 }

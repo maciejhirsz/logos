@@ -5,7 +5,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "logos"
-version = "0.10.0-rc1"
+version = "0.10.0-rc2"
 dependencies = [
  "logos-derive 0.10.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -13,6 +13,7 @@ dependencies = [
 [[package]]
 name = "logos-derive"
 version = "0.10.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -24,8 +25,7 @@ dependencies = [
 
 [[package]]
 name = "logos-derive"
-version = "0.10.0-rc1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.10.0-rc2"
 dependencies = [
  "proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -81,8 +81,8 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.10.0-rc1",
- "logos-derive 0.10.0-rc1",
+ "logos 0.10.0-rc2",
+ "logos-derive 0.10.0-rc2",
 ]
 
 [[package]]
