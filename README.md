@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
+    <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.png" width="60%" alt="Logos">
 </p>
 
 ## Create ridiculously fast Lexers.
