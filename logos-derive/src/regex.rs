@@ -3,152 +3,152 @@ use regex_syntax::ParserBuilder;
 use std::fmt;
 use utf8_ranges::{Utf8Range, Utf8Sequence, Utf8Sequences};
 
-use crate::tree::{Branch, Fork, ForkKind, Node};
+// use crate::tree::{Branch, Fork, ForkKind, Node};
 
 mod pattern;
 
-pub use self::pattern::Pattern;
+pub use pattern::Pattern;
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Regex {
     patterns: Vec<Pattern>,
 }
 
-impl<'a> Node<'a> {
-    pub fn from_regex(source: &str, utf8: bool) -> Self {
-        let mut builder = ParserBuilder::new();
+// impl<'a> Node<'a> {
+//     pub fn from_regex(source: &str, utf8: bool) -> Self {
+//         let mut builder = ParserBuilder::new();
 
-        if !utf8 {
-            builder.allow_invalid_utf8(true).unicode(false);
-        }
+//         if !utf8 {
+//             builder.allow_invalid_utf8(true).unicode(false);
+//         }
 
-        let hir = match builder.build().parse(source) {
-            Ok(hir) => hir.into_kind(),
-            Err(err) => {
-                panic!("Unable to parse #[regex]! {:#?}", err);
-            }
-        };
+//         let hir = match builder.build().parse(source) {
+//             Ok(hir) => hir.into_kind(),
+//             Err(err) => {
+//                 panic!("Unable to parse #[regex]! {:#?}", err);
+//             }
+//         };
 
-        Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]")
-    }
+//         Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]")
+//     }
 
-    fn from_hir(hir: HirKind) -> Option<Self> {
-        match hir {
-            HirKind::Empty => None,
-            HirKind::Alternation(alternation) => {
-                let mut fork = Fork::default();
+//     fn from_hir(hir: HirKind) -> Option<Self> {
+//         match hir {
+//             HirKind::Empty => None,
+//             HirKind::Alternation(alternation) => {
+//                 let mut fork = Fork::default();
 
-                for hir in alternation.into_iter().map(Hir::into_kind) {
-                    if let Some(node) = Node::from_hir(hir) {
-                        fork.insert(node);
-                    } else {
-                        fork.kind = ForkKind::Maybe;
-                    }
-                }
+//                 for hir in alternation.into_iter().map(Hir::into_kind) {
+//                     if let Some(node) = Node::from_hir(hir) {
+//                         fork.insert(node);
+//                     } else {
+//                         fork.kind = ForkKind::Maybe;
+//                     }
+//                 }
 
-                Some(Node::from(fork))
-            }
-            HirKind::Concat(concat) => {
-                let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
-                let mut nodes = vec![];
-                let mut read = 0;
+//                 Some(Node::from(fork))
+//             }
+//             HirKind::Concat(concat) => {
+//                 let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
+//                 let mut nodes = vec![];
+//                 let mut read = 0;
 
-                while concat.len() != read {
-                    let mut regex = Regex::default();
+//                 while concat.len() != read {
+//                     let mut regex = Regex::default();
 
-                    let count = concat[read..]
-                        .iter()
-                        .take_while(|hir| Regex::from_hir_internal(hir, &mut regex))
-                        .count();
+//                     let count = concat[read..]
+//                         .iter()
+//                         .take_while(|hir| Regex::from_hir_internal(hir, &mut regex))
+//                         .count();
 
-                    if count != 0 {
-                        nodes.push(Branch::new(regex).into());
-                        read += count;
-                    } else if let Some(node) = Node::from_hir(concat.remove(read)) {
-                        nodes.push(node);
-                    }
-                }
+//                     if count != 0 {
+//                         nodes.push(Branch::new(regex).into());
+//                         read += count;
+//                     } else if let Some(node) = Node::from_hir(concat.remove(read)) {
+//                         nodes.push(node);
+//                     }
+//                 }
 
-                let mut node = nodes.pop()?;
+//                 let mut node = nodes.pop()?;
 
-                for mut n in nodes.into_iter().rev() {
-                    n.chain(&node);
+//                 for mut n in nodes.into_iter().rev() {
+//                     n.chain(&node);
 
-                    node = n;
-                }
+//                     node = n;
+//                 }
 
-                Some(node)
-            }
-            HirKind::Repetition(repetition) => {
-                use self::hir::RepetitionKind;
+//                 Some(node)
+//             }
+//             HirKind::Repetition(repetition) => {
+//                 use self::hir::RepetitionKind;
 
-                // FIXME?
-                if !repetition.greedy {
-                    panic!("Non-greedy parsing in #[regex] is currently unsupported.")
-                }
+//                 // FIXME?
+//                 if !repetition.greedy {
+//                     panic!("Non-greedy parsing in #[regex] is currently unsupported.")
+//                 }
 
-                let flag = match repetition.kind {
-                    RepetitionKind::ZeroOrOne => RepetitionFlag::ZeroOrOne,
-                    RepetitionKind::ZeroOrMore => RepetitionFlag::ZeroOrMore,
-                    RepetitionKind::OneOrMore => RepetitionFlag::OneOrMore,
-                    RepetitionKind::Range(_) => {
-                        panic!("The '{n,m}' repetition in #[regex] is currently unsupported.")
-                    }
-                };
+//                 let flag = match repetition.kind {
+//                     RepetitionKind::ZeroOrOne => RepetitionFlag::ZeroOrOne,
+//                     RepetitionKind::ZeroOrMore => RepetitionFlag::ZeroOrMore,
+//                     RepetitionKind::OneOrMore => RepetitionFlag::OneOrMore,
+//                     RepetitionKind::Range(_) => {
+//                         panic!("The '{n,m}' repetition in #[regex] is currently unsupported.")
+//                     }
+//                 };
 
-                let mut node = Node::from_hir(repetition.hir.into_kind())?;
+//                 let mut node = Node::from_hir(repetition.hir.into_kind())?;
 
-                node.make_repeat(flag);
+//                 node.make_repeat(flag);
 
-                Some(node)
-            }
-            HirKind::Group(group) => {
-                let mut fork = Fork::default();
+//                 Some(node)
+//             }
+//             HirKind::Group(group) => {
+//                 let mut fork = Fork::default();
 
-                fork.insert(Node::from_hir(group.hir.into_kind())?);
+//                 fork.insert(Node::from_hir(group.hir.into_kind())?);
 
-                Some(Node::from(fork))
-            }
-            // This handles classes with non-ASCII Unicode ranges
-            HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
-                match class {
-                    Class::Unicode(unicode) => {
-                        let mut branches = unicode
-                            .iter()
-                            .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-                            .map(Branch::new);
+//                 Some(Node::from(fork))
+//             }
+//             // This handles classes with non-ASCII Unicode ranges
+//             HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
+//                 match class {
+//                     Class::Unicode(unicode) => {
+//                         let mut branches = unicode
+//                             .iter()
+//                             .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
+//                             .map(Branch::new);
 
-                        branches.next().map(|branch| {
-                            let mut node = Node::Branch(branch);
+//                         branches.next().map(|branch| {
+//                             let mut node = Node::Branch(branch);
 
-                            for branch in branches {
-                                node.insert(Node::Branch(branch));
-                            }
+//                             for branch in branches {
+//                                 node.insert(Node::Branch(branch));
+//                             }
 
-                            node
-                        })
-                    }
-                    Class::Bytes(_) => {
-                        // `is_ascii_or_bytes` check shouldn't permit us to branch here
+//                             node
+//                         })
+//                     }
+//                     Class::Bytes(_) => {
+//                         // `is_ascii_or_bytes` check shouldn't permit us to branch here
 
-                        panic!("Internal Error")
-                    }
-                }
-            }
-            _ => {
-                let mut regex = Regex::default();
+//                         panic!("Internal Error")
+//                     }
+//                 }
+//             }
+//             _ => {
+//                 let mut regex = Regex::default();
 
-                Regex::from_hir_internal(&hir, &mut regex);
+//                 Regex::from_hir_internal(&hir, &mut regex);
 
-                if regex.len() == 0 {
-                    None
-                } else {
-                    Some(Branch::new(regex).into())
-                }
-            }
-        }
-    }
-}
+//                 if regex.len() == 0 {
+//                     None
+//                 } else {
+//                     Some(Branch::new(regex).into())
+//                 }
+//             }
+//         }
+//     }
+// }
 
 impl Regex {
     pub fn len(&self) -> usize {
@@ -368,102 +368,102 @@ impl fmt::Debug for Regex {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+// #[cfg(test)]
+// mod test {
+//     use super::*;
 
-    fn branch(node: Node) -> Option<Branch> {
-        match node {
-            Node::Branch(branch) => Some(branch),
-            Node::Fork(fork) => Some(fork.arms[0].clone()),
-            _ => None,
-        }
-    }
+//     fn branch(node: Node) -> Option<Branch> {
+//         match node {
+//             Node::Branch(branch) => Some(branch),
+//             Node::Fork(fork) => Some(fork.arms[0].clone()),
+//             _ => None,
+//         }
+//     }
 
-    #[test]
-    fn branch_regex_number() {
-        let regex = "[1-9][0-9]*";
-        let b = branch(Node::from_regex(regex, true)).unwrap();
+//     #[test]
+//     fn branch_regex_number() {
+//         let regex = "[1-9][0-9]*";
+//         let b = branch(Node::from_regex(regex, true)).unwrap();
 
-        assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
+//         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'1', b'9')]);
 
-        let b = branch(*b.then.unwrap()).unwrap();
+//         let b = branch(*b.then.unwrap()).unwrap();
 
-        assert_eq!(b.regex.patterns(), &[Pattern::Range(b'0', b'9')]);
-    }
+//         assert_eq!(b.regex.patterns(), &[Pattern::Range(b'0', b'9')]);
+//     }
 
-    #[test]
-    fn regex_ident() {
-        let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
-        let b = branch(Node::from_regex(regex, true)).unwrap();
+//     #[test]
+//     fn regex_ident() {
+//         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
+//         let b = branch(Node::from_regex(regex, true)).unwrap();
 
-        assert_eq!(
-            b.regex.patterns(),
-            &[Pattern::Class(vec![
-                Pattern::Byte(b'$'),
-                Pattern::Range(b'A', b'Z'),
-                Pattern::Byte(b'_'),
-                Pattern::Range(b'a', b'z'),
-            ])]
-        );
+//         assert_eq!(
+//             b.regex.patterns(),
+//             &[Pattern::Class(vec![
+//                 Pattern::Byte(b'$'),
+//                 Pattern::Range(b'A', b'Z'),
+//                 Pattern::Byte(b'_'),
+//                 Pattern::Range(b'a', b'z'),
+//             ])]
+//         );
 
-        let b = branch(*b.then.unwrap()).unwrap();
+//         let b = branch(*b.then.unwrap()).unwrap();
 
-        assert_eq!(
-            b.regex.patterns(),
-            &[Pattern::Class(vec![
-                Pattern::Byte(b'$'),
-                Pattern::Range(b'0', b'9'),
-                Pattern::Range(b'A', b'Z'),
-                Pattern::Byte(b'_'),
-                Pattern::Range(b'a', b'z'),
-            ])]
-        );
-    }
+//         assert_eq!(
+//             b.regex.patterns(),
+//             &[Pattern::Class(vec![
+//                 Pattern::Byte(b'$'),
+//                 Pattern::Range(b'0', b'9'),
+//                 Pattern::Range(b'A', b'Z'),
+//                 Pattern::Byte(b'_'),
+//                 Pattern::Range(b'a', b'z'),
+//             ])]
+//         );
+//     }
 
-    #[test]
-    fn regex_hex() {
-        let regex = "0x[0-9a-fA-F]+";
-        let b = branch(Node::from_regex(regex, true)).unwrap();
+//     #[test]
+//     fn regex_hex() {
+//         let regex = "0x[0-9a-fA-F]+";
+//         let b = branch(Node::from_regex(regex, true)).unwrap();
 
-        assert_eq!(
-            b.regex.patterns(),
-            &[Pattern::Byte(b'0'), Pattern::Byte(b'x'),]
-        );
+//         assert_eq!(
+//             b.regex.patterns(),
+//             &[Pattern::Byte(b'0'), Pattern::Byte(b'x'),]
+//         );
 
-        let b = branch(*b.then.unwrap()).unwrap();
+//         let b = branch(*b.then.unwrap()).unwrap();
 
-        assert_eq!(
-            b.regex.patterns(),
-            &[Pattern::Class(vec![
-                Pattern::Range(b'0', b'9'),
-                Pattern::Range(b'A', b'F'),
-                Pattern::Range(b'a', b'f'),
-            ])]
-        );
-    }
+//         assert_eq!(
+//             b.regex.patterns(),
+//             &[Pattern::Class(vec![
+//                 Pattern::Range(b'0', b'9'),
+//                 Pattern::Range(b'A', b'F'),
+//                 Pattern::Range(b'a', b'f'),
+//             ])]
+//         );
+//     }
 
-    #[test]
-    fn regex_unshift() {
-        let regex = "abc";
-        let mut r = branch(Node::from_regex(regex, true)).unwrap().regex;
+//     #[test]
+//     fn regex_unshift() {
+//         let regex = "abc";
+//         let mut r = branch(Node::from_regex(regex, true)).unwrap().regex;
 
-        assert_eq!(
-            r.patterns(),
-            &[
-                Pattern::Byte(b'a'),
-                Pattern::Byte(b'b'),
-                Pattern::Byte(b'c'),
-            ]
-        );
+//         assert_eq!(
+//             r.patterns(),
+//             &[
+//                 Pattern::Byte(b'a'),
+//                 Pattern::Byte(b'b'),
+//                 Pattern::Byte(b'c'),
+//             ]
+//         );
 
-        assert_eq!(r.unshift(), Pattern::Byte(b'a'));
-        assert_eq!(r.patterns(), &[Pattern::Byte(b'b'), Pattern::Byte(b'c'),]);
+//         assert_eq!(r.unshift(), Pattern::Byte(b'a'));
+//         assert_eq!(r.patterns(), &[Pattern::Byte(b'b'), Pattern::Byte(b'c'),]);
 
-        assert_eq!(r.unshift(), Pattern::Byte(b'b'));
-        assert_eq!(r.patterns(), &[Pattern::Byte(b'c'),]);
+//         assert_eq!(r.unshift(), Pattern::Byte(b'b'));
+//         assert_eq!(r.patterns(), &[Pattern::Byte(b'c'),]);
 
-        assert_eq!(r.unshift(), Pattern::Byte(b'c'));
-        assert_eq!(r.patterns(), &[]);
-    }
-}
+//         assert_eq!(r.unshift(), Pattern::Byte(b'c'));
+//         assert_eq!(r.patterns(), &[]);
+//     }
+// }

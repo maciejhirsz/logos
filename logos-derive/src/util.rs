@@ -1,8 +1,9 @@
 use std::cmp::Ordering;
 use std::iter::Peekable;
 
+pub use proc_macro::TokenStream;
 pub use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, quote_spanned};
 pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};
 
 pub trait OptionExt<T> {
@@ -82,7 +83,7 @@ impl<V: Value> Value for Definition<V> {
 
     fn nested(&mut self, nested: &NestedMeta) {
         match nested {
-            NestedMeta::Meta(Meta::NameValue(ref nval)) if nval.ident == "callback" => {
+            NestedMeta::Meta(Meta::NameValue(ref nval)) if nval.path.is_ident("callback") => {
                 let callback = match nval.lit {
                     Lit::Str(ref c) => ident(&c.value()),
                     ref lit => panic!("Invalid callback value: {}", quote!(#lit)),
@@ -95,6 +96,14 @@ impl<V: Value> Value for Definition<V> {
             _ => panic!("Unexpected nested attribute: {}", quote!(#nested)),
         }
     }
+}
+
+pub fn error(message: &str, span: Span) -> TokenStream {
+    (quote_spanned! { span =>
+        fn _parse_error() {
+            compile_error!(#message)
+        }
+    }).into()
 }
 
 pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {
@@ -116,18 +125,18 @@ pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
 
 pub fn read_meta(name: &str, meta: Meta) -> Option<Vec<NestedMeta>> {
     match meta {
-        Meta::Word(ref ident) if ident == name => {
+        Meta::Path(ref path) if path.is_ident(name) => {
             panic!("Expected #[{} = ...], or #[{}(...)]", name, name);
         }
         Meta::NameValue(nval) => {
-            if nval.ident == name {
-                Some(vec![NestedMeta::Literal(nval.lit)])
+            if nval.path.is_ident(name) {
+                Some(vec![NestedMeta::Lit(nval.lit)])
             } else {
                 None
             }
         }
         Meta::List(list) => {
-            if list.ident == name {
+            if list.path.is_ident(name) {
                 Some(list.nested.into_iter().collect())
             } else {
                 None
@@ -158,8 +167,8 @@ where
     let mut iter = items.iter();
 
     let value = match iter.next() {
-        Some(NestedMeta::Literal(Lit::Str(ref v))) => Some(Literal::Utf8(v.value())),
-        Some(NestedMeta::Literal(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value())),
+        Some(NestedMeta::Lit(Lit::Str(ref v))) => Some(Literal::Utf8(v.value())),
+        Some(NestedMeta::Lit(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value())),
         _ => None,
     };
 

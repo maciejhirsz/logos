@@ -8,3 +8,6 @@ members = [
 [profile]
 release = { lto = true }
 bench = { lto = true }
+
+[patch.crates-io]
+logos-derive = { path = "./logos-derive" }

@@ -24,7 +24,7 @@ impl<'a> fmt::Debug for Leaf<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Leaf::Token { token, callback } => {
-                write!(f, "{}", token)?;
+               fmtfmt write!(f, "{}", token)?;
 
                 if let Some(ref callback) = callback {
                     write!(f, " ({})", callback)?;
