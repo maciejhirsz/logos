@@ -1,7 +1,7 @@
-use std::{mem, fmt};
 use rustc_hash::FxHashMap as HashMap;
+use std::{fmt, mem};
 
-use super::{Node, Branch};
+use super::{Branch, Node};
 use crate::regex::Pattern;
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -11,11 +11,10 @@ pub struct Fork<'a> {
     pub then: Option<Box<Node<'a>>>,
 }
 
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ForkKind {
-    Plain  = 0,
-    Maybe  = 1,
+    Plain = 0,
+    Maybe = 1,
     Repeat = 2,
 }
 
@@ -43,7 +42,7 @@ impl<'a> Fork<'a> {
 
     pub fn then<Then>(mut self, then: Then) -> Self
     where
-        Then: Into<Node<'a>>
+        Then: Into<Node<'a>>,
     {
         self.then = Some(then.into().boxed());
         self
@@ -62,12 +61,13 @@ impl<'a> Fork<'a> {
                 self.collapse();
 
                 self.insert_branch(branch);
-            },
+            }
             Node::Leaf(leaf) => {
                 if self.then.is_none() {
                     assert!(
                         self.kind == Plain,
-                        "Internal Error: Invalid fork construction: {:#?}", self
+                        "Internal Error: Invalid fork construction: {:#?}",
+                        self
                     );
 
                     self.kind = Maybe;
@@ -78,13 +78,14 @@ impl<'a> Fork<'a> {
 
                     assert!(
                         self.kind != Plain,
-                        "Internal Error: Invalid fork construction: {:#?}", self
+                        "Internal Error: Invalid fork construction: {:#?}",
+                        self
                     );
 
                     self.kind = Maybe;
                     self.then = Some(Node::Leaf(leaf).boxed());
                 }
-            },
+            }
             Node::Fork(mut other) => {
                 if self.kind == other.kind && self.arms == other.arms {
                     self.insert_then(other.then.take());
@@ -135,7 +136,10 @@ impl<'a> Fork<'a> {
                     other.regex.first_mut().subtract(intersection.regex.first());
                     branch = intersection;
                 } else {
-                    branch.regex.first_mut().subtract(intersection.regex.first());
+                    branch
+                        .regex
+                        .first_mut()
+                        .subtract(intersection.regex.first());
                     *other = intersection;
                 }
             }
@@ -175,10 +179,10 @@ impl<'a> Fork<'a> {
         match self.arms.binary_search_by(|other| branch.compare(other)) {
             Ok(index) => {
                 self.arms[index].insert_then(branch);
-            },
+            }
             Err(index) => {
-                self.arms.insert(index, branch.into());
-            },
+                self.arms.insert(index, branch);
+            }
         }
     }
 
@@ -189,11 +193,9 @@ impl<'a> Fork<'a> {
         let other = other.into();
 
         match self.then {
-            Some(ref mut node) => {
-                match other {
-                    Some(other) => node.insert(*other),
-                    None => node.make_maybe_fork(),
-                }
+            Some(ref mut node) => match other {
+                Some(other) => node.insert(*other),
+                None => node.make_maybe_fork(),
             },
             None => {
                 if other.is_some() {
@@ -205,7 +207,7 @@ impl<'a> Fork<'a> {
                     self.kind = Maybe;
                     self.then = other;
                 }
-            },
+            }
         }
     }
 
@@ -229,12 +231,12 @@ impl<'a> Fork<'a> {
                     }
 
                     return self.kind = Plain;
-                },
+                }
                 Node::Branch(ref mut branch) => {
                     self.insert_branch(branch.clone());
 
                     return self.kind = Plain;
-                },
+                }
                 _ => self.then = Some(then),
             }
         }
@@ -277,7 +279,7 @@ impl<'a> Fork<'a> {
                 Some(ref mut node) => node.chain(then),
                 None => {
                     self.then = Some(then.clone().boxed());
-                },
+                }
             }
         }
     }
@@ -360,7 +362,7 @@ impl<'a> fmt::Debug for Fork<'a> {
 
 impl<'a> From<Fork<'a>> for Node<'a> {
     fn from(fork: Fork<'a>) -> Self {
-        if fork.arms.len() == 0 {
+        if fork.arms.is_empty() {
             if let Some(then) = fork.then {
                 return *then;
             }

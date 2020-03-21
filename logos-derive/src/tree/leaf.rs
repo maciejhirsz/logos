@@ -29,7 +29,7 @@ impl<'a> fmt::Debug for Leaf<'a> {
                 if let Some(ref callback) = callback {
                     write!(f, " ({})", callback)?;
                 }
-            },
+            }
             Leaf::Trivia => write!(f, "TRIVIA")?,
         }
 

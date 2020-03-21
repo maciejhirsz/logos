@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use crate::tree::{Node, Branch, Fork};
 use crate::regex::Pattern;
+use crate::tree::{Branch, Fork, Node};
 
 #[derive(Debug, Clone)]
 pub enum Handler<'a> {
@@ -41,15 +41,15 @@ impl<'a> Handlers<'a> {
                 for byte in patterns.iter().map(|pat| pat.bytes()).flatten() {
                     handlers[byte as usize] = Handler::Whitespace;
                 }
-            },
+            }
             Trivia::Default => {
-                handlers[0..33].iter_mut().for_each(|slot| *slot = Handler::Whitespace);
-            },
+                handlers[0..33]
+                    .iter_mut()
+                    .for_each(|slot| *slot = Handler::Whitespace);
+            }
         }
 
-        Handlers {
-            handlers
-        }
+        Handlers { handlers }
     }
 
     pub fn insert(&mut self, mut branch: Branch<'a>) {
@@ -57,10 +57,7 @@ impl<'a> Handlers<'a> {
         let fallback = branch.fallback.take().map(|fork| {
             let boundary = fork.arms[0].regex.first().clone();
 
-            Fallback {
-                boundary,
-                fork,
-            }
+            Fallback { boundary, fork }
         });
 
         let tree = Rc::new(Tree {

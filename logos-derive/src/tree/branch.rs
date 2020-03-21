@@ -1,9 +1,9 @@
-use std::fmt;
 use std::cmp::Ordering;
+use std::fmt;
 
-use super::{Node, Fork};
 use super::ForkKind::*;
-use crate::regex::{Regex, Pattern};
+use super::{Fork, Node};
+use crate::regex::{Pattern, Regex};
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Branch<'a> {
@@ -26,7 +26,7 @@ impl<'a> Branch<'a> {
 
     pub fn then<Then>(mut self, then: Then) -> Self
     where
-        Then: Into<Node<'a>>
+        Then: Into<Node<'a>>,
     {
         self.then = Some(then.into().boxed());
         self
@@ -34,14 +34,18 @@ impl<'a> Branch<'a> {
 
     pub fn fallback<Fallback>(mut self, fallback: Fallback) -> Self
     where
-        Fallback: Into<Fork<'a>>
+        Fallback: Into<Fork<'a>>,
     {
         self.fallback = Some(fallback.into());
         self
     }
 
     pub fn compare(&self, other: &Branch<'a>) -> Ordering {
-        other.regex.first().partial_cmp(self.regex.first()).unwrap_or_else(|| Ordering::Greater)
+        other
+            .regex
+            .first()
+            .partial_cmp(self.regex.first())
+            .unwrap_or_else(|| Ordering::Greater)
     }
 
     pub fn chain(&mut self, then: &Node<'a>) {
@@ -49,7 +53,7 @@ impl<'a> Branch<'a> {
             Some(ref mut node) => node.chain(then),
             None => {
                 self.then = Some(then.clone().boxed());
-            },
+            }
         }
     }
 
@@ -60,24 +64,22 @@ impl<'a> Branch<'a> {
         let other = other.into();
 
         match self.then {
-            Some(ref mut node) => {
-                match other {
-                    Some(mut other) => {
-                        if let Some(fork) = other.as_mut_fork() {
-                            if let Some(fork) = node.find_fallback(fork) {
-                                return self.fallback = Some(fork);
-                            }
-
-                            if fork.arms.len() == 0 {
-                                return;
-                            }
+            Some(ref mut node) => match other {
+                Some(mut other) => {
+                    if let Some(fork) = other.as_mut_fork() {
+                        if let Some(fork) = node.find_fallback(fork) {
+                            return self.fallback = Some(fork);
                         }
 
-                        node.insert(*other);
-                    },
-                    None => node.make_maybe_fork(),
+                        if fork.arms.is_empty() {
+                            return;
+                        }
+                    }
+
+                    node.insert(*other);
                 }
-            }
+                None => node.make_maybe_fork(),
+            },
             ref mut then => *then = other,
         }
     }
@@ -127,9 +129,9 @@ impl<'a> Branch<'a> {
 
                     self.regex.extend(branch.regex.patterns());
                     self.then = branch.then.take();
-                },
+                }
                 Node::Fork(fork) => fork.pack(),
-                Node::Leaf(_) => {},
+                Node::Leaf(_) => {}
             }
         }
     }
@@ -155,7 +157,9 @@ impl<'a> fmt::Debug for Branch<'a> {
 impl<'a> From<Branch<'a>> for Node<'a> {
     fn from(branch: Branch<'a>) -> Self {
         if branch.regex.len() == 0 {
-            *branch.then.expect("Cannot convert an empty branch to a Node!")
+            *branch
+                .then
+                .expect("Cannot convert an empty branch to a Node!")
         } else {
             Node::Branch(branch)
         }

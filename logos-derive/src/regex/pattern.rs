@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 
-use crate::util::{MergeAscending, DiffAscending};
+use crate::util::{DiffAscending, MergeAscending};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
@@ -17,7 +17,7 @@ impl Pattern {
     {
         let mut bytes = bytes.into_iter();
         let mut first = bytes.next().expect("Internal Error: Emtpy Pattern");
-        let mut last  = first;
+        let mut last = first;
         let mut class = Vec::new();
 
         let mut push = |first, last| {
@@ -126,7 +126,7 @@ impl Pattern {
         match self {
             Pattern::Byte(b) => {
                 target[0] = *b;
-            },
+            }
             Pattern::Range(a, b) => {
                 for (index, byte) in (*a..=*b).enumerate() {
                     target[index] = byte;
@@ -138,7 +138,7 @@ impl Pattern {
 
                     target = &mut target[len..];
                 }
-            },
+            }
         }
 
         len
@@ -184,8 +184,8 @@ impl PartialOrd for Pattern {
             _ => match self.len().partial_cmp(&other.len()) {
                 // Equal length != equal patterns, so let's not do that!
                 Some(Ordering::Equal) => None,
-                ordering              => ordering
-            }
+                ordering => ordering,
+            },
         }
     }
 }
@@ -198,14 +198,14 @@ impl fmt::Debug for Pattern {
                 format_ascii(*a, f)?;
                 f.write_str("-")?;
                 format_ascii(*b, f)
-            },
+            }
             Pattern::Class(class) => {
                 f.write_str("[")?;
                 for pat in class.iter() {
                     write!(f, "{:?}", pat)?;
                 }
                 f.write_str("]")
-            },
+            }
         }
     }
 }
@@ -275,7 +275,6 @@ mod test {
         assert_eq!(pattern, expected);
     }
 
-
     #[test]
     fn combine() {
         let mut pattern = Pattern::Byte(0);
@@ -310,17 +309,12 @@ mod test {
 
     #[test]
     fn overlapping() {
-        let mut pattern = Pattern::Class(vec![
-            Pattern::Range(b'0', b'9'),
-            Pattern::Range(b'A', b'Z'),
-        ]);
+        let mut pattern =
+            Pattern::Class(vec![Pattern::Range(b'0', b'9'), Pattern::Range(b'A', b'Z')]);
 
         pattern.subtract(&Pattern::Range(b'8', b'E'));
 
-        let expected = Pattern::Class(vec![
-            Pattern::Range(b'0', b'7'),
-            Pattern::Range(b'F', b'Z'),
-        ]);
+        let expected = Pattern::Class(vec![Pattern::Range(b'0', b'7'), Pattern::Range(b'F', b'Z')]);
 
         assert_eq!(pattern, expected);
     }

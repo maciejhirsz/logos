@@ -11,37 +11,31 @@
 
 extern crate proc_macro;
 
-mod util;
-mod tree;
-mod regex;
-mod handlers;
 mod generator;
+mod handlers;
+mod regex;
+mod tree;
+mod util;
 
-use self::regex::Regex;
-use self::tree::{Node, Fork, Leaf};
-use self::util::{OptionExt, Definition, Literal, value_from_attr};
-use self::handlers::{Handlers, Handler, Trivia};
 use self::generator::Generator;
+use self::handlers::{Handler, Handlers, Trivia};
+use self::regex::Regex;
+use self::tree::{Fork, Leaf, Node};
+use self::util::{value_from_attr, Definition, Literal, OptionExt};
 
-use quote::quote;
 use proc_macro::TokenStream;
-use syn::{ItemEnum, Fields, Ident};
+use quote::quote;
+use syn::{Fields, Ident, ItemEnum};
 
 enum Mode {
     Utf8,
     Binary,
 }
 
-#[proc_macro_derive(Logos, attributes(
-    logos,
-    extras,
-    error,
-    end,
-    token,
-    regex,
-    extras,
-    callback,
-))]
+#[proc_macro_derive(
+    Logos,
+    attributes(logos, extras, error, end, token, regex, extras, callback,)
+)]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
 
@@ -60,7 +54,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     for attr in &item.attrs {
         if let Some(ext) = value_from_attr("extras", attr) {
-            extras.insert(ext, |_| panic!("Only one #[extras] attribute can be declared."));
+            extras.insert(ext, |_| {
+                panic!("Only one #[extras] attribute can be declared.")
+            });
         }
 
         if let Some(nested) = util::read_attr("logos", attr) {
@@ -72,10 +68,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             mode = Mode::Binary;
 
                             (false, util::bytes_to_regex_string(&bytes))
-                        },
+                        }
                         None => {
                             match trivia {
-                                Trivia::Patterns(_) => {},
+                                Trivia::Patterns(_) => {}
                                 Trivia::Default => trivia = Trivia::Patterns(vec![]),
                             }
 
@@ -86,7 +82,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     let node = Node::from_regex(&regex, utf8);
 
                     match node {
-                        Node::Branch(ref branch) if branch.then.is_none() && branch.regex.len() == 1 => {
+                        Node::Branch(ref branch)
+                            if branch.then.is_none() && branch.regex.len() == 1 =>
+                        {
                             let pattern = branch.regex.first().clone();
 
                             match trivia {
@@ -95,7 +93,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             }
 
                             continue;
-                        },
+                        }
                         _ => {}
                     }
 
@@ -118,12 +116,18 @@ pub fn logos(input: TokenStream) -> TokenStream {
         variants.push(&variant.ident);
 
         if variant.discriminant.is_some() {
-            panic!("`{}::{}` has a discriminant value set. This is not allowed for Tokens.", name, variant.ident);
+            panic!(
+                "`{}::{}` has a discriminant value set. This is not allowed for Tokens.",
+                name, variant.ident
+            );
         }
 
         match variant.fields {
-            Fields::Unit => {},
-            _ => panic!("`{}::{}` has fields. This is not allowed for Tokens.", name, variant.ident),
+            Fields::Unit => {}
+            _ => panic!(
+                "`{}::{}` has fields. This is not allowed for Tokens.",
+                name, variant.ident
+            ),
         }
 
         for attr in &variant.attrs {
@@ -131,11 +135,15 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let variant = &variant.ident;
 
             if ident == "error" {
-                error.insert(variant, |_| panic!("Only one #[error] variant can be declared."));
+                error.insert(variant, |_| {
+                    panic!("Only one #[error] variant can be declared.")
+                });
             }
 
             if ident == "end" {
-                end.insert(variant, |_| panic!("Only one #[end] variant can be declared."));
+                end.insert(variant, |_| {
+                    panic!("Only one #[end] variant can be declared.")
+                });
             }
 
             if let Some(definition) = value_from_attr::<Definition<Literal>>("token", attr) {
@@ -150,7 +158,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         mode = Mode::Binary;
 
                         &bytes
-                    },
+                    }
                 };
 
                 fork.insert(Node::new(Regex::sequence(bytes)).leaf(leaf));
@@ -166,7 +174,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         mode = Mode::Binary;
 
                         (false, util::bytes_to_regex_string(&bytes))
-                    },
+                    }
                 };
 
                 fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
@@ -193,28 +201,29 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let end = match end {
         Some(end) => end,
-        None => panic!("Missing #[end] token variant.")
+        None => panic!("Missing #[end] token variant."),
     };
 
     let extras = match extras {
         Some(ext) => quote!(#ext),
-        None      => quote!(()),
+        None => quote!(()),
     };
 
     // panic!("{:#?}", handlers);
 
-    let handlers = handlers.into_iter().map(|handler| {
-        match handler {
-            Handler::Error      => quote!(Some(_error)),
+    let handlers = handlers
+        .into_iter()
+        .map(|handler| match handler {
+            Handler::Error => quote!(Some(_error)),
             Handler::Whitespace => quote!(None),
             Handler::Tree(tree) => generator.print_tree(tree),
-        }
-    }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     let fns = generator.fns();
 
     let source = match mode {
-        Mode::Utf8   => quote!(Source),
+        Mode::Utf8 => quote!(Source),
         Mode::Binary => quote!(BinarySource),
     };
 
@@ -253,5 +262,5 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("{}", tokens);
 
-    TokenStream::from(tokens).into()
+    TokenStream::from(tokens)
 }

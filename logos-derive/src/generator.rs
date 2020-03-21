@@ -1,13 +1,13 @@
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens};
+use rustc_hash::FxHashMap as HashMap;
 use std::marker::PhantomData;
 use std::rc::Rc;
-use syn::{Ident, parse_str};
-use quote::{quote, ToTokens};
-use proc_macro2::{TokenStream, Span};
-use rustc_hash::FxHashMap as HashMap;
+use syn::{parse_str, Ident};
 
-use crate::handlers::{Tree, Fallback};
-use crate::tree::{Node, Branch, Fork, ForkKind, Leaf};
-use crate::regex::{Regex, Pattern};
+use crate::handlers::{Fallback, Tree};
+use crate::regex::{Pattern, Regex};
+use crate::tree::{Branch, Fork, ForkKind, Leaf, Node};
 
 pub struct Generator<'a> {
     enum_name: &'a Ident,
@@ -111,14 +111,15 @@ impl<'a> Generator<'a> {
             let body = self.tree_to_fn_body(tree.clone());
 
             let handler = Some(format!("_handle_{}", self.fns_constructed.len()))
-                            .into_iter()
-                            .chain(
-                                tokens.into_iter()
-                                      .take(3)
-                                      .map(|token| format!("{}", token).to_lowercase())
-                            )
-                            .collect::<Vec<_>>()
-                            .join("_");
+                .into_iter()
+                .chain(
+                    tokens
+                        .into_iter()
+                        .take(3)
+                        .map(|token| format!("{}", token).to_lowercase()),
+                )
+                .collect::<Vec<_>>()
+                .join("_");
 
             let handler = Ident::new(&handler, Span::call_site());
 
@@ -149,7 +150,8 @@ impl<'a> Generator<'a> {
                 gen: self,
                 fallback,
                 boundary: boundary.clone(),
-            }.print(&mut tree.node)
+            }
+            .print(&mut tree.node)
         } else {
             self.print(&mut tree.node)
         }
@@ -163,10 +165,10 @@ impl<'a> Generator<'a> {
 
         let function = patterns.entry(pattern.clone()).or_insert_with(|| {
             let chars = format!("{:?}", pattern)
-                            .bytes()
-                            .filter(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
-                            .map(|b| b as char)
-                            .collect::<String>();
+                .bytes()
+                .filter(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+                .map(|b| b as char)
+                .collect::<String>();
             let function = Ident::new(&format!("_pattern_{}_{}", idx, chars), Span::call_site());
 
             let tokens = match pattern.weight() {
@@ -270,7 +272,13 @@ pub trait CodeGenerator<'a>: Sized {
         self.print_then(then, ctx)
     }
 
-    fn print_lex_read<Code>(&mut self, default: MatchDefault, bytes: usize, ctx: Context, code: Code) -> TokenStream
+    fn print_lex_read<Code>(
+        &mut self,
+        default: MatchDefault,
+        bytes: usize,
+        ctx: Context,
+        code: Code,
+    ) -> TokenStream
     where
         Code: FnOnce(&mut Self, Context) -> TokenStream,
     {
@@ -278,8 +286,8 @@ pub trait CodeGenerator<'a>: Sized {
 
         let (cond, default) = match default {
             MatchDefault::Repeat(default) => (quote!(while), default),
-            MatchDefault::Once(default)   => (quote!(if), default),
-            MatchDefault::None            => (quote!(if), TokenStream::new()),
+            MatchDefault::Once(default) => (quote!(if), default),
+            MatchDefault::None => (quote!(if), TokenStream::new()),
         };
 
         let code = code(self, Context::new(bytes));
@@ -315,7 +323,10 @@ pub trait CodeGenerator<'a>: Sized {
         }
 
         let (source, split) = if ctx.available > len {
-            (quote!(chunk), quote!(let (chunk, arr): (&[u8; #len], _) = arr.split();))
+            (
+                quote!(chunk),
+                quote!(let (chunk, arr): (&[u8; #len], _) = arr.split();),
+            )
         } else {
             (quote!(arr), TokenStream::new())
         };
@@ -348,7 +359,7 @@ pub trait CodeGenerator<'a>: Sized {
     }
 
     fn print_fork(&mut self, fork: &mut Fork, ctx: Context) -> TokenStream {
-        if fork.arms.len() == 0 {
+        if fork.arms.is_empty() {
             return self.print_then(&mut fork.then, ctx);
         }
 
@@ -357,13 +368,13 @@ pub trait CodeGenerator<'a>: Sized {
             let regex = &arm.regex;
 
             match fork.kind {
-                ForkKind::Plain => {},
+                ForkKind::Plain => {}
                 ForkKind::Maybe => {
                     let then = &mut arm.then;
                     let otherwise = &mut fork.then;
 
                     return self.print_simple_maybe(regex, then, otherwise, ctx);
-                },
+                }
                 ForkKind::Repeat => {
                     if arm.then.is_none() {
                         let then = &mut fork.then;
@@ -401,34 +412,41 @@ pub trait CodeGenerator<'a>: Sized {
 
         let kind = fork.kind;
 
-        let branches = fork.arms.iter_mut().map(|branch| {
-            let test = {
-                let pattern = branch.regex.unshift();
+        let branches = fork
+            .arms
+            .iter_mut()
+            .map(|branch| {
+                let test = {
+                    let pattern = branch.regex.unshift();
 
-                if pattern.weight() <= 2 {
-                    quote!(#pattern)
-                } else {
-                    let test = self.gen().pattern_to_fn(&pattern);
+                    if pattern.weight() <= 2 {
+                        quote!(#pattern)
+                    } else {
+                        let test = self.gen().pattern_to_fn(&pattern);
 
-                    quote!(byte if #test(byte))
+                        quote!(byte if #test(byte))
+                    }
+                };
+
+                let branch = match kind {
+                    ForkKind::Plain => self.print_branch(branch, ctx.advance(1)),
+                    ForkKind::Maybe => self.maybe_gen().print_branch(branch, ctx.advance(1)),
+                    ForkKind::Repeat => self.loop_gen().print_branch(branch, ctx.advance(1)),
+                };
+
+                quote! {
+                    #test => {
+                        #branch
+                    },
                 }
-            };
-
-            let branch = match kind {
-                ForkKind::Plain  => self.print_branch(branch, ctx.advance(1)),
-                ForkKind::Maybe  => self.maybe_gen().print_branch(branch, ctx.advance(1)),
-                ForkKind::Repeat => self.loop_gen().print_branch(branch, ctx.advance(1)),
-            };
-
-            quote! {
-                #test => {
-                    #branch
-                },
-            }
-        }).collect::<TokenStream>();
+            })
+            .collect::<TokenStream>();
 
         let (source, split) = if ctx.available > 1 {
-            (quote!(byte), quote!(let (byte, arr): (u8, _) = arr.split();))
+            (
+                quote!(byte),
+                quote!(let (byte, arr): (u8, _) = arr.split();),
+            )
         } else {
             (quote!(arr[0]), TokenStream::new())
         };
@@ -436,7 +454,7 @@ pub trait CodeGenerator<'a>: Sized {
         if !inside_a_loop {
             let default = match kind {
                 ForkKind::Plain => self.print_then_plain(&mut fork.then, ctx),
-                _               => self.print_then(&mut fork.then, ctx),
+                _ => self.print_then(&mut fork.then, ctx),
             };
 
             quote! {
@@ -466,7 +484,12 @@ pub trait CodeGenerator<'a>: Sized {
         }
     }
 
-    fn print_simple_repeat(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
+    fn print_simple_repeat(
+        &mut self,
+        regex: &Regex,
+        then: &mut Option<Box<Node>>,
+        ctx: Context,
+    ) -> TokenStream {
         match regex.len() {
             0 => self.print_then(then, ctx),
             1 => {
@@ -507,7 +530,7 @@ pub trait CodeGenerator<'a>: Sized {
 
                     #next
                 }
-            },
+            }
             _ => {
                 let bump = ctx.bump();
                 let next = self.print_then(then, Context::new(0));
@@ -527,7 +550,13 @@ pub trait CodeGenerator<'a>: Sized {
         }
     }
 
-    fn print_simple_maybe(&mut self, regex: &Regex, then: &mut Option<Box<Node>>, otherwise: &mut Option<Box<Node>>, ctx: Context) -> TokenStream {
+    fn print_simple_maybe(
+        &mut self,
+        regex: &Regex,
+        then: &mut Option<Box<Node>>,
+        otherwise: &mut Option<Box<Node>>,
+        ctx: Context,
+    ) -> TokenStream {
         let len = regex.len();
         let bump = ctx.bump();
         let test = self.regex_to_test(regex.patterns(), Context::new(0));
@@ -546,7 +575,7 @@ pub trait CodeGenerator<'a>: Sized {
 
                     #otherwise
                 }
-            },
+            }
             false => {
                 let next = self.print_then(otherwise, Context::new(0));
                 let test = self.regex_to_test(regex.patterns(), Context::new(0));
@@ -560,7 +589,7 @@ pub trait CodeGenerator<'a>: Sized {
 
                     #next
                 }
-            },
+            }
         }
     }
 
@@ -568,18 +597,16 @@ pub trait CodeGenerator<'a>: Sized {
     /// an `if ____ {` or `while ____ {`.
     fn regex_to_test(&mut self, patterns: &[Pattern], ctx: Context) -> TokenStream {
         // Fast path optimization for bytes
-        if patterns.iter().all(Pattern::is_byte) {
-            if patterns.len() <= 16 {
-                let literal = match patterns.len() {
-                    0 => (&patterns[0]).into_token_stream(),
-                    _ => byte_literal(patterns),
-                };
+        if patterns.iter().all(Pattern::is_byte) && patterns.len() <= 16 {
+            let literal = match patterns.len() {
+                0 => (&patterns[0]).into_token_stream(),
+                _ => byte_literal(patterns),
+            };
 
-                return match ctx.unbumped {
-                    0 => quote!(lex.read() == Some(#literal)),
-                    n => quote!(lex.read_at(#n) == Some(#literal)),
-                };
-            }
+            return match ctx.unbumped {
+                0 => quote!(lex.read() == Some(#literal)),
+                n => quote!(lex.read_at(#n) == Some(#literal)),
+            };
         }
 
         // Fast path optimization for single pattern
@@ -616,9 +643,10 @@ pub trait CodeGenerator<'a>: Sized {
 
             quote!(#source == #literal)
         } else {
-            let chunk = chunk.iter().enumerate().map(|(idx, pat)| {
-                self.pattern_to_test(quote!(#source[#idx]), pat)
-            });
+            let chunk = chunk
+                .iter()
+                .enumerate()
+                .map(|(idx, pat)| self.pattern_to_test(quote!(#source[#idx]), pat));
 
             quote!(#(#chunk)&&*)
         }
@@ -645,7 +673,7 @@ pub trait CodeGenerator<'a>: Sized {
                     #bump
                     #leaf
                 }
-            },
+            }
             Node::Branch(branch) => self.print_branch(branch, ctx),
             Node::Fork(fork) => self.print_fork(fork, ctx),
         }
@@ -698,7 +726,9 @@ impl<'a> CodeGenerator<'a> for Generator<'a> {
 
         match leaf {
             Leaf::Token { token, callback } => {
-                let callback = callback.as_ref().or_else(|| self.gen().callbacks.get(token));
+                let callback = callback
+                    .as_ref()
+                    .or_else(|| self.gen().callbacks.get(token));
 
                 match callback {
                     Some(callback) => quote! {
@@ -709,7 +739,7 @@ impl<'a> CodeGenerator<'a> for Generator<'a> {
                         return lex.token = #name::#token;
                     },
                 }
-            },
+            }
             Leaf::Trivia => {
                 quote! {
                     return lex.advance();
@@ -768,7 +798,7 @@ impl<'a, 'b> CodeGenerator<'a> for FallbackGenerator<'a, 'b> {
 
 impl<'a, 'b, Parent> CodeGenerator<'a> for LoopGenerator<'a, 'b, Parent>
 where
-    Parent: CodeGenerator<'a>
+    Parent: CodeGenerator<'a>,
 {
     type Parent = Parent;
 
@@ -796,17 +826,26 @@ where
         };
     }
 
-    fn print_lex_read<Code>(&mut self, default: MatchDefault, bytes: usize, ctx: Context, code: Code) -> TokenStream
+    fn print_lex_read<Code>(
+        &mut self,
+        default: MatchDefault,
+        bytes: usize,
+        ctx: Context,
+        code: Code,
+    ) -> TokenStream
     where
         Code: FnOnce(&mut Self, Context) -> TokenStream,
     {
         let unbumped = ctx.unbumped;
 
         if unbumped > 0 && default.is_none() {
-            let code = code(self, Context {
-                available: bytes,
-                unbumped,
-            });
+            let code = code(
+                self,
+                Context {
+                    available: bytes,
+                    unbumped,
+                },
+            );
 
             return quote! {
                 if let Some(arr) = lex.read_at::<&[u8; #bytes]>(#unbumped) {
@@ -817,8 +856,8 @@ where
 
         let (cond, default) = match default {
             MatchDefault::Repeat(default) => (quote!(while), default),
-            MatchDefault::Once(default)   => (quote!(if), default),
-            MatchDefault::None            => (quote!(if), TokenStream::new()),
+            MatchDefault::Once(default) => (quote!(if), default),
+            MatchDefault::None => (quote!(if), TokenStream::new()),
         };
 
         let bump = ctx.bump();
@@ -867,7 +906,7 @@ where
 
 impl<'a, 'b, Parent> CodeGenerator<'a> for MaybeGenerator<'a, 'b, Parent>
 where
-    Parent: CodeGenerator<'a>
+    Parent: CodeGenerator<'a>,
 {
     type Parent = Parent;
 
@@ -895,17 +934,26 @@ where
         };
     }
 
-    fn print_lex_read<Code>(&mut self, default: MatchDefault, bytes: usize, ctx: Context, code: Code) -> TokenStream
+    fn print_lex_read<Code>(
+        &mut self,
+        default: MatchDefault,
+        bytes: usize,
+        ctx: Context,
+        code: Code,
+    ) -> TokenStream
     where
         Code: FnOnce(&mut Self, Context) -> TokenStream,
     {
         let unbumped = ctx.unbumped;
 
         if unbumped > 0 && default.is_none() {
-            let code = code(self, Context {
-                available: bytes,
-                unbumped,
-            });
+            let code = code(
+                self,
+                Context {
+                    available: bytes,
+                    unbumped,
+                },
+            );
 
             return quote! {
                 if let Some(arr) = lex.read_at::<&[u8; #bytes]>(#unbumped) {
@@ -916,8 +964,8 @@ where
 
         let (cond, default) = match default {
             MatchDefault::Repeat(default) => (quote!(while), default),
-            MatchDefault::Once(default)   => (quote!(if), default),
-            MatchDefault::None            => (quote!(if), TokenStream::new()),
+            MatchDefault::Once(default) => (quote!(if), default),
+            MatchDefault::None => (quote!(if), TokenStream::new()),
         };
 
         let bump = ctx.bump();
@@ -968,14 +1016,13 @@ fn byte_literal(patterns: &[Pattern]) -> TokenStream {
         "Internal Error: Trying to create a byte literal from non-byte patterns"
     );
 
-    let chars: String = patterns.iter().filter_map(|pat| {
-        match pat {
-            Pattern::Byte(byte) if *byte >= 0x20 && *byte < 0x80 => {
-                Some(*byte as char)
-            },
-            _ => None
-        }
-    }).collect();
+    let chars: String = patterns
+        .iter()
+        .filter_map(|pat| match pat {
+            Pattern::Byte(byte) if *byte >= 0x20 && *byte < 0x80 => Some(*byte as char),
+            _ => None,
+        })
+        .collect();
 
     if chars.len() == patterns.len() {
         let literal = format!("b{:?}", chars);

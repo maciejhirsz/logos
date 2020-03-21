@@ -1,9 +1,9 @@
-use utf8_ranges::{Utf8Sequences, Utf8Sequence, Utf8Range};
-use regex_syntax::hir::{self, Hir, HirKind, Class};
+use regex_syntax::hir::{self, Class, Hir, HirKind};
 use regex_syntax::ParserBuilder;
 use std::fmt;
+use utf8_ranges::{Utf8Range, Utf8Sequence, Utf8Sequences};
 
-use crate::tree::{Node, Fork, ForkKind, Branch};
+use crate::tree::{Branch, Fork, ForkKind, Node};
 
 mod pattern;
 
@@ -26,7 +26,7 @@ impl<'a> Node<'a> {
             Ok(hir) => hir.into_kind(),
             Err(err) => {
                 panic!("Unable to parse #[regex]! {:#?}", err);
-            },
+            }
         };
 
         Self::from_hir(hir).expect("Unable to produce a valid tree for #[regex]")
@@ -47,7 +47,7 @@ impl<'a> Node<'a> {
                 }
 
                 Some(Node::from(fork))
-            },
+            }
             HirKind::Concat(concat) => {
                 let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
                 let mut nodes = vec![];
@@ -56,17 +56,16 @@ impl<'a> Node<'a> {
                 while concat.len() != read {
                     let mut regex = Regex::default();
 
-                    let count = concat[read..].iter().take_while(|hir| {
-                        Regex::from_hir_internal(hir, &mut regex)
-                    }).count();
+                    let count = concat[read..]
+                        .iter()
+                        .take_while(|hir| Regex::from_hir_internal(hir, &mut regex))
+                        .count();
 
                     if count != 0 {
                         nodes.push(Branch::new(regex).into());
                         read += count;
-                    } else {
-                        if let Some(node) = Node::from_hir(concat.remove(read)) {
-                            nodes.push(node);
-                        }
+                    } else if let Some(node) = Node::from_hir(concat.remove(read)) {
+                        nodes.push(node);
                     }
                 }
 
@@ -79,20 +78,22 @@ impl<'a> Node<'a> {
                 }
 
                 Some(node)
-            },
+            }
             HirKind::Repetition(repetition) => {
                 use self::hir::RepetitionKind;
 
                 // FIXME?
-                if repetition.greedy == false {
+                if !repetition.greedy {
                     panic!("Non-greedy parsing in #[regex] is currently unsupported.")
                 }
 
                 let flag = match repetition.kind {
-                    RepetitionKind::ZeroOrOne  => RepetitionFlag::ZeroOrOne,
+                    RepetitionKind::ZeroOrOne => RepetitionFlag::ZeroOrOne,
                     RepetitionKind::ZeroOrMore => RepetitionFlag::ZeroOrMore,
-                    RepetitionKind::OneOrMore  => RepetitionFlag::OneOrMore,
-                    RepetitionKind::Range(_) => panic!("The '{n,m}' repetition in #[regex] is currently unsupported."),
+                    RepetitionKind::OneOrMore => RepetitionFlag::OneOrMore,
+                    RepetitionKind::Range(_) => {
+                        panic!("The '{n,m}' repetition in #[regex] is currently unsupported.")
+                    }
                 };
 
                 let mut node = Node::from_hir(repetition.hir.into_kind())?;
@@ -100,22 +101,22 @@ impl<'a> Node<'a> {
                 node.make_repeat(flag);
 
                 Some(node)
-            },
+            }
             HirKind::Group(group) => {
                 let mut fork = Fork::default();
 
                 fork.insert(Node::from_hir(group.hir.into_kind())?);
 
                 Some(Node::from(fork))
-            },
+            }
             // This handles classes with non-ASCII Unicode ranges
             HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
                 match class {
                     Class::Unicode(unicode) => {
-                        let mut branches =
-                            unicode.iter()
-                                .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-                                .map(|seq| Branch::new(seq));
+                        let mut branches = unicode
+                            .iter()
+                            .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
+                            .map(Branch::new);
 
                         branches.next().map(|branch| {
                             let mut node = Node::Branch(branch);
@@ -126,14 +127,14 @@ impl<'a> Node<'a> {
 
                             node
                         })
-                    },
+                    }
                     Class::Bytes(_) => {
                         // `is_ascii_or_bytes` check shouldn't permit us to branch here
 
                         panic!("Internal Error")
-                    },
+                    }
                 }
-            },
+            }
             _ => {
                 let mut regex = Regex::default();
 
@@ -171,70 +172,65 @@ impl Regex {
 
                 match literal {
                     Literal::Unicode(unicode) => {
-                        regex.patterns.extend(
-                            unicode
-                                .encode_utf8(&mut [0; 4])
-                                .bytes()
-                                .map(Pattern::Byte)
-                        );
-                    },
+                        regex
+                            .patterns
+                            .extend(unicode.encode_utf8(&mut [0; 4]).bytes().map(Pattern::Byte));
+                    }
                     Literal::Byte(byte) => {
                         regex.patterns.push(Pattern::Byte(*byte));
-                    },
+                    }
                 };
 
                 true
-            },
+            }
             HirKind::Class(class) => {
                 if !is_ascii_or_bytes(&class) {
                     return false;
                 }
 
                 let mut class: Vec<_> = match class {
-                    Class::Unicode(unicode) => {
-                        unicode
-                            .iter()
-                            .map(|range| {
-                                let (start, end) = (range.start(), range.end());
+                    Class::Unicode(unicode) => unicode
+                        .iter()
+                        .map(|range| {
+                            let (start, end) = (range.start(), range.end());
 
-                                let start = start as u8;
-                                let end = if end == '\u{10FFFF}' { 0xFF } else { end as u8 };
+                            let start = start as u8;
+                            let end = if end == '\u{10FFFF}' { 0xFF } else { end as u8 };
 
-                                if start == end {
-                                    Pattern::Byte(start)
-                                } else {
-                                    Pattern::Range(start, end)
-                                }
-                            })
-                            .collect()
-                    },
-                    Class::Bytes(bytes) => {
-                        bytes
-                            .iter()
-                            .map(|range| {
-                                let (start, end) = (range.start(), range.end());
+                            if start == end {
+                                Pattern::Byte(start)
+                            } else {
+                                Pattern::Range(start, end)
+                            }
+                        })
+                        .collect(),
+                    Class::Bytes(bytes) => bytes
+                        .iter()
+                        .map(|range| {
+                            let (start, end) = (range.start(), range.end());
 
-                                if start == end {
-                                    Pattern::Byte(start)
-                                } else {
-                                    Pattern::Range(start, end)
-                                }
-                            })
-                            .collect()
-                    },
+                            if start == end {
+                                Pattern::Byte(start)
+                            } else {
+                                Pattern::Range(start, end)
+                            }
+                        })
+                        .collect(),
                 };
 
                 match class.len() {
-                    0 => {},
+                    0 => {}
                     1 => regex.patterns.push(class.remove(0)),
                     _ => regex.patterns.push(Pattern::Class(class)),
                 }
 
                 true
-            },
-            HirKind::WordBoundary(_) => panic!("Word boundaries in #[regex] are currently unsupported."),
+            }
+            HirKind::WordBoundary(_) => {
+                panic!("Word boundaries in #[regex] are currently unsupported.")
+            }
             HirKind::Anchor(_) => panic!("Anchors in #[regex] are currently unsupported."),
-            _ => false
+            _ => false,
         }
     }
 
@@ -247,17 +243,20 @@ impl Regex {
     }
 
     pub fn first_mut(&mut self) -> &mut Pattern {
-        self.patterns.first_mut().expect("Internal Error: Empty Regex")
+        self.patterns
+            .first_mut()
+            .expect("Internal Error: Empty Regex")
     }
 
     pub fn match_split(&mut self, other: &mut Regex) -> Option<Regex> {
-        let patterns = self.patterns()
-                           .iter()
-                           .zip(other.patterns())
-                           .take_while(|(left, right)| left == right)
-                           .map(|(left, _)| left)
-                           .cloned()
-                           .collect::<Vec<_>>();
+        let patterns = self
+            .patterns()
+            .iter()
+            .zip(other.patterns())
+            .take_while(|(left, right)| left == right)
+            .map(|(left, _)| left)
+            .cloned()
+            .collect::<Vec<_>>();
 
         match patterns.len() {
             0 => None,
@@ -265,9 +264,7 @@ impl Regex {
                 self.patterns.drain(..len).count();
                 other.patterns.drain(..len).count();
 
-                Some(Regex {
-                    patterns,
-                })
+                Some(Regex { patterns })
             }
         }
     }
@@ -303,16 +300,14 @@ impl<'a> From<&'a [Pattern]> for Regex {
 
 impl From<Utf8Sequence> for Regex {
     fn from(seq: Utf8Sequence) -> Self {
-        let patterns =
-            seq.as_slice()
-               .iter()
-               .cloned()
-               .map(Pattern::from)
-               .collect::<Vec<_>>();
+        let patterns = seq
+            .as_slice()
+            .iter()
+            .cloned()
+            .map(Pattern::from)
+            .collect::<Vec<_>>();
 
-        Regex {
-            patterns,
-        }
+        Regex { patterns }
     }
 }
 
@@ -324,14 +319,12 @@ impl<'a> From<&'a str> for Regex {
 
 fn is_ascii_or_bytes(class: &Class) -> bool {
     match class {
-        Class::Unicode(unicode) => {
-            unicode.iter().all(|range| {
-                let start = range.start() as u32;
-                let end = range.end() as u32;
+        Class::Unicode(unicode) => unicode.iter().all(|range| {
+            let start = range.start() as u32;
+            let end = range.end() as u32;
 
-                start < 128 && (end < 128 || end == 0x10FFFF)
-            })
-        },
+            start < 128 && (end < 128 || end == 0x0010_FFFF)
+        }),
         Class::Bytes(_) => true,
     }
 }
@@ -383,7 +376,7 @@ mod test {
         match node {
             Node::Branch(branch) => Some(branch),
             Node::Fork(fork) => Some(fork.arms[0].clone()),
-            _ => None
+            _ => None,
         }
     }
 
@@ -404,26 +397,28 @@ mod test {
         let regex = "[a-zA-Z_$][a-zA-Z0-9_$]*";
         let b = branch(Node::from_regex(regex, true)).unwrap();
 
-        assert_eq!(b.regex.patterns(), &[
-            Pattern::Class(vec![
-                    Pattern::Byte(b'$'),
-                    Pattern::Range(b'A', b'Z'),
-                    Pattern::Byte(b'_'),
-                    Pattern::Range(b'a', b'z'),
-            ])
-        ]);
+        assert_eq!(
+            b.regex.patterns(),
+            &[Pattern::Class(vec![
+                Pattern::Byte(b'$'),
+                Pattern::Range(b'A', b'Z'),
+                Pattern::Byte(b'_'),
+                Pattern::Range(b'a', b'z'),
+            ])]
+        );
 
         let b = branch(*b.then.unwrap()).unwrap();
 
-        assert_eq!(b.regex.patterns(), &[
-            Pattern::Class(vec![
+        assert_eq!(
+            b.regex.patterns(),
+            &[Pattern::Class(vec![
                 Pattern::Byte(b'$'),
                 Pattern::Range(b'0', b'9'),
                 Pattern::Range(b'A', b'Z'),
                 Pattern::Byte(b'_'),
                 Pattern::Range(b'a', b'z'),
-            ])
-        ]);
+            ])]
+        );
     }
 
     #[test]
@@ -431,20 +426,21 @@ mod test {
         let regex = "0x[0-9a-fA-F]+";
         let b = branch(Node::from_regex(regex, true)).unwrap();
 
-        assert_eq!(b.regex.patterns(), &[
-            Pattern::Byte(b'0'),
-            Pattern::Byte(b'x'),
-        ]);
+        assert_eq!(
+            b.regex.patterns(),
+            &[Pattern::Byte(b'0'), Pattern::Byte(b'x'),]
+        );
 
         let b = branch(*b.then.unwrap()).unwrap();
 
-        assert_eq!(b.regex.patterns(), &[
-            Pattern::Class(vec![
+        assert_eq!(
+            b.regex.patterns(),
+            &[Pattern::Class(vec![
                 Pattern::Range(b'0', b'9'),
                 Pattern::Range(b'A', b'F'),
                 Pattern::Range(b'a', b'f'),
-            ])
-        ]);
+            ])]
+        );
     }
 
     #[test]
@@ -452,22 +448,20 @@ mod test {
         let regex = "abc";
         let mut r = branch(Node::from_regex(regex, true)).unwrap().regex;
 
-        assert_eq!(r.patterns(), &[
-            Pattern::Byte(b'a'),
-            Pattern::Byte(b'b'),
-            Pattern::Byte(b'c'),
-        ]);
+        assert_eq!(
+            r.patterns(),
+            &[
+                Pattern::Byte(b'a'),
+                Pattern::Byte(b'b'),
+                Pattern::Byte(b'c'),
+            ]
+        );
 
         assert_eq!(r.unshift(), Pattern::Byte(b'a'));
-        assert_eq!(r.patterns(), &[
-            Pattern::Byte(b'b'),
-            Pattern::Byte(b'c'),
-        ]);
+        assert_eq!(r.patterns(), &[Pattern::Byte(b'b'), Pattern::Byte(b'c'),]);
 
         assert_eq!(r.unshift(), Pattern::Byte(b'b'));
-        assert_eq!(r.patterns(), &[
-            Pattern::Byte(b'c'),
-        ]);
+        assert_eq!(r.patterns(), &[Pattern::Byte(b'c'),]);
 
         assert_eq!(r.unshift(), Pattern::Byte(b'c'));
         assert_eq!(r.patterns(), &[]);
