@@ -1,8 +1,7 @@
-use logos::Logos;
+use logos::Logos as _;
 use logos_derive::Logos;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(Logos)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Outer {
     #[end]
     End,
@@ -17,8 +16,7 @@ enum Outer {
     WhiteSpace,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(Logos)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Inner {
     #[end]
     End,
