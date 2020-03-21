@@ -1,4 +1,4 @@
-use logos::Logos;
+use logos::Logos as _;
 use logos_derive::Logos;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
