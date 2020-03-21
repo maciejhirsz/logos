@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use crate::source::{self, Source, WithSource};
-use super::{Logos};
 use super::internal::LexerInternal;
+use super::Logos;
+use crate::source::{self, Source, WithSource};
 
 /// A Lookup Table used internally. It maps indices for every valid
 /// byte to a function that takes a mutable reference to the `Lexer`,
@@ -92,7 +92,7 @@ where
     /// Get the range for the current token in `Source`.
     #[inline]
     pub fn range(&self) -> Range<usize> {
-        self.token_start .. self.token_end
+        self.token_start..self.token_end
     }
 
     /// Get a string slice of the current token.
@@ -150,7 +150,7 @@ pub trait Extras: Sized + Default {
 }
 
 /// Default `Extras` with no logic
-impl Extras for () { }
+impl Extras for () {}
 
 #[doc(hidden)]
 /// # WARNING!
@@ -190,7 +190,7 @@ where
     {
         match self.source.read::<T>(self.token_end) {
             Some(chunk) => test(chunk),
-            None        => false,
+            None => false,
         }
     }
 
@@ -203,14 +203,17 @@ where
     {
         match self.source.read::<T>(self.token_end + n) {
             Some(chunk) => test(chunk),
-            None        => false,
+            None => false,
         }
     }
 
     /// Bump the position `Lexer` is reading from by `size`.
     #[inline]
     fn bump(&mut self, size: usize) {
-        debug_assert!(self.token_end + size <= self.source.len(), "Bumping out of bounds!");
+        debug_assert!(
+            self.token_end + size <= self.source.len(),
+            "Bumping out of bounds!"
+        );
 
         self.token_end += size;
     }

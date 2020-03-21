@@ -96,8 +96,8 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use self::lexer::{Lexer, Lexicon, Extras};
-pub use self::source::{Source, Slice};
+pub use self::lexer::{Extras, Lexer, Lexicon};
+pub use self::source::{Slice, Source};
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.

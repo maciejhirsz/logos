@@ -4,8 +4,8 @@
 //! * `Source` - implemented by default for `&str` and `&[u8]`, used by the `Lexer`.
 //! * `Slice` - slices of `Source`, returned by `Lexer::slice`.
 
-use std::ops::Range;
 use std::fmt::Debug;
+use std::ops::Range;
 
 /// Trait for a `Slice` of a `Source` that the `Lexer` can consume.
 ///
@@ -132,7 +132,7 @@ impl<'source> Source<'source> for &'source str {
     #[inline]
     fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>
+        Chunk: self::Chunk<'source>,
     {
         if offset + (Chunk::SIZE - 1) < (*self).len() {
             Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
@@ -150,7 +150,9 @@ impl<'source> Source<'source> for &'source str {
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
-            "Reading out of bounds {:?} for {}!", range, self.len()
+            "Reading out of bounds {:?} for {}!",
+            range,
+            self.len()
         );
 
         self.get_unchecked(range)
@@ -177,7 +179,7 @@ impl<'source> Source<'source> for &'source [u8] {
     #[inline]
     fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>
+        Chunk: self::Chunk<'source>,
     {
         if offset + (Chunk::SIZE - 1) < (*self).len() {
             Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
@@ -195,7 +197,9 @@ impl<'source> Source<'source> for &'source [u8] {
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source [u8] {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
-            "Reading out of bounds {:?} for {}!", range, self.len()
+            "Reading out of bounds {:?} for {}!",
+            range,
+            self.len()
         );
 
         self.get_unchecked(range)

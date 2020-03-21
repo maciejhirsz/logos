@@ -1,8 +1,8 @@
 #![feature(test)]
 extern crate test;
 
-use test::{Bencher, black_box};
 use logos_derive::Logos;
+use test::{black_box, Bencher};
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {

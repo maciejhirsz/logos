@@ -31,8 +31,8 @@ enum Token {
 }
 
 mod css {
-    use tests::assert_lex;
     use super::*;
+    use tests::assert_lex;
 
     #[test]
     fn test_line_height() {
