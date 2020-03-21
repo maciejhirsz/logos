@@ -68,7 +68,7 @@ impl<'a> Branch<'a> {
                                 return self.fallback = Some(fork);
                             }
 
-                            if fork.arms.len() == 0 {
+                            if fork.arms.is_empty() {
                                 return;
                             }
                         }

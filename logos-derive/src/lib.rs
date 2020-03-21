@@ -253,5 +253,5 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("{}", tokens);
 
-    TokenStream::from(tokens).into()
+    TokenStream::from(tokens)
 }

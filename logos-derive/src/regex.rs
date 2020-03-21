@@ -63,10 +63,8 @@ impl<'a> Node<'a> {
                     if count != 0 {
                         nodes.push(Branch::new(regex).into());
                         read += count;
-                    } else {
-                        if let Some(node) = Node::from_hir(concat.remove(read)) {
-                            nodes.push(node);
-                        }
+                    } else if let Some(node) = Node::from_hir(concat.remove(read)) {
+                        nodes.push(node);
                     }
                 }
 
@@ -84,7 +82,7 @@ impl<'a> Node<'a> {
                 use self::hir::RepetitionKind;
 
                 // FIXME?
-                if repetition.greedy == false {
+                if !repetition.greedy {
                     panic!("Non-greedy parsing in #[regex] is currently unsupported.")
                 }
 
@@ -115,7 +113,7 @@ impl<'a> Node<'a> {
                         let mut branches =
                             unicode.iter()
                                 .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-                                .map(|seq| Branch::new(seq));
+                                .map(Branch::new);
 
                         branches.next().map(|branch| {
                             let mut node = Node::Branch(branch);
@@ -329,7 +327,7 @@ fn is_ascii_or_bytes(class: &Class) -> bool {
                 let start = range.start() as u32;
                 let end = range.end() as u32;
 
-                start < 128 && (end < 128 || end == 0x10FFFF)
+                start < 128 && (end < 128 || end == 0x0010_FFFF)
             })
         },
         Class::Bytes(_) => true,

@@ -1,4 +1,4 @@
-use std::{mem, fmt};
+use std::{fmt};
 
 use super::{Branch, Leaf, Fork, Token};
 use super::ForkKind::*;
@@ -45,7 +45,7 @@ impl<'a> Node<'a> {
         match self {
             Node::Fork(fork) => return fork,
             Node::Branch(ref mut branch) => {
-                let branch = mem::replace(branch, Branch::default());
+                let branch = std::mem::take(branch);
 
                 *self = Node::Fork(Fork::new(Plain).arm(branch))
             },
@@ -66,10 +66,10 @@ impl<'a> Node<'a> {
             Node::Fork(fork) => {
                 assert!(fork.kind != Repeat);
 
-                return fork.kind = Maybe;
+                fork.kind = Maybe
             },
             Node::Branch(ref mut branch) => {
-                let branch = mem::replace(branch, Branch::default());
+                let branch = std::mem::take(branch);
 
                 *self = Node::Fork(Fork::new(Maybe).arm(branch));
             },
@@ -91,7 +91,7 @@ impl<'a> Node<'a> {
 
         fork.insert(then);
 
-        if fork.arms.len() == 0 {
+        if fork.arms.is_empty() {
             if let Some(then) = fork.then.take() {
                 *self = *then;
             }

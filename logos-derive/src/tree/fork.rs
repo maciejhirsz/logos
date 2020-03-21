@@ -177,7 +177,7 @@ impl<'a> Fork<'a> {
                 self.arms[index].insert_then(branch);
             },
             Err(index) => {
-                self.arms.insert(index, branch.into());
+                self.arms.insert(index, branch);
             },
         }
     }
@@ -360,7 +360,7 @@ impl<'a> fmt::Debug for Fork<'a> {
 
 impl<'a> From<Fork<'a>> for Node<'a> {
     fn from(fork: Fork<'a>) -> Self {
-        if fork.arms.len() == 0 {
+        if fork.arms.is_empty() {
             if let Some(then) = fork.then {
                 return *then;
             }

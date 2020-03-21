@@ -348,7 +348,7 @@ pub trait CodeGenerator<'a>: Sized {
     }
 
     fn print_fork(&mut self, fork: &mut Fork, ctx: Context) -> TokenStream {
-        if fork.arms.len() == 0 {
+        if fork.arms.is_empty() {
             return self.print_then(&mut fork.then, ctx);
         }
 
@@ -568,18 +568,16 @@ pub trait CodeGenerator<'a>: Sized {
     /// an `if ____ {` or `while ____ {`.
     fn regex_to_test(&mut self, patterns: &[Pattern], ctx: Context) -> TokenStream {
         // Fast path optimization for bytes
-        if patterns.iter().all(Pattern::is_byte) {
-            if patterns.len() <= 16 {
-                let literal = match patterns.len() {
-                    0 => (&patterns[0]).into_token_stream(),
-                    _ => byte_literal(patterns),
-                };
+        if patterns.iter().all(Pattern::is_byte) && patterns.len() <= 16 {
+            let literal = match patterns.len() {
+                0 => (&patterns[0]).into_token_stream(),
+                _ => byte_literal(patterns),
+            };
 
-                return match ctx.unbumped {
-                    0 => quote!(lex.read() == Some(#literal)),
-                    n => quote!(lex.read_at(#n) == Some(#literal)),
-                };
-            }
+            return match ctx.unbumped {
+                0 => quote!(lex.read() == Some(#literal)),
+                n => quote!(lex.read_at(#n) == Some(#literal)),
+            };
         }
 
         // Fast path optimization for single pattern
