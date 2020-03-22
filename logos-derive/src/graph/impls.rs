@@ -1,12 +1,4 @@
-use std::fmt;
-
-use super::{Leaf, Branch, Fork, Node, NodeBody, Range};
-
-impl<'a> Default for Leaf<'a> {
-    fn default() -> Self {
-        Leaf::Trivia
-    }
-}
+use crate::graph::{Token, Branch, Fork, Node, NodeBody, Range};
 
 impl<T> From<Fork> for NodeBody<T> {
     fn from(fork: Fork) -> Self {
@@ -14,8 +6,8 @@ impl<T> From<Fork> for NodeBody<T> {
     }
 }
 
-impl<'a> From<Leaf<'a>> for NodeBody<Leaf<'a>> {
-    fn from(leaf: Leaf<'a>) -> Self {
+impl<'a> From<Token<'a>> for NodeBody<Token<'a>> {
+    fn from(leaf: Token<'a>) -> Self {
         NodeBody::Leaf(leaf)
     }
 }
@@ -24,11 +16,14 @@ fn is_printable(byte: u8) -> bool {
     byte.is_ascii_punctuation() | byte.is_ascii_alphanumeric() | byte.is_ascii_whitespace()
 }
 
-#[cfg(test)]
+/// We don't need debug impls in release builds
+// #[cfg(test)]
 mod debug {
     use super::*;
+    use std::fmt::{self, Debug};
 
-    impl fmt::Debug for Range {
+
+    impl Debug for Range {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let Range(start, end) = *self;
 
@@ -46,21 +41,21 @@ mod debug {
         }
     }
 
-    impl fmt::Debug for Branch {
+    impl Debug for Branch {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(f, "{:?} ⇒ :{}", self.pattern, self.then)
         }
     }
 
-    impl fmt::Debug for Fork {
+    impl Debug for Fork {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut list = f.debug_list();
 
             struct Miss<T>(T);
 
-            impl<T: fmt::Display> fmt::Debug for Miss<T> {
+            impl<T: fmt::Display> Debug for Miss<T> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    write!(f, "⤷ :{}", self.0)
+                    write!(f, "_ ⇒ :{}", self.0)
                 }
             }
 
@@ -77,7 +72,7 @@ mod debug {
         }
     }
 
-    impl<T: fmt::Debug> fmt::Debug for Node<T> {
+    impl<T: Debug> Debug for Node<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(f, ":{} ", self.id)?;
 
@@ -85,7 +80,7 @@ mod debug {
         }
     }
 
-    impl<T: fmt::Debug> fmt::Debug for NodeBody<T> {
+    impl<T: Debug> Debug for NodeBody<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
                 NodeBody::Fork(fork) => fork.fmt(f),
@@ -93,55 +88,30 @@ mod debug {
             }
         }
     }
+
+    impl Debug for Token<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, ":T {}", self.ident)?;
+
+            if let Some(ref callback) = self.callback {
+                write!(f, " ({})", callback)?;
+            }
+
+            Ok(())
+        }
+    }
+
+    use std::ops::RangeInclusive;
+
+    impl From<RangeInclusive<u8>> for Range {
+        fn from(range: RangeInclusive<u8>) -> Range {
+            Range(*range.start(), *range.end())
+        }
+    }
+
+    impl From<RangeInclusive<char>> for Range {
+        fn from(range: RangeInclusive<char>) -> Range {
+            Range(*range.start() as u8, *range.end() as u8)
+        }
+    }
 }
-// #[cfg(test)]
-// impl<T> PartialEq for Node<T>
-// where
-//     T: PartialEq,
-// {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.body == other.body
-//     }
-// }
-
-// impl fmt::Debug for Leaf<'_> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Leaf::Token { token, callback } => {
-//                 write!(f, "{}", token)?;
-
-//                 if let Some(ref callback) = callback {
-//                     write!(f, " ({})", callback)?;
-//                 }
-//             }
-//             Leaf::Trivia => write!(f, "TRIVIA")?,
-//         }
-
-//         Ok(())
-//     }
-// }
-
-// impl fmt::Debug for Branch {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         self.regex.fmt(f)?;
-
-//         if let Some(ref then) = self.then {
-//             f.write_str(" -> ")?;
-//             then.fmt(f)?;
-//         }
-
-//         Ok(())
-//     }
-// }
-
-// impl From<Branch> for Node<'_> {
-//  fn from(branch: Branch) -> Self {
-//      Node::Branch(branch)
-//  }
-// }
-
-// impl<'a> From<Leaf<'a>> for Node<'a> {
-//  fn from(leaf: Leaf<'a>) -> Self {
-//      Node::Leaf(leaf)
-//  }
-// }

@@ -4,35 +4,21 @@ use std::ops::{Index, IndexMut};
 // use crate::regex::Regex;
 
 mod impls;
+mod fork;
+mod pattern;
 
-pub type Token<'a> = &'a syn::Ident;
+pub use fork::{Fork, Branch};
+pub use pattern::{Range, Pattern};
+
 pub type Callback = syn::Ident;
-pub type Pattern = Vec<Range>;
-
-#[cfg_attr(test, derive(PartialEq))]
-pub struct Range(pub u8, pub u8);
-
-impl From<u8> for Range {
-    fn from(byte: u8) -> Range {
-        Range(byte, byte)
-    }
-}
 
 #[cfg_attr(test, derive(Debug))]
+#[derive(Default)]
 pub struct Graph<Leaf> {
     nodes: Vec<Node<Leaf>>,
 }
 
 impl<Leaf> Graph<Leaf> {
-    fn new() -> Self
-    where
-        Leaf: Default,
-    {
-        Graph {
-            nodes: Vec::new(),
-        }
-    }
-
     fn put<F, B>(&mut self, fun: F) -> NodeId
     where
         F: FnOnce(NodeId) -> B,
@@ -80,40 +66,19 @@ pub enum NodeBody<Leaf> {
 }
 
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Fork {
-    /// Arms of the fork
-    pub arms: Vec<Branch>,
-    /// State to go to if no arms are matching
-    pub miss: Option<NodeId>,
-}
-
-#[cfg_attr(test, derive(PartialEq))]
-pub struct Branch {
-    pub pattern: Pattern,
-    pub then: NodeId,
-}
-
-#[cfg_attr(test, derive(Debug, PartialEq))]
-pub enum Leaf<'a> {
-    Token {
-        token: Token<'a>,
-        callback: Option<Callback>,
-    },
-    Trivia,
+pub struct Token<'a> {
+    pub ident: &'a syn::Ident,
+    pub callback: Option<Callback>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::regex::Pattern;
-
-    macro_rules! pat {
-        ($($r:expr),*) => {vec![$($r.into()),*]};
-    }
+    use crate::pat;
 
     #[test]
     fn create_a_loop() {
-        let mut graph = Graph::new();
+        let mut graph = Graph::default();
 
         let token = graph.put(|_| NodeBody::Leaf("IDENT"));
         let root = graph.put(|id| Fork {
@@ -136,17 +101,5 @@ mod tests {
             ],
             miss: Some(token),
         }));
-    }
-
-    impl From<std::ops::RangeInclusive<u8>> for Range {
-        fn from(range: std::ops::RangeInclusive<u8>) -> Range {
-            Range(*range.start(), *range.end())
-        }
-    }
-
-    impl From<std::ops::RangeInclusive<char>> for Range {
-        fn from(range: std::ops::RangeInclusive<char>) -> Range {
-            Range(*range.start() as u8, *range.end() as u8)
-        }
     }
 }

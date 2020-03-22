@@ -22,7 +22,7 @@ mod util;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 use regex::Regex;
-use graph::Leaf;
+use graph::Token;
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -163,10 +163,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             if let Some(definition) = util::value_from_attr::<Definition<Literal>>("token", attr) {
-                // let leaf = Leaf::Token {
-                //     token: variant,
-                //     callback: definition.callback,
-                // };
+                let leaf = Token {
+                    ident: variant,
+                    callback: definition.callback,
+                };
 
                 let bytes = match definition.value {
                     Literal::Utf8(ref string) => string.as_bytes(),
@@ -177,12 +177,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                declarations.push((Regex::sequence(bytes), variant));
+                declarations.push((Regex::sequence(bytes), leaf));
             } else if let Some(definition) = util::value_from_attr::<Definition<Literal>>("regex", attr) {
-                // let leaf = Leaf::Token {
-                //     token: variant,
-                //     callback: definition.callback,
-                // };
+                let leaf = Token {
+                    ident: variant,
+                    callback: definition.callback,
+                };
 
                 let (utf8, regex) = match definition.value {
                     Literal::Utf8(string) => (true, string),
@@ -193,7 +193,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                declarations.push((Regex::sequence(regex), variant));
+                declarations.push((Regex::sequence(regex), leaf));
             }
 
         //         fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
