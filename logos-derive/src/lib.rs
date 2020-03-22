@@ -11,7 +11,7 @@
 
 // mod generator;
 // mod handlers;
-mod regex;
+// mod regex;
 mod graph;
 mod util;
 
@@ -19,8 +19,8 @@ mod util;
 // use self::handlers::{Handler, Handlers, Trivia};
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
-use regex::Regex;
-use graph::{NodeId, Graph, Token};
+// use regex::Regex;
+use graph::{NodeId, Graph, Rope, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -193,6 +193,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             if let Some(definition) = util::value_from_attr("token", attr) {
                 let (id, value) = with_definition(definition);
+
+                graph.put(|_| Rope::new(value.as_ref(), id));
 
                 declarations.push((Source::Sequence(value), id));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {

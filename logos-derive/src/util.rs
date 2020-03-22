@@ -30,6 +30,15 @@ pub enum Literal {
     Bytes(Vec<u8>),
 }
 
+impl AsRef<[u8]> for Literal {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            Literal::Utf8(string) => string.as_bytes(),
+            Literal::Bytes(bytes) => &*bytes,
+        }
+    }
+}
+
 pub trait Value {
     fn value(value: Option<Literal>) -> Self;
 
@@ -99,11 +108,11 @@ impl<V: Value> Value for Definition<V> {
 }
 
 pub fn error(message: &str, span: Span) -> TokenStream {
-    (quote_spanned! {
+    quote_spanned! {
         span => {
             compile_error!(#message)
         }
-    })
+    }
 }
 
 pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {

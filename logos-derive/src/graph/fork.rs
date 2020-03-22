@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use crate::graph::{NodeId, Range};
 
 pub struct Fork {

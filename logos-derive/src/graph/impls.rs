@@ -31,17 +31,20 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let Range(start, end) = *self;
 
+            if start != end {
+                f.write_str("[")?;
+            }
             match is_printable(start) {
-                true => write!(f, "[{}", start as char),
-                false => write!(f, "[{:02X}", start),
+                true => write!(f, "{}", start as char),
+                false => write!(f, "{:02X}", start),
             }?;
             if start != end {
                 match is_printable(end) {
-                    true => write!(f, "-{}", end as char),
-                    false => write!(f, "-{:02X}", end),
+                    true => write!(f, "-{}]", end as char),
+                    false => write!(f, "-{:02X}]", end),
                 }?;
             }
-            f.write_str("]")
+            Ok(())
         }
     }
 
@@ -81,15 +84,27 @@ mod debug {
 
     impl Debug for Rope {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut list = f.debug_list();
+            use std::fmt::Write;
 
-            list.entry(&Arm(String::from_utf8_lossy(&self.bytes), self.then));
+            let mut rope = '/'.to_string();
+
+            for range in self.pattern.iter() {
+                write!(rope, "{}", range)?;
+            }
+
+            rope.push('/');
+
             match self.miss {
-                Some(id) => list.entry(&Arm('_', id)),
-                None => list.entry(&Arm('_', "ERR")),
-            };
+                Some(id) => {
+                    let mut list = f.debug_list();
 
-            list.finish()
+                    list.entry(&Arm(rope, self.then));
+                    list.entry(&Arm('_', id));
+
+                    list.finish()
+                },
+                None => Arm(rope, self.then).fmt(f),
+            }
         }
     }
 

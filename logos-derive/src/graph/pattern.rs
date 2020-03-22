@@ -1,12 +1,26 @@
 use std::cmp::{Ord, Ordering};
+use std::ops::Deref;
 
-#[cfg(test)]
-#[macro_export]
-macro_rules! pat {
-    ($($r:expr),*) => {vec![$($r.into()),*]};
+#[cfg_attr(test, derive(PartialEq))]
+pub struct Pattern(pub Vec<Range>);
+
+impl Deref for Pattern {
+    type Target = [Range];
+
+    fn deref(&self) -> &[Range] {
+        &self.0
+    }
 }
 
-pub type Pattern = Vec<Range>;
+impl<I, T> From<I> for Pattern
+where
+    T: Into<Range>,
+    I: IntoIterator<Item = T>,
+{
+    fn from(iterable: I) -> Pattern {
+        Pattern(iterable.into_iter().map(Into::into).collect())
+    }
+}
 
 #[derive(Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub struct Range(pub u8, pub u8);
@@ -14,6 +28,12 @@ pub struct Range(pub u8, pub u8);
 impl From<u8> for Range {
     fn from(byte: u8) -> Range {
         Range(byte, byte)
+    }
+}
+
+impl From<&u8> for Range {
+    fn from(byte: &u8) -> Range {
+        Range::from(*byte)
     }
 }
 

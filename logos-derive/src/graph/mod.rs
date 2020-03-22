@@ -1,7 +1,4 @@
-use std::num::NonZeroUsize;
-use std::ops::{Index, IndexMut};
-
-// use crate::regex::Regex;
+use std::ops::Index;
 
 mod impls;
 mod fork;
@@ -10,7 +7,7 @@ mod pattern;
 
 pub use fork::Fork;
 pub use rope::Rope;
-pub use pattern::{Range, Pattern};
+pub use pattern::{Pattern, Range};
 
 #[cfg_attr(test, derive(Debug))]
 pub struct Graph<Leaf> {
@@ -81,7 +78,6 @@ pub struct Token {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pat;
     use pretty_assertions::assert_eq;
 
     #[test]
