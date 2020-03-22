@@ -22,10 +22,11 @@ mod util;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 use regex::Regex;
-use graph::{Graph, Token};
+use graph::{NodeId, Graph, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum};
 use syn::spanned::Spanned;
@@ -112,6 +113,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut errors = Vec::new();
     let mut graph = Graph::new();
 
+    #[derive(Debug)]
+    enum Source {
+        Regex(Literal),
+        Sequence(Literal),
+    }
+
     for variant in &item.variants {
         variants.push(&variant.ident);
 
@@ -150,8 +157,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
 
+
             if ident == "error" {
-                if let Some((_, previous)) = error.replace((variant, span)) {
+                if let Some((_, previous)) = error.replace((id, span)) {
                     errors.extend(vec![
                         util::error("Only one #[error] variant can be declared.", span),
                         util::error("Previously declared #[error]:", previous),
@@ -160,7 +168,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             if ident == "end" {
-                if let Some((_, previous)) = end.replace((variant, span)) {
+                if let Some((_, previous)) = end.replace((id, span)) {
                     errors.extend(vec![
                         util::error("Only one #[end] variant can be declared.", span),
                         util::error("Previously declared #[end]:", previous),
@@ -168,7 +176,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 }
             }
 
-            if let Some(definition) = util::value_from_attr::<Definition<Literal>>("token", attr) {
+            let mut with_definition = |definition: Definition<Literal>| {
                 let id = match definition.callback {
                     Some(callback) => {
                         graph.put(|_| Token {
@@ -179,37 +187,21 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     None => id,
                 };
 
-                let bytes = match definition.value {
-                    Literal::Utf8(ref string) => string.as_bytes(),
-                    Literal::Bytes(ref bytes) => {
-                        mode = Mode::Binary;
+                if let Literal::Bytes(_) = definition.value {
+                    mode = Mode::Binary;
+                }
 
-                        &bytes
-                    }
-                };
+                (id, definition.value)
+            };
 
-                declarations.push((Regex::sequence(bytes), id));
-            } else if let Some(definition) = util::value_from_attr::<Definition<Literal>>("regex", attr) {
-                let id = match definition.callback {
-                    Some(callback) => {
-                        graph.put(|_| Token {
-                            ident: variant,
-                            callback: Some(callback),
-                        })
-                    }
-                    None => id,
-                };
+            if let Some(definition) = util::value_from_attr("token", attr) {
+                let (id, value) = with_definition(definition);
 
-                let (utf8, regex) = match definition.value {
-                    Literal::Utf8(string) => (true, string),
-                    Literal::Bytes(bytes) => {
-                        mode = Mode::Binary;
+                declarations.push((Source::Sequence(value), id));
+            } else if let Some(definition) = util::value_from_attr("regex", attr) {
+                let (id, value) = with_definition(definition);
 
-                        (false, util::bytes_to_regex_string(&bytes))
-                    }
-                };
-
-                declarations.push((Regex::sequence(regex), id));
+                declarations.push((Source::Regex(value), id));
             }
 
         //         fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
