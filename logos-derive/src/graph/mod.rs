@@ -5,9 +5,11 @@ use std::ops::{Index, IndexMut};
 
 mod impls;
 mod fork;
+mod rope;
 mod pattern;
 
-pub use fork::{Fork, Sequence};
+pub use fork::Fork;
+pub use rope::Rope;
 pub use pattern::{Range, Pattern};
 
 pub type Callback = syn::Ident;
@@ -66,6 +68,8 @@ pub struct Node<Leaf> {
 pub enum NodeBody<Leaf> {
     /// Fork node, can lead to more than one state
     Fork(Fork),
+    /// Rope node, an lead to one state on match, one state on miss
+    Rope(Rope),
     /// Leaf node, terminal state
     Leaf(Leaf),
 }
@@ -95,7 +99,7 @@ mod tests {
         assert_eq!(
             graph[root].body,
             NodeBody::Fork(
-                Fork::new(token).branch('a'..='e', root)
+                Fork::new(token).branch('a'..='z', root)
             )
         );
     }

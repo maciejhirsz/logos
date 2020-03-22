@@ -1,8 +1,13 @@
-use crate::graph::{Token, Sequence, Fork, Node, NodeBody, Range};
+use crate::graph::{Token, Rope, Fork, Node, NodeBody, Range};
 
 impl<T> From<Fork> for NodeBody<T> {
     fn from(fork: Fork) -> Self {
         NodeBody::Fork(fork)
+    }
+}
+impl<T> From<Rope> for NodeBody<T> {
+    fn from(rope: Rope) -> Self {
+        NodeBody::Rope(rope)
     }
 }
 
@@ -58,20 +63,6 @@ mod debug {
         }
     }
 
-    impl Debug for Sequence {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut list = f.debug_list();
-
-            list.entry(&Arm(String::from_utf8_lossy(&self.bytes), self.then));
-            match self.miss {
-                Some(id) => list.entry(&Arm('_', id)),
-                None => list.entry(&Arm('_', "ERR")),
-            };
-
-            list.finish()
-        }
-    }
-
     impl Debug for Fork {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut list = f.debug_list();
@@ -85,6 +76,32 @@ mod debug {
             };
 
             list.finish()
+        }
+    }
+
+    impl Debug for Rope {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut list = f.debug_list();
+
+            list.entry(&Arm(String::from_utf8_lossy(&self.bytes), self.then));
+            match self.miss {
+                Some(id) => list.entry(&Arm('_', id)),
+                None => list.entry(&Arm('_', "ERR")),
+            };
+
+            list.finish()
+        }
+    }
+
+    impl Debug for Token<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "::{}", self.ident)?;
+
+            if let Some(ref callback) = self.callback {
+                write!(f, " ({})", callback)?;
+            }
+
+            Ok(())
         }
     }
 
@@ -106,20 +123,9 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
                 NodeBody::Fork(fork) => fork.fmt(f),
+                NodeBody::Rope(rope) => rope.fmt(f),
                 NodeBody::Leaf(leaf) => leaf.fmt(f),
             }
-        }
-    }
-
-    impl Debug for Token<'_> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "::{}", self.ident)?;
-
-            if let Some(ref callback) = self.callback {
-                write!(f, " ({})", callback)?;
-            }
-
-            Ok(())
         }
     }
 

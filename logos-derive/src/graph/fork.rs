@@ -42,7 +42,6 @@ impl Fork {
         self.miss
     }
 
-    #[cfg(test)]
     pub fn branch<R>(mut self, range: R, then: NodeId) -> Self
     where
         R: Into<Range>,
@@ -78,12 +77,6 @@ impl<'a> Iterator for ForkIter<'a> {
 
         Some((Range(start as u8, (self.offset - 1) as u8), then))
     }
-}
-
-pub struct Sequence {
-    pub bytes: Vec<u8>,
-    pub then: NodeId,
-    pub miss: Option<NodeId>,
 }
 
 #[cfg(test)]
