@@ -109,6 +109,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut variants = Vec::new();
     let mut declarations = Vec::new();
+    let mut errors = Vec::new();
 
     for variant in &item.variants {
         variants.push(&variant.ident);
@@ -116,26 +117,26 @@ pub fn logos(input: TokenStream) -> TokenStream {
         let span = variant.span();
 
         if variant.discriminant.is_some() {
-            return util::error(
+            errors.push(util::error(
                 &format!(
                     "`{}::{}` has a discriminant value set. This is not allowed for Tokens.",
                     name,
                     variant.ident,
                 ),
                 span,
-            );
+            ));
         }
 
         match variant.fields {
             Fields::Unit => {}
             _ => {
-                return util::error(
+                errors.push(util::error(
                     &format!(
                         "`{}::{}` has fields. This is not allowed for Tokens.",
                         name, variant.ident
                     ),
                     span,
-                );
+                ));
             }
         }
 
@@ -144,28 +145,28 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let variant = &variant.ident;
 
             if ident == "error" {
-                if let Some(previous) = error.replace(variant) {
-                    return util::error(
-                        &format!("Only one #[error] variant can be declared. Previously declared on: {}", previous),
-                        span,
-                    );
+                if let Some((_, previous)) = error.replace((variant, span)) {
+                    errors.extend(vec![
+                        util::error("Only one #[error] variant can be declared.", span),
+                        util::error("Previously declared #[error]:", previous),
+                    ]);
                 }
             }
 
             if ident == "end" {
-                if let Some(previous) = end.replace(variant) {
-                    return util::error(
-                        &format!("Only one #[end] variant can be declared. Previously declared on: {}", previous),
-                        span,
-                    );
+                if let Some((_, previous)) = end.replace((variant, span)) {
+                    errors.extend(vec![
+                        util::error("Only one #[end] variant can be declared.", span),
+                        util::error("Previously declared #[end]:", previous),
+                    ]);
                 }
             }
 
             if let Some(definition) = util::value_from_attr::<Definition<Literal>>("token", attr) {
-                let leaf = Leaf::Token {
-                    token: variant,
-                    callback: definition.callback,
-                };
+                // let leaf = Leaf::Token {
+                //     token: variant,
+                //     callback: definition.callback,
+                // };
 
                 let bytes = match definition.value {
                     Literal::Utf8(ref string) => string.as_bytes(),
@@ -176,12 +177,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                declarations.push((Regex::sequence(bytes), leaf));
+                declarations.push((Regex::sequence(bytes), variant));
             } else if let Some(definition) = util::value_from_attr::<Definition<Literal>>("regex", attr) {
-                let leaf = Leaf::Token {
-                    token: variant,
-                    callback: definition.callback,
-                };
+                // let leaf = Leaf::Token {
+                //     token: variant,
+                //     callback: definition.callback,
+                // };
 
                 let (utf8, regex) = match definition.value {
                     Literal::Utf8(string) => (true, string),
@@ -192,7 +193,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                declarations.push((Regex::sequence(regex), leaf));
+                declarations.push((Regex::sequence(regex), variant));
             }
 
         //         fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
@@ -204,9 +205,17 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    panic!("END");
+    if errors.len() > 0 {
+        return quote! {
+            fn _logos_derive_compile_errors() {
+                #(#errors)*
+            }
+        }.into();
+    }
 
-    // panic!("{:#?}", declarations);
+    // panic!("END");
+
+    panic!("{:#?}", declarations);
 }
 
 

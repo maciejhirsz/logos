@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::iter::Peekable;
 
-pub use proc_macro::TokenStream;
+pub use proc_macro2::TokenStream;
 pub use proc_macro2::Span;
 use quote::{quote, quote_spanned};
 pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};
@@ -99,11 +99,11 @@ impl<V: Value> Value for Definition<V> {
 }
 
 pub fn error(message: &str, span: Span) -> TokenStream {
-    (quote_spanned! { span =>
-        fn _parse_error() {
+    (quote_spanned! {
+        span => {
             compile_error!(#message)
         }
-    }).into()
+    })
 }
 
 pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {
