@@ -68,7 +68,7 @@ pub struct Node<Leaf> {
 pub enum NodeBody<Leaf> {
     /// Fork node, can lead to more than one state
     Fork(Fork),
-    /// Rope node, an lead to one state on match, one state on miss
+    /// Rope node, can lead to one state on match, one state on miss
     Rope(Rope),
     /// Leaf node, terminal state
     Leaf(Leaf),
