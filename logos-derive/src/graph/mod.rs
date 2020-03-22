@@ -1,5 +1,5 @@
 use std::num::NonZeroUsize;
-use std::ops::{Range, Index, IndexMut};
+use std::ops::{Index, IndexMut};
 
 // use crate::regex::Regex;
 
@@ -7,7 +7,16 @@ mod impls;
 
 pub type Token<'a> = &'a syn::Ident;
 pub type Callback = syn::Ident;
-pub type Pattern = Vec<Range<u8>>;
+pub type Pattern = Vec<Range>;
+
+#[cfg_attr(test, derive(PartialEq))]
+pub struct Range(pub u8, pub u8);
+
+impl From<u8> for Range {
+    fn from(byte: u8) -> Range {
+        Range(byte, byte)
+    }
+}
 
 #[cfg_attr(test, derive(Debug))]
 pub struct Graph<Leaf> {
@@ -20,9 +29,7 @@ impl<Leaf> Graph<Leaf> {
         Leaf: Default,
     {
         Graph {
-            // Start with one dummy entry, so that NodeId doesn't
-            // start with 0!
-            nodes: vec![NodeBody::Leaf(Leaf::default()).into()],
+            nodes: Vec::new(),
         }
     }
 
@@ -31,15 +38,18 @@ impl<Leaf> Graph<Leaf> {
         F: FnOnce(NodeId) -> B,
         B: Into<NodeBody<Leaf>>,
     {
-        let id = NodeId::new(self.nodes.len()).expect("0 sized graph");
+        let id = self.nodes.len();
 
-        self.nodes.push(Node::new(fun(id).into()));
+        self.nodes.push(Node {
+            id,
+            body: fun(id).into(),
+        });
 
         id
     }
 
     fn nodes(&self) -> &[Node<Leaf>] {
-        &self.nodes[1..]
+        &self.nodes
     }
 }
 
@@ -47,27 +57,21 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
     type Output = Node<Leaf>;
 
     fn index(&self, id: NodeId) -> &Node<Leaf> {
-        &self.nodes[id.get()]
+        &self.nodes[id]
     }
 }
 
-impl<Leaf> IndexMut<NodeId> for Graph<Leaf> {
-    fn index_mut(&mut self, id: NodeId) -> &mut Node<Leaf> {
-        &mut self.nodes[id.get()]
-    }
-}
+pub type NodeId = usize;
 
-pub type NodeId = NonZeroUsize;
-
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Node<Leaf> {
-    /// Reference count to this node
-    rc: usize,
+    /// Id of this node in the graph
+    pub id: NodeId,
     /// body of the node
     pub body: NodeBody<Leaf>,
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum NodeBody<Leaf> {
     /// Fork node, can lead to more than one state
     Fork(Fork),
@@ -75,7 +79,7 @@ pub enum NodeBody<Leaf> {
     Leaf(Leaf),
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Fork {
     /// Arms of the fork
     pub arms: Vec<Branch>,
@@ -83,10 +87,10 @@ pub struct Fork {
     pub miss: Option<NodeId>,
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Branch {
     pub pattern: Pattern,
-    pub then: Option<NodeId>,
+    pub then: NodeId,
 }
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
@@ -98,22 +102,14 @@ pub enum Leaf<'a> {
     Trivia,
 }
 
-impl<Leaf> Node<Leaf> {
-    pub fn new<T>(body: T) -> Self
-    where
-        T: Into<NodeBody<Leaf>>,
-    {
-        Node {
-            rc: 0,
-            body: body.into(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::regex::Pattern;
+
+    macro_rules! pat {
+        ($($r:expr),*) => {vec![$($r.into()),*]};
+    }
 
     #[test]
     fn create_a_loop() {
@@ -123,8 +119,8 @@ mod tests {
         let root = graph.put(|id| Fork {
             arms: vec![
                 Branch {
-                    pattern: vec![b'a'..b'z'],
-                    then: Some(id),
+                    pattern: pat!['a'..='z'],
+                    then: id,
                 }
             ],
             miss: Some(token),
@@ -134,19 +130,23 @@ mod tests {
         assert_eq!(graph[root].body, NodeBody::Fork(Fork {
             arms: vec![
                 Branch {
-                    pattern: vec![b'a'..b'z'],
-                    then: Some(root),
+                    pattern: pat!['a'..='z'],
+                    then: root,
                 },
             ],
             miss: Some(token),
         }));
     }
+
+    impl From<std::ops::RangeInclusive<u8>> for Range {
+        fn from(range: std::ops::RangeInclusive<u8>) -> Range {
+            Range(*range.start(), *range.end())
+        }
+    }
+
+    impl From<std::ops::RangeInclusive<char>> for Range {
+        fn from(range: std::ops::RangeInclusive<char>) -> Range {
+            Range(*range.start() as u8, *range.end() as u8)
+        }
+    }
 }
-// impl<'a> From<Token<'a>> for Leaf<'a> {
-//     fn from(token: Token<'a>) -> Self {
-//         Leaf::Token {
-//             token,
-//             callback: None,
-//         }
-//     }
-// }
