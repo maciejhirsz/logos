@@ -1,3 +1,5 @@
+use std::cmp::{Ord, Ordering};
+
 #[cfg(test)]
 #[macro_export]
 macro_rules! pat {
@@ -6,7 +8,7 @@ macro_rules! pat {
 
 pub type Pattern = Vec<Range>;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub struct Range(pub u8, pub u8);
 
 impl From<u8> for Range {
@@ -35,6 +37,12 @@ impl Iterator for Range {
         } else {
             None
         }
+    }
+}
+
+impl Ord for Range {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
     }
 }
 

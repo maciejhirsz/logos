@@ -1,4 +1,4 @@
-use crate::graph::{Token, Branch, Fork, Node, NodeBody, Range};
+use crate::graph::{Token, Sequence, Fork, Node, NodeBody, Range};
 
 impl<T> From<Fork> for NodeBody<T> {
     fn from(fork: Fork) -> Self {
@@ -17,10 +17,9 @@ fn is_printable(byte: u8) -> bool {
 }
 
 /// We don't need debug impls in release builds
-// #[cfg(test)]
 mod debug {
     use super::*;
-    use std::fmt::{self, Debug};
+    use std::fmt::{self, Debug, Display};
 
 
     impl Debug for Range {
@@ -28,8 +27,8 @@ mod debug {
             let Range(start, end) = *self;
 
             match is_printable(start) {
-                true => write!(f, "{}", start as char),
-                false => write!(f, "{:02X}", start),
+                true => write!(f, "[{}", start as char),
+                false => write!(f, "[{:02X}", start),
             }?;
             if start != end {
                 match is_printable(end) {
@@ -37,13 +36,39 @@ mod debug {
                     false => write!(f, "-{:02X}", end),
                 }?;
             }
-            Ok(())
+            f.write_str("]")
         }
     }
 
-    impl Debug for Branch {
+    impl Display for Range {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{:?} ⇒ :{}", self.pattern, self.then)
+            <Range as Debug>::fmt(self, f)
+        }
+    }
+
+    struct Arm<T, U>(T, U);
+
+    impl<T, U> Debug for Arm<T, U>
+    where
+        T: Display,
+        U: Display,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{} ⇒ :{}", self.0, self.1)
+        }
+    }
+
+    impl Debug for Sequence {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut list = f.debug_list();
+
+            list.entry(&Arm(String::from_utf8_lossy(&self.bytes), self.then));
+            match self.miss {
+                Some(id) => list.entry(&Arm('_', id)),
+                None => list.entry(&Arm('_', "ERR")),
+            };
+
+            list.finish()
         }
     }
 
@@ -51,24 +76,21 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut list = f.debug_list();
 
-            struct Miss<T>(T);
-
-            impl<T: fmt::Display> Debug for Miss<T> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    write!(f, "_ ⇒ :{}", self.0)
-                }
+            for (range, then) in self.branches() {
+                list.entry(&Arm(range, then));
             }
-
-            for arm in self.arms() {
-                list.entry(arm);
-            }
-
             match self.miss() {
-                Some(id) => list.entry(&Miss(id)),
-                None => list.entry(&Miss("ERR")),
+                Some(id) => list.entry(&Arm('_', id)),
+                None => list.entry(&Arm('_', "ERR")),
             };
 
             list.finish()
+        }
+    }
+
+    impl PartialEq for Fork {
+        fn eq(&self, other: &Self) -> bool {
+            self.miss() == other.miss() && self.branches().eq(other.branches())
         }
     }
 

@@ -9,8 +9,6 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
 
-extern crate proc_macro;
-
 // mod generator;
 // mod handlers;
 mod regex;

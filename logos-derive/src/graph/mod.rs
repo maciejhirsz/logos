@@ -7,7 +7,7 @@ mod impls;
 mod fork;
 mod pattern;
 
-pub use fork::{Fork, Branch};
+pub use fork::{Fork, Sequence};
 pub use pattern::{Range, Pattern};
 
 pub type Callback = syn::Ident;
@@ -80,6 +80,7 @@ pub struct Token<'a> {
 mod tests {
     use super::*;
     use crate::pat;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn create_a_loop() {
@@ -87,14 +88,14 @@ mod tests {
 
         let token = graph.put(|_| NodeBody::Leaf("IDENT"));
         let root = graph.put(|id| {
-            Fork::new(token).arm(pat!['a'..='z'], id)
+            Fork::new(token).branch('a'..='z', id)
         });
 
         assert_eq!(graph[token].body, NodeBody::Leaf("IDENT"));
         assert_eq!(
             graph[root].body,
             NodeBody::Fork(
-                Fork::new(token).arm(pat!['a'..='z'], root)
+                Fork::new(token).branch('a'..='e', root)
             )
         );
     }
