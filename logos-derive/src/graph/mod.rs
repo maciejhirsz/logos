@@ -13,13 +13,18 @@ pub use pattern::{Range, Pattern};
 pub type Callback = syn::Ident;
 
 #[cfg_attr(test, derive(Debug))]
-#[derive(Default)]
 pub struct Graph<Leaf> {
     nodes: Vec<Node<Leaf>>,
 }
 
 impl<Leaf> Graph<Leaf> {
-    fn put<F, B>(&mut self, fun: F) -> NodeId
+    pub const fn new() -> Self {
+        Graph {
+            nodes: Vec::new()
+        }
+    }
+
+    pub fn put<F, B>(&mut self, fun: F) -> NodeId
     where
         F: FnOnce(NodeId) -> B,
         B: Into<NodeBody<Leaf>>,
@@ -34,7 +39,7 @@ impl<Leaf> Graph<Leaf> {
         id
     }
 
-    fn nodes(&self) -> &[Node<Leaf>] {
+    pub fn nodes(&self) -> &[Node<Leaf>] {
         &self.nodes
     }
 }
@@ -78,7 +83,7 @@ mod tests {
 
     #[test]
     fn create_a_loop() {
-        let mut graph = Graph::default();
+        let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("IDENT"));
         let root = graph.put(|id| Fork {

@@ -22,7 +22,7 @@ mod util;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 use regex::Regex;
-use graph::Token;
+use graph::{Graph, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -110,6 +110,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut variants = Vec::new();
     let mut declarations = Vec::new();
     let mut errors = Vec::new();
+    let mut graph = Graph::new();
 
     for variant in &item.variants {
         variants.push(&variant.ident);
@@ -140,6 +141,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
+        let id = graph.put(|_| Token {
+            ident: &variant.ident,
+            callback: None,
+        });
+
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
@@ -163,9 +169,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             if let Some(definition) = util::value_from_attr::<Definition<Literal>>("token", attr) {
-                let leaf = Token {
-                    ident: variant,
-                    callback: definition.callback,
+                let id = match definition.callback {
+                    Some(callback) => {
+                        graph.put(|_| Token {
+                            ident: variant,
+                            callback: Some(callback),
+                        })
+                    }
+                    None => id,
                 };
 
                 let bytes = match definition.value {
@@ -177,11 +188,16 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                declarations.push((Regex::sequence(bytes), leaf));
+                declarations.push((Regex::sequence(bytes), id));
             } else if let Some(definition) = util::value_from_attr::<Definition<Literal>>("regex", attr) {
-                let leaf = Token {
-                    ident: variant,
-                    callback: definition.callback,
+                let id = match definition.callback {
+                    Some(callback) => {
+                        graph.put(|_| Token {
+                            ident: variant,
+                            callback: Some(callback),
+                        })
+                    }
+                    None => id,
                 };
 
                 let (utf8, regex) = match definition.value {
@@ -193,7 +209,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                declarations.push((Regex::sequence(regex), leaf));
+                declarations.push((Regex::sequence(regex), id));
             }
 
         //         fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
@@ -215,7 +231,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("END");
 
-    panic!("{:#?}", declarations);
+    panic!("{:#?} {:?}", graph.nodes(), declarations);
 }
 
 

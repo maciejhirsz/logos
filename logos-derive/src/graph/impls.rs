@@ -91,7 +91,7 @@ mod debug {
 
     impl Debug for Token<'_> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, ":T {}", self.ident)?;
+            write!(f, "::{}", self.ident)?;
 
             if let Some(ref callback) = self.callback {
                 write!(f, " ({})", callback)?;
