@@ -59,11 +59,11 @@ mod debug {
                 }
             }
 
-            for arm in self.arms.iter() {
+            for arm in self.arms() {
                 list.entry(arm);
             }
 
-            match self.miss {
+            match self.miss() {
                 Some(id) => list.entry(&Miss(id)),
                 None => list.entry(&Miss("ERR")),
             };

@@ -86,25 +86,16 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("IDENT"));
-        let root = graph.put(|id| Fork {
-            arms: vec![
-                Branch {
-                    pattern: pat!['a'..='z'],
-                    then: id,
-                }
-            ],
-            miss: Some(token),
+        let root = graph.put(|id| {
+            Fork::new(token).arm(pat!['a'..='z'], id)
         });
 
         assert_eq!(graph[token].body, NodeBody::Leaf("IDENT"));
-        assert_eq!(graph[root].body, NodeBody::Fork(Fork {
-            arms: vec![
-                Branch {
-                    pattern: pat!['a'..='z'],
-                    then: root,
-                },
-            ],
-            miss: Some(token),
-        }));
+        assert_eq!(
+            graph[root].body,
+            NodeBody::Fork(
+                Fork::new(token).arm(pat!['a'..='z'], root)
+            )
+        );
     }
 }
