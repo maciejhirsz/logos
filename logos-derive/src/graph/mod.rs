@@ -12,8 +12,6 @@ pub use fork::Fork;
 pub use rope::Rope;
 pub use pattern::{Range, Pattern};
 
-pub type Callback = syn::Ident;
-
 #[cfg_attr(test, derive(Debug))]
 pub struct Graph<Leaf> {
     nodes: Vec<Node<Leaf>>,
@@ -75,9 +73,9 @@ pub enum NodeBody<Leaf> {
 }
 
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Token<'a> {
-    pub ident: &'a syn::Ident,
-    pub callback: Option<Callback>,
+pub struct Token {
+    pub ident: syn::Ident,
+    pub callback: Option<syn::Ident>,
 }
 
 #[cfg(test)]

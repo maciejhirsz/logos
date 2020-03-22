@@ -11,8 +11,8 @@ impl<T> From<Rope> for NodeBody<T> {
     }
 }
 
-impl<'a> From<Token<'a>> for NodeBody<Token<'a>> {
-    fn from(leaf: Token<'a>) -> Self {
+impl From<Token> for NodeBody<Token> {
+    fn from(leaf: Token) -> Self {
         NodeBody::Leaf(leaf)
     }
 }
@@ -93,7 +93,7 @@ mod debug {
         }
     }
 
-    impl Debug for Token<'_> {
+    impl Debug for Token {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(f, "::{}", self.ident)?;
 

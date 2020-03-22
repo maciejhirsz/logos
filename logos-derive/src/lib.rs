@@ -147,14 +147,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
 
         let id = graph.put(|_| Token {
-            ident: &variant.ident,
+            ident: variant.ident.clone(),
             callback: None,
         });
 
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
-
 
             if ident == "error" {
                 if let Some((_, previous)) = error.replace((id, span)) {
@@ -178,7 +177,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 let id = match definition.callback {
                     Some(callback) => {
                         graph.put(|_| Token {
-                            ident: variant,
+                            ident: variant.clone(),
                             callback: Some(callback),
                         })
                     }
