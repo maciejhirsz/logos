@@ -3,17 +3,17 @@ use std::convert::TryInto;
 use crate::graph::{NodeId, Range};
 
 pub struct Fork {
+    /// LUT matching byte -> node id
+    lut: Box<[Option<NodeId>; 256]>,
     /// State to go to if no arms are matching
     miss: Option<NodeId>,
-    /// LUT matching byte -> arm, using u8s as we can't have more arms than bytes
-    lut: Box<[Option<NodeId>; 256]>,
 }
 
 impl Fork {
     pub fn new<M: Into<Option<NodeId>>>(miss: M) -> Self {
         Fork {
-            miss: miss.into(),
             lut: Box::new([None; 256]),
+            miss: miss.into(),
         }
     }
 
