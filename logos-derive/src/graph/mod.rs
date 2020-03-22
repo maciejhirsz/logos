@@ -86,14 +86,14 @@ mod tests {
 
         let token = graph.put(|_| NodeBody::Leaf("IDENT"));
         let root = graph.put(|id| {
-            Fork::new(token).branch('a'..='z', id)
+            Fork::new().branch('a'..='z', id).miss(token)
         });
 
         assert_eq!(graph[token].body, NodeBody::Leaf("IDENT"));
         assert_eq!(
             graph[root].body,
             NodeBody::Fork(
-                Fork::new(token).branch('a'..='z', root)
+                Fork::new().branch('a'..='z', root).miss(token)
             )
         );
     }

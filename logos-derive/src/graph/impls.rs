@@ -17,11 +17,12 @@ impl From<Token> for NodeBody<Token> {
     }
 }
 
-fn is_printable(byte: u8) -> bool {
-    byte.is_ascii_punctuation() | byte.is_ascii_alphanumeric() | byte.is_ascii_whitespace()
+fn is_ascii(byte: u8) -> bool {
+    (byte >= 0x20) & (byte < 0x7F)
 }
 
 /// We don't need debug impls in release builds
+// #[cfg(test)]
 mod debug {
     use super::*;
     use std::fmt::{self, Debug, Display};
@@ -34,12 +35,12 @@ mod debug {
             if start != end {
                 f.write_str("[")?;
             }
-            match is_printable(start) {
+            match is_ascii(start) {
                 true => write!(f, "{}", start as char),
                 false => write!(f, "{:02X}", start),
             }?;
             if start != end {
-                match is_printable(end) {
+                match is_ascii(end) {
                     true => write!(f, "-{}]", end as char),
                     false => write!(f, "-{:02X}]", end),
                 }?;
@@ -62,7 +63,7 @@ mod debug {
         U: Display,
     {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{} ⇒ :{}", self.0, self.1)
+            write!(f, "\"{}\" ⇒ {}", self.0, self.1)
         }
     }
 
@@ -73,10 +74,9 @@ mod debug {
             for (range, then) in self.branches() {
                 list.entry(&Arm(range, then));
             }
-            match self.miss() {
-                Some(id) => list.entry(&Arm('_', id)),
-                None => list.entry(&Arm('_', "ERR")),
-            };
+            if let Some(id) = self.miss {
+                list.entry(&Arm('_', id));
+            }
 
             list.finish()
         }
@@ -86,13 +86,11 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             use std::fmt::Write;
 
-            let mut rope = '/'.to_string();
+            let mut rope = String::with_capacity(self.pattern.0.len());
 
             for range in self.pattern.iter() {
                 write!(rope, "{}", range)?;
             }
-
-            rope.push('/');
 
             match self.miss {
                 Some(id) => {
@@ -122,13 +120,13 @@ mod debug {
 
     impl PartialEq for Fork {
         fn eq(&self, other: &Self) -> bool {
-            self.miss() == other.miss() && self.branches().eq(other.branches())
+            self.miss == other.miss && self.branches().eq(other.branches())
         }
     }
 
     impl<T: Debug> Debug for Node<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, ":{} ", self.id)?;
+            write!(f, "{} ", self.id)?;
 
             self.body.fmt(f)
         }
@@ -155,6 +153,24 @@ mod debug {
     impl From<RangeInclusive<char>> for Range {
         fn from(range: RangeInclusive<char>) -> Range {
             Range(*range.start() as u8, *range.end() as u8)
+        }
+    }
+
+    impl<T> PartialEq<Rope> for NodeBody<T> {
+        fn eq(&self, other: &Rope) -> bool {
+            match self {
+                NodeBody::Rope(rope) => rope == other,
+                _ => false
+            }
+        }
+    }
+
+    impl<T> PartialEq<Fork> for NodeBody<T> {
+        fn eq(&self, other: &Fork) -> bool {
+            match self {
+                NodeBody::Fork(fork) => fork == other,
+                _ => false
+            }
         }
     }
 }

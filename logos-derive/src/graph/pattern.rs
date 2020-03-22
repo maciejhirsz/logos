@@ -1,7 +1,7 @@
 use std::cmp::{Ord, Ordering};
 use std::ops::Deref;
 
-#[cfg_attr(test, derive(PartialEq))]
+#[derive(PartialEq)]
 pub struct Pattern(pub Vec<Range>);
 
 impl Deref for Pattern {

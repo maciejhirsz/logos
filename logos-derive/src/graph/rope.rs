@@ -1,6 +1,6 @@
 use crate::graph::{Graph, Fork, Pattern, NodeId};
 
-#[cfg_attr(test, derive(PartialEq))]
+#[derive(PartialEq)]
 pub struct Rope {
     pub pattern: Pattern,
     pub then: NodeId,
@@ -19,6 +19,14 @@ impl Rope {
         }
     }
 
+    pub fn miss<M>(mut self, miss: M) -> Self
+    where
+        M: Into<Option<NodeId>>,
+    {
+        self.miss = miss.into();
+        self
+    }
+
     pub fn fork_off<T>(&self, graph: &mut Graph<T>) -> Fork {
         // The new fork will lead to a new rope,
         // or the old target if no new rope was created
@@ -34,7 +42,7 @@ impl Rope {
             },
         };
 
-        Fork::new(self.miss).branch(self.pattern[0], then)
+        Fork::new().branch(self.pattern[0], then).miss(self.miss)
     }
 }
 
@@ -49,21 +57,18 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("FOOBAR"));
-        let rope = Rope {
-            pattern: Pattern::from(b"foobar"),
-            then: token,
-            miss: None,
-        };
+        let rope = Rope::new(b"foobar", token);
 
         let fork = rope.fork_off(&mut graph);
 
         assert_eq!(token, 0);
-        assert_eq!(fork, Fork::new(None).branch(b'f', 1));
-        assert_eq!(graph[1].body, NodeBody::Rope(Rope {
-            pattern: b"oobar".iter().into(),
-            then: token,
-            miss: None,
-        }));
+        assert_eq!(fork, Fork::new().branch(b'f', 1));
+        assert_eq!(
+            graph[1].body,
+            NodeBody::Rope(
+                Rope::new(b"oobar", token),
+            ),
+        );
     }
 
     #[test]
@@ -71,16 +76,12 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("FOOBAR"));
-        let rope = Rope {
-            pattern: b"!".into(),
-            then: token,
-            miss: None,
-        };
+        let rope = Rope::new(b"!", token);
 
         let fork = rope.fork_off(&mut graph);
 
         assert_eq!(token, 0);
-        assert_eq!(fork, Fork::new(None).branch(b'!', 0));
+        assert_eq!(fork, Fork::new().branch(b'!', 0));
     }
 
     #[test]
@@ -88,20 +89,17 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("LIFE"));
-        let rope = Rope {
-            pattern: b"42".into(),
-            then: token,
-            miss: Some(42),
-        };
+        let rope = Rope::new(b"42", token).miss(42);
 
         let fork = rope.fork_off(&mut graph);
 
         assert_eq!(token, 0);
-        assert_eq!(fork, Fork::new(42).branch(b'4', 1));
-        assert_eq!(graph[1].body, NodeBody::Rope(Rope {
-            pattern: b"2".into(),
-            then: token,
-            miss: Some(42),
-        }));
+        assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
+        assert_eq!(
+            graph[1].body,
+            NodeBody::Rope(
+                Rope::new(b"2", token).miss(42),
+            ),
+        );
     }
 }

@@ -20,7 +20,7 @@ mod util;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 // use regex::Regex;
-use graph::{NodeId, Graph, Rope, Token};
+use graph::{NodeId, Graph, Fork, Rope, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -194,13 +194,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if let Some(definition) = util::value_from_attr("token", attr) {
                 let (id, value) = with_definition(definition);
 
-                graph.put(|_| Rope::new(value.as_ref(), id));
-
-                declarations.push((Source::Sequence(value), id));
+                declarations.push(Rope::new(value.as_ref(), id));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (id, value) = with_definition(definition);
 
-                declarations.push((Source::Regex(value), id));
+                // TODO: build declarations for regex
+                // declarations.push((Source::Regex(value), id));
             }
 
         //         fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
@@ -220,9 +219,17 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }.into();
     }
 
+    let mut root = Fork::new();
+
+    for rope in declarations {
+        root.merge(rope.fork_off(&mut graph));
+    }
+
+    graph.put(|_| root);
+
     // panic!("END");
 
-    panic!("{:#?} {:?}", graph.nodes(), declarations);
+    panic!("{:#?}", graph.nodes());
 }
 
 

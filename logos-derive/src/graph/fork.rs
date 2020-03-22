@@ -4,15 +4,23 @@ pub struct Fork {
     /// LUT matching byte -> node id
     lut: Box<[Option<NodeId>; 256]>,
     /// State to go to if no arms are matching
-    miss: Option<NodeId>,
+    pub miss: Option<NodeId>,
 }
 
 impl Fork {
-    pub fn new<M: Into<Option<NodeId>>>(miss: M) -> Self {
+    pub fn new() -> Self {
         Fork {
             lut: Box::new([None; 256]),
-            miss: miss.into(),
+            miss: None,
         }
+    }
+
+    pub fn miss<M>(mut self, miss: M) -> Self
+    where
+        M: Into<Option<NodeId>>,
+    {
+        self.miss = miss.into();
+        self
     }
 
     pub fn add_branch<R>(&mut self, range: R, then: NodeId)
@@ -29,15 +37,28 @@ impl Fork {
         }
     }
 
+    // TODO: Add result with a printable error
+    pub fn merge(&mut self, other: Fork) {
+        self.miss = match (self.miss, other.miss) {
+            (None, None) => None,
+            (Some(id), None) | (None, Some(id)) => Some(id),
+            (Some(_), Some(_)) => unimplemented!(),
+        };
+
+        for (left, right) in self.lut.iter_mut().zip(other.lut.iter()) {
+            *left = match (*left, *right) {
+                (None, None) => continue,
+                (Some(id), None) | (None, Some(id)) => Some(id),
+                (Some(_), Some(_)) => unimplemented!(),
+            }
+        }
+    }
+
     pub fn branches(&self) -> ForkIter<'_> {
         ForkIter {
             offset: 0,
             lut: &*self.lut,
         }
-    }
-
-    pub fn miss(&self) -> Option<NodeId> {
-        self.miss
     }
 
     pub fn branch<R>(mut self, range: R, then: NodeId) -> Self

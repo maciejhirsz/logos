@@ -8,12 +8,14 @@ enum Token {
     #[end]
     End,
 
-    #[token = "hell"]
-    Hell,
+    // #[token = "hell"]
+    // Hell,
 
-    #[token = "HELLO!"]
-    #[token = "hello!"]
+    #[token = "hello"]
     Hello,
+
+    #[token = "world"]
+    World,
 
     #[regex = "[a-z]+"]
     Ident,
