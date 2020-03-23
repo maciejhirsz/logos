@@ -34,7 +34,7 @@ impl<Leaf> Graph<Leaf> {
 
     fn parse_hir<T>(&mut self, hir: HirKind, id: NodeId, then: NodeId, miss: Option<NodeId>) -> Result<NodeBody<T>, ParseError> {
         match hir {
-            HirKind::Empty => Err("Unexpected empty HIR node")?,
+            HirKind::Empty => Ok(Fork::new().miss(miss).into()),
 //             HirKind::Alternation(alternation) => {
 //                 let mut fork = Fork::default();
 
