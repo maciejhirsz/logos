@@ -59,31 +59,28 @@ impl<Leaf> Graph<Leaf> {
                 };
 
                 Ok(Rope::new(pattern, then).miss(miss).into())
-            }
+            },
             HirKind::Concat(concat) => {
-                let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
-                let mut read = 0;
                 let mut pattern = Vec::new();
 
-                while let Some(HirKind::Literal(literal)) = concat.pop() {
-                    match literal {
-                        Literal::Unicode(unicode) => {
+                for hir in concat.into_iter().rev().map(Hir::into_kind) {
+                    match hir {
+                        HirKind::Literal(Literal::Unicode(unicode)) => {
                             for byte in unicode.encode_utf8(&mut [0; 4]).bytes() {
                                 pattern.insert(0, byte);
                             }
                         },
-                        Literal::Byte(byte) => {
+                        HirKind::Literal(Literal::Byte(byte)) => {
                             pattern.insert(0, byte);
                         },
-                    };
-                }
-
-                if concat.len() > 0 {
-                    Err(format!("#[regex] unsupported HIR: {:#?}", concat))?;
+                        hir => {
+                            Err(format!("#[regex] unsupported HIR: {:#?}", hir))?
+                        },
+                    }
                 }
 
                 Ok(Rope::new(pattern, then).miss(miss).into())
-            }
+            },
             HirKind::Repetition(repetition) => {
                 if id == then {
                     Err("#[regex]: Repetition inside a repetition.")?;
@@ -111,7 +108,7 @@ impl<Leaf> Graph<Leaf> {
                         Err("#[regex]: {n,m} repetition range is currently unsupported.")?
                     },
                 }
-            }
+            },
 //             HirKind::Group(group) => {
 //                 let mut fork = Fork::default();
 
