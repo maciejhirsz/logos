@@ -46,7 +46,7 @@ impl<Leaf> Graph<Leaf> {
         ReservedId(id)
     }
 
-    pub fn put<B>(&mut self, id: ReservedId, node: B) -> NodeId
+    pub fn insert<B>(&mut self, id: ReservedId, node: B) -> NodeId
     where
         B: Into<NodeBody<Leaf>>,
     {
@@ -63,7 +63,7 @@ impl<Leaf> Graph<Leaf> {
         B: Into<NodeBody<Leaf>>,
     {
         let id = self.reserve();
-        self.put(id, node)
+        self.insert(id, node)
     }
 
     pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId {
@@ -177,7 +177,7 @@ mod tests {
         let token = graph.push(NodeBody::Leaf("IDENT"));
         let id = graph.reserve();
         let fork = Fork::new().branch('a'..='z', id.get()).miss(token);
-        let root = graph.put(id, fork);
+        let root = graph.insert(id, fork);
 
         assert_eq!(graph[token].body, NodeBody::Leaf("IDENT"));
         assert_eq!(

@@ -22,17 +22,22 @@ impl<Leaf> Graph<Leaf> {
         };
 
         let id = self.reserve();
-        let fork = Fork::new();
 
-        let fork = match self.parse_hir(hir, id.get(), then, None) {
-            Ok(fork) => fork,
+        let node = match self.parse_hir(hir, id.get(), then, None) {
+            Ok(node) => node,
             Err(err) => return spanned_error(err, span),
         };
 
-        Ok(self.put(id, fork))
+        Ok(self.insert(id, node))
     }
 
-    fn parse_hir<T>(&mut self, hir: HirKind, id: NodeId, then: NodeId, miss: Option<NodeId>) -> Result<NodeBody<T>, ParseError> {
+    fn parse_hir(
+        &mut self,
+        hir: HirKind,
+        id: NodeId,
+        then: NodeId,
+        miss: Option<NodeId>,
+    ) -> Result<NodeBody<Leaf>, ParseError> {
         match hir {
             HirKind::Empty => Ok(Fork::new().miss(miss).into()),
 //             HirKind::Alternation(alternation) => {
@@ -99,8 +104,9 @@ impl<Leaf> Graph<Leaf> {
                         self.parse_hir(hir, id, id, Some(then))
                     },
                     RepetitionKind::OneOrMore => {
-                        let next = self.parse_hir(hir.clone(), id, id, Some(then))?;
-                        let next = self.push(next);
+                        let nid = self.reserve();
+                        let next = self.parse_hir(hir.clone(), nid.get(), id, Some(then))?;
+                        let next = self.insert(nid, next);
 
                         self.parse_hir(hir, id, next, miss)
                     },
@@ -109,14 +115,11 @@ impl<Leaf> Graph<Leaf> {
                     },
                 }
             },
-//             HirKind::Group(group) => {
-//                 let mut fork = Fork::default();
+            HirKind::Group(group) => {
+                let hir = group.hir.into_kind();
 
-//                 fork.insert(Node::from_hir(group.hir.into_kind())?);
-
-//                 Some(Node::from(fork))
-//             }
-//             // This handles classes with non-ASCII Unicode ranges
+                self.parse_hir(hir, id, then, miss)
+            },
             HirKind::Class(Class::Unicode(class)) if !is_ascii_or_bytes(&class) => {
                 Err("No support for unicode just yet!")?
                 // let mut branches = unicode
