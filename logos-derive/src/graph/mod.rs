@@ -113,7 +113,7 @@ impl<Leaf> Graph<Leaf> {
         match &self[id].body {
             NodeBody::Fork(fork) => fork.clone(),
             NodeBody::Rope(rope) => rope.clone().fork_off(self),
-            NodeBody::Leaf(_) => Fork::new().miss(self[id].id),
+            NodeBody::Leaf(_) => Fork::new().miss(id),
         }
     }
 

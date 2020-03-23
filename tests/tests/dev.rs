@@ -17,7 +17,7 @@ enum Token {
     #[token = "world"]
     World,
 
-    #[regex = "[0-9]"]
+    #[regex = "[0-9]+"]
     Integer,
 
     #[regex = "foobar"]

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use regex_syntax::hir::{self, Class, Hir, HirKind};
+use regex_syntax::hir::{self, Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
 use regex_syntax::{ParserBuilder, Parser, Error as RError};
 use proc_macro2::Span;
 use beef::lean::Cow;
@@ -48,9 +48,19 @@ impl<Leaf> Graph<Leaf> {
 
 //                 Some(Node::from(fork))
 //             }
-            HirKind::Concat(concat) => {
-                use regex_syntax::hir::Literal;
+            HirKind::Literal(literal) => {
+                let pattern = match literal {
+                    Literal::Unicode(unicode) => {
+                        unicode.encode_utf8(&mut [0; 4]).as_bytes().to_vec()
+                    },
+                    Literal::Byte(byte) => {
+                        [byte].to_vec()
+                    },
+                };
 
+                Ok(Rope::new(pattern, then).miss(miss).into())
+            }
+            HirKind::Concat(concat) => {
                 let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
                 let mut read = 0;
                 let mut pattern = Vec::new();
@@ -82,17 +92,25 @@ impl<Leaf> Graph<Leaf> {
                     Err("#[regex]: Non-greedy parsing is currently unsupported.")?;
                 }
 
-                // let flag = match repetition.kind {
-                //     RepetitionKind::ZeroOrOne => RepetitionFlag::ZeroOrOne,
-                //     RepetitionKind::ZeroOrMore => RepetitionFlag::ZeroOrMore,
-                //     RepetitionKind::OneOrMore => RepetitionFlag::OneOrMore,
-                //     RepetitionKind::Range(_) => {
-                //         panic!("The '{n,m}' repetition in #[regex] is currently unsupported.")
-                //     }
-                // };
-
                 let hir = repetition.hir.into_kind();
-                self.parse_hir(hir, id, id, Some(then))
+
+                match repetition.kind {
+                    RepetitionKind::ZeroOrOne => {
+                        self.parse_hir(hir, id, then, Some(then))
+                    },
+                    RepetitionKind::ZeroOrMore => {
+                        self.parse_hir(hir, id, id, Some(then))
+                    },
+                    RepetitionKind::OneOrMore => {
+                        let next = self.parse_hir(hir.clone(), id, id, Some(then))?;
+                        let next = self.push(next);
+
+                        self.parse_hir(hir, id, next, miss)
+                    },
+                    RepetitionKind::Range(..) => {
+                        Err("#[regex]: {n,m} repetition range is currently unsupported.")?
+                    },
+                }
             }
 //             HirKind::Group(group) => {
 //                 let mut fork = Fork::default();
@@ -102,30 +120,22 @@ impl<Leaf> Graph<Leaf> {
 //                 Some(Node::from(fork))
 //             }
 //             // This handles classes with non-ASCII Unicode ranges
-            HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
-                match class {
-                    Class::Unicode(unicode) => {
-                        Err("No support for unicode just yet!")?
-                        // let mut branches = unicode
-                        //     .iter()
-                        //     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-                        //     .map(Branch::new);
+            HirKind::Class(Class::Unicode(class)) if !is_ascii_or_bytes(&class) => {
+                Err("No support for unicode just yet!")?
+                // let mut branches = unicode
+                //     .iter()
+                //     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
+                //     .map(Branch::new);
 
-                        // branches.next().map(|branch| {
-                        //     let mut node = Node::Branch(branch);
+                // branches.next().map(|branch| {
+                //     let mut node = Node::Branch(branch);
 
-                        //     for branch in branches {
-                        //         node.insert(Node::Branch(branch));
-                        //     }
+                //     for branch in branches {
+                //         node.insert(Node::Branch(branch));
+                //     }
 
-                        //     node
-                        // })
-                    }
-                    Class::Bytes(_) => {
-                        // `is_ascii_or_bytes` check shouldn't permit us to branch here
-                        Err("Internal Error: Unexpected Class::Bytes")?
-                    }
-                }
+                //     node
+                // })
             },
             HirKind::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
@@ -181,16 +191,13 @@ impl From<String> for ParseError {
     }
 }
 
-fn is_ascii_or_bytes(class: &Class) -> bool {
-    match class {
-        Class::Unicode(unicode) => unicode.iter().all(|range| {
-            let start = range.start() as u32;
-            let end = range.end() as u32;
+fn is_ascii_or_bytes(class: &ClassUnicode) -> bool {
+    class.iter().all(|range| {
+        let start = range.start() as u32;
+        let end = range.end() as u32;
 
-            start < 128 && (end < 128 || end == 0x0010_FFFF)
-        }),
-        Class::Bytes(_) => true,
-    }
+        start < 128 && (end < 128 || end == 0x0010_FFFF)
+    })
 }
 
 fn spanned_error<E, T>(err: E, span: Span) -> Result<T, Error>
