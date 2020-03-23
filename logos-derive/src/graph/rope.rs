@@ -1,6 +1,8 @@
+use std::num::NonZeroUsize;
+
 use crate::graph::{Graph, Fork, NodeId};
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Rope {
     pub pattern: Vec<u8>,
     pub then: NodeId,
@@ -44,6 +46,28 @@ impl Rope {
         };
 
         Fork::new().branch(self.pattern[0], then).miss(self.miss)
+    }
+
+    pub fn prefix(&self, other: &Self) -> Option<Vec<u8>> {
+        let count = self.pattern
+            .iter()
+            .zip(&other.pattern)
+            .take_while(|(a, b)| a == b)
+            .count();
+
+        match count {
+            0 => None,
+            n => Some(self.pattern[..count].to_vec()),
+        }
+    }
+
+    pub fn remainder<T>(mut self, at: usize, graph: &mut Graph<T>) -> NodeId {
+        self.pattern = self.pattern[at..].to_vec();
+
+        match self.pattern.len() {
+            0 => graph.push_miss(self.then, self.miss),
+            _ => graph.push(self),
+        }
     }
 }
 

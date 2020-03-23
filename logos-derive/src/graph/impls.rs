@@ -32,20 +32,18 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let Range(start, end) = *self;
 
-            if start != end {
-                f.write_str("[")?;
-            }
+            f.write_str("/")?;
             match is_ascii(start) {
                 true => write!(f, "{}", start as char),
                 false => write!(f, "{:02X}", start),
             }?;
             if start != end {
                 match is_ascii(end) {
-                    true => write!(f, "-{}]", end as char),
-                    false => write!(f, "-{:02X}]", end),
+                    true => write!(f, "-{}", end as char),
+                    false => write!(f, "-{:02X}", end),
                 }?;
             }
-            Ok(())
+            f.write_str("/")
         }
     }
 
@@ -63,7 +61,7 @@ mod debug {
         U: Display,
     {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "\"{}\" ⇒ {}", self.0, self.1)
+            write!(f, "{} ⇒ {}", self.0, self.1)
         }
     }
 
@@ -86,7 +84,9 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             use std::fmt::Write;
 
-            let mut rope = String::from_utf8_lossy(&self.pattern);
+            let mut rope = '"'.to_string();
+            rope.push_str(&String::from_utf8_lossy(&self.pattern));
+            rope.push('"');
 
             match self.miss {
                 Some(id) => {

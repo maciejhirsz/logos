@@ -1,5 +1,6 @@
-use crate::graph::{NodeId, Range};
+use crate::graph::{Graph, NodeId, Range};
 
+#[derive(Clone)]
 pub struct Fork {
     /// LUT matching byte -> node id
     lut: Box<[Option<NodeId>; 256]>,
@@ -38,18 +39,18 @@ impl Fork {
     }
 
     // TODO: Add result with a printable error
-    pub fn merge(&mut self, other: Fork) {
+    pub fn merge<T>(&mut self, other: Fork, graph: &mut Graph<T>) {
         self.miss = match (self.miss, other.miss) {
             (None, None) => None,
             (Some(id), None) | (None, Some(id)) => Some(id),
-            (Some(_), Some(_)) => unimplemented!(),
+            (Some(a), Some(b)) => Some(graph.merge(a, b)),
         };
 
         for (left, right) in self.lut.iter_mut().zip(other.lut.iter()) {
             *left = match (*left, *right) {
                 (None, None) => continue,
                 (Some(id), None) | (None, Some(id)) => Some(id),
-                (Some(_), Some(_)) => unimplemented!(),
+                (Some(a), Some(b)) => Some(graph.merge(a, b)),
             }
         }
     }
@@ -101,6 +102,7 @@ impl<'a> Iterator for ForkIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graph::NodeBody;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -125,6 +127,72 @@ mod tests {
                 (Range(b'a', b'd'), 2),
             ],
             &*iter.collect::<Vec<_>>(),
+        );
+    }
+
+    #[test]
+    fn merge_no_conflict() {
+        let mut graph = Graph::new();
+
+        let leaf1 = graph.push(NodeBody::Leaf("FOO"));
+        let leaf2 = graph.push(NodeBody::Leaf("BAR"));
+
+        let mut fork = Fork::new().branch(b'1', leaf1);
+
+        fork.merge(
+            Fork::new().branch(b'2', leaf2),
+            &mut graph,
+        );
+
+        assert_eq!(
+            fork,
+            Fork::new()
+                .branch(b'1', leaf1)
+                .branch(b'2', leaf2)
+        );
+    }
+
+    #[test]
+    fn merge_miss_right() {
+        let mut graph = Graph::new();
+
+        let leaf1 = graph.push(NodeBody::Leaf("FOO"));
+        let leaf2 = graph.push(NodeBody::Leaf("BAR"));
+
+        let mut fork = Fork::new().branch(b'1', leaf1);
+
+        fork.merge(
+            Fork::new().miss(leaf2),
+            &mut graph,
+        );
+
+        assert_eq!(
+            fork,
+            Fork::new()
+                .branch(b'1', leaf1)
+                .miss(leaf2)
+        );
+    }
+
+    #[test]
+    fn merge_miss_left() {
+        let mut graph = Graph::new();
+
+        let leaf1 = graph.push(NodeBody::Leaf("FOO"));
+        let leaf2 = graph.push(NodeBody::Leaf("BAR"));
+
+        let mut fork = Fork::new().miss(leaf1);
+
+        fork.merge(
+            Fork::new().branch(b'2', leaf2),
+            &mut graph,
+        );
+
+        assert_eq!(
+            fork,
+            Fork::new()
+                .branch(b'2', leaf2)
+                .miss(leaf1)
         );
     }
 }

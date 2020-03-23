@@ -222,14 +222,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut root = Fork::new();
 
     for rope in declarations {
-        root.merge(rope.fork_off(&mut graph));
+        root.merge(rope.fork_off(&mut graph), &mut graph);
     }
 
     graph.put(|_| root);
 
     // panic!("END");
 
-    panic!("{:#?}", graph.nodes());
+    panic!("{:#?}\n\n{:?}", graph.nodes(), graph.merges());
 }
 
 

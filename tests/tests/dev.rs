@@ -8,8 +8,8 @@ enum Token {
     #[end]
     End,
 
-    // #[token = "hell"]
-    // Hell,
+    #[token = "hell"]
+    Hell,
 
     #[token = "hello"]
     Hello,
