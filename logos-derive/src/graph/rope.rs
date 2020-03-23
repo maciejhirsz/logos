@@ -37,7 +37,7 @@ impl Rope {
             0 => panic!("Logos Internal Error: Trying to fork a Rope without bytes left"),
             1 => self.then,
             _ => {
-                graph.put(|_| Rope {
+                graph.push(Rope {
                     pattern: self.pattern[1..].to_vec(),
                     then: self.then,
                     miss: self.miss,
@@ -81,7 +81,7 @@ mod tests {
     fn fork_off() {
         let mut graph = Graph::new();
 
-        let token = graph.put(|_| NodeBody::Leaf("FOOBAR"));
+        let token = graph.push(NodeBody::Leaf("FOOBAR"));
         let rope = Rope::new("foobar", token);
 
         let fork = rope.fork_off(&mut graph);
@@ -100,7 +100,7 @@ mod tests {
     fn fork_off_one_byte() {
         let mut graph = Graph::new();
 
-        let token = graph.put(|_| NodeBody::Leaf("FOOBAR"));
+        let token = graph.push(NodeBody::Leaf("FOOBAR"));
         let rope = Rope::new("!", token);
 
         let fork = rope.fork_off(&mut graph);
@@ -113,7 +113,7 @@ mod tests {
     fn fork_off_miss_value() {
         let mut graph = Graph::new();
 
-        let token = graph.put(|_| NodeBody::Leaf("LIFE"));
+        let token = graph.push(NodeBody::Leaf("LIFE"));
         let rope = Rope::new("42", token).miss(42);
 
         let fork = rope.fork_off(&mut graph);

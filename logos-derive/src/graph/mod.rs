@@ -5,6 +5,7 @@ mod impls;
 mod fork;
 mod rope;
 mod range;
+mod regex;
 
 pub use fork::Fork;
 pub use rope::Rope;

@@ -1,8 +1,7 @@
 use std::cmp::Ordering;
 use std::iter::Peekable;
 
-pub use proc_macro2::TokenStream;
-pub use proc_macro2::Span;
+pub use proc_macro2::{TokenStream, Span};
 use quote::{quote, quote_spanned};
 pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};
 
@@ -26,15 +25,15 @@ pub struct Definition<V: Value> {
 
 #[derive(Debug)]
 pub enum Literal {
-    Utf8(String),
-    Bytes(Vec<u8>),
+    Utf8(String, Span),
+    Bytes(Vec<u8>, Span),
 }
 
 impl Literal {
     pub fn into_bytes(self) -> Vec<u8> {
         match self {
-            Literal::Utf8(string) => string.into_bytes(),
-            Literal::Bytes(bytes) => bytes,
+            Literal::Utf8(string, _) => string.into_bytes(),
+            Literal::Bytes(bytes, _) => bytes,
         }
     }
 }
@@ -65,10 +64,10 @@ impl Value for Option<Literal> {
 impl Value for String {
     fn value(value: Option<Literal>) -> Self {
         match value {
-            Some(Literal::Utf8(value)) => value,
+            Some(Literal::Utf8(value, _)) => value,
 
             // TODO: Better errors
-            Some(Literal::Bytes(bytes)) => {
+            Some(Literal::Bytes(bytes, _)) => {
                 panic!("Expected a string, got a bytes instead: {:02X?}", bytes)
             }
             None => panic!("Expected a string"),
@@ -103,14 +102,6 @@ impl<V: Value> Value for Definition<V> {
                 });
             }
             _ => panic!("Unexpected nested attribute: {}", quote!(#nested)),
-        }
-    }
-}
-
-pub fn error(message: &str, span: Span) -> TokenStream {
-    quote_spanned! {
-        span => {
-            compile_error!(#message)
         }
     }
 }
@@ -176,8 +167,8 @@ where
     let mut iter = items.iter();
 
     let value = match iter.next() {
-        Some(NestedMeta::Lit(Lit::Str(ref v))) => Some(Literal::Utf8(v.value())),
-        Some(NestedMeta::Lit(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value())),
+        Some(NestedMeta::Lit(Lit::Str(ref v))) => Some(Literal::Utf8(v.value(), v.span())),
+        Some(NestedMeta::Lit(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value(), v.span())),
         _ => None,
     };
 

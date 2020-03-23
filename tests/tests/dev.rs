@@ -17,8 +17,11 @@ enum Token {
     #[token = "world"]
     World,
 
-    #[regex = "[a-z]+"]
-    Ident,
+    #[regex = "[0-9]+"]
+    Integer,
+
+    // #[regex = "[a-z]+"]
+    // Ident,
 }
 
 mod simple {

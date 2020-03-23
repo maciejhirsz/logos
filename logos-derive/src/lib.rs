@@ -14,6 +14,9 @@
 // mod regex;
 mod graph;
 mod util;
+mod error;
+
+use error::Error;
 
 // use self::generator::Generator;
 // use self::handlers::{Handler, Handlers, Trivia};
@@ -123,8 +126,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
         let span = variant.span();
 
         if variant.discriminant.is_some() {
-            errors.push(util::error(
-                &format!(
+            errors.push(Error::new(
+                format!(
                     "`{}::{}` has a discriminant value set. This is not allowed for Tokens.",
                     name,
                     variant.ident,
@@ -136,8 +139,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
         match variant.fields {
             Fields::Unit => {}
             _ => {
-                errors.push(util::error(
-                    &format!(
+                errors.push(Error::new(
+                    format!(
                         "`{}::{}` has fields. This is not allowed for Tokens.",
                         name, variant.ident
                     ),
@@ -158,8 +161,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if ident == "error" {
                 if let Some((_, previous)) = error.replace((id, span)) {
                     errors.extend(vec![
-                        util::error("Only one #[error] variant can be declared.", span),
-                        util::error("Previously declared #[error]:", previous),
+                        Error::new("Only one #[error] variant can be declared.", span),
+                        Error::new("Previously declared #[error]:", previous),
                     ]);
                 }
             }
@@ -167,8 +170,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if ident == "end" {
                 if let Some((_, previous)) = end.replace((id, span)) {
                     errors.extend(vec![
-                        util::error("Only one #[end] variant can be declared.", span),
-                        util::error("Previously declared #[end]:", previous),
+                        Error::new("Only one #[end] variant can be declared.", span),
+                        Error::new("Previously declared #[end]:", previous),
                     ]);
                 }
             }
@@ -184,7 +187,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     None => id,
                 };
 
-                if let Literal::Bytes(_) = definition.value {
+                if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;
                 }
 
@@ -198,12 +201,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (id, value) = with_definition(definition);
 
-                // TODO: build declarations for regex
-                // declarations.push((Source::Regex(value), id));
-            }
+                let (utf8, regex, span) = match value {
+                    Literal::Utf8(string, span) => (true, string, span),
+                    Literal::Bytes(bytes, span) => {
+                        mode = Mode::Binary;
 
-        //         fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
-        //     }
+                        (false, util::bytes_to_regex_string(&bytes), span)
+                    }
+                };
+
+                if let Err(error) = graph.regex(utf8, &regex, span, id) {
+                    errors.push(error);
+                }
+            }
 
         //     if let Some(callback) = value_from_attr("callback", attr) {
         //         generator.set_callback(variant, callback);
@@ -225,7 +235,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         root.merge(rope.fork_off(&mut graph), &mut graph);
     }
 
-    graph.put(|_| root);
+    graph.push(root);
 
     // panic!("END");
 
@@ -234,98 +244,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
 
 // //// OLD CODE //// //
-
-
-//     // Then the fork is split into handlers using all possible permutations of the first byte of
-//     // any branch as the index of a 256-entries-long table.
-//     let mut handlers = Handlers::new(trivia);
-
-//     // Finally the `Generator` will spit out Rust code for all the handlers.
-//     let mut generator = Generator::new(name);
-
-//     let mut variants = Vec::new();
-
-//     for variant in &item.variants {
-//         variants.push(&variant.ident);
-
-//         if variant.discriminant.is_some() {
-//             panic!(
-//                 "`{}::{}` has a discriminant value set. This is not allowed for Tokens.",
-//                 name, variant.ident
-//             );
-//         }
-
-//         match variant.fields {
-//             Fields::Unit => {}
-//             _ => panic!(
-//                 "`{}::{}` has fields. This is not allowed for Tokens.",
-//                 name, variant.ident
-//             ),
-//         }
-
-//         for attr in &variant.attrs {
-//             let ident = &attr.path.segments[0].ident;
-//             let variant = &variant.ident;
-
-//             if ident == "error" {
-//                 error.insert(variant, |_| {
-//                     panic!("Only one #[error] variant can be declared.")
-//                 });
-//             }
-
-//             if ident == "end" {
-//                 end.insert(variant, |_| {
-//                     panic!("Only one #[end] variant can be declared.")
-//                 });
-//             }
-
-//             if let Some(definition) = value_from_attr::<Definition<Literal>>("token", attr) {
-//                 let leaf = Leaf::Token {
-//                     token: variant,
-//                     callback: definition.callback,
-//                 };
-
-//                 let bytes = match definition.value {
-//                     Literal::Utf8(ref string) => string.as_bytes(),
-//                     Literal::Bytes(ref bytes) => {
-//                         mode = Mode::Binary;
-
-//                         &bytes
-//                     }
-//                 };
-
-//                 fork.insert(Node::new(Regex::sequence(bytes)).leaf(leaf));
-//             } else if let Some(definition) = value_from_attr::<Definition<Literal>>("regex", attr) {
-//                 let leaf = Leaf::Token {
-//                     token: variant,
-//                     callback: definition.callback,
-//                 };
-
-//                 let (utf8, regex) = match definition.value {
-//                     Literal::Utf8(string) => (true, string),
-//                     Literal::Bytes(bytes) => {
-//                         mode = Mode::Binary;
-
-//                         (false, util::bytes_to_regex_string(&bytes))
-//                     }
-//                 };
-
-//                 fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
-//             }
-
-//             if let Some(callback) = value_from_attr("callback", attr) {
-//                 generator.set_callback(variant, callback);
-//             }
-//         }
-//     }
-
-//     fork.pack();
-
-//     // panic!("{:#?}", fork);
-
-//     for branch in fork.arms.drain(..) {
-//         handlers.insert(branch)
-//     }
 
 //     let error = match error {
 //         Some(error) => error,
