@@ -1,40 +1,40 @@
+use std::fmt;
+
 use regex_syntax::hir::{self, Class, Hir, HirKind};
 use regex_syntax::{ParserBuilder, Parser, Error as RError};
 use proc_macro2::Span;
+use beef::lean::Cow;
 
-use crate::graph::{Graph, NodeId, Fork};
+use crate::graph::{Graph, NodeBody, NodeId, Range, Rope, Fork};
 use crate::Error;
 
 impl<Leaf> Graph<Leaf> {
-    pub fn regex(&mut self, utf8: bool, source: &str, span: Span, then: NodeId) -> Result<Fork, Error> {
+    pub fn regex(&mut self, utf8: bool, source: &str, span: Span, then: NodeId) -> Result<NodeId, Error> {
         let mut builder = ParserBuilder::new();
 
         if !utf8 {
             builder.allow_invalid_utf8(true).unicode(false);
         }
 
-        let fork = match self.regex_internal(builder.build(), source) {
-            Ok(fork) => fork,
-            Err(err) => return Err(Error::new(format!("{}\n\nIn this declaration:", err), span)),
+        let hir = match builder.build().parse(source) {
+            Ok(hir) => hir.into_kind(),
+            Err(err) => return spanned_error(err, span),
         };
 
-        match fork {
-            Some(fork) => Ok(fork),
-            None => Err(Error::new("Empty #[regex]", span)),
-        }
+        let id = self.reserve();
+        let fork = Fork::new();
+
+        let fork = match self.parse_hir(hir, id.get(), then, None) {
+            Ok(fork) => fork,
+            Err(err) => return spanned_error(err, span),
+        };
+
+        Ok(self.put(id, fork))
     }
 
-    fn regex_internal(&mut self, mut parser: Parser, source: &str) -> Result<Option<Fork>, RError> {
-        let hir = parser.parse(source)?;
-
-        // panic!("{:#?}", hir);
-
-        self.from_hir(hir.into_kind())
-    }
-
-    fn from_hir(&mut self, hir: HirKind) -> Result<Option<Fork>, RError> {
+    fn parse_hir<T>(&mut self, hir: HirKind, id: NodeId, then: NodeId, miss: Option<NodeId>) -> Result<NodeBody<T>, ParseError> {
         match hir {
-            HirKind::Empty => Ok(None),
+            HirKind::Empty => Err("Unexpected empty HIR node")?,
 //             HirKind::Alternation(alternation) => {
 //                 let mut fork = Fork::default();
 
@@ -48,60 +48,52 @@ impl<Leaf> Graph<Leaf> {
 
 //                 Some(Node::from(fork))
 //             }
-//             HirKind::Concat(concat) => {
-//                 let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
-//                 let mut nodes = vec![];
-//                 let mut read = 0;
+            HirKind::Concat(concat) => {
+                use regex_syntax::hir::Literal;
 
-//                 while concat.len() != read {
-//                     let mut regex = Regex::default();
+                let mut concat = concat.into_iter().map(Hir::into_kind).collect::<Vec<_>>();
+                let mut read = 0;
+                let mut pattern = Vec::new();
 
-//                     let count = concat[read..]
-//                         .iter()
-//                         .take_while(|hir| Regex::from_hir_internal(hir, &mut regex))
-//                         .count();
+                while let Some(HirKind::Literal(literal)) = concat.pop() {
+                    match literal {
+                        Literal::Unicode(unicode) => {
+                            for byte in unicode.encode_utf8(&mut [0; 4]).bytes() {
+                                pattern.insert(0, byte);
+                            }
+                        },
+                        Literal::Byte(byte) => {
+                            pattern.insert(0, byte);
+                        },
+                    };
+                }
 
-//                     if count != 0 {
-//                         nodes.push(Branch::new(regex).into());
-//                         read += count;
-//                     } else if let Some(node) = Node::from_hir(concat.remove(read)) {
-//                         nodes.push(node);
-//                     }
-//                 }
+                if concat.len() > 0 {
+                    Err(format!("#[regex] unsupported HIR: {:#?}", concat))?;
+                }
 
-//                 let mut node = nodes.pop()?;
+                Ok(Rope::new(pattern, then).miss(miss).into())
+            }
+            HirKind::Repetition(repetition) => {
+                if id == then {
+                    Err("#[regex]: Repetition inside a repetition.")?;
+                }
+                if !repetition.greedy {
+                    Err("#[regex]: Non-greedy parsing is currently unsupported.")?;
+                }
 
-//                 for mut n in nodes.into_iter().rev() {
-//                     n.chain(&node);
+                // let flag = match repetition.kind {
+                //     RepetitionKind::ZeroOrOne => RepetitionFlag::ZeroOrOne,
+                //     RepetitionKind::ZeroOrMore => RepetitionFlag::ZeroOrMore,
+                //     RepetitionKind::OneOrMore => RepetitionFlag::OneOrMore,
+                //     RepetitionKind::Range(_) => {
+                //         panic!("The '{n,m}' repetition in #[regex] is currently unsupported.")
+                //     }
+                // };
 
-//                     node = n;
-//                 }
-
-//                 Some(node)
-//             }
-//             HirKind::Repetition(repetition) => {
-//                 use self::hir::RepetitionKind;
-
-//                 // FIXME?
-//                 if !repetition.greedy {
-//                     panic!("Non-greedy parsing in #[regex] is currently unsupported.")
-//                 }
-
-//                 let flag = match repetition.kind {
-//                     RepetitionKind::ZeroOrOne => RepetitionFlag::ZeroOrOne,
-//                     RepetitionKind::ZeroOrMore => RepetitionFlag::ZeroOrMore,
-//                     RepetitionKind::OneOrMore => RepetitionFlag::OneOrMore,
-//                     RepetitionKind::Range(_) => {
-//                         panic!("The '{n,m}' repetition in #[regex] is currently unsupported.")
-//                     }
-//                 };
-
-//                 let mut node = Node::from_hir(repetition.hir.into_kind())?;
-
-//                 node.make_repeat(flag);
-
-//                 Some(node)
-//             }
+                let hir = repetition.hir.into_kind();
+                self.parse_hir(hir, id, id, Some(then))
+            }
 //             HirKind::Group(group) => {
 //                 let mut fork = Fork::default();
 
@@ -110,47 +102,100 @@ impl<Leaf> Graph<Leaf> {
 //                 Some(Node::from(fork))
 //             }
 //             // This handles classes with non-ASCII Unicode ranges
-//             HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
-//                 match class {
-//                     Class::Unicode(unicode) => {
-//                         let mut branches = unicode
-//                             .iter()
-//                             .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-//                             .map(Branch::new);
+            HirKind::Class(ref class) if !is_ascii_or_bytes(class) => {
+                match class {
+                    Class::Unicode(unicode) => {
+                        Err("No support for unicode just yet!")?
+                        // let mut branches = unicode
+                        //     .iter()
+                        //     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
+                        //     .map(Branch::new);
 
-//                         branches.next().map(|branch| {
-//                             let mut node = Node::Branch(branch);
+                        // branches.next().map(|branch| {
+                        //     let mut node = Node::Branch(branch);
 
-//                             for branch in branches {
-//                                 node.insert(Node::Branch(branch));
-//                             }
+                        //     for branch in branches {
+                        //         node.insert(Node::Branch(branch));
+                        //     }
 
-//                             node
-//                         })
-//                     }
-//                     Class::Bytes(_) => {
-//                         // `is_ascii_or_bytes` check shouldn't permit us to branch here
+                        //     node
+                        // })
+                    }
+                    Class::Bytes(_) => {
+                        // `is_ascii_or_bytes` check shouldn't permit us to branch here
+                        Err("Internal Error: Unexpected Class::Bytes")?
+                    }
+                }
+            },
+            HirKind::Class(class) => {
+                let mut fork = Fork::new().miss(miss);
+                let class: Vec<Range> = match class {
+                    Class::Unicode(u) => {
+                        u.iter().copied().map(Into::into).collect()
+                    }
+                    Class::Bytes(b) => {
+                        b.iter().copied().map(Into::into).collect()
+                    }
+                };
 
-//                         panic!("Internal Error")
-//                     }
-//                 }
-//             }
-//             _ => {
-//                 let mut regex = Regex::default();
+                for range in class {
+                    fork.add_branch(range, then);
+                }
 
-//                 Regex::from_hir_internal(&hir, &mut regex);
-
-//                 if regex.len() == 0 {
-//                     None
-//                 } else {
-//                     Some(Branch::new(regex).into())
-//                 }
-//             }
-            _ => Ok(None),
+                Ok(fork.into())
+            },
+            HirKind::WordBoundary(_) => {
+                Err("#[regex]: Word boundaries are currently unsupported.")?
+            },
+            HirKind::Anchor(_) => {
+                Err("#[regex]: Anchors in #[regex] are currently unsupported.")?
+            },
+            hir => Err(format!("Internal Error: Unimplemented Regex HIR:\n\n{:#?}", hir))?,
         }
     }
 }
 
-fn spanned_error(err: RError, span: Span) -> Error {
-    Error::new(format!("{}\n\nIn this declaration:", err), span)
+pub struct ParseError(Cow<'static, str>);
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<RError> for ParseError {
+    fn from(err: RError) -> ParseError {
+        ParseError(err.to_string().into())
+    }
+}
+
+impl From<&'static str> for ParseError {
+    fn from(err: &'static str) -> ParseError {
+        ParseError(err.into())
+    }
+}
+
+impl From<String> for ParseError {
+    fn from(err: String) -> ParseError {
+        ParseError(err.into())
+    }
+}
+
+fn is_ascii_or_bytes(class: &Class) -> bool {
+    match class {
+        Class::Unicode(unicode) => unicode.iter().all(|range| {
+            let start = range.start() as u32;
+            let end = range.end() as u32;
+
+            start < 128 && (end < 128 || end == 0x0010_FFFF)
+        }),
+        Class::Bytes(_) => true,
+    }
+}
+
+fn spanned_error<E, T>(err: E, span: Span) -> Result<T, Error>
+where
+    E: std::fmt::Display,
+{
+    Err(Error::new(format!("{}\n\nIn this declaration:", err), span))
 }

@@ -1,3 +1,6 @@
+use regex_syntax::hir::ClassUnicodeRange;
+use regex_syntax::hir::ClassBytesRange;
+
 use std::cmp::{Ord, Ordering};
 use std::ops::Deref;
 
@@ -42,6 +45,18 @@ impl Iterator for Range {
 impl Ord for Range {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl From<ClassUnicodeRange> for Range {
+    fn from(r: ClassUnicodeRange) -> Range {
+        Range(r.start() as u8, r.end() as u8)
+    }
+}
+
+impl From<ClassBytesRange> for Range {
+    fn from(r: ClassBytesRange) -> Range {
+        Range(r.start(), r.end())
     }
 }
 

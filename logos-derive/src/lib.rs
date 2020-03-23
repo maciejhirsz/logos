@@ -12,9 +12,9 @@
 // mod generator;
 // mod handlers;
 // mod regex;
+mod error;
 mod graph;
 mod util;
-mod error;
 
 use error::Error;
 
@@ -109,6 +109,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
     //     }
     // }
 
+    enum Declaration {
+        Rope(Rope),
+        NodeId(NodeId),
+    }
+
     let mut variants = Vec::new();
     let mut declarations = Vec::new();
     let mut errors = Vec::new();
@@ -149,7 +154,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-        let id = graph.put(|_| Token {
+        let id = graph.push(Token {
             ident: variant.ident.clone(),
             callback: None,
         });
@@ -179,7 +184,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let mut with_definition = |definition: Definition<Literal>| {
                 let id = match definition.callback {
                     Some(callback) => {
-                        graph.put(|_| Token {
+                        graph.push(Token {
                             ident: variant.clone(),
                             callback: Some(callback),
                         })
@@ -197,7 +202,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if let Some(definition) = util::value_from_attr("token", attr) {
                 let (id, value) = with_definition(definition);
 
-                declarations.push(Rope::new(value.into_bytes(), id));
+                declarations.push(Declaration::Rope(
+                    Rope::new(value.into_bytes(), id)
+                ));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (id, value) = with_definition(definition);
 
@@ -210,8 +217,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                if let Err(error) = graph.regex(utf8, &regex, span, id) {
-                    errors.push(error);
+                match graph.regex(utf8, &regex, span, id) {
+                    Ok(id) => declarations.push(Declaration::NodeId(id)),
+                    Err(err) => errors.push(err),
                 }
             }
 
@@ -231,15 +239,22 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
-    for rope in declarations {
-        root.merge(rope.fork_off(&mut graph), &mut graph);
+    for declaration in declarations {
+        match declaration {
+            Declaration::Rope(rope) => {
+                root.merge(rope.fork_off(&mut graph), &mut graph);
+            }
+            Declaration::NodeId(id) => {
+                root.merge(graph.fork_off(id), &mut graph);
+            }
+        }
     }
 
     graph.push(root);
 
     // panic!("END");
 
-    panic!("{:#?}\n\n{:?}", graph.nodes(), graph.merges());
+    panic!("{:#?}\n\n{:?}", graph, graph.merges());
 }
 
 

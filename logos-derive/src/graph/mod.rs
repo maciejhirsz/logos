@@ -11,15 +11,23 @@ pub use fork::Fork;
 pub use rope::Rope;
 pub use range::Range;
 
-#[cfg_attr(test, derive(Debug))]
 pub struct Graph<Leaf> {
     /// Internal storage of all allocated nodes. Once a node is
     /// put here, it should never be mutated.
-    nodes: Vec<Node<Leaf>>,
+    nodes: Vec<Option<Node<Leaf>>>,
     /// When merging two nodes into a new node, we store the two
     /// entry keys and the result, so that we don't merge the same
     /// two nodes multiple times.
     merges: Map<[NodeId; 2], NodeId>,
+}
+
+/// Unique reserved NodeId. This mustn't implement Clone.
+pub struct ReservedId(NodeId);
+
+impl ReservedId {
+    pub fn get(&self) -> NodeId {
+        self.0
+    }
 }
 
 impl<Leaf> Graph<Leaf> {
@@ -30,26 +38,32 @@ impl<Leaf> Graph<Leaf> {
         }
     }
 
-    pub fn put<F, B>(&mut self, fun: F) -> NodeId
-    where
-        F: FnOnce(NodeId) -> B,
-        B: Into<NodeBody<Leaf>>,
-    {
+    pub fn reserve(&mut self) -> ReservedId {
         let id = self.nodes.len();
 
-        self.nodes.push(Node {
-            id,
-            body: fun(id).into(),
+        self.nodes.push(None);
+
+        ReservedId(id)
+    }
+
+    pub fn put<B>(&mut self, id: ReservedId, node: B) -> NodeId
+    where
+        B: Into<NodeBody<Leaf>>,
+    {
+        self.nodes[id.0] = Some(Node {
+            id: id.0,
+            body: node.into(),
         });
 
-        id
+        id.0
     }
 
     pub fn push<B>(&mut self, node: B) -> NodeId
     where
         B: Into<NodeBody<Leaf>>,
     {
-        self.put(|_| node)
+        let id = self.reserve();
+        self.put(id, node)
     }
 
     pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId {
@@ -103,7 +117,7 @@ impl<Leaf> Graph<Leaf> {
         }
     }
 
-    pub fn nodes(&self) -> &[Node<Leaf>] {
+    pub fn nodes(&self) -> &[Option<Node<Leaf>>] {
         &self.nodes
     }
 
@@ -121,7 +135,7 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
     type Output = Node<Leaf>;
 
     fn index(&self, id: NodeId) -> &Node<Leaf> {
-        &self.nodes[id]
+        self.nodes[id].as_ref().expect("Indexing into a reserved node")
     }
 }
 
@@ -161,9 +175,9 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.push(NodeBody::Leaf("IDENT"));
-        let root = graph.put(|id| {
-            Fork::new().branch('a'..='z', id).miss(token)
-        });
+        let id = graph.reserve();
+        let fork = Fork::new().branch('a'..='z', id.get()).miss(token);
+        let root = graph.put(id, fork);
 
         assert_eq!(graph[token].body, NodeBody::Leaf("IDENT"));
         assert_eq!(

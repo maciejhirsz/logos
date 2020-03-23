@@ -1,4 +1,4 @@
-use crate::graph::{Token, Rope, Fork, Node, NodeBody, Range};
+use crate::graph::{Token, Graph, Rope, Fork, Node, NodeBody, Range};
 
 impl<T> From<Fork> for NodeBody<T> {
     fn from(fork: Fork) -> Self {
@@ -50,6 +50,14 @@ mod debug {
     impl Display for Range {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             <Range as Debug>::fmt(self, f)
+        }
+    }
+
+    impl<T: Debug> Debug for Graph<T> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_list()
+                .entries(self.nodes().iter().filter_map(|n| n.as_ref()))
+                .finish()
         }
     }
 
