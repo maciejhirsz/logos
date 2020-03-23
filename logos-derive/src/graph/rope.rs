@@ -1,8 +1,8 @@
-use crate::graph::{Graph, Fork, Pattern, NodeId};
+use crate::graph::{Graph, Fork, NodeId};
 
 #[derive(PartialEq)]
 pub struct Rope {
-    pub pattern: Pattern,
+    pub pattern: Vec<u8>,
     pub then: NodeId,
     pub miss: Option<NodeId>,
 }
@@ -10,10 +10,11 @@ pub struct Rope {
 impl Rope {
     pub fn new<P>(pattern: P, then: NodeId) -> Self
     where
-        P: Into<Pattern>,
+        // P: Into<Vec<u8>>,
+        P: AsRef<[u8]>,
     {
         Rope {
-            pattern: pattern.into(),
+            pattern: pattern.as_ref().to_vec(),
             then,
             miss: None,
         }
@@ -35,7 +36,7 @@ impl Rope {
             1 => self.then,
             _ => {
                 graph.put(|_| Rope {
-                    pattern: Pattern(self.pattern[1..].to_vec()),
+                    pattern: self.pattern[1..].to_vec(),
                     then: self.then,
                     miss: self.miss,
                 })
@@ -57,7 +58,7 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("FOOBAR"));
-        let rope = Rope::new(b"foobar", token);
+        let rope = Rope::new("foobar", token);
 
         let fork = rope.fork_off(&mut graph);
 
@@ -66,7 +67,7 @@ mod tests {
         assert_eq!(
             graph[1].body,
             NodeBody::Rope(
-                Rope::new(b"oobar", token),
+                Rope::new("oobar", token),
             ),
         );
     }
@@ -76,7 +77,7 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("FOOBAR"));
-        let rope = Rope::new(b"!", token);
+        let rope = Rope::new("!", token);
 
         let fork = rope.fork_off(&mut graph);
 
@@ -89,7 +90,7 @@ mod tests {
         let mut graph = Graph::new();
 
         let token = graph.put(|_| NodeBody::Leaf("LIFE"));
-        let rope = Rope::new(b"42", token).miss(42);
+        let rope = Rope::new("42", token).miss(42);
 
         let fork = rope.fork_off(&mut graph);
 
@@ -98,7 +99,7 @@ mod tests {
         assert_eq!(
             graph[1].body,
             NodeBody::Rope(
-                Rope::new(b"2", token).miss(42),
+                Rope::new("2", token).miss(42),
             ),
         );
     }

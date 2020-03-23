@@ -3,11 +3,11 @@ use std::ops::Index;
 mod impls;
 mod fork;
 mod rope;
-mod pattern;
+mod range;
 
 pub use fork::Fork;
 pub use rope::Rope;
-pub use pattern::{Pattern, Range};
+pub use range::Range;
 
 #[cfg_attr(test, derive(Debug))]
 pub struct Graph<Leaf> {

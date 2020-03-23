@@ -86,11 +86,7 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             use std::fmt::Write;
 
-            let mut rope = String::with_capacity(self.pattern.0.len());
-
-            for range in self.pattern.iter() {
-                write!(rope, "{}", range)?;
-            }
+            let mut rope = String::from_utf8_lossy(&self.pattern);
 
             match self.miss {
                 Some(id) => {

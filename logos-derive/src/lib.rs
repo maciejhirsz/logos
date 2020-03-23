@@ -194,7 +194,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if let Some(definition) = util::value_from_attr("token", attr) {
                 let (id, value) = with_definition(definition);
 
-                declarations.push(Rope::new(value.as_ref(), id));
+                declarations.push(Rope::new(value.into_bytes(), id));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (id, value) = with_definition(definition);
 

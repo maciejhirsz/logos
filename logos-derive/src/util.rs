@@ -30,11 +30,11 @@ pub enum Literal {
     Bytes(Vec<u8>),
 }
 
-impl AsRef<[u8]> for Literal {
-    fn as_ref(&self) -> &[u8] {
+impl Literal {
+    pub fn into_bytes(self) -> Vec<u8> {
         match self {
-            Literal::Utf8(string) => string.as_bytes(),
-            Literal::Bytes(bytes) => &*bytes,
+            Literal::Utf8(string) => string.into_bytes(),
+            Literal::Bytes(bytes) => bytes,
         }
     }
 }

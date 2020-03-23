@@ -1,27 +1,6 @@
 use std::cmp::{Ord, Ordering};
 use std::ops::Deref;
 
-#[derive(PartialEq)]
-pub struct Pattern(pub Vec<Range>);
-
-impl Deref for Pattern {
-    type Target = [Range];
-
-    fn deref(&self) -> &[Range] {
-        &self.0
-    }
-}
-
-impl<I, T> From<I> for Pattern
-where
-    T: Into<Range>,
-    I: IntoIterator<Item = T>,
-{
-    fn from(iterable: I) -> Pattern {
-        Pattern(iterable.into_iter().map(Into::into).collect())
-    }
-}
-
 #[derive(Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub struct Range(pub u8, pub u8);
 
