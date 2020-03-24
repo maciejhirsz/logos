@@ -146,7 +146,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
                         let nid = self.reserve();
-                        let next = self.parse_hir(hir.clone(), nid.get(), then, Some(then))?;
+                        let next = self.parse_hir(hir.clone(), nid.get(), nid.get(), Some(then))?;
                         let next = self.insert(nid, next);
 
                         // Then parse the same tree into first node, attaching loop
