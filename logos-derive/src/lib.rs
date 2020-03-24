@@ -23,7 +23,7 @@ use error::Error;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 // use regex::Regex;
-use graph::{NodeId, Graph, Fork, Rope, Token};
+use graph::{NodeId, NodeBody, Graph, Fork, Rope, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -108,11 +108,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     //         }
     //     }
     // }
-
-    enum Declaration {
-        Rope(Rope),
-        NodeId(NodeId),
-    }
 
     let mut variants = Vec::new();
     let mut declarations = Vec::new();
@@ -202,9 +197,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if let Some(definition) = util::value_from_attr("token", attr) {
                 let (id, value) = with_definition(definition);
 
-                declarations.push(Declaration::Rope(
-                    Rope::new(value.into_bytes(), id)
-                ));
+                declarations.push(Rope::new(value.into_bytes(), id).into());
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (id, value) = with_definition(definition);
 
@@ -218,7 +211,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 };
 
                 match graph.regex(utf8, &regex, span, id) {
-                    Ok(id) => declarations.push(Declaration::NodeId(id)),
+                    Ok(node) => declarations.push(node),
                     Err(err) => errors.push(err),
                 }
             }
@@ -241,11 +234,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     for declaration in declarations {
         match declaration {
-            Declaration::Rope(rope) => {
+            NodeBody::Rope(rope) => {
                 root.merge(rope.fork_off(&mut graph), &mut graph);
             }
-            Declaration::NodeId(id) => {
-                root.merge(graph.fork_off(id), &mut graph);
+            NodeBody::Fork(fork) => {
+                root.merge(fork, &mut graph);
+            }
+            NodeBody::Leaf(..) => {
+                unreachable!();
             }
         }
     }

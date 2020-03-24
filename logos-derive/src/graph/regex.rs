@@ -9,7 +9,7 @@ use crate::graph::{Graph, NodeBody, NodeId, Range, Rope, Fork};
 use crate::Error;
 
 impl<Leaf> Graph<Leaf> {
-    pub fn regex(&mut self, utf8: bool, source: &str, span: Span, then: NodeId) -> Result<NodeId, Error> {
+    pub fn regex(&mut self, utf8: bool, source: &str, span: Span, then: NodeId) -> Result<NodeBody<Leaf>, Error> {
         let mut builder = ParserBuilder::new();
 
         if !utf8 {
@@ -21,20 +21,22 @@ impl<Leaf> Graph<Leaf> {
             Err(err) => return spanned_error(err, span),
         };
 
-        let id = self.reserve();
+        // By serendipity we don't have to reserve an id for the root
+        // node of the regex. Patterns like `[0-9]*` could potentially match
+        // empty string, resulting in an infinite loop in parsing.
+        let first_id = Err("#[regex]: Pattern can match an empty string. \
+                            Try switching * into +".into());
 
-        let node = match self.parse_hir(hir, id.get(), then, None) {
-            Ok(node) => node,
-            Err(err) => return spanned_error(err, span),
-        };
-
-        Ok(self.insert(id, node))
+        match self.parse_hir(hir, first_id, then, None) {
+            Ok(node) => Ok(node),
+            Err(err) => spanned_error(err, span),
+        }
     }
 
     fn parse_hir(
         &mut self,
         hir: HirKind,
-        id: NodeId,
+        id: Result<NodeId, ParseError>,
         then: NodeId,
         miss: Option<NodeId>,
     ) -> Result<NodeBody<Leaf>, ParseError> {
@@ -66,28 +68,34 @@ impl<Leaf> Graph<Leaf> {
                 Ok(Rope::new(pattern, then).miss(miss).into())
             },
             HirKind::Concat(concat) => {
-                let mut pattern = Vec::new();
+                // We'll be writing from the back, so need to allocate enough
+                // space here. Worst case scenario is all unicode codepoints
+                // producing 4 byte utf8 sequences
+                let mut ropebuf = vec![0; concat.len() * 4];
+                let mut cur = ropebuf.len();
+                let mut end = ropebuf.len();
 
                 for hir in concat.into_iter().rev().map(Hir::into_kind) {
                     match hir {
                         HirKind::Literal(Literal::Unicode(unicode)) => {
-                            for byte in unicode.encode_utf8(&mut [0; 4]).bytes() {
-                                pattern.insert(0, byte);
-                            }
+                            cur -= unicode.len_utf8();
+                            unicode.encode_utf8(&mut ropebuf[cur..]);
                         },
                         HirKind::Literal(Literal::Byte(byte)) => {
-                            pattern.insert(0, byte);
+                            cur -= 1;
+                            ropebuf[cur] = byte;
                         },
                         hir => {
+                            end = cur;
                             Err(format!("#[regex] unsupported HIR: {:#?}", hir))?
                         },
                     }
                 }
 
-                Ok(Rope::new(pattern, then).miss(miss).into())
+                Ok(Rope::new(&ropebuf[cur..end], then).miss(miss).into())
             },
             HirKind::Repetition(repetition) => {
-                if id == then {
+                if matches!(id, Ok(id) if id == then) {
                     Err("#[regex]: Repetition inside a repetition.")?;
                 }
                 if !repetition.greedy {
@@ -101,11 +109,12 @@ impl<Leaf> Graph<Leaf> {
                         self.parse_hir(hir, id, then, Some(then))
                     },
                     RepetitionKind::ZeroOrMore => {
-                        self.parse_hir(hir, id, id, Some(then))
+                        let id = id?;
+                        self.parse_hir(hir, Ok(id), id, Some(then))
                     },
                     RepetitionKind::OneOrMore => {
                         let nid = self.reserve();
-                        let next = self.parse_hir(hir.clone(), nid.get(), id, Some(then))?;
+                        let next = self.parse_hir(hir.clone(), Ok(nid.get()), nid.get(), Some(then))?;
                         let next = self.insert(nid, next);
 
                         self.parse_hir(hir, id, next, miss)
