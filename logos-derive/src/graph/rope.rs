@@ -1,6 +1,6 @@
 use crate::graph::{Graph, Fork, NodeId};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Hash)]
 pub struct Rope {
     pub pattern: Vec<u8>,
     pub then: NodeId,
@@ -9,7 +9,7 @@ pub struct Rope {
 
 /// Because Ropes could potentially fail a match mid-pattern,
 /// a regular `Option` is not sufficient here.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Hash)]
 pub enum Miss {
     /// Same as Option::None, error on fail
     None,

@@ -24,14 +24,14 @@ impl Fork {
         self
     }
 
-    pub fn add_branch<R>(&mut self, range: R, then: NodeId)
+    pub fn add_branch<R, T>(&mut self, range: R, then: NodeId, graph: &mut Graph<T>)
     where
         R: Into<Range>,
     {
         for byte in range.into() {
             match &mut self.lut[byte as usize] {
                 Some(other) if *other != then => {
-                    unimplemented!()
+                    *other = graph.merge(*other, then);
                 },
                 opt => *opt = Some(then),
             }
@@ -66,7 +66,14 @@ impl Fork {
     where
         R: Into<Range>,
     {
-        self.add_branch(range, then);
+        for byte in range.into() {
+            match &mut self.lut[byte as usize] {
+                Some(other) if *other != then => {
+                    panic!("Overlapping branches");
+                },
+                opt => *opt = Some(then),
+            }
+        }
         self
     }
 }

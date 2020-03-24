@@ -1,5 +1,6 @@
 use regex_syntax::hir::{Class, ClassUnicode, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
+use utf8_ranges::Utf8Sequences;
 
 use crate::graph::{Graph, NodeBody, NodeId, Range, Rope, Fork};
 use crate::error::Result;
@@ -150,21 +151,24 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                 self.parse_hir(hir, id, then, miss)
             },
             HirKind::Class(Class::Unicode(class)) if !is_ascii_or_bytes(&class) => {
-                Err("No support for unicode just yet!")?
-                // let mut branches = unicode
-                //     .iter()
-                //     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
-                //     .map(Branch::new);
+                let sequences = class
+                    .iter()
+                    .flat_map(|range| Utf8Sequences::new(range.start(), range.end()));
 
-                // branches.next().map(|branch| {
-                //     let mut node = Node::Branch(branch);
+                let mut root = Fork::new().miss(miss);
 
-                //     for branch in branches {
-                //         node.insert(Node::Branch(branch));
-                //     }
+                for sequence in sequences {
+                    let ranges = sequence.as_slice();
+                    let mut then = then;
 
-                //     node
-                // })
+                    for range in ranges[1..].iter().rev() {
+                        then = self.push(Fork::new().branch(*range, then));
+                    }
+
+                    root.add_branch(ranges[0], then, self);
+                }
+
+                Ok(root.into())
             },
             HirKind::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
@@ -178,7 +182,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                 };
 
                 for range in class {
-                    fork.add_branch(range, then);
+                    fork.add_branch(range, then, self);
                 }
 
                 Ok(fork.into())

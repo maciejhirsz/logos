@@ -17,6 +17,7 @@ proc-macro = true
 
 [dependencies]
 beef = "0.4.1"
+fnv = "1.0.6"
 rustc-hash = "1.0.1"
 syn = { version = "1.0.17", features = ["extra-traits", "full"] }
 quote = "1.0.3"

@@ -1,4 +1,9 @@
 use std::ops::Index;
+use std::collections::BTreeMap as Map;
+use std::collections::btree_map::Entry;
+use std::hash::{Hash, Hasher};
+
+use fnv::FnvHasher;
 
 mod impls;
 mod fork;
@@ -22,6 +27,10 @@ pub struct Graph<Leaf> {
     /// one that has been inserted, so we can use a vec with reverse
     /// order search to get O(1) searches much faster than any *Map.
     merges: Vec<([NodeId; 2], NodeId)>,
+    /// Another map used for accounting. Before `.push`ing a new node
+    /// onto the graph (inserts are exempt), we hash it and find if
+    /// an identical(!) node has been created before.
+    hashes: Map<u64, NodeId>,
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
@@ -38,6 +47,7 @@ impl<Leaf> Graph<Leaf> {
         Graph {
             nodes: Vec::new(),
             merges: Vec::new(),
+            hashes: Map::new(),
         }
     }
 
@@ -65,8 +75,38 @@ impl<Leaf> Graph<Leaf> {
     where
         B: Into<NodeBody<Leaf>>,
     {
-        let id = self.reserve();
-        self.insert(id, node)
+        let node = node.into();
+
+        if let NodeBody::Leaf(_) = node {
+            return self.push_unchecked(node);
+        }
+
+        let mut hasher = FnvHasher::default();
+        node.hash(&mut hasher);
+
+        match self.hashes.entry(hasher.finish()) {
+            Entry::Occupied(occupied) => {
+                let id = *occupied.get();
+
+                if self[id].body.eq(&node) {
+                    return id;
+                }
+            },
+            Entry::Vacant(vacant) => {
+                vacant.insert(self.nodes.len());
+            },
+        }
+
+        self.push_unchecked(node)
+    }
+
+    fn push_unchecked(&mut self, body: NodeBody<Leaf>) -> NodeId{
+        let id = self.nodes.len();
+        self.nodes.push(Some(Node {
+            id,
+            body,
+        }));
+        id
     }
 
     pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId {
@@ -160,6 +200,16 @@ pub enum NodeBody<Leaf> {
     Rope(Rope),
     /// Leaf node, terminal state
     Leaf(Leaf),
+}
+
+impl<Leaf> NodeBody<Leaf> {
+    fn eq(&self, other: &NodeBody<Leaf>) -> bool {
+        match (self, other) {
+            (NodeBody::Fork(a), NodeBody::Fork(b)) => a == b,
+            (NodeBody::Rope(a), NodeBody::Rope(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 #[cfg_attr(test, derive(PartialEq))]

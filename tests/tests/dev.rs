@@ -8,19 +8,19 @@ enum Token {
     #[end]
     End,
 
-    #[token = "hell"]
-    Hell,
+    // #[token = "hell"]
+    // Hell,
 
-    #[token = "hello"]
-    Hello,
+    // #[token = "hello"]
+    // Hello,
 
-    #[token = "world"]
-    World,
+    // #[token = "world"]
+    // World,
 
-    #[regex = "[0-9]+"]
-    Integer,
+    // #[regex = "[0-9]+"]
+    // Integer,
 
-    #[regex = "(foo|bar)+"]
+    #[regex = r"\w"]
     Ident,
 }
 

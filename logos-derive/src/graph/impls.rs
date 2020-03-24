@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use crate::graph::{Token, Graph, Rope, Fork, Node, NodeBody, Range};
 
 impl<T> From<Fork> for NodeBody<T> {
@@ -21,12 +23,36 @@ fn is_ascii(byte: u8) -> bool {
     (byte >= 0x20) & (byte < 0x7F)
 }
 
+impl Hash for Fork {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for branch in self.branches() {
+            branch.hash(state);
+        }
+        self.miss.hash(state);
+    }
+}
+
+impl<T> Hash for NodeBody<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            NodeBody::Rope(rope) => {
+                b"ROPE".hash(state);
+                rope.hash(state);
+            },
+            NodeBody::Fork(fork) => {
+                b"FORK".hash(state);
+                fork.hash(state);
+            },
+            NodeBody::Leaf(_) => b"LEAF".hash(state),
+        }
+    }
+}
+
 /// We don't need debug impls in release builds
 // #[cfg(test)]
 mod debug {
     use super::*;
     use std::fmt::{self, Debug, Display};
-
 
     impl Debug for Range {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

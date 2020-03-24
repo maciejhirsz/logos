@@ -1,9 +1,10 @@
 use regex_syntax::hir::ClassUnicodeRange;
 use regex_syntax::hir::ClassBytesRange;
+use utf8_ranges::Utf8Range;
 
 use std::cmp::{Ord, Ordering};
 
-#[derive(Clone, Copy, PartialOrd, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
 pub struct Range(pub u8, pub u8);
 
 impl From<u8> for Range {
@@ -44,6 +45,12 @@ impl Iterator for Range {
 impl Ord for Range {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl From<Utf8Range> for Range {
+    fn from(r: Utf8Range) -> Range {
+        Range(r.start, r.end)
     }
 }
 
