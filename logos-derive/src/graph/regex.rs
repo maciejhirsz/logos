@@ -113,10 +113,12 @@ impl<Leaf> Graph<Leaf> {
                         self.parse_hir(hir, Ok(id), id, Some(then))
                     },
                     RepetitionKind::OneOrMore => {
+                        // Parse the loop first
                         let nid = self.reserve();
                         let next = self.parse_hir(hir.clone(), Ok(nid.get()), nid.get(), Some(then))?;
                         let next = self.insert(nid, next);
 
+                        // Then parse the same tree into first node, attaching loop
                         self.parse_hir(hir, id, next, miss)
                     },
                     RepetitionKind::Range(..) => {

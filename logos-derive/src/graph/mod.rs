@@ -1,5 +1,4 @@
 use std::ops::Index;
-use std::collections::BTreeMap as Map;
 
 mod impls;
 mod fork;
@@ -18,7 +17,11 @@ pub struct Graph<Leaf> {
     /// When merging two nodes into a new node, we store the two
     /// entry keys and the result, so that we don't merge the same
     /// two nodes multiple times.
-    merges: Map<[NodeId; 2], NodeId>,
+    ///
+    /// Most of the time the entry we want to find will be the last
+    /// one that has been inserted, so we can use a vec with reverse
+    /// order search to get O(1) searches much faster than any *Map.
+    merges: Vec<([NodeId; 2], NodeId)>,
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
@@ -34,7 +37,7 @@ impl<Leaf> Graph<Leaf> {
     pub fn new() -> Self {
         Graph {
             nodes: Vec::new(),
-            merges: Map::default(),
+            merges: Vec::new(),
         }
     }
 
@@ -73,7 +76,7 @@ impl<Leaf> Graph<Leaf> {
 
         let sorted = if a > b { [b, a] } else { [a, b] };
 
-        if let Some(merged) = self.merges.get(&sorted) {
+        if let Some((_, merged)) = self.merges.iter().rev().find(|(key, _)| *key == sorted) {
             return *merged;
         }
 
@@ -121,12 +124,12 @@ impl<Leaf> Graph<Leaf> {
         &self.nodes
     }
 
-    pub fn merges(&self) -> &Map<[NodeId; 2], NodeId> {
+    pub fn merges(&self) -> &[([NodeId; 2], NodeId)] {
         &self.merges
     }
 
     fn merged(&mut self, key: [NodeId; 2], result: NodeId) -> NodeId {
-        self.merges.insert(key, result);
+        self.merges.push((key, result));
         result
     }
 }
