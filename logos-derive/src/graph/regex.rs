@@ -150,22 +150,22 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
 
                 self.parse_hir(hir, id, then, miss)
             },
-            HirKind::Class(Class::Unicode(class)) if !is_ascii_or_bytes(&class) => {
-                let sequences = class
+            HirKind::Class(Class::Unicode(class)) if !is_ascii(&class) => {
+                let mut ropes = class
                     .iter()
-                    .flat_map(|range| Utf8Sequences::new(range.start(), range.end()));
+                    .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
+                    .map(|sequence| Rope::new(sequence.as_slice(), then))
+                    .collect::<Vec<_>>();
+
+                if ropes.len() == 0 {
+                    return Ok(ropes.remove(0).miss(miss).into());
+                }
 
                 let mut root = Fork::new().miss(miss);
 
-                for sequence in sequences {
-                    let ranges = sequence.as_slice();
-                    let mut then = then;
-
-                    for range in ranges[1..].iter().rev() {
-                        then = self.push(Fork::new().branch(*range, then));
-                    }
-
-                    root.add_branch(ranges[0], then, self);
+                for rope in ropes {
+                    let fork = rope.fork_off(self);
+                    root.merge(fork, self);
                 }
 
                 Ok(root.into())
@@ -197,7 +197,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
     }
 }
 
-fn is_ascii_or_bytes(class: &ClassUnicode) -> bool {
+fn is_ascii(class: &ClassUnicode) -> bool {
     class.iter().all(|range| {
         let start = range.start() as u32;
         let end = range.end() as u32;

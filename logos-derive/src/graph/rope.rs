@@ -1,10 +1,23 @@
-use crate::graph::{Graph, Fork, NodeId};
+use std::ops::Deref;
+
+use crate::graph::{Graph, Range, Fork, NodeId};
 
 #[derive(PartialEq, Clone, Hash)]
 pub struct Rope {
-    pub pattern: Vec<u8>,
+    pub pattern: Pattern,
     pub then: NodeId,
     pub miss: Miss,
+}
+
+#[derive(PartialEq, Clone, Hash)]
+pub struct Pattern(pub Vec<Range>);
+
+impl Deref for Pattern {
+    type Target = [Range];
+
+    fn deref(&self) -> &[Range] {
+        &self.0
+    }
 }
 
 /// Because Ropes could potentially fail a match mid-pattern,
@@ -53,11 +66,10 @@ impl From<NodeId> for Miss {
 impl Rope {
     pub fn new<P>(pattern: P, then: NodeId) -> Self
     where
-        // P: Into<Vec<u8>>,
-        P: AsRef<[u8]>,
+        P: Into<Pattern>,
     {
         Rope {
-            pattern: pattern.as_ref().to_vec(),
+            pattern: pattern.into(),
             then,
             miss: Miss::None,
         }
@@ -79,7 +91,7 @@ impl Rope {
             1 => self.then,
             _ => {
                 graph.push(Rope {
-                    pattern: self.pattern[1..].to_vec(),
+                    pattern: self.pattern[1..].into(),
                     then: self.then,
                     miss: self.miss.any().into(),
                 })
@@ -89,26 +101,50 @@ impl Rope {
         Fork::new().branch(self.pattern[0], then).miss(self.miss.first())
     }
 
-    pub fn prefix(&self, other: &Self) -> Option<Vec<u8>> {
+    pub fn prefix(&self, other: &Self) -> Option<Pattern> {
         let count = self.pattern
             .iter()
-            .zip(&other.pattern)
+            .zip(other.pattern.iter())
             .take_while(|(a, b)| a == b)
             .count();
 
         match count {
             0 => None,
-            _ => Some(self.pattern[..count].to_vec()),
+            _ => Some(self.pattern[..count].into()),
         }
     }
 
     pub fn remainder<T>(mut self, at: usize, graph: &mut Graph<T>) -> NodeId {
-        self.pattern = self.pattern[at..].to_vec();
+        self.pattern = self.pattern[at..].into();
 
         match self.pattern.len() {
             0 => graph.push_miss(self.then, self.miss.any()),
             _ => graph.push(self),
         }
+    }
+}
+
+impl<T> From<&[T]> for Pattern
+where
+    T: Into<Range> + Copy,
+{
+    fn from(slice: &[T]) -> Self {
+        Pattern(slice.iter().copied().map(Into::into).collect())
+    }
+}
+
+impl<T> From<Vec<T>> for Pattern
+where
+    T: Into<Range>,
+{
+    fn from(vec: Vec<T>) -> Self {
+        Pattern(vec.into_iter().map(Into::into).collect())
+    }
+}
+
+impl From<&str> for Pattern {
+    fn from(slice: &str) -> Self {
+        slice.as_bytes().into()
     }
 }
 
