@@ -4,7 +4,50 @@ use crate::graph::{Graph, Fork, NodeId};
 pub struct Rope {
     pub pattern: Vec<u8>,
     pub then: NodeId,
-    pub miss: Option<NodeId>,
+    pub miss: Miss,
+}
+
+/// Because Ropes could potentially fail a match mid-pattern,
+/// a regular `Option` is not sufficient here.
+#[derive(PartialEq, Clone, Copy)]
+pub enum Miss {
+    /// Same as Option::None, error on fail
+    None,
+    /// Jump to id if first byte does not match, fail on partial match
+    First(NodeId),
+    /// Jump to id on partial or empty match
+    Any(NodeId),
+}
+
+impl Miss {
+    pub fn any(self) -> Option<NodeId> {
+        match self {
+            Miss::Any(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn first(self) -> Option<NodeId> {
+        match self {
+            Miss::First(id) | Miss::Any(id) => Some(id),
+            _ => None,
+        }
+    }
+}
+
+impl From<Option<NodeId>> for Miss {
+    fn from(miss: Option<NodeId>) -> Self {
+        match miss {
+            Some(id) => Miss::First(id),
+            None => Miss::None,
+        }
+    }
+}
+
+impl From<NodeId> for Miss {
+    fn from(id: NodeId) -> Self {
+        Miss::First(id)
+    }
 }
 
 impl Rope {
@@ -16,13 +59,13 @@ impl Rope {
         Rope {
             pattern: pattern.as_ref().to_vec(),
             then,
-            miss: None,
+            miss: Miss::None,
         }
     }
 
     pub fn miss<M>(mut self, miss: M) -> Self
     where
-        M: Into<Option<NodeId>>,
+        M: Into<Miss>,
     {
         self.miss = miss.into();
         self
@@ -38,12 +81,12 @@ impl Rope {
                 graph.push(Rope {
                     pattern: self.pattern[1..].to_vec(),
                     then: self.then,
-                    miss: self.miss,
+                    miss: self.miss.any().into(),
                 })
             },
         };
 
-        Fork::new().branch(self.pattern[0], then).miss(self.miss)
+        Fork::new().branch(self.pattern[0], then).miss(self.miss.first())
     }
 
     pub fn prefix(&self, other: &Self) -> Option<Vec<u8>> {
@@ -63,7 +106,7 @@ impl Rope {
         self.pattern = self.pattern[at..].to_vec();
 
         match self.pattern.len() {
-            0 => graph.push_miss(self.then, self.miss),
+            0 => graph.push_miss(self.then, self.miss.any()),
             _ => graph.push(self),
         }
     }
@@ -108,11 +151,11 @@ mod tests {
     }
 
     #[test]
-    fn fork_off_miss_value() {
+    fn fork_off_miss_any() {
         let mut graph = Graph::new();
 
         let token = graph.push(NodeBody::Leaf("LIFE"));
-        let rope = Rope::new("42", token).miss(42);
+        let rope = Rope::new("42", token).miss(Miss::Any(42));
 
         let fork = rope.fork_off(&mut graph);
 
@@ -122,6 +165,25 @@ mod tests {
             graph[1].body,
             NodeBody::Rope(
                 Rope::new("2", token).miss(42),
+            ),
+        );
+    }
+
+    #[test]
+    fn fork_off_miss_first() {
+        let mut graph = Graph::new();
+
+        let token = graph.push(NodeBody::Leaf("LIFE"));
+        let rope = Rope::new("42", token).miss(Miss::First(42));
+
+        let fork = rope.fork_off(&mut graph);
+
+        assert_eq!(token, 0);
+        assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
+        assert_eq!(
+            graph[1].body,
+            NodeBody::Rope(
+                Rope::new("2", token),
             ),
         );
     }

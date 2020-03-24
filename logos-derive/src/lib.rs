@@ -23,7 +23,7 @@ use error::Error;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 // use regex::Regex;
-use graph::{NodeBody, Graph, Fork, Rope, Token};
+use graph::{Graph, Fork, Rope, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -109,7 +109,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
     // }
 
     let mut variants = Vec::new();
-    let mut declarations = Vec::new();
+    let mut ropes = Vec::new();
+    let mut regex_ids = Vec::new();
     let mut errors = Vec::new();
     let mut graph = Graph::new();
 
@@ -125,8 +126,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     name,
                     variant.ident,
                 ),
-                span,
-            ));
+            ).span(span));
         }
 
         match variant.fields {
@@ -137,8 +137,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         "`{}::{}` has fields. This is not allowed for Tokens.",
                         name, variant.ident
                     ),
-                    span,
-                ));
+                ).span(span));
             }
         }
 
@@ -154,8 +153,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if ident == "error" {
                 if let Some((_, previous)) = error.replace((id, span)) {
                     errors.extend(vec![
-                        Error::new("Only one #[error] variant can be declared.", span),
-                        Error::new("Previously declared #[error]:", previous),
+                        Error::new("Only one #[error] variant can be declared.").span(span),
+                        Error::new("Previously declared #[error]:").span(previous),
                     ]);
                 }
             }
@@ -163,8 +162,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if ident == "end" {
                 if let Some((_, previous)) = end.replace((id, span)) {
                     errors.extend(vec![
-                        Error::new("Only one #[end] variant can be declared.", span),
-                        Error::new("Previously declared #[end]:", previous),
+                        Error::new("Only one #[end] variant can be declared.").span(span),
+                        Error::new("Previously declared #[end]:").span(previous),
                     ]);
                 }
             }
@@ -190,7 +189,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if let Some(definition) = util::value_from_attr("token", attr) {
                 let (id, value) = with_definition(definition);
 
-                declarations.push(Rope::new(value.into_bytes(), id).into());
+                ropes.push(Rope::new(value.into_bytes(), id));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (id, value) = with_definition(definition);
 
@@ -203,9 +202,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                match graph.regex(utf8, &regex, span, id) {
-                    Ok(node) => declarations.push(node),
-                    Err(err) => errors.push(err),
+                match graph.regex(utf8, &regex, id) {
+                    Ok(id) => regex_ids.push(id),
+                    Err(err) => errors.push(err.span(span)),
                 }
             }
 
@@ -225,18 +224,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
-    for declaration in declarations {
-        match declaration {
-            NodeBody::Rope(rope) => {
-                root.merge(rope.fork_off(&mut graph), &mut graph);
-            }
-            NodeBody::Fork(fork) => {
-                root.merge(fork, &mut graph);
-            }
-            NodeBody::Leaf(..) => {
-                unreachable!();
-            }
-        }
+    for id in regex_ids {
+        let fork = graph.fork_off(id);
+        root.merge(fork, &mut graph);
+    }
+    for rope in ropes {
+        root.merge(rope.fork_off(&mut graph), &mut graph)
     }
 
     graph.push(root);

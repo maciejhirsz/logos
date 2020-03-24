@@ -1,45 +1,32 @@
-use std::fmt;
-
-use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
+use regex_syntax::hir::{Class, ClassUnicode, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
-use proc_macro2::Span;
-use beef::lean::Cow;
 
 use crate::graph::{Graph, NodeBody, NodeId, Range, Rope, Fork};
-use crate::Error;
+use crate::error::Result;
 
-impl<Leaf> Graph<Leaf> {
-    pub fn regex(&mut self, utf8: bool, source: &str, span: Span, then: NodeId) -> Result<NodeBody<Leaf>, Error> {
+impl<Leaf: std::fmt::Debug> Graph<Leaf> {
+    pub fn regex(&mut self, utf8: bool, source: &str, then: NodeId) -> Result<NodeId> {
         let mut builder = ParserBuilder::new();
 
         if !utf8 {
             builder.allow_invalid_utf8(true).unicode(false);
         }
 
-        let hir = match builder.build().parse(source) {
-            Ok(hir) => hir.into_kind(),
-            Err(err) => return spanned_error(err, span),
-        };
+        let hir = builder.build().parse(source)?.into_kind();
 
-        // By serendipity we don't have to reserve an id for the root
-        // node of the regex. Patterns like `[0-9]*` could potentially match
-        // empty string, resulting in an infinite loop in parsing.
-        let first_id = Err("#[regex]: Pattern can match an empty string. \
-                            Try switching * into +".into());
+        let id = self.reserve();
+        let node = self.parse_hir(hir, id.get(), then, None)?;
 
-        match self.parse_hir(hir, first_id, then, None) {
-            Ok(node) => Ok(node),
-            Err(err) => spanned_error(err, span),
-        }
+        Ok(self.insert(id, node))
     }
 
     fn parse_hir(
         &mut self,
         hir: HirKind,
-        id: Result<NodeId, ParseError>,
+        id: NodeId,
         then: NodeId,
         miss: Option<NodeId>,
-    ) -> Result<NodeBody<Leaf>, ParseError> {
+    ) -> Result<NodeBody<Leaf>> {
         match hir {
             HirKind::Empty => Ok(Fork::new().miss(miss).into()),
 //             HirKind::Alternation(alternation) => {
@@ -67,35 +54,64 @@ impl<Leaf> Graph<Leaf> {
 
                 Ok(Rope::new(pattern, then).miss(miss).into())
             },
-            HirKind::Concat(concat) => {
+            HirKind::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
                 // space here. Worst case scenario is all unicode codepoints
                 // producing 4 byte utf8 sequences
                 let mut ropebuf = vec![0; concat.len() * 4];
                 let mut cur = ropebuf.len();
                 let mut end = ropebuf.len();
+                let mut then = then;
 
-                for hir in concat.into_iter().rev().map(Hir::into_kind) {
+                let mut handle_bytes = |graph: &mut Self, hir, then: &mut NodeId| {
                     match hir {
                         HirKind::Literal(Literal::Unicode(unicode)) => {
                             cur -= unicode.len_utf8();
                             unicode.encode_utf8(&mut ropebuf[cur..]);
+                            None
                         },
                         HirKind::Literal(Literal::Byte(byte)) => {
                             cur -= 1;
                             ropebuf[cur] = byte;
+                            None
                         },
                         hir => {
-                            end = cur;
-                            Err(format!("#[regex] unsupported HIR: {:#?}", hir))?
+                            if end != cur {
+                                *then = graph.push(Rope::new(&ropebuf[cur..end], *then));
+                                end = cur;
+                            }
+                            Some(hir)
                         },
+                    }
+                };
+
+                for hir in concat.drain(1..).rev() {
+                    if let Some(hir) = handle_bytes(self, hir.into_kind(), &mut then) {
+                        let nid = self.reserve();
+                        let next = self.parse_hir(hir, nid.get(), then, None)?;
+
+                        then = self.insert(nid, next);
                     }
                 }
 
-                Ok(Rope::new(&ropebuf[cur..end], then).miss(miss).into())
+                match handle_bytes(self, concat.remove(0).into_kind(), &mut then) {
+                    None => {
+                        Ok(Rope::new(&ropebuf[cur..end], then).miss(miss).into())
+                    },
+                    Some(hir) => {
+                        // panic!("id: {:?}, then: {}, cat: {}, miss: {:?}", id.ok(), then, cat, miss);
+                        // let id = match id {
+                        //     Err(_) if cat != then => Ok(then),
+                        //     _ => id,
+                        // };
+                        // panic!("{:#?}\nid: {:?}, cat: {}\n{:#?}", hir, id, cat, self[cat]);
+
+                        self.parse_hir(hir, id, then, Some(then))
+                    },
+                }
             },
             HirKind::Repetition(repetition) => {
-                if matches!(id, Ok(id) if id == then) {
+                if id == then {
                     Err("#[regex]: Repetition inside a repetition.")?;
                 }
                 if !repetition.greedy {
@@ -109,13 +125,12 @@ impl<Leaf> Graph<Leaf> {
                         self.parse_hir(hir, id, then, Some(then))
                     },
                     RepetitionKind::ZeroOrMore => {
-                        let id = id?;
-                        self.parse_hir(hir, Ok(id), id, Some(then))
+                        self.parse_hir(hir, id, id, Some(then))
                     },
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
                         let nid = self.reserve();
-                        let next = self.parse_hir(hir.clone(), Ok(nid.get()), nid.get(), Some(then))?;
+                        let next = self.parse_hir(hir.clone(), nid.get(), nid.get(), Some(then))?;
                         let next = self.insert(nid, next);
 
                         // Then parse the same tree into first node, attaching loop
@@ -176,32 +191,6 @@ impl<Leaf> Graph<Leaf> {
     }
 }
 
-pub struct ParseError(Cow<'static, str>);
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<regex_syntax::Error> for ParseError {
-    fn from(err: regex_syntax::Error) -> ParseError {
-        ParseError(err.to_string().into())
-    }
-}
-
-impl From<&'static str> for ParseError {
-    fn from(err: &'static str) -> ParseError {
-        ParseError(err.into())
-    }
-}
-
-impl From<String> for ParseError {
-    fn from(err: String) -> ParseError {
-        ParseError(err.into())
-    }
-}
-
 fn is_ascii_or_bytes(class: &ClassUnicode) -> bool {
     class.iter().all(|range| {
         let start = range.start() as u32;
@@ -209,11 +198,4 @@ fn is_ascii_or_bytes(class: &ClassUnicode) -> bool {
 
         start < 128 && (end < 128 || end == 0x0010_FFFF)
     })
-}
-
-fn spanned_error<E, T>(err: E, span: Span) -> Result<T, Error>
-where
-    E: std::fmt::Display,
-{
-    Err(Error::new(format!("{}\n\nIn this declaration:", err), span))
 }

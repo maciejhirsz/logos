@@ -94,7 +94,7 @@ mod debug {
             rope.push_str(&String::from_utf8_lossy(&self.pattern));
             rope.push('"');
 
-            match self.miss {
+            match self.miss.first() {
                 Some(id) => {
                     let mut list = f.debug_list();
 
