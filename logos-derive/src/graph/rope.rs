@@ -122,6 +122,20 @@ impl Rope {
             _ => graph.push(self),
         }
     }
+
+    pub fn shake<T>(&self, graph: &Graph<T>, filter: &mut [bool]) {
+        if let Some(id) = self.miss.first() {
+            if !filter[id] {
+                filter[id] = true;
+                graph[id].body.shake(graph, filter);
+            }
+        }
+
+        if !filter[self.then] {
+            filter[self.then] = true;
+            graph[self.then].body.shake(graph, filter);
+        }
+    }
 }
 
 impl<T> From<&[T]> for Pattern

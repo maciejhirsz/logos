@@ -232,10 +232,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
     }
 
     graph.push(root);
+    graph.shake();
+
+    let count = graph.nodes().iter().filter_map(|n| n.as_ref()).count();
 
     // panic!("END");
 
-    panic!("{:#?}\n\n{:?}", graph, graph.merges());
+    panic!("{:#?}\n\n{} nodes", graph, count);
 }
 
 

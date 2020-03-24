@@ -1,4 +1,4 @@
-use crate::graph::{Graph, NodeId, Range};
+use crate::graph::{Graph, Node, NodeId, Range};
 
 #[derive(Clone)]
 pub struct Fork {
@@ -75,6 +75,22 @@ impl Fork {
             }
         }
         self
+    }
+
+    pub fn shake<T>(&self, graph: &Graph<T>, filter: &mut [bool]) {
+        if let Some(id) = self.miss {
+            if !filter[id] {
+                filter[id] = true;
+                graph[id].body.shake(graph, filter);
+            }
+        }
+
+        for (_, id) in self.branches() {
+            if !filter[id] {
+                filter[id] = true;
+                graph[id].body.shake(graph, filter);
+            }
+        }
     }
 }
 

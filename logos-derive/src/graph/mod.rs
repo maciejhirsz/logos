@@ -168,6 +168,26 @@ impl<Leaf> Graph<Leaf> {
         &self.merges
     }
 
+    /// Removes all nodes that have no references
+    pub fn shake(&mut self) {
+        let root = match self.nodes.len().checked_sub(1) {
+            Some(id) => id,
+            None => return,
+        };
+
+        let mut filter = vec![false; self.nodes.len()];
+
+        filter[root] = true;
+
+        self[root].body.shake(self, &mut filter);
+
+        for (id, referenced) in filter.into_iter().enumerate() {
+            if !referenced {
+                self.nodes[id] = None;
+            }
+        }
+    }
+
     fn merged(&mut self, key: [NodeId; 2], result: NodeId) -> NodeId {
         self.merges.push((key, result));
         result
@@ -208,6 +228,14 @@ impl<Leaf> NodeBody<Leaf> {
             (NodeBody::Fork(a), NodeBody::Fork(b)) => a == b,
             (NodeBody::Rope(a), NodeBody::Rope(b)) => a == b,
             _ => false,
+        }
+    }
+
+    fn shake(&self, graph: &Graph<Leaf>, filter: &mut [bool]) {
+        match self {
+            NodeBody::Fork(fork) => fork.shake(graph, filter),
+            NodeBody::Rope(rope) => rope.shake(graph, filter),
+            NodeBody::Leaf(_) => (),
         }
     }
 }
