@@ -69,21 +69,33 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                 // We'll be writing from the back, so need to allocate enough
                 // space here. Worst case scenario is all unicode codepoints
                 // producing 4 byte utf8 sequences
-                let mut ropebuf = vec![0; concat.len() * 4];
+                let mut ropebuf = vec![Range::from(0); concat.len() * 4];
                 let mut cur = ropebuf.len();
                 let mut end = ropebuf.len();
                 let mut then = then;
 
                 let mut handle_bytes = |graph: &mut Self, hir, then: &mut NodeId| {
                     match hir {
-                        HirKind::Literal(Literal::Unicode(unicode)) => {
-                            cur -= unicode.len_utf8();
-                            unicode.encode_utf8(&mut ropebuf[cur..]);
+                        HirKind::Literal(Literal::Unicode(u)) => {
+                            cur -= u.len_utf8();
+                            for (i, byte) in u.encode_utf8(&mut [0; 4]).bytes().enumerate() {
+                                ropebuf[cur + i] = byte.into();
+                            }
                             None
                         },
                         HirKind::Literal(Literal::Byte(byte)) => {
                             cur -= 1;
-                            ropebuf[cur] = byte;
+                            ropebuf[cur] = byte.into();
+                            None
+                        },
+                        HirKind::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
+                            cur -= 1;
+                            ropebuf[cur] = class.ranges()[0].into();
+                            None
+                        },
+                        HirKind::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
+                            cur -= 1;
+                            ropebuf[cur] = class.ranges()[0].into();
                             None
                         },
                         hir => {
@@ -134,7 +146,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
                         let nid = self.reserve();
-                        let next = self.parse_hir(hir.clone(), nid.get(), nid.get(), Some(then))?;
+                        let next = self.parse_hir(hir.clone(), nid.get(), then, Some(then))?;
                         let next = self.insert(nid, next);
 
                         // Then parse the same tree into first node, attaching loop
@@ -204,6 +216,18 @@ fn is_ascii(class: &ClassUnicode) -> bool {
 
         start < 128 && (end < 128 || end == 0x0010_FFFF)
     })
+}
+
+fn is_one_ascii(class: &ClassUnicode) -> bool {
+    if class.ranges().len() != 1 {
+        return false;
+    }
+
+    let range = &class.ranges()[0];
+    let start = range.start() as u32;
+    let end = range.end() as u32;
+
+    start < 128 && (end < 128 || end == 0x0010_FFFF)
 }
 
 #[cfg(test)]
