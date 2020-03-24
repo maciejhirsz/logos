@@ -28,20 +28,30 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
         miss: Option<NodeId>,
     ) -> Result<NodeBody<Leaf>> {
         match hir {
-            HirKind::Empty => Ok(Fork::new().miss(miss).into()),
-//             HirKind::Alternation(alternation) => {
-//                 let mut fork = Fork::default();
+            HirKind::Empty => {
+                let miss = match miss {
+                    Some(miss) => self.merge(miss, then),
+                    None => then,
+                };
+                Ok(Fork::new().miss(miss).into())
+            },
+            HirKind::Alternation(alternation) => {
+                let mut fork = Fork::new().miss(miss);
 
-//                 for hir in alternation.into_iter().map(Hir::into_kind) {
-//                     if let Some(node) = Node::from_hir(hir) {
-//                         fork.insert(node);
-//                     } else {
-//                         fork.kind = ForkKind::Maybe;
-//                     }
-//                 }
+                for hir in alternation {
+                    let alt = match self.parse_hir(hir.into_kind(), id, then, None)? {
+                        NodeBody::Fork(fork) => fork,
+                        NodeBody::Rope(rope) => rope.fork_off(self),
+                        NodeBody::Leaf(_) => {
+                            Err("Internal Error: Regex produced a leaf node.")?
+                        }
+                    };
 
-//                 Some(Node::from(fork))
-//             }
+                    fork.merge(alt, self);
+                }
+
+                Ok(fork.into())
+            }
             HirKind::Literal(literal) => {
                 let pattern = match literal {
                     Literal::Unicode(unicode) => {
@@ -99,14 +109,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                         Ok(Rope::new(&ropebuf[cur..end], then).miss(miss).into())
                     },
                     Some(hir) => {
-                        // panic!("id: {:?}, then: {}, cat: {}, miss: {:?}", id.ok(), then, cat, miss);
-                        // let id = match id {
-                        //     Err(_) if cat != then => Ok(then),
-                        //     _ => id,
-                        // };
-                        // panic!("{:#?}\nid: {:?}, cat: {}\n{:#?}", hir, id, cat, self[cat]);
-
-                        self.parse_hir(hir, id, then, Some(then))
+                        self.parse_hir(hir, id, then, miss)
                     },
                 }
             },
@@ -186,7 +189,6 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
             HirKind::Anchor(_) => {
                 Err("#[regex]: Anchors in #[regex] are currently unsupported.")?
             },
-            hir => Err(format!("Internal Error: Unimplemented Regex HIR:\n\n{:#?}", hir))?,
         }
     }
 }
@@ -198,4 +200,73 @@ fn is_ascii_or_bytes(class: &ClassUnicode) -> bool {
 
         start < 128 && (end < 128 || end == 0x0010_FFFF)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rope() {
+        let mut graph = Graph::new();
+
+        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let parsed = graph.regex(true, "foobar", leaf).unwrap();
+
+        assert_eq!(
+            graph[parsed].body,
+            NodeBody::Rope(Rope::new("foobar", leaf)),
+        )
+    }
+
+    #[test]
+    fn alternation() {
+        let mut graph = Graph::new();
+
+        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let parsed = graph.regex(true, "a|b", leaf).unwrap();
+
+        assert_eq!(
+            graph[parsed].body,
+            NodeBody::Fork(
+                Fork::new()
+                    .branch(b'a', leaf)
+                    .branch(b'b', leaf)
+            ),
+        );
+    }
+
+    #[test]
+    fn repeat() {
+        let mut graph = Graph::new();
+
+        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let parsed = graph.regex(true, "[a-z]*", leaf).unwrap();
+
+        assert_eq!(
+            graph[parsed].body,
+            NodeBody::Fork(
+                Fork::new()
+                    .branch('a'..='z', parsed) // goto self == loop
+                    .miss(leaf)
+            ),
+        );
+    }
+
+    #[test]
+    fn maybe() {
+        let mut graph = Graph::new();
+
+        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let parsed = graph.regex(true, "[a-z]?", leaf).unwrap();
+
+        assert_eq!(
+            graph[parsed].body,
+            NodeBody::Fork(
+                Fork::new()
+                    .branch('a'..='z', leaf)
+                    .miss(leaf)
+            ),
+        );
+    }
 }

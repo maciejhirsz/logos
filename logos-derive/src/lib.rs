@@ -11,7 +11,6 @@
 
 // mod generator;
 // mod handlers;
-// mod regex;
 mod error;
 mod graph;
 mod util;

@@ -20,7 +20,7 @@ enum Token {
     #[regex = "[0-9]+"]
     Integer,
 
-    #[regex = "foobar"]
+    #[regex = "(foo|bar)+"]
     Ident,
 }
 
