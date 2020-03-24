@@ -23,13 +23,12 @@ use error::Error;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 // use regex::Regex;
-use graph::{NodeId, NodeBody, Graph, Fork, Rope, Token};
+use graph::{NodeBody, Graph, Fork, Rope, Token};
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
-use syn::{Fields, Ident, ItemEnum};
+use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -44,10 +43,10 @@ enum Mode {
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
 
-    let size = item.variants.len();
+    // let size = item.variants.len();
     let name = &item.ident;
 
-    let mut extras: Option<Ident> = None;
+    // let mut extras: Option<Ident> = None;
     let mut error = None;
     let mut end = None;
     let mut mode = Mode::Utf8;
@@ -113,12 +112,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut declarations = Vec::new();
     let mut errors = Vec::new();
     let mut graph = Graph::new();
-
-    #[derive(Debug)]
-    enum Source {
-        Regex(Literal),
-        Sequence(Literal),
-    }
 
     for variant in &item.variants {
         variants.push(&variant.ident);

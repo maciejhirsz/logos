@@ -105,7 +105,7 @@ impl<Leaf> Graph<Leaf> {
     }
 
     pub fn push_miss(&mut self, id: NodeId, miss: Option<NodeId>) -> NodeId {
-        if let Some(miss) = miss {
+        if let Some(_) = miss {
             unimplemented!();
         }
 

@@ -90,8 +90,6 @@ mod debug {
 
     impl Debug for Rope {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            use std::fmt::Write;
-
             let mut rope = '"'.to_string();
             rope.push_str(&String::from_utf8_lossy(&self.pattern));
             rope.push('"');

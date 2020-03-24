@@ -1,8 +1,8 @@
-use std::cmp::Ordering;
-use std::iter::Peekable;
+// use std::cmp::Ordering;
+// use std::iter::Peekable;
 
 pub use proc_macro2::{TokenStream, Span};
-use quote::{quote, quote_spanned};
+use quote::quote;
 pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};
 
 pub trait OptionExt<T> {
@@ -115,13 +115,13 @@ pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {
     read_meta(name, meta)
 }
 
-pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
-    if let NestedMeta::Meta(meta) = nested {
-        read_meta(name, meta)
-    } else {
-        None
-    }
-}
+// pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
+//     if let NestedMeta::Meta(meta) = nested {
+//         read_meta(name, meta)
+//     } else {
+//         None
+//     }
+// }
 
 pub fn read_meta(name: &str, meta: Meta) -> Option<Vec<NestedMeta>> {
     match meta {
@@ -153,12 +153,12 @@ where
     read_attr(name, attr).map(parse_value)
 }
 
-pub fn value_from_nested<V>(name: &str, nested: NestedMeta) -> Option<V>
-where
-    V: Value,
-{
-    read_nested(name, nested).map(parse_value)
-}
+// pub fn value_from_nested<V>(name: &str, nested: NestedMeta) -> Option<V>
+// where
+//     V: Value,
+// {
+//     read_nested(name, nested).map(parse_value)
+// }
 
 fn parse_value<V>(items: Vec<NestedMeta>) -> V
 where
@@ -202,119 +202,119 @@ pub fn bytes_to_regex_string(bytes: &[u8]) -> String {
     string
 }
 
-pub struct MergeAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    left: Peekable<L>,
-    right: Peekable<R>,
-}
+// pub struct MergeAscending<L, R>
+// where
+//     L: Iterator<Item = R::Item>,
+//     R: Iterator,
+// {
+//     left: Peekable<L>,
+//     right: Peekable<R>,
+// }
 
-impl<L, R> MergeAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    pub fn new<LI, RI>(left: LI, right: RI) -> Self
-    where
-        LI: IntoIterator<IntoIter = L, Item = L::Item>,
-        RI: IntoIterator<IntoIter = R, Item = R::Item>,
-    {
-        MergeAscending {
-            left: left.into_iter().peekable(),
-            right: right.into_iter().peekable(),
-        }
-    }
-}
+// impl<L, R> MergeAscending<L, R>
+// where
+//     L: Iterator<Item = R::Item>,
+//     R: Iterator,
+// {
+//     pub fn new<LI, RI>(left: LI, right: RI) -> Self
+//     where
+//         LI: IntoIterator<IntoIter = L, Item = L::Item>,
+//         RI: IntoIterator<IntoIter = R, Item = R::Item>,
+//     {
+//         MergeAscending {
+//             left: left.into_iter().peekable(),
+//             right: right.into_iter().peekable(),
+//         }
+//     }
+// }
 
-impl<L, R> Iterator for MergeAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-    L::Item: Ord,
-{
-    type Item = L::Item;
+// impl<L, R> Iterator for MergeAscending<L, R>
+// where
+//     L: Iterator<Item = R::Item>,
+//     R: Iterator,
+//     L::Item: Ord,
+// {
+//     type Item = L::Item;
 
-    fn next(&mut self) -> Option<L::Item> {
-        let which = match (self.left.peek(), self.right.peek()) {
-            (Some(l), Some(r)) => Some(l.cmp(r)),
-            (Some(_), None) => Some(Ordering::Less),
-            (None, Some(_)) => Some(Ordering::Greater),
-            (None, None) => None,
-        };
+//     fn next(&mut self) -> Option<L::Item> {
+//         let which = match (self.left.peek(), self.right.peek()) {
+//             (Some(l), Some(r)) => Some(l.cmp(r)),
+//             (Some(_), None) => Some(Ordering::Less),
+//             (None, Some(_)) => Some(Ordering::Greater),
+//             (None, None) => None,
+//         };
 
-        match which {
-            Some(Ordering::Less) => self.left.next(),
-            Some(Ordering::Equal) => {
-                // Advance both
-                self.left.next();
-                self.right.next()
-            }
-            Some(Ordering::Greater) => self.right.next(),
-            None => None,
-        }
-    }
-}
+//         match which {
+//             Some(Ordering::Less) => self.left.next(),
+//             Some(Ordering::Equal) => {
+//                 // Advance both
+//                 self.left.next();
+//                 self.right.next()
+//             }
+//             Some(Ordering::Greater) => self.right.next(),
+//             None => None,
+//         }
+//     }
+// }
 
-pub struct DiffAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    left: Peekable<L>,
-    right: Peekable<R>,
-}
+// pub struct DiffAscending<L, R>
+// where
+//     L: Iterator<Item = R::Item>,
+//     R: Iterator,
+// {
+//     left: Peekable<L>,
+//     right: Peekable<R>,
+// }
 
-impl<L, R> DiffAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    pub fn new<LI, RI>(left: LI, right: RI) -> Self
-    where
-        LI: IntoIterator<IntoIter = L, Item = L::Item>,
-        RI: IntoIterator<IntoIter = R, Item = R::Item>,
-    {
-        DiffAscending {
-            left: left.into_iter().peekable(),
-            right: right.into_iter().peekable(),
-        }
-    }
-}
+// impl<L, R> DiffAscending<L, R>
+// where
+//     L: Iterator<Item = R::Item>,
+//     R: Iterator,
+// {
+//     pub fn new<LI, RI>(left: LI, right: RI) -> Self
+//     where
+//         LI: IntoIterator<IntoIter = L, Item = L::Item>,
+//         RI: IntoIterator<IntoIter = R, Item = R::Item>,
+//     {
+//         DiffAscending {
+//             left: left.into_iter().peekable(),
+//             right: right.into_iter().peekable(),
+//         }
+//     }
+// }
 
-impl<L, R> Iterator for DiffAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-    L::Item: Ord,
-{
-    type Item = L::Item;
+// impl<L, R> Iterator for DiffAscending<L, R>
+// where
+//     L: Iterator<Item = R::Item>,
+//     R: Iterator,
+//     L::Item: Ord,
+// {
+//     type Item = L::Item;
 
-    fn next(&mut self) -> Option<L::Item> {
-        let which = match (self.left.peek(), self.right.peek()) {
-            (Some(l), Some(r)) => Some(l.cmp(r)),
-            (Some(_), None) => Some(Ordering::Less),
-            (None, Some(_)) => Some(Ordering::Greater),
-            (None, None) => None,
-        };
+//     fn next(&mut self) -> Option<L::Item> {
+//         let which = match (self.left.peek(), self.right.peek()) {
+//             (Some(l), Some(r)) => Some(l.cmp(r)),
+//             (Some(_), None) => Some(Ordering::Less),
+//             (None, Some(_)) => Some(Ordering::Greater),
+//             (None, None) => None,
+//         };
 
-        match which {
-            Some(Ordering::Less) => self.left.next(),
-            Some(Ordering::Equal) => {
-                // Advance both to skip matches
-                self.left.next();
-                self.right.next();
+//         match which {
+//             Some(Ordering::Less) => self.left.next(),
+//             Some(Ordering::Equal) => {
+//                 // Advance both to skip matches
+//                 self.left.next();
+//                 self.right.next();
 
-                self.next()
-            }
-            Some(Ordering::Greater) => {
-                // Skip right side
-                self.right.next();
+//                 self.next()
+//             }
+//             Some(Ordering::Greater) => {
+//                 // Skip right side
+//                 self.right.next();
 
-                self.next()
-            }
-            None => None,
-        }
-    }
-}
+//                 self.next()
+//             }
+//             None => None,
+//         }
+//     }
+// }

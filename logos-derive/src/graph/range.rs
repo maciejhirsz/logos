@@ -2,7 +2,6 @@ use regex_syntax::hir::ClassUnicodeRange;
 use regex_syntax::hir::ClassBytesRange;
 
 use std::cmp::{Ord, Ordering};
-use std::ops::Deref;
 
 #[derive(Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub struct Range(pub u8, pub u8);

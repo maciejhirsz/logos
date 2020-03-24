@@ -1,7 +1,7 @@
 use std::fmt;
 
-use regex_syntax::hir::{self, Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
-use regex_syntax::{ParserBuilder, Parser, Error as RError};
+use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
+use regex_syntax::ParserBuilder;
 use proc_macro2::Span;
 use beef::lean::Cow;
 
@@ -184,8 +184,8 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl From<RError> for ParseError {
-    fn from(err: RError) -> ParseError {
+impl From<regex_syntax::Error> for ParseError {
+    fn from(err: regex_syntax::Error) -> ParseError {
         ParseError(err.to_string().into())
     }
 }

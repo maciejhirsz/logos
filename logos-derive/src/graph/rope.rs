@@ -1,5 +1,3 @@
-use std::num::NonZeroUsize;
-
 use crate::graph::{Graph, Fork, NodeId};
 
 #[derive(PartialEq, Clone)]
@@ -57,7 +55,7 @@ impl Rope {
 
         match count {
             0 => None,
-            n => Some(self.pattern[..count].to_vec()),
+            _ => Some(self.pattern[..count].to_vec()),
         }
     }
 
