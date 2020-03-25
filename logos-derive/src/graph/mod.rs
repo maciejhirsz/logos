@@ -51,6 +51,9 @@ impl<Leaf> Graph<Leaf> {
         }
     }
 
+    /// Reserve an empty slot for a node on the graph and return an
+    /// id for it. `ReservedId` cannot be cloned, and must be consumed
+    /// by calling `insert` on the graph.
     pub fn reserve(&mut self) -> ReservedId {
         let id = self.nodes.len();
 
@@ -59,6 +62,8 @@ impl<Leaf> Graph<Leaf> {
         ReservedId(id)
     }
 
+    /// Insert a node at a given, previously reserved id. Returns the
+    /// inserted `NodeId`.
     pub fn insert<N>(&mut self, id: ReservedId, node: N) -> NodeId
     where
         N: Into<Node<Leaf>>,
@@ -68,6 +73,9 @@ impl<Leaf> Graph<Leaf> {
         id.0
     }
 
+    /// Push a node onto the graph and get an id to it. If an identical
+    /// node has already been pushed on the graph, it will return the id
+    /// of that node instead.
     pub fn push<B>(&mut self, node: B) -> NodeId
     where
         B: Into<Node<Leaf>>,
@@ -103,6 +111,7 @@ impl<Leaf> Graph<Leaf> {
         id
     }
 
+    /// Merge the nodes at id `a` and `b`, returning a new id.
     pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId {
         if a == b {
             return a;
@@ -154,7 +163,7 @@ impl<Leaf> Graph<Leaf> {
     pub fn fork_off(&mut self, id: NodeId) -> Fork {
         match &self[id] {
             Node::Fork(fork) => fork.clone(),
-            Node::Rope(rope) => rope.clone().fork_off(self),
+            Node::Rope(rope) => rope.clone().into_fork(self),
             Node::Leaf(_) => Fork::new().miss(id),
         }
     }
@@ -167,7 +176,7 @@ impl<Leaf> Graph<Leaf> {
         &self.merges
     }
 
-    /// Removes all nodes that have no references
+    /// Find all nodes that have no references and remove them.
     pub fn shake(&mut self) {
         let root = match self.nodes.len().checked_sub(1) {
             Some(id) => id,

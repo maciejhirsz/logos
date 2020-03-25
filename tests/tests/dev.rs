@@ -8,23 +8,28 @@ enum Token {
     #[end]
     End,
 
-    // #[token = "hell"]
-    // Hell,
+    // #[regex = r"[a-z]+"]
+    // Identifier,
 
-    // #[token = "hello"]
-    // Hello,
+    // #[token = "foobar"]
+    // Foobar,
+    #[token = "hell"]
+    Hell,
+
+    #[token = "hello"]
+    Hello,
 
     // #[regex = r"\w+"]
     // Cursed,
 
-    // #[regex = r"(foo|bar)+"]
-    // World,
+    #[regex = r"(foo|bar)+"]
+    World,
 
-    #[regex = r"[0-9]+"]
-    Integer,
+    // #[regex = r"[0-9]+"]
+    // Integer,
 
-    #[regex = r"[0-9]+\.[0-9]+"]
-    Float,
+    // #[regex = r"[0-9]+\.[0-9]+"]
+    // Float,
 }
 
 mod simple {

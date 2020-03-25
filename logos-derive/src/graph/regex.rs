@@ -42,7 +42,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                 for hir in alternation {
                     let alt = match self.parse_hir(hir.into_kind(), id, then, None)? {
                         Node::Fork(fork) => fork,
-                        Node::Rope(rope) => rope.fork_off(self),
+                        Node::Rope(rope) => rope.into_fork(self),
                         Node::Leaf(_) => {
                             Err("Internal Error: Regex produced a leaf node.")?
                         }
@@ -176,7 +176,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                 let mut root = Fork::new().miss(miss);
 
                 for rope in ropes {
-                    let fork = rope.fork_off(self);
+                    let fork = rope.into_fork(self);
                     root.merge(fork, self);
                 }
 

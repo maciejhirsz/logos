@@ -232,7 +232,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         root.merge(fork, &mut graph);
     }
     for rope in ropes {
-        root.merge(rope.fork_off(&mut graph), &mut graph)
+        root.merge(rope.into_fork(&mut graph), &mut graph)
     }
 
     graph.push(root);

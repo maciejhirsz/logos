@@ -83,22 +83,20 @@ impl Rope {
         self
     }
 
-    pub fn fork_off<T>(&self, graph: &mut Graph<T>) -> Fork {
+    pub fn into_fork<T>(mut self, graph: &mut Graph<T>) -> Fork {
+        let first = self.pattern.0.remove(0);
+        let miss = self.miss.first();
+
+        self.miss = self.miss.any().into();
+
         // The new fork will lead to a new rope,
         // or the old target if no new rope was created
         let then = match self.pattern.len() {
-            0 => panic!("Logos Internal Error: Trying to fork a Rope without bytes left"),
-            1 => self.then,
-            _ => {
-                graph.push(Rope {
-                    pattern: self.pattern[1..].into(),
-                    then: self.then,
-                    miss: self.miss.any().into(),
-                })
-            },
+            0 => self.then,
+            _ => graph.push(self),
         };
 
-        Fork::new().branch(self.pattern[0], then).miss(self.miss.first())
+        Fork::new().branch(first, then).miss(miss)
     }
 
     pub fn prefix(&self, other: &Self) -> Option<Pattern> {
@@ -169,13 +167,13 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn fork_off() {
+    fn into_fork() {
         let mut graph = Graph::new();
 
         let token = graph.push(Node::Leaf("FOOBAR"));
         let rope = Rope::new("foobar", token);
 
-        let fork = rope.fork_off(&mut graph);
+        let fork = rope.into_fork(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'f', 1));
@@ -183,26 +181,26 @@ mod tests {
     }
 
     #[test]
-    fn fork_off_one_byte() {
+    fn into_fork_one_byte() {
         let mut graph = Graph::new();
 
         let token = graph.push(Node::Leaf("FOOBAR"));
         let rope = Rope::new("!", token);
 
-        let fork = rope.fork_off(&mut graph);
+        let fork = rope.into_fork(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'!', 0));
     }
 
     #[test]
-    fn fork_off_miss_any() {
+    fn into_fork_miss_any() {
         let mut graph = Graph::new();
 
         let token = graph.push(Node::Leaf("LIFE"));
         let rope = Rope::new("42", token).miss(Miss::Any(42));
 
-        let fork = rope.fork_off(&mut graph);
+        let fork = rope.into_fork(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
@@ -210,13 +208,13 @@ mod tests {
     }
 
     #[test]
-    fn fork_off_miss_first() {
+    fn into_fork_miss_first() {
         let mut graph = Graph::new();
 
         let token = graph.push(Node::Leaf("LIFE"));
         let rope = Rope::new("42", token).miss(Miss::First(42));
 
-        let fork = rope.fork_off(&mut graph);
+        let fork = rope.into_fork(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
