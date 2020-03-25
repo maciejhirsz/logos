@@ -31,6 +31,8 @@ pub struct Graph<Leaf> {
     /// onto the graph (inserts are exempt), we hash it and find if
     /// an identical(!) node has been created before.
     hashes: Map<u64, NodeId>,
+
+    merge_stack: Vec<[NodeId; 2]>,
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
@@ -48,6 +50,7 @@ impl<Leaf> Graph<Leaf> {
             nodes: Vec::new(),
             merges: Vec::new(),
             hashes: Map::new(),
+            merge_stack: Vec::new(),
         }
     }
 
@@ -108,13 +111,19 @@ impl<Leaf> Graph<Leaf> {
             return a;
         }
 
-        let sorted = if a > b { [b, a] } else { [a, b] };
+        let key = if a > b { [b, a] } else { [a, b] };
 
-        if let Some((_, merged)) = self.merges.iter().rev().find(|(key, _)| *key == sorted) {
+        if self.merge_stack.iter().any(|k| k == &key) {
+            panic!("MERGE LOOP DETECTED {:?} in STACK {:#?}", key, self.merge_stack);
+        }
+
+        self.merge_stack.push(key);
+
+        if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
             return *merged;
         }
 
-        let [a, b] = sorted;
+        let [a, b] = key;
 
         if let (Node::Rope(a), Node::Rope(b)) = (&self[a], &self[b]) {
             if let Some(prefix) = a.prefix(b) {
@@ -126,7 +135,7 @@ impl<Leaf> Graph<Leaf> {
                 let then = self.merge(a, b);
                 let merged = self.push(Rope::new(prefix, then));
 
-                return self.merged(sorted, merged);
+                return self.merged(key, merged);
             }
         }
 
@@ -135,7 +144,7 @@ impl<Leaf> Graph<Leaf> {
         fork.merge(self.fork_off(b), self);
 
         let merged = self.push(fork);
-        self.merged(sorted, merged)
+        self.merged(key, merged)
     }
 
     pub fn push_miss(&mut self, id: NodeId, miss: Option<NodeId>) -> NodeId {
@@ -183,6 +192,7 @@ impl<Leaf> Graph<Leaf> {
     }
 
     fn merged(&mut self, key: [NodeId; 2], result: NodeId) -> NodeId {
+        self.merge_stack.pop();
         self.merges.push((key, result));
         result
     }

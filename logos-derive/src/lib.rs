@@ -221,6 +221,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }.into();
     }
 
+    // graph.shake();
+    // let count = graph.nodes().iter().filter_map(|n| n.as_ref()).count();
+    // panic!("{:#?}\n\n{} nodes", graph, count);
+
     let mut root = Fork::new();
 
     for id in regex_ids {
@@ -235,6 +239,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
     graph.shake();
 
     let count = graph.nodes().iter().filter_map(|n| n.as_ref()).count();
+
+    panic!("{:#?}\n\n{} nodes", graph, count);
 
     // panic!("END");
 

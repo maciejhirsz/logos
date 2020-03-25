@@ -14,14 +14,14 @@ enum Token {
     // #[token = "hello"]
     // Hello,
 
-    // #[token = "world"]
+    // #[regex = r"\w"]
     // World,
 
-    // #[regex = "[0-9]+"]
-    // Integer,
+    #[regex = r"[0-9]+"]
+    Integer,
 
-    #[regex = r"\w+"]
-    Ident,
+    #[regex = r"[0-9]+.[0-9]+"]
+    Float,
 }
 
 mod simple {
