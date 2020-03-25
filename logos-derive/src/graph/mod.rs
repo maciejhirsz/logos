@@ -132,17 +132,37 @@ impl<Leaf> Graph<Leaf> {
 
         let [a, b] = key;
 
-        if let (Node::Rope(a), Node::Rope(b)) = (&self[a], &self[b]) {
-            if let Some(prefix) = a.prefix(b) {
-                let (a, b) = (a.clone(), b.clone());
+        match (&self[a], &self[b]) {
+            (Node::Rope(a), Node::Rope(b)) => {
+                if let Some(prefix) = a.prefix(b) {
+                    let (a, b) = (a.clone(), b.clone());
 
-                let a = a.remainder(prefix.len(), self);
-                let b = b.remainder(prefix.len(), self);
+                    let a = a.remainder(prefix.len(), self);
+                    let b = b.remainder(prefix.len(), self);
 
-                let then = self.merge(a, b);
+                    let then = self.merge(a, b);
 
-                return self.insert(id, Rope::new(prefix, then));
-            }
+                    return self.insert(id, Rope::new(prefix, then));
+                }
+            },
+            // TODO: DRY THIS
+            // Find if one of the sides is a rope, then make an internal function that
+            // will match the other arm and try to do special-case merges:
+            //
+            // rope to rope
+            // rope to leaf
+            // rope to empty fork
+            // rope to loop!
+            (Node::Rope(rope), Node::Leaf(_)) if rope.miss.is_none() => {
+                let rope = rope.clone().miss(b);
+                return self.insert(id, rope);
+
+            },
+            (Node::Leaf(_), Node::Rope(rope)) if rope.miss.is_none() => {
+                let rope = rope.clone().miss(a);
+                return self.insert(id, rope);
+            },
+            _ => (),
         }
 
         let mut fork = self.fork_off(a);

@@ -1,6 +1,3 @@
-// use std::cmp::Ordering;
-// use std::iter::Peekable;
-
 pub use proc_macro2::{TokenStream, Span};
 use quote::quote;
 pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};

@@ -8,22 +8,23 @@ enum Token {
     #[end]
     End,
 
-    // #[regex = r"[a-z]+"]
-    // Identifier,
+    #[token = "foobar"]
+    Foobar,
 
-    // #[token = "foobar"]
-    // Foobar,
-    #[token = "hell"]
-    Hell,
+    #[regex = r"[a-z]"]
+    Identifier,
 
-    #[token = "hello"]
-    Hello,
+    // #[token = "hell"]
+    // Hell,
+
+    // #[token = "hello"]
+    // Hello,
 
     // #[regex = r"\w+"]
     // Cursed,
 
-    #[regex = r"(foo|bar)+"]
-    World,
+    // #[regex = r"(foo|bar)+"]
+    // World,
 
     // #[regex = r"[0-9]+"]
     // Integer,

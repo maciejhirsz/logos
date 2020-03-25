@@ -62,6 +62,10 @@ impl Fork {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.lut.iter().all(|o| o.is_none())
+    }
+
     pub fn branch<R>(mut self, range: R, then: NodeId) -> Self
     where
         R: Into<Range>,

@@ -33,6 +33,10 @@ pub enum Miss {
 }
 
 impl Miss {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Miss::None)
+    }
+
     pub fn any(self) -> Option<NodeId> {
         match self {
             Miss::Any(id) => Some(id),
