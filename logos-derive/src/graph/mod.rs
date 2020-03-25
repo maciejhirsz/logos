@@ -113,15 +113,19 @@ impl<Leaf> Graph<Leaf> {
 
         let key = if a > b { [b, a] } else { [a, b] };
 
-        if self.merge_stack.iter().any(|k| k == &key) {
-            panic!("MERGE LOOP DETECTED {:?} in STACK {:#?}", key, self.merge_stack);
-        }
+        // if self.merge_stack.iter().any(|k| k == &key) {
+        //     panic!("MERGE LOOP DETECTED {:?} in STACK {:#?}", key, self.merge_stack);
+        // }
 
-        self.merge_stack.push(key);
+        // self.merge_stack.push(key);
 
         if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
             return *merged;
         }
+
+        let id = self.reserve();
+
+        self.merges.push((key, id));
 
         let [a, b] = key;
 
@@ -133,7 +137,7 @@ impl<Leaf> Graph<Leaf> {
                 let b = b.remainder(prefix.len(), self);
 
                 let then = self.merge(a, b);
-                let merged = self.push(Rope::new(prefix, then));
+                let merged = self.insert(id, Rope::new(prefix, then));
 
                 return self.merged(key, merged);
             }
@@ -143,7 +147,7 @@ impl<Leaf> Graph<Leaf> {
 
         fork.merge(self.fork_off(b), self);
 
-        let merged = self.push(fork);
+        let merged = self.insert(id, fork);
         self.merged(key, merged)
     }
 
@@ -192,8 +196,8 @@ impl<Leaf> Graph<Leaf> {
     }
 
     fn merged(&mut self, key: [NodeId; 2], result: NodeId) -> NodeId {
-        self.merge_stack.pop();
-        self.merges.push((key, result));
+        // self.merge_stack.pop();
+        // self.merges.push((key, result));
         result
     }
 }
