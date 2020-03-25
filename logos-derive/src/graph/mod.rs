@@ -31,8 +31,6 @@ pub struct Graph<Leaf> {
     /// onto the graph (inserts are exempt), we hash it and find if
     /// an identical(!) node has been created before.
     hashes: Map<u64, NodeId>,
-
-    merge_stack: Vec<[NodeId; 2]>,
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
@@ -50,7 +48,6 @@ impl<Leaf> Graph<Leaf> {
             nodes: Vec::new(),
             merges: Vec::new(),
             hashes: Map::new(),
-            merge_stack: Vec::new(),
         }
     }
 
@@ -113,19 +110,16 @@ impl<Leaf> Graph<Leaf> {
 
         let key = if a > b { [b, a] } else { [a, b] };
 
-        // if self.merge_stack.iter().any(|k| k == &key) {
-        //     panic!("MERGE LOOP DETECTED {:?} in STACK {:#?}", key, self.merge_stack);
-        // }
-
-        // self.merge_stack.push(key);
-
+        // If the id pair is already merged (or is being merged), just return the id
         if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
             return *merged;
         }
 
+        // Reserve the id for the merge and save it. Since the graph can contain loops,
+        // this prevents us from trying to merge the same id pair in a loop, blowing up
+        // the stack.
         let id = self.reserve();
-
-        self.merges.push((key, id));
+        self.merges.push((key, id.get()));
 
         let [a, b] = key;
 
@@ -137,9 +131,8 @@ impl<Leaf> Graph<Leaf> {
                 let b = b.remainder(prefix.len(), self);
 
                 let then = self.merge(a, b);
-                let merged = self.insert(id, Rope::new(prefix, then));
 
-                return self.merged(key, merged);
+                return self.insert(id, Rope::new(prefix, then));
             }
         }
 
@@ -147,8 +140,7 @@ impl<Leaf> Graph<Leaf> {
 
         fork.merge(self.fork_off(b), self);
 
-        let merged = self.insert(id, fork);
-        self.merged(key, merged)
+        self.insert(id, fork)
     }
 
     pub fn push_miss(&mut self, id: NodeId, miss: Option<NodeId>) -> NodeId {
@@ -193,12 +185,6 @@ impl<Leaf> Graph<Leaf> {
                 self.nodes[id] = None;
             }
         }
-    }
-
-    fn merged(&mut self, key: [NodeId; 2], result: NodeId) -> NodeId {
-        // self.merge_stack.pop();
-        // self.merges.push((key, result));
-        result
     }
 }
 

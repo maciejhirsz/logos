@@ -243,8 +243,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     panic!("{:#?}\n\n{} nodes", graph, count);
 
     // panic!("END");
-
-    panic!("{:#?}\n\n{} nodes", graph, count);
 }
 
 

@@ -14,13 +14,16 @@ enum Token {
     // #[token = "hello"]
     // Hello,
 
-    // #[regex = r"\w"]
+    // #[regex = r"\w+"]
+    // Cursed,
+
+    // #[regex = r"(foo|bar)+"]
     // World,
 
     #[regex = r"[0-9]+"]
     Integer,
 
-    #[regex = r"[0-9]+.[0-9]+"]
+    #[regex = r"[0-9]+\.[0-9]+"]
     Float,
 }
 
