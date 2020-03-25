@@ -56,7 +56,14 @@ impl From<Utf8Range> for Range {
 
 impl From<ClassUnicodeRange> for Range {
     fn from(r: ClassUnicodeRange) -> Range {
-        Range(r.start() as u8, r.end() as u8)
+        let start = r.start() as u32;
+        let end = r.end() as u32;
+
+        if start >= 128 || end >= 128 && end != 0x0010FFFF {
+            panic!("Casting non-ascii ClassUnicodeRange to Range")
+        }
+
+        Range(start as u8, end as u8)
     }
 }
 
