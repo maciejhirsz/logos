@@ -1,4 +1,4 @@
-use crate::graph::{Graph, Node, NodeId, Range};
+use crate::graph::{Graph, NodeId, Range};
 
 #[derive(Clone)]
 pub struct Fork {
@@ -81,14 +81,14 @@ impl Fork {
         if let Some(id) = self.miss {
             if !filter[id] {
                 filter[id] = true;
-                graph[id].body.shake(graph, filter);
+                graph[id].shake(graph, filter);
             }
         }
 
         for (_, id) in self.branches() {
             if !filter[id] {
                 filter[id] = true;
-                graph[id].body.shake(graph, filter);
+                graph[id].shake(graph, filter);
             }
         }
     }
@@ -125,7 +125,7 @@ impl<'a> Iterator for ForkIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::NodeBody;
+    use crate::graph::Node;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -157,8 +157,8 @@ mod tests {
     fn merge_no_conflict() {
         let mut graph = Graph::new();
 
-        let leaf1 = graph.push(NodeBody::Leaf("FOO"));
-        let leaf2 = graph.push(NodeBody::Leaf("BAR"));
+        let leaf1 = graph.push(Node::Leaf("FOO"));
+        let leaf2 = graph.push(Node::Leaf("BAR"));
 
         let mut fork = Fork::new().branch(b'1', leaf1);
 
@@ -179,8 +179,8 @@ mod tests {
     fn merge_miss_right() {
         let mut graph = Graph::new();
 
-        let leaf1 = graph.push(NodeBody::Leaf("FOO"));
-        let leaf2 = graph.push(NodeBody::Leaf("BAR"));
+        let leaf1 = graph.push(Node::Leaf("FOO"));
+        let leaf2 = graph.push(Node::Leaf("BAR"));
 
         let mut fork = Fork::new().branch(b'1', leaf1);
 
@@ -201,8 +201,8 @@ mod tests {
     fn merge_miss_left() {
         let mut graph = Graph::new();
 
-        let leaf1 = graph.push(NodeBody::Leaf("FOO"));
-        let leaf2 = graph.push(NodeBody::Leaf("BAR"));
+        let leaf1 = graph.push(Node::Leaf("FOO"));
+        let leaf2 = graph.push(Node::Leaf("BAR"));
 
         let mut fork = Fork::new().miss(leaf1);
 

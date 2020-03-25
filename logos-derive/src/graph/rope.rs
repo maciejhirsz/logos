@@ -127,13 +127,13 @@ impl Rope {
         if let Some(id) = self.miss.first() {
             if !filter[id] {
                 filter[id] = true;
-                graph[id].body.shake(graph, filter);
+                graph[id].shake(graph, filter);
             }
         }
 
         if !filter[self.then] {
             filter[self.then] = true;
-            graph[self.then].body.shake(graph, filter);
+            graph[self.then].shake(graph, filter);
         }
     }
 }
@@ -165,33 +165,28 @@ impl From<&str> for Pattern {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::NodeBody;
+    use crate::graph::Node;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn fork_off() {
         let mut graph = Graph::new();
 
-        let token = graph.push(NodeBody::Leaf("FOOBAR"));
+        let token = graph.push(Node::Leaf("FOOBAR"));
         let rope = Rope::new("foobar", token);
 
         let fork = rope.fork_off(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'f', 1));
-        assert_eq!(
-            graph[1].body,
-            NodeBody::Rope(
-                Rope::new("oobar", token),
-            ),
-        );
+        assert_eq!(graph[1], Rope::new("oobar", token));
     }
 
     #[test]
     fn fork_off_one_byte() {
         let mut graph = Graph::new();
 
-        let token = graph.push(NodeBody::Leaf("FOOBAR"));
+        let token = graph.push(Node::Leaf("FOOBAR"));
         let rope = Rope::new("!", token);
 
         let fork = rope.fork_off(&mut graph);
@@ -204,37 +199,27 @@ mod tests {
     fn fork_off_miss_any() {
         let mut graph = Graph::new();
 
-        let token = graph.push(NodeBody::Leaf("LIFE"));
+        let token = graph.push(Node::Leaf("LIFE"));
         let rope = Rope::new("42", token).miss(Miss::Any(42));
 
         let fork = rope.fork_off(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
-        assert_eq!(
-            graph[1].body,
-            NodeBody::Rope(
-                Rope::new("2", token).miss(42),
-            ),
-        );
+        assert_eq!(graph[1], Rope::new("2", token).miss(42));
     }
 
     #[test]
     fn fork_off_miss_first() {
         let mut graph = Graph::new();
 
-        let token = graph.push(NodeBody::Leaf("LIFE"));
+        let token = graph.push(Node::Leaf("LIFE"));
         let rope = Rope::new("42", token).miss(Miss::First(42));
 
         let fork = rope.fork_off(&mut graph);
 
         assert_eq!(token, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
-        assert_eq!(
-            graph[1].body,
-            NodeBody::Rope(
-                Rope::new("2", token),
-            ),
-        );
+        assert_eq!(graph[1], Rope::new("2", token));
     }
 }

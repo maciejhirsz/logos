@@ -59,25 +59,22 @@ impl<Leaf> Graph<Leaf> {
         ReservedId(id)
     }
 
-    pub fn insert<B>(&mut self, id: ReservedId, node: B) -> NodeId
+    pub fn insert<N>(&mut self, id: ReservedId, node: N) -> NodeId
     where
-        B: Into<NodeBody<Leaf>>,
+        N: Into<Node<Leaf>>,
     {
-        self.nodes[id.0] = Some(Node {
-            id: id.0,
-            body: node.into(),
-        });
+        self.nodes[id.0] = Some(node.into());
 
         id.0
     }
 
     pub fn push<B>(&mut self, node: B) -> NodeId
     where
-        B: Into<NodeBody<Leaf>>,
+        B: Into<Node<Leaf>>,
     {
         let node = node.into();
 
-        if let NodeBody::Leaf(_) = node {
+        if let Node::Leaf(_) = node {
             return self.push_unchecked(node);
         }
 
@@ -88,7 +85,7 @@ impl<Leaf> Graph<Leaf> {
             Entry::Occupied(occupied) => {
                 let id = *occupied.get();
 
-                if self[id].body.eq(&node) {
+                if self[id].eq(&node) {
                     return id;
                 }
             },
@@ -100,12 +97,9 @@ impl<Leaf> Graph<Leaf> {
         self.push_unchecked(node)
     }
 
-    fn push_unchecked(&mut self, body: NodeBody<Leaf>) -> NodeId{
+    fn push_unchecked(&mut self, node: Node<Leaf>) -> NodeId{
         let id = self.nodes.len();
-        self.nodes.push(Some(Node {
-            id,
-            body,
-        }));
+        self.nodes.push(Some(node));
         id
     }
 
@@ -122,7 +116,7 @@ impl<Leaf> Graph<Leaf> {
 
         let [a, b] = sorted;
 
-        if let (NodeBody::Rope(a), NodeBody::Rope(b)) = (&self[a].body, &self[b].body) {
+        if let (Node::Rope(a), Node::Rope(b)) = (&self[a], &self[b]) {
             if let Some(prefix) = a.prefix(b) {
                 let (a, b) = (a.clone(), b.clone());
 
@@ -153,10 +147,10 @@ impl<Leaf> Graph<Leaf> {
     }
 
     pub fn fork_off(&mut self, id: NodeId) -> Fork {
-        match &self[id].body {
-            NodeBody::Fork(fork) => fork.clone(),
-            NodeBody::Rope(rope) => rope.clone().fork_off(self),
-            NodeBody::Leaf(_) => Fork::new().miss(id),
+        match &self[id] {
+            Node::Fork(fork) => fork.clone(),
+            Node::Rope(rope) => rope.clone().fork_off(self),
+            Node::Leaf(_) => Fork::new().miss(id),
         }
     }
 
@@ -179,7 +173,7 @@ impl<Leaf> Graph<Leaf> {
 
         filter[root] = true;
 
-        self[root].body.shake(self, &mut filter);
+        self[root].shake(self, &mut filter);
 
         for (id, referenced) in filter.into_iter().enumerate() {
             if !referenced {
@@ -205,15 +199,7 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
 pub type NodeId = usize;
 
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Node<Leaf> {
-    /// Id of this node in the graph
-    pub id: NodeId,
-    /// body of the node
-    pub body: NodeBody<Leaf>,
-}
-
-#[cfg_attr(test, derive(PartialEq))]
-pub enum NodeBody<Leaf> {
+pub enum Node<Leaf> {
     /// Fork node, can lead to more than one state
     Fork(Fork),
     /// Rope node, can lead to one state on match, one state on miss
@@ -222,20 +208,20 @@ pub enum NodeBody<Leaf> {
     Leaf(Leaf),
 }
 
-impl<Leaf> NodeBody<Leaf> {
-    fn eq(&self, other: &NodeBody<Leaf>) -> bool {
+impl<Leaf> Node<Leaf> {
+    fn eq(&self, other: &Node<Leaf>) -> bool {
         match (self, other) {
-            (NodeBody::Fork(a), NodeBody::Fork(b)) => a == b,
-            (NodeBody::Rope(a), NodeBody::Rope(b)) => a == b,
+            (Node::Fork(a), Node::Fork(b)) => a == b,
+            (Node::Rope(a), Node::Rope(b)) => a == b,
             _ => false,
         }
     }
 
     fn shake(&self, graph: &Graph<Leaf>, filter: &mut [bool]) {
         match self {
-            NodeBody::Fork(fork) => fork.shake(graph, filter),
-            NodeBody::Rope(rope) => rope.shake(graph, filter),
-            NodeBody::Leaf(_) => (),
+            Node::Fork(fork) => fork.shake(graph, filter),
+            Node::Rope(rope) => rope.shake(graph, filter),
+            Node::Leaf(_) => (),
         }
     }
 }
@@ -255,17 +241,15 @@ mod tests {
     fn create_a_loop() {
         let mut graph = Graph::new();
 
-        let token = graph.push(NodeBody::Leaf("IDENT"));
+        let token = graph.push(Node::Leaf("IDENT"));
         let id = graph.reserve();
         let fork = Fork::new().branch('a'..='z', id.get()).miss(token);
         let root = graph.insert(id, fork);
 
-        assert_eq!(graph[token].body, NodeBody::Leaf("IDENT"));
+        assert_eq!(graph[token], Node::Leaf("IDENT"));
         assert_eq!(
-            graph[root].body,
-            NodeBody::Fork(
-                Fork::new().branch('a'..='z', root).miss(token)
-            )
+            graph[root],
+            Fork::new().branch('a'..='z', root).miss(token),
         );
     }
 
@@ -273,7 +257,7 @@ mod tests {
     fn fork_off() {
         let mut graph = Graph::new();
 
-        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let leaf = graph.push(Node::Leaf("LEAF"));
         let rope = graph.push(Rope::new("rope", leaf));
         let fork = graph.push(Fork::new().branch(b'!', leaf));
 

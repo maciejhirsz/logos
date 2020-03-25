@@ -2,7 +2,7 @@ use regex_syntax::hir::{Class, ClassUnicode, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
 use utf8_ranges::Utf8Sequences;
 
-use crate::graph::{Graph, NodeBody, NodeId, Range, Rope, Fork};
+use crate::graph::{Graph, Node, NodeId, Range, Rope, Fork};
 use crate::error::Result;
 
 impl<Leaf: std::fmt::Debug> Graph<Leaf> {
@@ -27,7 +27,7 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
         id: NodeId,
         then: NodeId,
         miss: Option<NodeId>,
-    ) -> Result<NodeBody<Leaf>> {
+    ) -> Result<Node<Leaf>> {
         match hir {
             HirKind::Empty => {
                 let miss = match miss {
@@ -41,9 +41,9 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
 
                 for hir in alternation {
                     let alt = match self.parse_hir(hir.into_kind(), id, then, None)? {
-                        NodeBody::Fork(fork) => fork,
-                        NodeBody::Rope(rope) => rope.fork_off(self),
-                        NodeBody::Leaf(_) => {
+                        Node::Fork(fork) => fork,
+                        Node::Rope(rope) => rope.fork_off(self),
+                        Node::Leaf(_) => {
                             Err("Internal Error: Regex produced a leaf node.")?
                         }
                     };
@@ -238,12 +238,12 @@ mod tests {
     fn rope() {
         let mut graph = Graph::new();
 
-        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let leaf = graph.push(Node::Leaf("LEAF"));
         let parsed = graph.regex(true, "foobar", leaf).unwrap();
 
         assert_eq!(
-            graph[parsed].body,
-            NodeBody::Rope(Rope::new("foobar", leaf)),
+            graph[parsed],
+            Node::Rope(Rope::new("foobar", leaf)),
         )
     }
 
@@ -251,12 +251,12 @@ mod tests {
     fn alternation() {
         let mut graph = Graph::new();
 
-        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let leaf = graph.push(Node::Leaf("LEAF"));
         let parsed = graph.regex(true, "a|b", leaf).unwrap();
 
         assert_eq!(
-            graph[parsed].body,
-            NodeBody::Fork(
+            graph[parsed],
+            Node::Fork(
                 Fork::new()
                     .branch(b'a', leaf)
                     .branch(b'b', leaf)
@@ -268,12 +268,12 @@ mod tests {
     fn repeat() {
         let mut graph = Graph::new();
 
-        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let leaf = graph.push(Node::Leaf("LEAF"));
         let parsed = graph.regex(true, "[a-z]*", leaf).unwrap();
 
         assert_eq!(
-            graph[parsed].body,
-            NodeBody::Fork(
+            graph[parsed],
+            Node::Fork(
                 Fork::new()
                     .branch('a'..='z', parsed) // goto self == loop
                     .miss(leaf)
@@ -285,12 +285,12 @@ mod tests {
     fn maybe() {
         let mut graph = Graph::new();
 
-        let leaf = graph.push(NodeBody::Leaf("LEAF"));
+        let leaf = graph.push(Node::Leaf("LEAF"));
         let parsed = graph.regex(true, "[a-z]?", leaf).unwrap();
 
         assert_eq!(
-            graph[parsed].body,
-            NodeBody::Fork(
+            graph[parsed],
+            Node::Fork(
                 Fork::new()
                     .branch('a'..='z', leaf)
                     .miss(leaf)

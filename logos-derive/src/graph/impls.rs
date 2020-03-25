@@ -1,21 +1,21 @@
 use std::hash::{Hash, Hasher};
 
-use crate::graph::{Token, Graph, Rope, Fork, Node, NodeBody, Range};
+use crate::graph::{Token, Graph, Rope, Fork, Node, Range};
 
-impl<T> From<Fork> for NodeBody<T> {
+impl<T> From<Fork> for Node<T> {
     fn from(fork: Fork) -> Self {
-        NodeBody::Fork(fork)
+        Node::Fork(fork)
     }
 }
-impl<T> From<Rope> for NodeBody<T> {
+impl<T> From<Rope> for Node<T> {
     fn from(rope: Rope) -> Self {
-        NodeBody::Rope(rope)
+        Node::Rope(rope)
     }
 }
 
-impl From<Token> for NodeBody<Token> {
+impl From<Token> for Node<Token> {
     fn from(leaf: Token) -> Self {
-        NodeBody::Leaf(leaf)
+        Node::Leaf(leaf)
     }
 }
 
@@ -32,18 +32,18 @@ impl Hash for Fork {
     }
 }
 
-impl<T> Hash for NodeBody<T> {
+impl<T> Hash for Node<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            NodeBody::Rope(rope) => {
+            Node::Rope(rope) => {
                 b"ROPE".hash(state);
                 rope.hash(state);
             },
-            NodeBody::Fork(fork) => {
+            Node::Fork(fork) => {
                 b"FORK".hash(state);
                 fork.hash(state);
             },
-            NodeBody::Leaf(_) => b"LEAF".hash(state),
+            Node::Leaf(_) => b"LEAF".hash(state),
         }
     }
 }
@@ -85,9 +85,13 @@ mod debug {
 
     impl<T: Debug> Debug for Graph<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_list()
-                .entries(self.nodes().iter().filter_map(|n| n.as_ref()))
-                .finish()
+            let entries = self
+                .nodes()
+                .iter()
+                .enumerate()
+                .filter_map(|(i, n)| n.as_ref().map(|n| (i, n)));
+
+            f.debug_map().entries(entries).finish()
         }
     }
 
@@ -161,18 +165,10 @@ mod debug {
 
     impl<T: Debug> Debug for Node<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{} ", self.id)?;
-
-            self.body.fmt(f)
-        }
-    }
-
-    impl<T: Debug> Debug for NodeBody<T> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                NodeBody::Fork(fork) => fork.fmt(f),
-                NodeBody::Rope(rope) => rope.fmt(f),
-                NodeBody::Leaf(leaf) => leaf.fmt(f),
+                Node::Fork(fork) => fork.fmt(f),
+                Node::Rope(rope) => rope.fmt(f),
+                Node::Leaf(leaf) => leaf.fmt(f),
             }
         }
     }
@@ -191,19 +187,19 @@ mod debug {
         }
     }
 
-    impl<T> PartialEq<Rope> for NodeBody<T> {
+    impl<T> PartialEq<Rope> for Node<T> {
         fn eq(&self, other: &Rope) -> bool {
             match self {
-                NodeBody::Rope(rope) => rope == other,
+                Node::Rope(rope) => rope == other,
                 _ => false
             }
         }
     }
 
-    impl<T> PartialEq<Fork> for NodeBody<T> {
+    impl<T> PartialEq<Fork> for Node<T> {
         fn eq(&self, other: &Fork) -> bool {
             match self {
-                NodeBody::Fork(fork) => fork == other,
+                Node::Fork(fork) => fork == other,
                 _ => false
             }
         }
