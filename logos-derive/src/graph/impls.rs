@@ -110,7 +110,7 @@ mod debug {
 
     impl Debug for Fork {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut list = f.debug_list();
+            let mut list = f.debug_set();
 
             for (range, then) in self.branches() {
                 list.entry(&Arm(range, then));
