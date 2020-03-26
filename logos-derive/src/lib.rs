@@ -186,11 +186,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
             };
 
             if let Some(definition) = util::value_from_attr("token", attr) {
-                let (id, value) = with_definition(definition);
+                let (then, value) = with_definition(definition);
 
-                ropes.push(Rope::new(value.into_bytes(), id));
+                ropes.push(Rope::new(value.into_bytes(), then));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
-                let (id, value) = with_definition(definition);
+                let (then, value) = with_definition(definition);
 
                 let (utf8, regex, span) = match value {
                     Literal::Utf8(string, span) => (true, string, span),
@@ -201,8 +201,17 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                match graph.regex(utf8, &regex, id) {
-                    Ok(id) => regex_ids.push(id),
+                match graph.regex(utf8, &regex, then) {
+                    Ok(id) => {
+                        // Check if the regex can go to the leaf on a miss
+                        if graph[id].miss() == Some(then) {
+                            errors.push(
+                                Error::new("#[regex]: expression can match empty string.\n\n\
+                                            hint: consider changing * to +").span(span)
+                            );
+                        }
+                        regex_ids.push(id);
+                    },
                     Err(err) => errors.push(err.span(span)),
                 }
             }

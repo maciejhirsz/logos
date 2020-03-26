@@ -44,7 +44,9 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                         Node::Fork(fork) => fork,
                         Node::Rope(rope) => rope.into_fork(self),
                         Node::Leaf(_) => {
-                            Err("Internal Error: Regex produced a leaf node.")?
+                            // Leaf is a generic without a constructor, so this is
+                            // impossible to be constructed here
+                            unreachable!()
                         }
                     };
 
@@ -128,10 +130,10 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
             },
             HirKind::Repetition(repetition) => {
                 if id == then {
-                    Err("#[regex]: Repetition inside a repetition.")?;
+                    Err("#[regex]: repetition inside a repetition.")?;
                 }
                 if !repetition.greedy {
-                    Err("#[regex]: Non-greedy parsing is currently unsupported.")?;
+                    Err("#[regex]: non-greedy parsing is currently unsupported.")?;
                 }
 
                 let hir = repetition.hir.into_kind();
@@ -200,10 +202,10 @@ impl<Leaf: std::fmt::Debug> Graph<Leaf> {
                 Ok(fork.into())
             },
             HirKind::WordBoundary(_) => {
-                Err("#[regex]: Word boundaries are currently unsupported.")?
+                Err("#[regex]: word boundaries are currently unsupported.")?
             },
             HirKind::Anchor(_) => {
-                Err("#[regex]: Anchors in #[regex] are currently unsupported.")?
+                Err("#[regex]: anchors in #[regex] are currently unsupported.")?
             },
         }
     }
@@ -233,6 +235,7 @@ fn is_one_ascii(class: &ClassUnicode) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn rope() {

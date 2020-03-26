@@ -132,37 +132,22 @@ impl<Leaf> Graph<Leaf> {
 
         let [a, b] = key;
 
-        match (&self[a], &self[b]) {
-            (Node::Rope(a), Node::Rope(b)) => {
-                if let Some(prefix) = a.prefix(b) {
-                    let (a, b) = (a.clone(), b.clone());
+        let merged_rope = match (&self[a], &self[b]) {
+            (Node::Rope(rope), _) => {
+                let rope = rope.clone();
 
-                    let a = a.remainder(prefix.len(), self);
-                    let b = b.remainder(prefix.len(), self);
-
-                    let then = self.merge(a, b);
-
-                    return self.insert(id, Rope::new(prefix, then));
-                }
+                self.merge_rope(rope, b)
             },
-            // TODO: DRY THIS
-            // Find if one of the sides is a rope, then make an internal function that
-            // will match the other arm and try to do special-case merges:
-            //
-            // rope to rope
-            // rope to leaf
-            // rope to empty fork
-            // rope to loop!
-            (Node::Rope(rope), Node::Leaf(_)) if rope.miss.is_none() => {
-                let rope = rope.clone().miss(b);
-                return self.insert(id, rope);
+            (_, Node::Rope(rope)) => {
+                let rope = rope.clone();
 
+                self.merge_rope(rope, a)
             },
-            (Node::Leaf(_), Node::Rope(rope)) if rope.miss.is_none() => {
-                let rope = rope.clone().miss(a);
-                return self.insert(id, rope);
-            },
-            _ => (),
+            _ => None,
+        };
+
+        if let Some(rope) = merged_rope {
+            return self.insert(id, rope);
         }
 
         let mut fork = self.fork_off(a);
@@ -170,6 +155,27 @@ impl<Leaf> Graph<Leaf> {
         fork.merge(self.fork_off(b), self);
 
         self.insert(id, fork)
+    }
+
+    fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope> {
+        match &self[other] {
+            Node::Rope(other) => {
+                let prefix = rope.prefix(other)?;
+
+                let (a, b) = (rope, other.clone());
+
+                let a = a.remainder(prefix.len(), self);
+                let b = b.remainder(prefix.len(), self);
+
+                let then = self.merge(a, b);
+
+                Some(Rope::new(prefix, then))
+            },
+            Node::Leaf(_) => {
+                Some(rope.miss(other))
+            },
+            _ => None,
+        }
     }
 
     pub fn push_miss(&mut self, id: NodeId, miss: Option<NodeId>) -> NodeId {
@@ -238,6 +244,14 @@ pub enum Node<Leaf> {
 }
 
 impl<Leaf> Node<Leaf> {
+    pub fn miss(&self) -> Option<NodeId> {
+        match self {
+            Node::Rope(rope) => rope.miss.first(),
+            Node::Fork(fork) => fork.miss,
+            Node::Leaf(_) => None,
+        }
+    }
+
     fn eq(&self, other: &Node<Leaf>) -> bool {
         match (self, other) {
             (Node::Fork(a), Node::Fork(b)) => a == b,
