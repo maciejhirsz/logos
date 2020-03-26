@@ -1,4 +1,4 @@
-use crate::graph::{Graph, NodeId, Range};
+use crate::graph::{Graph, Disambiguate, NodeId, Range};
 
 #[derive(Clone)]
 pub struct Fork {
@@ -27,6 +27,7 @@ impl Fork {
     pub fn add_branch<R, T>(&mut self, range: R, then: NodeId, graph: &mut Graph<T>)
     where
         R: Into<Range>,
+        T: Disambiguate,
     {
         for byte in range.into() {
             match &mut self.lut[byte as usize] {
@@ -39,7 +40,10 @@ impl Fork {
     }
 
     // TODO: Add result with a printable error
-    pub fn merge<T>(&mut self, other: Fork, graph: &mut Graph<T>) {
+    pub fn merge<T>(&mut self, other: Fork, graph: &mut Graph<T>)
+    where
+        T: Disambiguate,
+    {
         self.miss = match (self.miss, other.miss) {
             (None, None) => None,
             (Some(id), None) | (None, Some(id)) => Some(id),

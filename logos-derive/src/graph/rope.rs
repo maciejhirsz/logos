@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::graph::{Graph, Range, Fork, NodeId};
+use crate::graph::{Graph, Disambiguate, Range, Fork, NodeId};
 
 #[derive(PartialEq, Clone, Hash)]
 pub struct Rope {
@@ -97,7 +97,10 @@ impl Rope {
         self
     }
 
-    pub fn into_fork<T>(mut self, graph: &mut Graph<T>) -> Fork {
+    pub fn into_fork<T>(mut self, graph: &mut Graph<T>) -> Fork
+    where
+        T: Disambiguate,
+    {
         let first = self.pattern.0.remove(0);
         let miss = self.miss.take_first();
 
@@ -131,7 +134,10 @@ impl Rope {
         Some((pattern, miss))
     }
 
-    pub fn split_at<T>(mut self, at: usize, graph: &mut Graph<T>) -> Option<Rope> {
+    pub fn split_at<T>(mut self, at: usize, graph: &mut Graph<T>) -> Option<Rope>
+    where
+        T: Disambiguate,
+    {
         match at {
             0 => return None,
             n if n == self.pattern.len() => return Some(self),
@@ -157,7 +163,10 @@ impl Rope {
         Some(self)
     }
 
-    pub fn remainder<T>(mut self, at: usize, graph: &mut Graph<T>) -> NodeId {
+    pub fn remainder<T>(mut self, at: usize, graph: &mut Graph<T>) -> NodeId
+    where
+        T: Disambiguate,
+    {
         self.pattern = self.pattern[at..].into();
 
         match self.pattern.len() {

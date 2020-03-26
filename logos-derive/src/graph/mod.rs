@@ -1,6 +1,7 @@
-use std::ops::Index;
+use std::cmp::Ordering;
 use std::collections::BTreeMap as Map;
 use std::collections::btree_map::Entry;
+use std::ops::Index;
 use std::hash::{Hash, Hasher};
 
 use fnv::FnvHasher;
@@ -31,6 +32,10 @@ pub struct Graph<Leaf> {
     /// onto the graph (inserts are exempt), we hash it and find if
     /// an identical(!) node has been created before.
     hashes: Map<u64, NodeId>,
+}
+
+pub trait Disambiguate {
+    fn cmp(left: &Self, right: &Self) -> Ordering;
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
@@ -112,14 +117,19 @@ impl<Leaf> Graph<Leaf> {
     }
 
     /// Merge the nodes at id `a` and `b`, returning a new id.
-    pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId {
+    pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId
+    where
+        Leaf: Disambiguate,
+    {
         if a == b {
             return a;
         }
 
-        if let (Node::Leaf(_), Node::Leaf(_)) = (&self[a], &self[b]) {
-            // TODO: proper leaf disambiguation
-            return a;
+        if let (Node::Leaf(left), Node::Leaf(right)) = (&self[a], &self[b]) {
+            return match Disambiguate::cmp(left, right) {
+                Ordering::Less => b,
+                Ordering::Equal | Ordering::Greater => a,
+            };
         }
 
         let key = if a > b { [b, a] } else { [a, b] };
@@ -162,7 +172,10 @@ impl<Leaf> Graph<Leaf> {
         self.insert(id, fork)
     }
 
-    fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope> {
+    fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope>
+    where
+        Leaf: Disambiguate,
+    {
         match &self[other] {
             Node::Fork(fork) if rope.miss.is_none() => {
                 // Count how many consecutive ranges in this rope would
@@ -199,7 +212,10 @@ impl<Leaf> Graph<Leaf> {
         }
     }
 
-    pub fn fork_off(&mut self, id: NodeId) -> Fork {
+    pub fn fork_off(&mut self, id: NodeId) -> Fork
+    where
+        Leaf: Disambiguate,
+    {
         match &self[id] {
             Node::Fork(fork) => fork.clone(),
             Node::Rope(rope) => rope.clone().into_fork(self),
@@ -276,12 +292,6 @@ impl<Leaf> Node<Leaf> {
             Node::Leaf(_) => (),
         }
     }
-}
-
-#[cfg_attr(test, derive(PartialEq))]
-pub struct Token {
-    pub ident: syn::Ident,
-    pub callback: Option<syn::Ident>,
 }
 
 #[cfg(test)]

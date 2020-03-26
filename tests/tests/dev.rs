@@ -11,9 +11,6 @@ enum Token {
     #[token = "foobar"]
     Foobar,
 
-    // #[token = "foo"]
-    // Foo,
-
     #[regex = r"[a-z]+"]
     Identifier,
 

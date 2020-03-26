@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use crate::graph::{Token, Graph, Rope, Fork, Node, Range};
+use crate::graph::{Graph, Rope, Fork, Node, Range};
 
 impl<T> From<Fork> for Node<T> {
     fn from(fork: Fork) -> Self {
@@ -10,12 +10,6 @@ impl<T> From<Fork> for Node<T> {
 impl<T> From<Rope> for Node<T> {
     fn from(rope: Rope) -> Self {
         Node::Rope(rope)
-    }
-}
-
-impl From<Token> for Node<Token> {
-    fn from(leaf: Token) -> Self {
-        Node::Leaf(leaf)
     }
 }
 
@@ -53,7 +47,15 @@ impl<T> Hash for Node<T> {
 mod debug {
     use super::*;
     use crate::graph::rope::Miss;
+    use crate::graph::Disambiguate;
+    use std::cmp::{Ord, Ordering};
     use std::fmt::{self, Debug, Display};
+
+    impl Disambiguate for &str {
+        fn cmp(left: &&str, right: &&str) -> Ordering {
+            Ord::cmp(left, right)
+        }
+    }
 
     impl Debug for Range {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -153,18 +155,6 @@ mod debug {
                 },
                 true => Arm(rope, self.then).fmt(f),
             }
-        }
-    }
-
-    impl Debug for Token {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "::{}", self.ident)?;
-
-            if let Some(ref callback) = self.callback {
-                write!(f, " ({})", callback)?;
-            }
-
-            Ok(())
         }
     }
 

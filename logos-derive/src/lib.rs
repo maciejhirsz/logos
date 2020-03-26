@@ -14,6 +14,7 @@
 mod error;
 mod graph;
 mod util;
+mod token;
 
 use error::Error;
 
@@ -22,7 +23,8 @@ use error::Error;
 // use self::tree::{Fork, Leaf, Node};
 // use self::util::{value_from_attr, Definition, Literal, OptionExt};
 // use regex::Regex;
-use graph::{Graph, Fork, Rope, Token};
+use graph::{Graph, Fork, Rope};
+use token::Token;
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -140,16 +142,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-        let id = graph.push(Token {
-            ident: variant.ident.clone(),
-            callback: None,
-        });
-
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
 
             if ident == "error" {
+                let id = graph.push(Token::new(variant));
+
                 if let Some((_, previous)) = error.replace((id, span)) {
                     errors.extend(vec![
                         Error::new("Only one #[error] variant can be declared.").span(span),
@@ -159,6 +158,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             if ident == "end" {
+                let id = graph.push(Token::new(variant));
+
                 if let Some((_, previous)) = end.replace((id, span)) {
                     errors.extend(vec![
                         Error::new("Only one #[end] variant can be declared.").span(span),
@@ -168,29 +169,26 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
-                let id = match definition.callback {
-                    Some(callback) => {
-                        graph.push(Token {
-                            ident: variant.clone(),
-                            callback: Some(callback),
-                        })
-                    }
-                    None => id,
-                };
+                let token = Token::new(variant).callback(definition.callback);
 
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;
                 }
 
-                (id, definition.value)
+                (token, definition.value)
             };
 
             if let Some(definition) = util::value_from_attr("token", attr) {
-                let (then, value) = with_definition(definition);
+                let (token, value) = with_definition(definition);
 
-                ropes.push(Rope::new(value.into_bytes(), then));
+                let value = value.into_bytes();
+                let then = graph.push(token.priority(value.len()));
+
+                ropes.push(Rope::new(value, then));
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
-                let (then, value) = with_definition(definition);
+                let (token, value) = with_definition(definition);
+
+                let then = graph.push(token);
 
                 let (utf8, regex, span) = match value {
                     Literal::Utf8(string, span) => (true, string, span),
