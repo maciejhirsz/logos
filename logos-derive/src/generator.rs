@@ -42,8 +42,8 @@ impl<'a> Generator<'a> {
 
     fn generate_fn(&mut self, id: NodeId, node: &Node<Token>) -> TokenStream {
         let body = match node {
-            Node::Fork(fork) => self.generate_fork(fork),
-            Node::Rope(rope) => self.generate_rope(rope),
+            Node::Fork(fork) => self.generate_fork(id, fork),
+            Node::Rope(rope) => self.generate_rope(id, rope),
             Node::Leaf(leaf) => self.generate_leaf(leaf),
         };
         let goto = self.generate_goto(id);
@@ -55,7 +55,13 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_fork(&mut self, fork: &Fork) -> TokenStream {
+    fn generate_fork(&mut self, this: NodeId, fork: &Fork) -> TokenStream {
+        let miss = match fork.miss {
+            Some(id) => self.generate_goto(id).to_token_stream(),
+            None if this == self.root => quote!(_error),
+            None => quote!(_error),
+        };
+
         let branches = fork.branches().map(|(range, id)| {
             let goto = self.generate_goto(id);
 
@@ -73,18 +79,24 @@ impl<'a> Generator<'a> {
 
             match byte {
                 #(#branches)*
-                _ => return _error(lex),
+                _ => return #miss(lex),
             }
         }
     }
 
-    fn generate_rope(&mut self, rope: &Rope) -> TokenStream {
+    fn generate_rope(&mut self, this: NodeId, rope: &Rope) -> TokenStream {
+        let miss = match rope.miss.first() {
+            Some(id) => self.generate_goto(id).to_token_stream(),
+            None if this == self.root => quote!(_end),
+            None => quote!(_error),
+        };
+
         let matches = rope.pattern.iter().map(|range| {
             quote! {
                 match lex.read() {
                     Some(#range) => lex.bump(1),
-                    Some(_) => return _error(lex),
-                    None => return _end(lex),
+                    Some(_) => return #miss(lex),
+                    None => return #miss(lex),
                 }
             }
         });
