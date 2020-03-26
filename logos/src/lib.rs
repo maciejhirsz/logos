@@ -96,7 +96,7 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use self::lexer::{Extras, Lexer, Lexicon};
+pub use self::lexer::{Extras, Lexer};
 pub use self::source::{Slice, Source};
 
 /// Trait implemented for an enum representing all tokens. You should never have
@@ -120,11 +120,13 @@ pub trait Logos: Sized {
     /// Helper `const` of the variant marked as `#[error]`.
     const ERROR: Self;
 
-    /// Returns a lookup table for the `Lexer`
-    fn lexicon<'lexicon, 'source, Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>
-    where
-        Source: self::Source<'source>,
-        Self: source::WithSource<Source>;
+    // /// Returns a lookup table for the `Lexer`
+    // fn lexicon<'lexicon, 'source, Source>() -> &'lexicon Lexicon<Lexer<Self, Source>>
+    // where
+    //     Source: self::Source<'source>,
+    //     Self: source::WithSource<Source>;
+
+    fn lex<Source>(lexer: &mut Lexer<Self, Source>);
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
