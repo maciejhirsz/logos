@@ -37,17 +37,22 @@ impl Miss {
         matches!(self, Miss::None)
     }
 
-    pub fn any(self) -> Option<NodeId> {
-        match self {
-            Miss::Any(id) => Some(id),
-            _ => None,
-        }
-    }
-
     pub fn first(self) -> Option<NodeId> {
         match self {
             Miss::First(id) | Miss::Any(id) => Some(id),
             _ => None,
+        }
+    }
+
+    pub fn take_first(&mut self) -> Option<NodeId> {
+        match *self {
+            Miss::First(id) => {
+                *self = Miss::None;
+
+                Some(id)
+            },
+            Miss::Any(id) => Some(id),
+            Miss::None => None,
         }
     }
 }
@@ -94,9 +99,7 @@ impl Rope {
 
     pub fn into_fork<T>(mut self, graph: &mut Graph<T>) -> Fork {
         let first = self.pattern.0.remove(0);
-        let miss = self.miss.first();
-
-        self.miss = self.miss.any().into();
+        let miss = self.miss.take_first();
 
         // The new fork will lead to a new rope,
         // or the old target if no new rope was created
@@ -108,22 +111,31 @@ impl Rope {
         Fork::new().branch(first, then).miss(miss)
     }
 
-    pub fn prefix(&self, other: &Self) -> Option<Pattern> {
+    pub fn prefix(&self, other: &Self) -> Option<(Pattern, Miss)> {
         let count = self.pattern
             .iter()
             .zip(other.pattern.iter())
             .take_while(|(a, b)| a == b)
             .count();
 
-        match count {
-            0 => None,
-            _ => Some(self.pattern[..count].into()),
-        }
+        let pattern = match count {
+            0 => return None,
+            n => self.pattern[..n].into(),
+        };
+        let miss = match (self.miss, other.miss) {
+            (Miss::None, miss) => miss,
+            (miss, Miss::None) => miss,
+            _ => return None,
+        };
+
+        Some((pattern, miss))
     }
 
-    pub fn split_at<T>(mut self, at: usize, graph: &mut Graph<T>) -> Rope {
-        if at == self.pattern.len() {
-            return self;
+    pub fn split_at<T>(mut self, at: usize, graph: &mut Graph<T>) -> Option<Rope> {
+        match at {
+            0 => return None,
+            n if n == self.pattern.len() => return Some(self),
+            _ => (),
         }
 
         let (this, next) = self.pattern.split_at(at);
@@ -142,7 +154,7 @@ impl Rope {
         self.pattern = this.into();
         self.then = next;
 
-        self
+        Some(self)
     }
 
     pub fn remainder<T>(mut self, at: usize, graph: &mut Graph<T>) -> NodeId {
@@ -231,13 +243,13 @@ mod tests {
         let mut graph = Graph::new();
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let rope = Rope::new("42", leaf).miss(Miss::Any(42));
+        let rope = Rope::new("42", leaf).miss_any(42);
 
         let fork = rope.into_fork(&mut graph);
 
         assert_eq!(leaf, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
-        assert_eq!(graph[1], Rope::new("2", leaf).miss(42));
+        assert_eq!(graph[1], Rope::new("2", leaf).miss_any(42));
     }
 
     #[test]
@@ -261,9 +273,9 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let rope = Rope::new("foobar", leaf);
 
-        assert_eq!(rope.clone().split_at(6, &mut graph), rope);
+        assert_eq!(rope.clone().split_at(6, &mut graph).unwrap(), rope);
 
-        let split = rope.split_at(3, &mut graph);
+        let split = rope.split_at(3, &mut graph).unwrap();
         let expected_id = leaf + 1;
 
         assert_eq!(split, Rope::new("foo", expected_id));

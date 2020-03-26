@@ -174,30 +174,25 @@ impl<Leaf> Graph<Leaf> {
                     .take_while(|range| fork.contains(**range) == Some(other))
                     .count();
 
-                match count {
-                    0 => None,
-                    _ => {
-                        let mut rope = rope.split_at(count, self);
+                let mut rope = rope.split_at(count, self)?.miss_any(other);
 
-                        rope.then = self.merge(rope.then, other);
+                rope.then = self.merge(rope.then, other);
 
-                        Some(rope.miss_any(other))
-                    }
-                }
+                Some(rope)
             },
             Node::Rope(other) => {
-                let prefix = rope.prefix(other)?;
+                let (prefix, miss) = rope.prefix(other)?;
 
                 let (a, b) = (rope, other.clone());
 
                 let a = a.remainder(prefix.len(), self);
                 let b = b.remainder(prefix.len(), self);
 
-                let then = self.merge(a, b);
+                let rope = Rope::new(prefix, self.merge(a, b)).miss(miss);
 
-                Some(Rope::new(prefix, then))
+                Some(rope)
             },
-            Node::Leaf(_) => {
+            Node::Leaf(_) if rope.miss.is_none() => {
                 Some(rope.miss(other))
             },
             _ => None,

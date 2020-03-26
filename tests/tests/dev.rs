@@ -8,8 +8,12 @@ enum Token {
     #[end]
     End,
 
+
     #[token = "foobar"]
     Foobar,
+
+    #[token = "foo"]
+    Foo,
 
     #[regex = r"[a-z]+"]
     Identifier,
