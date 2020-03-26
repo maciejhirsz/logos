@@ -62,8 +62,23 @@ impl Fork {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.lut.iter().all(|o| o.is_none())
+    /// Checks if all bytes in the `range` have a branch on this
+    /// fork, and those branches are resolve to the same `NodeId`.
+    pub fn contains<R>(&self, range: R) -> Option<NodeId>
+    where
+        R: Into<Range>,
+    {
+        let mut range = range.into();
+        let byte = range.next()?;
+        let first = self.lut[byte as usize]?;
+
+        for byte in range {
+            if first != self.lut[byte as usize]? {
+                return None;
+            }
+        }
+
+        Some(first)
     }
 
     pub fn branch<R>(mut self, range: R, then: NodeId) -> Self
@@ -221,5 +236,34 @@ mod tests {
                 .branch(b'2', leaf2)
                 .miss(leaf1)
         );
+    }
+
+    #[test]
+    fn contains_byte() {
+        let fork = Fork::new().branch('a'..='z', 42);
+
+        assert_eq!(fork.contains(b't'), Some(42));
+    }
+
+    #[test]
+    fn contains_range() {
+        let fork = Fork::new()
+            .branch('a'..='m', 42)
+            .branch('n'..='z', 42);
+
+        assert_eq!(fork.contains('i'..='r'), Some(42));
+        assert_eq!(fork.contains('a'..='z'), Some(42));
+    }
+
+    #[test]
+    fn contains_different_ranges() {
+        let fork = Fork::new()
+            .branch('a'..='m', 42)
+            .branch('n'..='z', 47);
+
+        assert_eq!(fork.contains('i'..='r'), None);
+        assert_eq!(fork.contains('a'..='z'), None);
+        assert_eq!(fork.contains('d'..='f'), Some(42));
+        assert_eq!(fork.contains('n'..='p'), Some(47));
     }
 }

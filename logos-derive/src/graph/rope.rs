@@ -87,6 +87,11 @@ impl Rope {
         self
     }
 
+    pub fn miss_any(mut self, miss: NodeId) -> Self {
+        self.miss = Miss::Any(miss);
+        self
+    }
+
     pub fn into_fork<T>(mut self, graph: &mut Graph<T>) -> Fork {
         let first = self.pattern.0.remove(0);
         let miss = self.miss.first();
@@ -116,11 +121,35 @@ impl Rope {
         }
     }
 
+    pub fn split_at<T>(mut self, at: usize, graph: &mut Graph<T>) -> Rope {
+        if at == self.pattern.len() {
+            return self;
+        }
+
+        let (this, next) = self.pattern.split_at(at);
+
+        let next_miss = match self.miss {
+            Miss::Any(_) => self.miss,
+            _ => Miss::None,
+        };
+
+        let next = graph.push(Rope {
+            pattern: next.into(),
+            miss: next_miss,
+            then: self.then,
+        });
+
+        self.pattern = this.into();
+        self.then = next;
+
+        self
+    }
+
     pub fn remainder<T>(mut self, at: usize, graph: &mut Graph<T>) -> NodeId {
         self.pattern = self.pattern[at..].into();
 
         match self.pattern.len() {
-            0 => graph.push_miss(self.then, self.miss.any()),
+            0 => self.then,
             _ => graph.push(self),
         }
     }
@@ -174,26 +203,26 @@ mod tests {
     fn into_fork() {
         let mut graph = Graph::new();
 
-        let token = graph.push(Node::Leaf("FOOBAR"));
-        let rope = Rope::new("foobar", token);
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let rope = Rope::new("foobar", leaf);
 
         let fork = rope.into_fork(&mut graph);
 
-        assert_eq!(token, 0);
+        assert_eq!(leaf, 0);
         assert_eq!(fork, Fork::new().branch(b'f', 1));
-        assert_eq!(graph[1], Rope::new("oobar", token));
+        assert_eq!(graph[1], Rope::new("oobar", leaf));
     }
 
     #[test]
     fn into_fork_one_byte() {
         let mut graph = Graph::new();
 
-        let token = graph.push(Node::Leaf("FOOBAR"));
-        let rope = Rope::new("!", token);
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let rope = Rope::new("!", leaf);
 
         let fork = rope.into_fork(&mut graph);
 
-        assert_eq!(token, 0);
+        assert_eq!(leaf, 0);
         assert_eq!(fork, Fork::new().branch(b'!', 0));
     }
 
@@ -201,27 +230,43 @@ mod tests {
     fn into_fork_miss_any() {
         let mut graph = Graph::new();
 
-        let token = graph.push(Node::Leaf("LIFE"));
-        let rope = Rope::new("42", token).miss(Miss::Any(42));
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let rope = Rope::new("42", leaf).miss(Miss::Any(42));
 
         let fork = rope.into_fork(&mut graph);
 
-        assert_eq!(token, 0);
+        assert_eq!(leaf, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
-        assert_eq!(graph[1], Rope::new("2", token).miss(42));
+        assert_eq!(graph[1], Rope::new("2", leaf).miss(42));
     }
 
     #[test]
     fn into_fork_miss_first() {
         let mut graph = Graph::new();
 
-        let token = graph.push(Node::Leaf("LIFE"));
-        let rope = Rope::new("42", token).miss(Miss::First(42));
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let rope = Rope::new("42", leaf).miss(Miss::First(42));
 
         let fork = rope.into_fork(&mut graph);
 
-        assert_eq!(token, 0);
+        assert_eq!(leaf, 0);
         assert_eq!(fork, Fork::new().branch(b'4', 1).miss(42));
-        assert_eq!(graph[1], Rope::new("2", token));
+        assert_eq!(graph[1], Rope::new("2", leaf));
+    }
+
+    #[test]
+    fn split_at() {
+        let mut graph = Graph::new();
+
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let rope = Rope::new("foobar", leaf);
+
+        assert_eq!(rope.clone().split_at(6, &mut graph), rope);
+
+        let split = rope.split_at(3, &mut graph);
+        let expected_id = leaf + 1;
+
+        assert_eq!(split, Rope::new("foo", expected_id));
+        assert_eq!(graph[expected_id], Rope::new("bar", leaf));
     }
 }

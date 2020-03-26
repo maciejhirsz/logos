@@ -117,6 +117,11 @@ impl<Leaf> Graph<Leaf> {
             return a;
         }
 
+        if let (Node::Leaf(_), Node::Leaf(_)) = (&self[a], &self[b]) {
+            // TODO: proper leaf disambiguation
+            return a;
+        }
+
         let key = if a > b { [b, a] } else { [a, b] };
 
         // If the id pair is already merged (or is being merged), just return the id
@@ -159,6 +164,27 @@ impl<Leaf> Graph<Leaf> {
 
     fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope> {
         match &self[other] {
+            Node::Fork(fork) if rope.miss.is_none() => {
+                // Count how many consecutive ranges in this rope would
+                // branch into the fork that results in a loop.
+                //
+                // e.g.: for rope "foobar" and a looping fork [a-z]: 6
+                let count = rope.pattern
+                    .iter()
+                    .take_while(|range| fork.contains(**range) == Some(other))
+                    .count();
+
+                match count {
+                    0 => None,
+                    _ => {
+                        let mut rope = rope.split_at(count, self);
+
+                        rope.then = self.merge(rope.then, other);
+
+                        Some(rope.miss_any(other))
+                    }
+                }
+            },
             Node::Rope(other) => {
                 let prefix = rope.prefix(other)?;
 
@@ -178,14 +204,6 @@ impl<Leaf> Graph<Leaf> {
         }
     }
 
-    pub fn push_miss(&mut self, id: NodeId, miss: Option<NodeId>) -> NodeId {
-        if let Some(_) = miss {
-            unimplemented!();
-        }
-
-        id
-    }
-
     pub fn fork_off(&mut self, id: NodeId) -> Fork {
         match &self[id] {
             Node::Fork(fork) => fork.clone(),
@@ -196,10 +214,6 @@ impl<Leaf> Graph<Leaf> {
 
     pub fn nodes(&self) -> &[Option<Node<Leaf>>] {
         &self.nodes
-    }
-
-    pub fn merges(&self) -> &[([NodeId; 2], NodeId)] {
-        &self.merges
     }
 
     /// Find all nodes that have no references and remove them.

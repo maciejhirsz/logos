@@ -52,6 +52,7 @@ impl<T> Hash for Node<T> {
 // #[cfg(test)]
 mod debug {
     use super::*;
+    use crate::graph::rope::Miss;
     use std::fmt::{self, Debug, Display};
 
     impl Debug for Range {
@@ -122,6 +123,16 @@ mod debug {
         }
     }
 
+    impl Display for Miss {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Miss::First(id) => Display::fmt(id, f),
+                Miss::Any(id) => write!(f, "{}*", id),
+                Miss::None => f.write_str("n/a"),
+            }
+        }
+    }
+
     impl Debug for Rope {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             use std::fmt::Write;
@@ -131,16 +142,16 @@ mod debug {
                 write!(rope, "{}", range)?;
             }
 
-            match self.miss.first() {
-                Some(id) => {
+            match self.miss.is_none() {
+                false => {
                     let mut list = f.debug_list();
 
                     list.entry(&Arm(rope, self.then));
-                    list.entry(&Arm('_', id));
+                    list.entry(&Arm('_', self.miss));
 
                     list.finish()
                 },
-                None => Arm(rope, self.then).fmt(f),
+                true => Arm(rope, self.then).fmt(f),
             }
         }
     }
