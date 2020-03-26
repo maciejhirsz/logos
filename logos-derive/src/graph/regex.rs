@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::cmp::max;
 
 use regex_syntax::hir::{Class, ClassUnicode, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
@@ -8,7 +9,7 @@ use crate::graph::{Graph, Disambiguate, Node, NodeId, Range, Rope, Fork};
 use crate::error::Result;
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
-    pub fn regex(&mut self, utf8: bool, source: &str, then: NodeId) -> Result<NodeId> {
+    pub fn regex(&mut self, utf8: bool, source: &str, then: NodeId) -> Result<(usize, NodeId)> {
         let mut builder = ParserBuilder::new();
 
         if !utf8 {
@@ -18,9 +19,9 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         let hir = builder.build().parse(source)?.into_kind();
 
         let id = self.reserve();
-        let node = self.parse_hir(hir, id.get(), then, None)?;
+        let (len, node) = self.parse_hir(hir, id.get(), then, None)?;
 
-        Ok(self.insert(id, node))
+        Ok((len, self.insert(id, node)))
     }
 
     fn parse_hir(
@@ -29,20 +30,22 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         id: NodeId,
         then: NodeId,
         miss: Option<NodeId>,
-    ) -> Result<Node<Leaf>> {
+    ) -> Result<(usize, Node<Leaf>)> {
         match hir {
             HirKind::Empty => {
                 let miss = match miss {
                     Some(miss) => self.merge(miss, then),
                     None => then,
                 };
-                Ok(Fork::new().miss(miss).into())
+                Ok((0, Fork::new().miss(miss).into()))
             },
             HirKind::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
+                let mut longest = 0;
 
                 for hir in alternation {
-                    let alt = match self.parse_hir(hir.into_kind(), id, then, None)? {
+                    let (len, alt) = self.parse_hir(hir.into_kind(), id, then, None)?;
+                    let alt = match alt {
                         Node::Fork(fork) => fork,
                         Node::Rope(rope) => rope.into_fork(self),
                         Node::Leaf(_) => {
@@ -52,10 +55,12 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         }
                     };
 
+                    longest = max(longest, len);
+
                     fork.merge(alt, self);
                 }
 
-                Ok(fork.into())
+                Ok((longest, fork.into()))
             }
             HirKind::Literal(literal) => {
                 let pattern = match literal {
@@ -67,7 +72,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     },
                 };
 
-                Ok(Rope::new(pattern, then).miss(miss).into())
+                Ok((pattern.len(), Rope::new(pattern, then).miss(miss).into()))
             },
             HirKind::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
@@ -77,6 +82,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut cur = ropebuf.len();
                 let mut end = ropebuf.len();
                 let mut then = then;
+                let mut total_len = 0;
 
                 let mut handle_bytes = |graph: &mut Self, hir, then: &mut NodeId| {
                     match hir {
@@ -103,19 +109,22 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                             None
                         },
                         hir => {
-                            if end != cur {
+                            let len = end - cur;
+                            if len != 0 {
                                 *then = graph.push(Rope::new(&ropebuf[cur..end], *then));
                                 end = cur;
                             }
-                            Some(hir)
+                            Some((len, hir))
                         },
                     }
                 };
 
                 for hir in concat.drain(1..).rev() {
-                    if let Some(hir) = handle_bytes(self, hir.into_kind(), &mut then) {
+                    if let Some((len, hir)) = handle_bytes(self, hir.into_kind(), &mut then) {
                         let nid = self.reserve();
-                        let next = self.parse_hir(hir, nid.get(), then, None)?;
+                        let (nlen, next) = self.parse_hir(hir, nid.get(), then, None)?;
+
+                        total_len += len + nlen;
 
                         then = self.insert(nid, next);
                     }
@@ -123,10 +132,16 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 match handle_bytes(self, concat.remove(0).into_kind(), &mut then) {
                     None => {
-                        Ok(Rope::new(&ropebuf[cur..end], then).miss(miss).into())
+                        total_len += end - cur;
+
+                        Ok((total_len, Rope::new(&ropebuf[cur..end], then).miss(miss).into()))
                     },
-                    Some(hir) => {
-                        self.parse_hir(hir, id, then, miss)
+                    Some((len, hir)) => {
+                        let (nlen, id) = self.parse_hir(hir, id, then, miss)?;
+
+                        total_len += len + nlen;
+
+                        Ok((total_len, id))
                     },
                 }
             },
@@ -150,11 +165,13 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
                         let nid = self.reserve();
-                        let next = self.parse_hir(hir.clone(), nid.get(), nid.get(), Some(then))?;
+                        let (_, next) = self.parse_hir(hir.clone(), nid.get(), nid.get(), Some(then))?;
                         let next = self.insert(nid, next);
 
                         // Then parse the same tree into first node, attaching loop
-                        self.parse_hir(hir, id, next, miss)
+                        let (len, id) = self.parse_hir(hir, id, next, miss)?;
+
+                        Ok((len, id))
                     },
                     RepetitionKind::Range(..) => {
                         Err("#[regex]: {n,m} repetition range is currently unsupported.")?
@@ -174,17 +191,22 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     .collect::<Vec<_>>();
 
                 if ropes.len() == 0 {
-                    return Ok(ropes.remove(0).miss(miss).into());
+                    let rope = ropes.remove(0);
+
+                    return Ok((rope.pattern.len(), rope.miss(miss).into()));
                 }
 
                 let mut root = Fork::new().miss(miss);
+                let mut longest = 0;
 
                 for rope in ropes {
+                    longest = max(longest, rope.pattern.len());
+
                     let fork = rope.into_fork(self);
                     root.merge(fork, self);
                 }
 
-                Ok(root.into())
+                Ok((longest, root.into()))
             },
             HirKind::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
@@ -201,7 +223,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     fork.add_branch(range, then, self);
                 }
 
-                Ok(fork.into())
+                Ok((1, fork.into()))
             },
             HirKind::WordBoundary(_) => {
                 Err("#[regex]: word boundaries are currently unsupported.")?
@@ -244,8 +266,9 @@ mod tests {
         let mut graph = Graph::new();
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let parsed = graph.regex(true, "foobar", leaf).unwrap();
+        let (len, parsed) = graph.regex(true, "foobar", leaf).unwrap();
 
+        assert_eq!(len, 6);
         assert_eq!(
             graph[parsed],
             Node::Rope(Rope::new("foobar", leaf)),
@@ -257,8 +280,9 @@ mod tests {
         let mut graph = Graph::new();
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let parsed = graph.regex(true, "a|b", leaf).unwrap();
+        let (len, parsed) = graph.regex(true, "a|b", leaf).unwrap();
 
+        assert_eq!(len, 1);
         assert_eq!(
             graph[parsed],
             Node::Fork(
@@ -274,8 +298,9 @@ mod tests {
         let mut graph = Graph::new();
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let parsed = graph.regex(true, "[a-z]*", leaf).unwrap();
+        let (len, parsed) = graph.regex(true, "[a-z]*", leaf).unwrap();
 
+        assert_eq!(len, 1);
         assert_eq!(
             graph[parsed],
             Node::Fork(
@@ -291,8 +316,9 @@ mod tests {
         let mut graph = Graph::new();
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let parsed = graph.regex(true, "[a-z]?", leaf).unwrap();
+        let (len, parsed) = graph.regex(true, "[a-z]?", leaf).unwrap();
 
+        assert_eq!(len, 1);
         assert_eq!(
             graph[parsed],
             Node::Fork(
@@ -301,5 +327,15 @@ mod tests {
                     .miss(leaf)
             ),
         );
+    }
+
+    #[test]
+    fn regex_combine_len() {
+        let mut graph = Graph::new();
+
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let (len, _) = graph.regex(true, "(fooz|bar)+qux", leaf).unwrap();
+
+        assert_eq!(len, 7); // foozqux
     }
 }

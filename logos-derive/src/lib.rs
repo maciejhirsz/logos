@@ -188,7 +188,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             } else if let Some(definition) = util::value_from_attr("regex", attr) {
                 let (token, value) = with_definition(definition);
 
-                let then = graph.push(token);
+                let then = graph.reserve();
 
                 let (utf8, regex, span) = match value {
                     Literal::Utf8(string, span) => (true, string, span),
@@ -199,15 +199,16 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     }
                 };
 
-                match graph.regex(utf8, &regex, then) {
-                    Ok(id) => {
+                match graph.regex(utf8, &regex, then.get()) {
+                    Ok((len, id)) => {
                         // Check if the regex can go to the leaf on a miss
-                        if graph[id].miss() == Some(then) {
+                        if graph[id].miss() == Some(then.get()) {
                             errors.push(
                                 Error::new("#[regex]: expression can match empty string.\n\n\
                                             hint: consider changing * to +").span(span)
                             );
                         }
+                        graph.insert(then, token.priority(len));
                         regex_ids.push(id);
                     },
                     Err(err) => errors.push(err.span(span)),
