@@ -9,7 +9,7 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
 
-// mod generator;
+mod generator;
 mod error;
 mod graph;
 mod util;
@@ -17,7 +17,7 @@ mod token;
 
 use error::Error;
 
-// use self::generator::Generator;
+use self::generator::Generator;
 use graph::{Graph, Fork, Rope};
 use token::Token;
 use util::{Literal, Definition};
@@ -258,6 +258,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
+    let mut generator = Generator::new(name, root, err_id, end_id);
+
+    let body = generator.generate(&graph);
+
     let tokens = quote! {
         impl ::logos::Logos for #name {
             type Extras = #extras;
@@ -272,22 +276,18 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 Self: ::logos::source::WithSource<Source>,
             {
                 use ::logos::internal::LexerInternal;
-                use ::logos::source::Split;
+                use ::logos::source::{Source, Split};
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
 
-                fn _error<'source, S: logos::Source<'source>>(lex: &mut Lexer<S>) {
-                    lex.bump(1);
-
-                    lex.token = #name::#error;
-                }
+                #body
             }
         }
 
         impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
     };
 
-    // panic!("{}", tokens);
+    panic!("{}", tokens);
 
     TokenStream::from(tokens)
 }
