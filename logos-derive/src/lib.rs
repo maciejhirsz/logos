@@ -10,7 +10,6 @@
 #![recursion_limit = "196"]
 
 // mod generator;
-// mod handlers;
 mod error;
 mod graph;
 mod util;
@@ -19,10 +18,6 @@ mod token;
 use error::Error;
 
 // use self::generator::Generator;
-// use self::handlers::{Handler, Handlers, Trivia};
-// use self::tree::{Fork, Leaf, Node};
-// use self::util::{value_from_attr, Definition, Literal, OptionExt};
-// use regex::Regex;
 use graph::{Graph, Fork, Rope};
 use token::Token;
 use util::{Literal, Definition};
