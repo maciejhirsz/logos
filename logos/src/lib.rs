@@ -126,7 +126,10 @@ pub trait Logos: Sized {
     //     Source: self::Source<'source>,
     //     Self: source::WithSource<Source>;
 
-    fn lex<Source>(lexer: &mut Lexer<Self, Source>);
+    fn lex<'source, Source>(lexer: &mut Lexer<Self, Source>)
+    where
+        Source: self::Source<'source>,
+        Self: source::WithSource<Source>;
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.

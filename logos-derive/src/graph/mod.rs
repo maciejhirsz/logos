@@ -228,17 +228,13 @@ impl<Leaf> Graph<Leaf> {
     }
 
     /// Find all nodes that have no references and remove them.
-    pub fn shake(&mut self) {
-        let root = match self.nodes.len().checked_sub(1) {
-            Some(id) => id,
-            None => return,
-        };
-
+    pub fn shake(&mut self, entries: &[NodeId]) {
         let mut filter = vec![false; self.nodes.len()];
 
-        filter[root] = true;
-
-        self[root].shake(self, &mut filter);
+        for &id in entries.iter() {
+            filter[id] = true;
+            self[id].shake(self, &mut filter);
+        }
 
         for (id, referenced) in filter.into_iter().enumerate() {
             if !referenced {

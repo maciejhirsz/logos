@@ -24,7 +24,7 @@ use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Fields, ItemEnum};
+use syn::{Ident, Fields, ItemEnum};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -38,11 +38,12 @@ enum Mode {
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
+    let super_span = item.span();
 
-    // let size = item.variants.len();
+    let size = item.variants.len();
     let name = &item.ident;
 
-    // let mut extras: Option<Ident> = None;
+    let extras: Option<Ident> = None;
     let mut error = None;
     let mut end = None;
     let mut mode = Mode::Utf8;
@@ -142,23 +143,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let variant = &variant.ident;
 
             if ident == "error" {
-                let id = graph.push(Token::new(variant));
-
-                if let Some((_, previous)) = error.replace((id, span)) {
+                if let Some(previous) = error.replace(variant) {
                     errors.extend(vec![
                         Error::new("Only one #[error] variant can be declared.").span(span),
-                        Error::new("Previously declared #[error]:").span(previous),
+                        Error::new("Previously declared #[error]:").span(previous.span()),
                     ]);
                 }
             }
 
             if ident == "end" {
-                let id = graph.push(Token::new(variant));
-
-                if let Some((_, previous)) = end.replace((id, span)) {
+                if let Some(previous) = end.replace(variant) {
                     errors.extend(vec![
                         Error::new("Only one #[end] variant can be declared.").span(span),
-                        Error::new("Previously declared #[end]:").span(previous),
+                        Error::new("Previously declared #[end]:").span(previous.span()),
                     ]);
                 }
             }
@@ -216,6 +213,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
+    if error.is_none() {
+        errors.push(Error::new("missing #[error] token variant.").span(super_span));
+    }
+
+    if end.is_none() {
+        errors.push(Error::new("missing #[end] token variant.").span(super_span));
+    }
+
     if errors.len() > 0 {
         return quote! {
             fn _logos_derive_compile_errors() {
@@ -224,9 +229,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }.into();
     }
 
-    // graph.shake();
-    // let count = graph.nodes().iter().filter_map(|n| n.as_ref()).count();
-    // panic!("{:#?}\n\n{} nodes", graph, count);
+    let error = error.expect("Already checked for none above; qed");
+    let end = end.expect("Already checked for none above; qed");
+    let extras = match extras {
+        Some(ext) => quote!(#ext),
+        None => quote!(()),
+    };
+    let source = match mode {
+        Mode::Utf8 => quote!(Source),
+        Mode::Binary => quote!(BinarySource),
+    };
+
+    let err_id = graph.push(Token::new(error));
+    let end_id = graph.push(Token::new(end));
 
     let mut root = Fork::new();
 
@@ -237,87 +252,42 @@ pub fn logos(input: TokenStream) -> TokenStream {
     for rope in ropes {
         root.merge(rope.into_fork(&mut graph), &mut graph)
     }
+    let root = graph.push(root);
 
-    graph.push(root);
-    graph.shake();
+    graph.shake(&[root, err_id, end_id]);
 
-    let count = graph.nodes().iter().filter_map(|n| n.as_ref()).count();
+    // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
-    panic!("{:#?}\n\n{} nodes", graph, count);
+    let tokens = quote! {
+        impl ::logos::Logos for #name {
+            type Extras = #extras;
 
-    // panic!("END");
+            const SIZE: usize = #size;
+            const ERROR: Self = #name::#error;
+            const END: Self = #name::#end;
+
+            fn lex<'source, Source>(lex: &mut ::logos::Lexer<#name, Source>)
+            where
+                Source: ::logos::Source<'source>,
+                Self: ::logos::source::WithSource<Source>,
+            {
+                use ::logos::internal::LexerInternal;
+                use ::logos::source::Split;
+
+                type Lexer<S> = ::logos::Lexer<#name, S>;
+
+                fn _error<'source, S: logos::Source<'source>>(lex: &mut Lexer<S>) {
+                    lex.bump(1);
+
+                    lex.token = #name::#error;
+                }
+            }
+        }
+
+        impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
+    };
+
+    // panic!("{}", tokens);
+
+    TokenStream::from(tokens)
 }
-
-
-// //// OLD CODE //// //
-
-//     let error = match error {
-//         Some(error) => error,
-//         None => panic!("Missing #[error] token variant."),
-//     };
-
-//     let end = match end {
-//         Some(end) => end,
-//         None => panic!("Missing #[end] token variant."),
-//     };
-
-//     let extras = match extras {
-//         Some(ext) => quote!(#ext),
-//         None => quote!(()),
-//     };
-
-//     // panic!("{:#?}", handlers);
-
-//     let handlers = handlers
-//         .into_iter()
-//         .map(|handler| match handler {
-//             Handler::Error => quote!(Some(_error)),
-//             Handler::Whitespace => quote!(None),
-//             Handler::Tree(tree) => generator.print_tree(tree),
-//         })
-//         .collect::<Vec<_>>();
-
-//     let fns = generator.fns();
-
-//     let source = match mode {
-//         Mode::Utf8 => quote!(Source),
-//         Mode::Binary => quote!(BinarySource),
-//     };
-
-//     let tokens = quote! {
-//         impl ::logos::Logos for #name {
-//             type Extras = #extras;
-
-//             const SIZE: usize = #size;
-//             const ERROR: Self = #name::#error;
-//             const END: Self = #name::#end;
-
-//             fn lexicon<'lexicon, 'source, Source>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, Source>>
-//             where
-//                 Source: ::logos::Source<'source>,
-//                 Self: ::logos::source::WithSource<Source>,
-//             {
-//                 use ::logos::internal::LexerInternal;
-//                 use ::logos::source::Split;
-
-//                 type Lexer<S> = ::logos::Lexer<#name, S>;
-
-//                 fn _error<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
-//                     lex.bump(1);
-
-//                     lex.token = #name::#error;
-//                 }
-
-//                 #fns
-
-//                 &[#(#handlers),*]
-//             }
-//         }
-
-//         impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
-//     };
-
-//     // panic!("{}", tokens);
-
-//     TokenStream::from(tokens)
-// }

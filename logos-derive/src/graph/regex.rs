@@ -157,10 +157,14 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 match repetition.kind {
                     RepetitionKind::ZeroOrOne => {
-                        self.parse_hir(hir, id, then, Some(then))
+                        let (_, id) = self.parse_hir(hir, id, then, Some(then))?;
+
+                        Ok((0, id))
                     },
                     RepetitionKind::ZeroOrMore => {
-                        self.parse_hir(hir, id, id, Some(then))
+                        let (_, id) = self.parse_hir(hir, id, id, Some(then))?;
+
+                        Ok((0, id))
                     },
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
@@ -300,7 +304,7 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let (len, parsed) = graph.regex(true, "[a-z]*", leaf).unwrap();
 
-        assert_eq!(len, 1);
+        assert_eq!(len, 0);
         assert_eq!(
             graph[parsed],
             Node::Fork(
@@ -318,7 +322,7 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let (len, parsed) = graph.regex(true, "[a-z]?", leaf).unwrap();
 
-        assert_eq!(len, 1);
+        assert_eq!(len, 0);
         assert_eq!(
             graph[parsed],
             Node::Fork(
