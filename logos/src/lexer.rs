@@ -47,6 +47,7 @@ where
     /// Advance the `Lexer` and attempt to produce the next `Token`.
     #[inline]
     pub fn advance(&mut self) {
+        self.token_start = self.token_end;
         self.extras.on_advance();
 
         Token::lex(self);

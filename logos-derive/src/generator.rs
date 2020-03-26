@@ -1,27 +1,23 @@
 use std::collections::BTreeMap as Map;
 
 use proc_macro2::{TokenStream, Span};
-use quote::{quote, TokenStreamExt};
+use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
 
-use crate::graph::{Graph, Node, NodeId, Fork, Rope};
+use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
 use crate::token::Token;
 
 pub struct Generator<'a> {
     name: &'a Ident,
     root: NodeId,
-    err_id: NodeId,
-    end_id: NodeId,
     gotos: Map<NodeId, Ident>,
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(name: &'a Ident, root: NodeId, err_id: NodeId, end_id: NodeId) -> Self {
+    pub fn new(name: &'a Ident, root: NodeId) -> Self {
         Generator {
             name,
             root,
-            err_id,
-            end_id,
             gotos: Map::default(),
         }
     }
@@ -31,37 +27,74 @@ impl<'a> Generator<'a> {
 
         for id in 0..graph.nodes().len() {
             if let Some(node) = graph.get(id) {
-                out.append_all(self.generate_fn(id, node, graph));
+                out.append_all(self.generate_fn(id, node));
             }
         }
+
+        let root = self.generate_goto(self.root);
+
+        out.append_all(quote! {
+            #root(lex)
+        });
 
         out
     }
 
-    fn generate_fn(&mut self, id: NodeId, node: &Node<Token>, graph: &Graph<Token>) -> TokenStream {
+    fn generate_fn(&mut self, id: NodeId, node: &Node<Token>) -> TokenStream {
         let body = match node {
-            Node::Fork(fork) => self.generate_fork(fork, graph),
-            Node::Rope(rope) => self.generate_rope(rope, graph),
+            Node::Fork(fork) => self.generate_fork(fork),
+            Node::Rope(rope) => self.generate_rope(rope),
             Node::Leaf(leaf) => self.generate_leaf(leaf),
         };
         let goto = self.generate_goto(id);
 
         quote! {
-            fn #goto<'source, S: Source<'source>>(lex: &mut Lexer<S>) {
+            fn #goto<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
                 #body
             }
         }
     }
 
-    fn generate_fork(&mut self, fork: &Fork, graph: &Graph<Token>) -> TokenStream {
-        quote! {
+    fn generate_fork(&mut self, fork: &Fork) -> TokenStream {
+        let branches = fork.branches().map(|(range, id)| {
+            let goto = self.generate_goto(id);
 
+            quote!(#range => {
+                lex.bump(1);
+                return #goto(lex);
+            })
+        });
+
+        quote! {
+            let byte = match lex.read() {
+                Some(byte) => byte,
+                None => return _end(lex),
+            };
+
+            match byte {
+                #(#branches)*
+                _ => return _error(lex),
+            }
         }
     }
 
-    fn generate_rope(&mut self, rope: &Rope, graph: &Graph<Token>) -> TokenStream {
-        quote! {
+    fn generate_rope(&mut self, rope: &Rope) -> TokenStream {
+        let matches = rope.pattern.iter().map(|range| {
+            quote! {
+                match lex.read() {
+                    Some(#range) => lex.bump(1),
+                    Some(_) => return _error(lex),
+                    None => return _end(lex),
+                }
+            }
+        });
 
+        let then = self.generate_goto(rope.then);
+
+        quote! {
+            #(#matches)*
+
+            #then(lex)
         }
     }
 
@@ -69,7 +102,6 @@ impl<'a> Generator<'a> {
         let name = self.name;
         let variant = &token.ident;
         quote! {
-            lex.bump(1);
             lex.token = #name::#variant;
         }
     }
@@ -78,5 +110,42 @@ impl<'a> Generator<'a> {
         self.gotos.entry(id).or_insert_with(|| {
             Ident::new(&format!("goto_{}", id), Span::call_site())
         })
+    }
+}
+
+
+macro_rules! match_quote {
+    ($source:expr; $($byte:tt,)* ) => {match $source {
+        $( $byte => quote!($byte), )*
+        byte => quote!(#byte),
+    }}
+}
+
+fn byte_to_tokens(byte: u8) -> TokenStream {
+    match_quote! {
+        byte;
+        b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9',
+        b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j',
+        b'k', b'l', b'm', b'n', b'o', b'p', b'q', b'r', b's', b't',
+        b'u', b'v', b'w', b'x', b'y', b'z',
+        b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J',
+        b'K', b'L', b'M', b'N', b'O', b'P', b'Q', b'R', b'S', b'T',
+        b'U', b'V', b'W', b'X', b'Y', b'Z',
+        b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
+        b'{', b'}', b'[', b']', b'<', b'>', b'-', b'=', b'_', b'+',
+        b':', b';', b',', b'.', b'/', b'?', b'|', b'"', b'\'', b'\\',
+    }
+}
+
+impl ToTokens for Range {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Range(start, end) = self;
+
+        tokens.append_all(byte_to_tokens(*start));
+
+        if start != end {
+            tokens.append_all(quote!(..=));
+            tokens.append_all(byte_to_tokens(*end));
+        }
     }
 }

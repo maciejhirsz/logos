@@ -240,9 +240,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
         Mode::Binary => quote!(BinarySource),
     };
 
-    let err_id = graph.push(Token::new(error));
-    let end_id = graph.push(Token::new(end));
-
     let mut root = Fork::new();
 
     for id in regex_ids {
@@ -254,11 +251,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
     }
     let root = graph.push(root);
 
-    graph.shake(&[root, err_id, end_id]);
+    graph.shake(&[root]);
 
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
-    let mut generator = Generator::new(name, root, err_id, end_id);
+    let mut generator = Generator::new(name, root);
 
     let body = generator.generate(&graph);
 
@@ -276,9 +273,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 Self: ::logos::source::WithSource<Source>,
             {
                 use ::logos::internal::LexerInternal;
-                use ::logos::source::{Source, Split};
+                use ::logos::source::{Source as Src, Split};
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
+
+                fn _end<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
+                    lex.token = #name::#end;
+                }
+
+                fn _error<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
+                    lex.bump(1);
+
+                    lex.token = #name::#error;
+                }
 
                 #body
             }
@@ -287,7 +294,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
     };
 
-    panic!("{}", tokens);
+    // panic!("{}", tokens);
 
     TokenStream::from(tokens)
 }
