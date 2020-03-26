@@ -125,6 +125,14 @@ impl<Leaf> Graph<Leaf> {
             return a;
         }
 
+        // Guard against trying to merge with an empty node
+        match (self.get(a), self.get(b)) {
+            (Some(_), None) => return a,
+            (None, Some(_)) => return b,
+            (None, None) => panic!("Attempt to merge two empty nodes"),
+            _ => (),
+        }
+
         if let (Node::Leaf(left), Node::Leaf(right)) = (&self[a], &self[b]) {
             return match Disambiguate::cmp(left, right) {
                 Ordering::Less => b,
@@ -176,7 +184,7 @@ impl<Leaf> Graph<Leaf> {
     where
         Leaf: Disambiguate,
     {
-        match &self[other] {
+        match self.get(other)? {
             Node::Fork(fork) if rope.miss.is_none() => {
                 // Count how many consecutive ranges in this rope would
                 // branch into the fork that results in a loop.
@@ -242,13 +250,17 @@ impl<Leaf> Graph<Leaf> {
             }
         }
     }
+
+    pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
+        self.nodes.get(id)?.as_ref()
+    }
 }
 
 impl<Leaf> Index<NodeId> for Graph<Leaf> {
     type Output = Node<Leaf>;
 
     fn index(&self, id: NodeId) -> &Node<Leaf> {
-        self.nodes[id].as_ref().expect("Indexing into a reserved node")
+        self.get(id).expect("Indexing into an empty node")
     }
 }
 

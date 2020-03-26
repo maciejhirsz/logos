@@ -43,22 +43,23 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let size = item.variants.len();
     let name = &item.ident;
 
-    let extras: Option<Ident> = None;
+    let mut extras: Option<Ident> = None;
     let mut error = None;
     let mut end = None;
     let mut mode = Mode::Utf8;
+    let mut errors = Vec::new();
     // let mut trivia = Trivia::Default;
 
     // Initially we pack all variants into a single fork, this is where all the logic branching
     // magic happens.
     // let mut fork = Fork::default();
 
-    // for attr in &item.attrs {
-    //     if let Some(ext) = value_from_attr("extras", attr) {
-    //         extras.insert(ext, |_| {
-    //             panic!("Only one #[extras] attribute can be declared.")
-    //         });
-    //     }
+    for attr in &item.attrs {
+        if let Some(ext) = util::value_from_attr("extras", attr) {
+            if let Some(_) = extras.replace(ext) {
+                errors.push(Error::new("Only one #[extras] attribute can be declared.").span(super_span));
+            }
+        }
 
     //     if let Some(nested) = util::read_attr("logos", attr) {
     //         for item in nested {
@@ -103,12 +104,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
     //             }
     //         }
     //     }
-    // }
+    }
 
     let mut variants = Vec::new();
     let mut ropes = Vec::new();
     let mut regex_ids = Vec::new();
-    let mut errors = Vec::new();
     let mut graph = Graph::new();
 
     for variant in &item.variants {
