@@ -10,47 +10,42 @@ use crate::leaf::Leaf;
 pub struct Generator<'a> {
     name: &'a Ident,
     root: NodeId,
-    gotos: Map<NodeId, Ident>,
+    graph: &'a Graph<Leaf>,
+    rendered: TokenStream,
+    idents: Map<NodeId, Ident>,
+    gotos: Map<NodeId, TokenStream>,
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(name: &'a Ident, root: NodeId) -> Self {
+    pub fn new(name: &'a Ident, root: NodeId, graph: &'a Graph<Leaf>) -> Self {
         Generator {
             name,
             root,
+            graph,
+            rendered: TokenStream::new(),
+            idents: Map::default(),
             gotos: Map::default(),
         }
     }
 
-    pub fn generate(&mut self, graph: &Graph<Leaf>) -> TokenStream {
-        let mut out = TokenStream::new();
+    pub fn generate(&mut self) -> &TokenStream {
+        let root = self.goto(self.root).clone();
 
-        for id in 0..graph.nodes().len() {
-            if let Some(node) = graph.get(id) {
-                out.append_all(self.generate_fn(id, node));
-            }
-        }
-
-        let root = self.generate_goto(self.root);
-
-        out.append_all(quote! {
-            #root(lex)
-        });
-
-        out
+        self.rendered.append_all(root);
+        &self.rendered
     }
 
-    fn generate_fn(&mut self, id: NodeId, node: &Node<Leaf>) -> TokenStream {
-        let body = match node {
+    fn generate_fn(&mut self, id: NodeId) -> TokenStream {
+        let body = match &self.graph[id] {
             Node::Fork(fork) => self.generate_fork(id, fork),
             Node::Rope(rope) => self.generate_rope(id, rope),
             Node::Leaf(leaf) => self.generate_leaf(leaf),
         };
-        let goto = self.generate_goto(id);
+        let ident = self.generate_ident(id);
 
         quote! {
             #[inline]
-            fn #goto<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
+            fn #ident<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
                 #body
             }
         }
@@ -58,10 +53,7 @@ impl<'a> Generator<'a> {
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork) -> TokenStream {
         let miss = match fork.miss {
-            Some(id) => {
-                let goto = self.generate_goto(id);
-                quote!(#goto(lex))
-            },
+            Some(id) => self.goto(id).clone(),
             None => quote! {
                 lex.bump(1);
                 lex.error()
@@ -76,11 +68,11 @@ impl<'a> Generator<'a> {
         };
 
         let branches = fork.branches().map(|(range, id)| {
-            let goto = self.generate_goto(id);
+            let next = self.goto(id);
 
             quote!(#range => {
                 lex.bump(1);
-                #goto(lex)
+                #next
             })
         });
 
@@ -99,21 +91,18 @@ impl<'a> Generator<'a> {
 
     fn generate_rope(&mut self, this: NodeId, rope: &Rope) -> TokenStream {
         let miss = match rope.miss.first() {
-            Some(id) => {
-                let goto = self.generate_goto(id);
-                quote!(#goto(lex))
-            },
+            Some(id) => self.goto(id).clone(),
             None => quote!(lex.error()),
         };
         let len = rope.pattern.len();
-        let then = self.generate_goto(rope.then);
+        let then = self.goto(rope.then);
 
         if let Some(bytes) = rope.pattern.to_bytes() {
             return quote! {
                 match lex.read::<&[u8; #len]>() {
                     Some(&[#(#bytes),*]) => {
                         lex.bump(#len);
-                        #then(lex)
+                        #then
                     },
                     _ => #miss,
                 }
@@ -136,7 +125,7 @@ impl<'a> Generator<'a> {
 
                     lex.bump(#len);
 
-                    #then(lex)
+                    #then
                 },
                 None => #miss,
             }
@@ -146,11 +135,11 @@ impl<'a> Generator<'a> {
     fn generate_leaf(&mut self, leaf: &Leaf) -> TokenStream {
         match leaf {
             Leaf::Trivia => {
-                let root = self.generate_goto(self.root);
+                let root = self.goto(self.root);
 
                 quote! {
                     lex.trivia();
-                    return #root(lex);
+                    return #root;
                 }
             },
             Leaf::Token { ident, .. } => {
@@ -163,8 +152,22 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_goto(&mut self, id: NodeId) -> &Ident {
-        self.gotos.entry(id).or_insert_with(|| {
+    fn goto(&mut self, id: NodeId) -> &TokenStream {
+        if self.gotos.get(&id).is_none() {
+            let ident = self.generate_ident(id);
+            let call_site = quote!(#ident(lex));
+
+            self.gotos.insert(id, call_site);
+
+            let fun = self.generate_fn(id);
+
+            self.rendered.append_all(fun);
+        }
+        &self.gotos[&id]
+    }
+
+    fn generate_ident(&mut self, id: NodeId) -> &Ident {
+        self.idents.entry(id).or_insert_with(|| {
             Ident::new(&format!("goto_{}", id), Span::call_site())
         })
     }
