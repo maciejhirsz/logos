@@ -15,6 +15,7 @@ pub struct Generator<'a> {
     rendered: TokenStream,
     idents: Map<(NodeId, Context), Ident>,
     gotos: Map<(NodeId, Context), TokenStream>,
+    stack: Vec<NodeId>,
 }
 
 impl<'a> Generator<'a> {
@@ -26,30 +27,38 @@ impl<'a> Generator<'a> {
             rendered: TokenStream::new(),
             idents: Map::default(),
             gotos: Map::default(),
+            stack: Vec::new(),
         }
     }
 
     pub fn generate(&mut self) -> &TokenStream {
         let root = self.goto(self.root, Context::new(0)).clone();
 
+        assert_eq!(self.stack.len(), 0);
+
         self.rendered.append_all(root);
         &self.rendered
     }
 
     fn generate_fn(&mut self, id: NodeId, ctx: Context) -> TokenStream {
+        self.stack.push(id);
+
         let body = match &self.graph[id] {
             Node::Fork(fork) => self.generate_fork(id, fork, ctx),
             Node::Rope(rope) => self.generate_rope(rope, ctx),
             Node::Leaf(leaf) => self.generate_leaf(leaf, ctx),
         };
         let ident = self.generate_ident(id, ctx);
-
-        quote! {
+        let out = quote! {
             #[inline]
             fn #ident<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
                 #body
             }
-        }
+        };
+
+        self.stack.pop();
+
+        out
     }
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
