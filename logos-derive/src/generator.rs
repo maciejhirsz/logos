@@ -1,19 +1,20 @@
-use std::collections::BTreeMap as Map;
-
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
+use fnv::FnvHashMap as Map;
 
 use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
 use crate::leaf::Leaf;
+
+type Bump = usize;
 
 pub struct Generator<'a> {
     name: &'a Ident,
     root: NodeId,
     graph: &'a Graph<Leaf>,
     rendered: TokenStream,
-    idents: Map<NodeId, Ident>,
-    gotos: Map<NodeId, TokenStream>,
+    idents: Map<(NodeId, Context), Ident>,
+    gotos: Map<(NodeId, Context), TokenStream>,
 }
 
 impl<'a> Generator<'a> {
@@ -29,19 +30,19 @@ impl<'a> Generator<'a> {
     }
 
     pub fn generate(&mut self) -> &TokenStream {
-        let root = self.goto(self.root).clone();
+        let root = self.goto(self.root, Context::new(0)).clone();
 
         self.rendered.append_all(root);
         &self.rendered
     }
 
-    fn generate_fn(&mut self, id: NodeId) -> TokenStream {
+    fn generate_fn(&mut self, id: NodeId, ctx: Context) -> TokenStream {
         let body = match &self.graph[id] {
-            Node::Fork(fork) => self.generate_fork(id, fork),
-            Node::Rope(rope) => self.generate_rope(id, rope),
-            Node::Leaf(leaf) => self.generate_leaf(leaf),
+            Node::Fork(fork) => self.generate_fork(id, fork, ctx),
+            Node::Rope(rope) => self.generate_rope(rope, ctx),
+            Node::Leaf(leaf) => self.generate_leaf(leaf, ctx),
         };
-        let ident = self.generate_ident(id);
+        let ident = self.generate_ident(id, ctx);
 
         quote! {
             #[inline]
@@ -51,9 +52,9 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_fork(&mut self, this: NodeId, fork: &Fork) -> TokenStream {
+    fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
         let miss = match fork.miss {
-            Some(id) => self.goto(id).clone(),
+            Some(id) => self.goto(id, Context::new(0)).clone(),
             None => quote! {
                 lex.bump(1);
                 lex.error()
@@ -68,7 +69,7 @@ impl<'a> Generator<'a> {
         };
 
         let branches = fork.branches().map(|(range, id)| {
-            let next = self.goto(id);
+            let next = self.goto(id, Context::new(0));
 
             quote!(#range => {
                 lex.bump(1);
@@ -89,13 +90,13 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_rope(&mut self, this: NodeId, rope: &Rope) -> TokenStream {
+    fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
         let miss = match rope.miss.first() {
-            Some(id) => self.goto(id).clone(),
+            Some(id) => self.goto(id, Context::new(0)).clone(),
             None => quote!(lex.error()),
         };
         let len = rope.pattern.len();
-        let then = self.goto(rope.then);
+        let then = self.goto(rope.then, Context::new(0));
 
         if let Some(bytes) = rope.pattern.to_bytes() {
             return quote! {
@@ -132,10 +133,10 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+    fn generate_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
         match leaf {
             Leaf::Trivia => {
-                let root = self.goto(self.root);
+                let root = self.goto(self.root, Context::new(0));
 
                 quote! {
                     lex.trivia();
@@ -152,27 +153,75 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn goto(&mut self, id: NodeId) -> &TokenStream {
-        if self.gotos.get(&id).is_none() {
-            let ident = self.generate_ident(id);
+    fn goto(&mut self, id: NodeId, ctx: Context) -> &TokenStream {
+        if self.gotos.get(&(id, ctx)).is_none() {
+            let ident = self.generate_ident(id, ctx);
             let call_site = quote!(#ident(lex));
 
-            self.gotos.insert(id, call_site);
+            self.gotos.insert((id, ctx), call_site);
 
-            let fun = self.generate_fn(id);
+            let fun = self.generate_fn(id, ctx);
 
             self.rendered.append_all(fun);
         }
-        &self.gotos[&id]
+        &self.gotos[&(id, ctx)]
     }
 
-    fn generate_ident(&mut self, id: NodeId) -> &Ident {
-        self.idents.entry(id).or_insert_with(|| {
-            Ident::new(&format!("goto_{}", id), Span::call_site())
+    fn generate_ident(&mut self, id: NodeId, ctx: Context) -> &Ident {
+        self.idents.entry((id, ctx)).or_insert_with(|| {
+            let ident = format!("goto_{}_{}x{}", id, ctx.available, ctx.unbumped);
+
+            Ident::new(&ident, Span::call_site())
         })
     }
 }
 
+/// This struct keeps track of bytes available to be read without
+/// bounds checking across the tree.
+///
+/// For example, a branch that matches 4 bytes followed by a fork
+/// with smallest branch containing of 2 bytes can do a bounds check
+/// for 6 bytes ahead, and leave the remaining 2 byte array (fixed size)
+/// to be handled by the fork, avoiding bound checks there.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Context {
+    /// Amount of bytes available at local `arr` variable
+    pub available: usize,
+
+    /// Amount of bytes that haven't been bumped yet but should
+    /// before a new read is performed
+    pub unbumped: usize,
+}
+
+impl Context {
+    pub const fn new(available: usize) -> Self {
+        Context {
+            available,
+            unbumped: 0,
+        }
+    }
+
+    pub const fn unbumped(unbumped: usize) -> Self {
+        Context {
+            available: 0,
+            unbumped,
+        }
+    }
+
+    pub const fn advance(self, n: usize) -> Self {
+        Context {
+            available: self.available - n,
+            unbumped: self.unbumped + n,
+        }
+    }
+
+    pub fn bump(self) -> TokenStream {
+        match self.unbumped {
+            0 => quote!(),
+            n => quote!(lex.bump(#n);),
+        }
+    }
+}
 
 macro_rules! match_quote {
     ($source:expr; $($byte:tt,)* ) => {match $source {
