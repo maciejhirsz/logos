@@ -6,8 +6,6 @@ use fnv::FnvHashMap as Map;
 use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
 use crate::leaf::Leaf;
 
-type Bump = usize;
-
 pub struct Generator<'a> {
     name: &'a Ident,
     root: NodeId,
@@ -62,6 +60,10 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
+        if fork.branches().all(|(_, id)| id == this) && fork.miss.is_some() {
+            return self.generate_fast_loop(fork, ctx);
+        }
+
         let miss = match fork.miss {
             Some(id) => self.goto(id, Context::new(0)).clone(),
             None => quote! {
@@ -96,6 +98,45 @@ impl<'a> Generator<'a> {
                 #(#branches)*
                 _ => { #miss }
             }
+        }
+    }
+
+    fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
+        let miss = fork.miss.unwrap();
+        let miss = self.goto(miss, Context::new(0)).clone();
+        let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
+
+        let pat = quote!(#(#ranges)|*);
+        let mut inner = quote !{
+            if matches!(bytes[7], #pat) {
+                lex.bump(8);
+                continue;
+            }
+        };
+        for i in (0..=6usize).rev() {
+            inner = quote! {
+                if matches!(bytes[#i], #pat) {
+                    #inner
+                    lex.bump(#i + 1);
+                    return #miss;
+                }
+            };
+        }
+
+        quote! {
+            while let Some(bytes) = lex.read::<&[u8; 8]>() {
+                #inner
+                return #miss;
+            }
+
+            while let Some(byte) = lex.read() {
+                match byte {
+                    #(#ranges)|* => lex.bump(1),
+                    _ => break,
+                }
+            }
+
+            #miss
         }
     }
 
@@ -182,6 +223,10 @@ impl<'a> Generator<'a> {
 
             Ident::new(&ident, Span::call_site())
         })
+    }
+
+    fn would_loop(&self, id: NodeId) -> Option<usize> {
+        self.stack.iter().rev().position(|i| i == &id)
     }
 }
 
