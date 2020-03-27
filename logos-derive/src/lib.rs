@@ -281,12 +281,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     lex.token = #name::#end;
                 }
 
-                fn _error<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
-                    lex.bump(1);
-
-                    lex.token = #name::#error;
-                }
-
                 #body
             }
         }

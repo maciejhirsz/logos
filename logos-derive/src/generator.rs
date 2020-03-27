@@ -57,9 +57,15 @@ impl<'a> Generator<'a> {
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork) -> TokenStream {
         let miss = match fork.miss {
-            Some(id) => self.generate_goto(id).to_token_stream(),
-            None if this == self.root => quote!(_error),
-            None => quote!(_error),
+            Some(id) => {
+                let goto = self.generate_goto(id);
+                quote!(#goto(lex))
+            },
+            // None if this == self.root => quote!(lex.error()),
+            None => quote! {
+                lex.bump(1);
+                lex.error()
+            },
         };
 
         let branches = fork.branches().map(|(range, id)| {
@@ -67,7 +73,7 @@ impl<'a> Generator<'a> {
 
             quote!(#range => {
                 lex.bump(1);
-                return #goto(lex);
+                #goto(lex)
             })
         });
 
@@ -79,24 +85,27 @@ impl<'a> Generator<'a> {
 
             match byte {
                 #(#branches)*
-                _ => return #miss(lex),
+                _ => { #miss }
             }
         }
     }
 
     fn generate_rope(&mut self, this: NodeId, rope: &Rope) -> TokenStream {
         let miss = match rope.miss.first() {
-            Some(id) => self.generate_goto(id).to_token_stream(),
-            None if this == self.root => quote!(_end),
-            None => quote!(_error),
+            Some(id) => {
+                let goto = self.generate_goto(id);
+                quote!(#goto(lex))
+            },
+            // None if this == self.root => quote!(_end),
+            None => quote!(lex.error()),
         };
 
         let matches = rope.pattern.iter().map(|range| {
             quote! {
                 match lex.read() {
                     Some(#range) => lex.bump(1),
-                    Some(_) => return #miss(lex),
-                    None => return #miss(lex),
+                    Some(_) => return #miss,
+                    None => return #miss,
                 }
             }
         });
