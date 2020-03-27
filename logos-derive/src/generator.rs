@@ -122,7 +122,11 @@ impl<'a> Generator<'a> {
     fn generate_leaf(&mut self, leaf: &Leaf) -> TokenStream {
         match leaf {
             Leaf::Trivia => {
-                unimplemented!();
+                let root = self.generate_goto(self.root);
+
+                quote! {
+                    return #root(lex);
+                }
             },
             Leaf::Token { ident, .. } => {
                 let name = self.name;
