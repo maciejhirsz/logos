@@ -119,11 +119,18 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_leaf(&mut self, token: &Leaf) -> TokenStream {
-        let name = self.name;
-        let variant = &token.ident;
-        quote! {
-            lex.token = #name::#variant;
+    fn generate_leaf(&mut self, leaf: &Leaf) -> TokenStream {
+        match leaf {
+            Leaf::Trivia => {
+                unimplemented!();
+            },
+            Leaf::Token { ident, .. } => {
+                let name = self.name;
+
+                quote! {
+                    lex.token = #name::#ident;
+                }
+            },
         }
     }
 

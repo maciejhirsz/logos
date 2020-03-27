@@ -6,35 +6,51 @@ use syn::Ident;
 use crate::graph::{Node, Disambiguate};
 
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Leaf {
-    pub ident: Ident,
-    pub priority: usize,
-    pub callback: Option<Ident>,
+pub enum Leaf {
+    Trivia,
+    Token {
+        ident: Ident,
+        priority: usize,
+        callback: Option<Ident>,
+    },
 }
 
 impl Leaf {
-    pub fn new(ident: &Ident) -> Self {
-        Leaf {
+    pub fn token(ident: &Ident) -> Self {
+        Leaf::Token {
             ident: ident.clone(),
             priority: 0,
             callback: None,
         }
     }
 
-    pub fn callback(mut self, callback: Option<Ident>) -> Self {
-        self.callback = callback;
+    pub fn callback(mut self, cb: Option<Ident>) -> Self {
+        match self {
+            Leaf::Token { ref mut callback, .. } => *callback = cb,
+            Leaf::Trivia => panic!("Oh no :("),
+        }
         self
     }
 
-    pub fn priority(mut self, priority: usize) -> Self {
-        self.priority = priority;
+    pub fn priority(mut self, prio: usize) -> Self {
+        match self {
+            Leaf::Token { ref mut priority, .. } => *priority = prio,
+            Leaf::Trivia => panic!("Oh no :("),
+        }
         self
     }
 }
 
 impl Disambiguate for Leaf {
     fn cmp(left: &Leaf, right: &Leaf) -> Ordering {
-        Ord::cmp(&left.priority, &right.priority)
+        match (left, right) {
+            (Leaf::Token { priority: left, .. }, Leaf::Token { priority: right, .. }) => {
+                Ord::cmp(left, right)
+            },
+            (Leaf::Token { .. }, Leaf::Trivia) => Ordering::Greater,
+            (Leaf::Trivia, Leaf::Token { .. }) => Ordering::Less,
+            (Leaf::Trivia, Leaf::Trivia) => Ordering::Equal,
+        }
     }
 }
 
@@ -46,12 +62,17 @@ impl From<Leaf> for Node<Leaf> {
 
 impl Debug for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "::{}", self.ident)?;
+        match self {
+            Leaf::Trivia => f.write_str("[trivia]"),
+            Leaf::Token { ident, callback, .. } => {
+                 write!(f, "::{}", ident)?;
 
-        if let Some(ref callback) = self.callback {
-            write!(f, " ({})", callback)?;
+                if let Some(ref callback) = callback {
+                    write!(f, " ({})", callback)?;
+                }
+
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 }

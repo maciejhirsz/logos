@@ -161,7 +161,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
-                let token = Leaf::new(variant).callback(definition.callback);
+                let token = Leaf::token(variant).callback(definition.callback);
 
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;
