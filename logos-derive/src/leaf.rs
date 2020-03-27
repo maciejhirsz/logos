@@ -6,15 +6,15 @@ use syn::Ident;
 use crate::graph::{Node, Disambiguate};
 
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Token {
+pub struct Leaf {
     pub ident: Ident,
     pub priority: usize,
     pub callback: Option<Ident>,
 }
 
-impl Token {
+impl Leaf {
     pub fn new(ident: &Ident) -> Self {
-        Token {
+        Leaf {
             ident: ident.clone(),
             priority: 0,
             callback: None,
@@ -32,19 +32,19 @@ impl Token {
     }
 }
 
-impl Disambiguate for Token {
-    fn cmp(left: &Token, right: &Token) -> Ordering {
+impl Disambiguate for Leaf {
+    fn cmp(left: &Leaf, right: &Leaf) -> Ordering {
         Ord::cmp(&left.priority, &right.priority)
     }
 }
 
-impl From<Token> for Node<Token> {
-    fn from(leaf: Token) -> Self {
+impl From<Leaf> for Node<Leaf> {
+    fn from(leaf: Leaf) -> Self {
         Node::Leaf(leaf)
     }
 }
 
-impl Debug for Token {
+impl Debug for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "::{}", self.ident)?;
 

@@ -13,13 +13,13 @@ mod generator;
 mod error;
 mod graph;
 mod util;
-mod token;
+mod leaf;
 
 use error::Error;
 
 use self::generator::Generator;
 use graph::{Graph, Fork, Rope};
-use token::Token;
+use leaf::Leaf;
 use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
@@ -161,7 +161,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
-                let token = Token::new(variant).callback(definition.callback);
+                let token = Leaf::new(variant).callback(definition.callback);
 
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;

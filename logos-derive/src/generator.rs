@@ -5,7 +5,7 @@ use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
 
 use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
-use crate::token::Token;
+use crate::leaf::Leaf;
 
 pub struct Generator<'a> {
     name: &'a Ident,
@@ -22,7 +22,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn generate(&mut self, graph: &Graph<Token>) -> TokenStream {
+    pub fn generate(&mut self, graph: &Graph<Leaf>) -> TokenStream {
         let mut out = TokenStream::new();
 
         for id in 0..graph.nodes().len() {
@@ -40,7 +40,7 @@ impl<'a> Generator<'a> {
         out
     }
 
-    fn generate_fn(&mut self, id: NodeId, node: &Node<Token>) -> TokenStream {
+    fn generate_fn(&mut self, id: NodeId, node: &Node<Leaf>) -> TokenStream {
         let body = match node {
             Node::Fork(fork) => self.generate_fork(id, fork),
             Node::Rope(rope) => self.generate_rope(id, rope),
@@ -119,7 +119,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_leaf(&mut self, token: &Token) -> TokenStream {
+    fn generate_leaf(&mut self, token: &Leaf) -> TokenStream {
         let name = self.name;
         let variant = &token.ident;
         quote! {
