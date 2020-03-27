@@ -190,6 +190,18 @@ impl Rope {
     }
 }
 
+impl Pattern {
+    pub fn to_bytes(&self) -> Option<Vec<u8>> {
+        let mut out = Vec::with_capacity(self.len());
+
+        for range in self.iter() {
+            out.push(range.as_byte()?);
+        }
+
+        Some(out)
+    }
+}
+
 impl<T> From<&[T]> for Pattern
 where
     T: Into<Range> + Copy,
@@ -289,5 +301,16 @@ mod tests {
 
         assert_eq!(split, Rope::new("foo", expected_id));
         assert_eq!(graph[expected_id], Rope::new("bar", leaf));
+    }
+
+    #[test]
+    fn pattern_to_bytes() {
+        let pat = Pattern::from("foobar");
+
+        assert_eq!(pat.to_bytes().unwrap(), b"foobar");
+
+        let ranges = Pattern::from(vec![0..=0, 42..=42, b'{'..=b'}']);
+
+        assert_eq!(ranges.to_bytes(), None);
     }
 }

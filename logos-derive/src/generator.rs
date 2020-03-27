@@ -49,6 +49,7 @@ impl<'a> Generator<'a> {
         let goto = self.generate_goto(id);
 
         quote! {
+            #[inline]
             fn #goto<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
                 #body
             }
@@ -61,11 +62,17 @@ impl<'a> Generator<'a> {
                 let goto = self.generate_goto(id);
                 quote!(#goto(lex))
             },
-            // None if this == self.root => quote!(lex.error()),
             None => quote! {
                 lex.bump(1);
                 lex.error()
             },
+        };
+        let end = if this == self.root {
+            quote!(_end(lex))
+        } else if fork.miss.is_some() {
+            miss.clone()
+        } else {
+            quote!(lex.error())
         };
 
         let branches = fork.branches().map(|(range, id)| {
@@ -80,7 +87,7 @@ impl<'a> Generator<'a> {
         quote! {
             let byte = match lex.read() {
                 Some(byte) => byte,
-                None => return _end(lex),
+                None => return #end,
             };
 
             match byte {
@@ -96,26 +103,43 @@ impl<'a> Generator<'a> {
                 let goto = self.generate_goto(id);
                 quote!(#goto(lex))
             },
-            // None if this == self.root => quote!(_end),
             None => quote!(lex.error()),
         };
+        let len = rope.pattern.len();
+        let then = self.generate_goto(rope.then);
 
-        let matches = rope.pattern.iter().map(|range| {
+        if let Some(bytes) = rope.pattern.to_bytes() {
+            return quote! {
+                match lex.read::<&[u8; #len]>() {
+                    Some(&[#(#bytes),*]) => {
+                        lex.bump(#len);
+                        #then(lex)
+                    },
+                    _ => #miss,
+                }
+            };
+        }
+
+        let matches = rope.pattern.iter().enumerate().map(|(idx, range)| {
             quote! {
-                match lex.read() {
-                    Some(#range) => lex.bump(1),
-                    Some(_) => return #miss,
-                    None => return #miss,
+                match bytes[#idx] {
+                    #range => (),
+                    _ => return #miss,
                 }
             }
         });
 
-        let then = self.generate_goto(rope.then);
-
         quote! {
-            #(#matches)*
+            match lex.read::<&[u8; #len]>() {
+                Some(bytes) => {
+                    #(#matches)*
 
-            #then(lex)
+                    lex.bump(#len);
+
+                    #then(lex)
+                },
+                None => #miss,
+            }
         }
     }
 
