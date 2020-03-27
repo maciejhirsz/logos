@@ -182,6 +182,12 @@ where
         self.token_end += size;
     }
 
+    /// Reset `token_start` to `token_end`.
+    #[inline]
+    fn trivia(&mut self) {
+        self.token_start = self.token_end;
+    }
+
     /// Set the current token to appropriate `#[error]` variant.
     /// Guarantee that `token_end` is at char boundary for `&str`.
     #[inline]

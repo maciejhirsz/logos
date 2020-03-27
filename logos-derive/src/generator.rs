@@ -125,6 +125,7 @@ impl<'a> Generator<'a> {
                 let root = self.generate_goto(self.root);
 
                 quote! {
+                    lex.trivia();
                     return #root(lex);
                 }
             },

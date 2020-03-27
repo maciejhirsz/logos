@@ -112,13 +112,13 @@ pub fn read_attr(name: &str, attr: &Attribute) -> Option<Vec<NestedMeta>> {
     read_meta(name, meta)
 }
 
-// pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
-//     if let NestedMeta::Meta(meta) = nested {
-//         read_meta(name, meta)
-//     } else {
-//         None
-//     }
-// }
+pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
+    if let NestedMeta::Meta(meta) = nested {
+        read_meta(name, meta)
+    } else {
+        None
+    }
+}
 
 pub fn read_meta(name: &str, meta: Meta) -> Option<Vec<NestedMeta>> {
     match meta {
@@ -150,12 +150,12 @@ where
     read_attr(name, attr).map(parse_value)
 }
 
-// pub fn value_from_nested<V>(name: &str, nested: NestedMeta) -> Option<V>
-// where
-//     V: Value,
-// {
-//     read_nested(name, nested).map(parse_value)
-// }
+pub fn value_from_nested<V>(name: &str, nested: NestedMeta) -> Option<V>
+where
+    V: Value,
+{
+    read_nested(name, nested).map(parse_value)
+}
 
 fn parse_value<V>(items: Vec<NestedMeta>) -> V
 where

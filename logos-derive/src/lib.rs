@@ -16,13 +16,14 @@ mod util;
 mod leaf;
 
 use error::Error;
-
-use self::generator::Generator;
+use generator::Generator;
 use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
 
+use beef::lean::Cow;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::{Ident, Fields, ItemEnum};
 use syn::spanned::Spanned;
@@ -48,11 +49,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut end = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
-    // let mut trivia = Trivia::Default;
-
-    // Initially we pack all variants into a single fork, this is where all the logic branching
-    // magic happens.
-    // let mut fork = Fork::default();
+    let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
     for attr in &item.attrs {
         if let Some(ext) = util::value_from_attr("extras", attr) {
@@ -61,49 +58,23 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-    //     if let Some(nested) = util::read_attr("logos", attr) {
-    //         for item in nested {
-    //             if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
-    //                 panic!("{:?}", t);
-    //                 let (utf8, regex) = match t {
-    //                     Some(Literal::Utf8(string)) => (true, string),
-    //                     Some(Literal::Bytes(bytes)) => {
-    //                         mode = Mode::Binary;
+        if let Some(nested) = util::read_attr("logos", attr) {
+            for item in nested {
+                if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
+                    trivia = match t {
+                        Some(Literal::Utf8(string, span)) => {
+                            Some((true, string.into(), span))
+                        },
+                        Some(Literal::Bytes(bytes, span)) => {
+                            mode = Mode::Binary;
 
-    //                         (false, util::bytes_to_regex_string(&bytes))
-    //                     }
-    //                     None => {
-    //                         match trivia {
-    //                             Trivia::Patterns(_) => {}
-    //                             Trivia::Default => trivia = Trivia::Patterns(vec![]),
-    //                         }
-
-    //                         continue;
-    //                     }
-    //                 };
-
-    //                 let node = Node::from_regex(&regex, utf8);
-
-    //                 match node {
-    //                     Node::Branch(ref branch)
-    //                         if branch.then.is_none() && branch.regex.len() == 1 =>
-    //                     {
-    //                         let pattern = branch.regex.first().clone();
-
-    //                         match trivia {
-    //                             Trivia::Patterns(ref mut patterns) => patterns.push(pattern),
-    //                             Trivia::Default => trivia = Trivia::Patterns(vec![pattern]),
-    //                         }
-
-    //                         continue;
-    //                     }
-    //                     _ => {}
-    //                 }
-
-    //                 fork.insert(node.leaf(Leaf::Trivia));
-    //             }
-    //         }
-    //     }
+                            Some((false, util::bytes_to_regex_string(&bytes).into(), span))
+                        },
+                        None => None,
+                    };
+                }
+            }
+        }
     }
 
     let mut variants = Vec::new();
@@ -213,6 +184,21 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
+    let mut root = Fork::new();
+
+    if let Some((utf8, regex, span)) = trivia {
+        let then = graph.push(Leaf::Trivia);
+
+        match graph.regex(utf8, &*regex, then) {
+            Ok((_, id)) => {
+                let trivia = graph.fork_off(id);
+
+                root.merge(trivia, &mut graph);
+            },
+            Err(err) => errors.push(err.span(span)),
+        }
+    }
+
     if error.is_none() {
         errors.push(Error::new("missing #[error] token variant.").span(super_span));
     }
@@ -239,8 +225,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
         Mode::Utf8 => quote!(Source),
         Mode::Binary => quote!(BinarySource),
     };
-
-    let mut root = Fork::new();
 
     for id in regex_ids {
         let fork = graph.fork_off(id);

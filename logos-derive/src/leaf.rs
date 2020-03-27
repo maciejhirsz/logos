@@ -63,7 +63,7 @@ impl From<Leaf> for Node<Leaf> {
 impl Debug for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Leaf::Trivia => f.write_str("[trivia]"),
+            Leaf::Trivia => f.write_str("<trivia>"),
             Leaf::Token { ident, callback, .. } => {
                  write!(f, "::{}", ident)?;
 
