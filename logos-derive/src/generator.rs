@@ -55,7 +55,7 @@ impl<'a> Generator<'a> {
         self.generate_meta(self.root, self.root);
         assert_eq!(self.stack.len(), 0);
 
-        let root = self.goto(self.root, Context::new(0)).clone();
+        let root = self.goto(self.root, Context::new()).clone();
 
         assert_eq!(self.stack.len(), 0);
 
@@ -129,27 +129,16 @@ impl<'a> Generator<'a> {
         if self.meta[&this].loop_entry_from.contains(&this) {
             return self.generate_fast_loop(fork, ctx);
         }
-
-        let miss = match fork.miss {
-            Some(id) => self.goto(id, ctx).clone(),
-            None => {
-                let amount = ctx.unbumped + 1;
-
-                quote!({
-                    lex.bump(#amount);
-                    lex.error()
-                })
-            }
-        };
+        let miss = ctx.miss(self);
         let end = if this == self.root {
             quote!(_end(lex))
-        } else if fork.miss.is_some() {
+        } else if ctx.miss.is_some() {
             miss.clone()
         } else {
             // TODO: check if needed?
-            let bump = ctx.bump();
+            // let bump = ctx.bump();
             quote!({
-                #bump
+                // #bump
                 lex.error()
             })
         };
@@ -178,9 +167,7 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
-        let bump = ctx.bump();
-        let miss = fork.miss.unwrap();
-        let miss = self.goto(miss, Context::new(0)).clone();
+        let miss = ctx.miss(self);
         let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
 
         let pat = quote!(#(#ranges)|*);
@@ -201,8 +188,6 @@ impl<'a> Generator<'a> {
         }
 
         quote! {
-            #bump
-
             // while let Some(bytes) = lex.read::<&[u8; 8]>() {
             //     #inner
             //     return #miss;
@@ -221,10 +206,7 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
-        let miss = match rope.miss.first() {
-            Some(id) => self.goto(id, ctx).clone(),
-            None => quote!(lex.error()),
-        };
+        let miss = ctx.miss(self);
         let len = rope.pattern.len();
         let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
         let read = match ctx.unbumped {
@@ -262,12 +244,12 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
+    fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
         let bump = ctx.bump();
 
         match leaf {
             Leaf::Trivia => {
-                let root = self.goto(self.root, Context::new(0));
+                let root = self.goto(self.root, Context::new());
 
                 quote! {
                     #bump
@@ -286,11 +268,12 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn goto(&mut self, id: NodeId, ctx: Context) -> &TokenStream {
-        let (ctx, bump) = match self.meta[&id].loop_entry_from.len() {
-            0 => (ctx, None),
-            _ => (Context::new(0), Some(ctx.bump())),
-        };
+    fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
+        let mut bump = ctx.switch(self.graph[id].miss());
+
+        if self.meta[&id].loop_entry_from.len() > 0 && ctx.unbumped > 0 {
+            bump = ctx.bump();
+        }
 
         if self.gotos.get(&(id, ctx)).is_none() {
             let ident = self.generate_ident(id, ctx);
@@ -313,7 +296,9 @@ impl<'a> Generator<'a> {
 
     fn generate_ident(&mut self, id: NodeId, ctx: Context) -> &Ident {
         self.idents.entry((id, ctx)).or_insert_with(|| {
-            let ident = format!("goto_{}_{}x{}", id, ctx.available, ctx.unbumped);
+            let mut ident = format!("goto{}", id);
+
+            ctx.write_suffix(&mut ident);
 
             Ident::new(&ident, Span::call_site())
         })
@@ -331,49 +316,70 @@ impl<'a> Generator<'a> {
 /// with smallest branch containing of 2 bytes can do a bounds check
 /// for 6 bytes ahead, and leave the remaining 2 byte array (fixed size)
 /// to be handled by the fork, avoiding bound checks there.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Context {
     /// Amount of bytes available at local `arr` variable
-    pub available: usize,
+    // pub available: usize,
 
     /// Amount of bytes that haven't been bumped yet but should
     /// before a new read is performed
     pub unbumped: usize,
+
+    miss: Option<NodeId>,
 }
 
 impl Context {
-    pub const fn new(available: usize) -> Self {
+    pub const fn new() -> Self {
         Context {
-            available,
+            // available,
             unbumped: 0,
+            miss: None,
         }
     }
 
-    pub const fn unbumped(unbumped: usize) -> Self {
-        Context {
-            available: 0,
-            unbumped,
+    pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
+        match self.miss.replace(miss?) {
+            None => {
+                self.unbumped = 0;
+                None
+            },
+            Some(_) => self.bump(),
         }
     }
 
     pub const fn push(self, n: usize) -> Self {
         Context {
-            available: self.available,
             unbumped: self.unbumped + n,
+            ..self
         }
     }
 
-    pub const fn advance(self, n: usize) -> Self {
-        Context {
-            available: self.available - n,
-            unbumped: self.unbumped + n,
-        }
-    }
-
-    pub fn bump(self) -> TokenStream {
+    pub fn bump(&mut self) -> Option<TokenStream> {
         match self.unbumped {
-            0 => quote!(),
-            n => quote!(lex.bump(#n);),
+            0 => None,
+            n => {
+                let tokens = quote!(lex.bump(#n););
+                self.unbumped = 0;
+                Some(tokens)
+            },
+        }
+    }
+
+    pub fn miss(&self, gen: &mut Generator) -> TokenStream {
+        match self.miss {
+            Some(id) => gen.goto(id, Context::new()).clone(),
+            None => quote!(_error(lex)),
+        }
+    }
+
+    pub fn write_suffix(&self, buf: &mut String) {
+        use std::fmt::Write;
+
+        if self.unbumped > 0 {
+            let _ = write!(buf, "_at{}", self.unbumped);
+        }
+        if let Some(id) = self.miss {
+            let _ = write!(buf, "_else{}", id);
         }
     }
 }

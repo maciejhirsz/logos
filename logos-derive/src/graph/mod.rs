@@ -258,6 +258,16 @@ impl<Leaf> Graph<Leaf> {
     pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
         self.nodes.get(id)?.as_ref()
     }
+
+    pub fn miss(&self, id: NodeId) -> Option<NodeId> {
+        let node = self.get(id)?;
+
+        match node {
+            Node::Fork(fork) => fork.miss,
+            Node::Rope(rope) => rope.miss.first(),
+            Node::Leaf(_) => None,
+        }
+    }
 }
 
 impl<Leaf> Index<NodeId> for Graph<Leaf> {
