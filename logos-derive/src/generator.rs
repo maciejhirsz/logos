@@ -364,7 +364,7 @@ impl Context {
             n => {
                 let tokens = quote!(lex.bump(#n););
                 self.at = 0;
-                self.bumped;
+                self.bumped = true;
                 Some(tokens)
             },
         }
@@ -386,6 +386,9 @@ impl Context {
         }
         if let Some(id) = self.miss {
             let _ = write!(buf, "_else{}", id);
+        }
+        if self.bumped {
+            buf.push_str("_x");
         }
     }
 }
