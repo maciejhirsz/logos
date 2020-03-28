@@ -29,11 +29,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     ) -> Result<(usize, NodeId)> {
         match hir {
             HirKind::Empty => {
-                let miss = match miss {
+                let id = match miss {
                     Some(miss) => self.merge(miss, then),
                     None => then,
                 };
-                let id = self.push(Fork::new().miss(miss));
                 Ok((0, id))
             },
             HirKind::Alternation(alternation) => {
@@ -138,16 +137,25 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 }
 
                 let hir = repetition.hir.into_kind();
-
                 match repetition.kind {
                     RepetitionKind::ZeroOrOne => {
-                        let (_, id) = self.parse_hir(hir, then, Some(then))?;
+                        let miss = match miss {
+                            Some(id) => self.merge(id, then),
+                            None => then,
+                        };
+
+                        let (_, id) = self.parse_hir(hir, then, Some(miss))?;
 
                         Ok((0, id))
                     },
                     RepetitionKind::ZeroOrMore => {
+                        let miss = match miss {
+                            Some(id) => self.merge(id, then),
+                            None => then,
+                        };
+
                         let this = self.reserve();
-                        let (_, id) = self.parse_hir(hir, this.get(), Some(then))?;
+                        let (_, id) = self.parse_hir(hir, this.get(), Some(miss))?;
                         // Move a fork to the reserved id
                         let fork = self.fork_off(id);
                         let id = self.insert(this, fork);
