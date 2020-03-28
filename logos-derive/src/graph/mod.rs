@@ -125,14 +125,6 @@ impl<Leaf> Graph<Leaf> {
             return a;
         }
 
-        // // Guard against trying to merge with an empty node
-        // match (self.get(a), self.get(b)) {
-        //     (Some(_), None) => return a,
-        //     (None, Some(_)) => return b,
-        //     (None, None) => panic!("Attempt to merge two empty nodes"),
-        //     _ => (),
-        // }
-
         if let (Some(Node::Leaf(left)), Some(Node::Leaf(right))) = (self.get(a), self.get(b)) {
             return match Disambiguate::cmp(left, right) {
                 Ordering::Less => b,
@@ -176,7 +168,6 @@ impl<Leaf> Graph<Leaf> {
         let mut fork = self.fork_off(a);
 
         fork.merge(self.fork_off(b), self);
-        fork.flatten(self);
 
         self.insert(id, fork)
     }
@@ -257,18 +248,6 @@ impl<Leaf> Graph<Leaf> {
 
     pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
         self.nodes.get(id)?.as_ref()
-    }
-
-    pub fn can_be_flattened(&self, id: NodeId) -> bool {
-        match self.get(id) {
-            Some(Node::Fork(fork)) => {
-                fork.miss != Some(id) && fork.branches().all(|(_, then)| then != id)
-            },
-            Some(Node::Rope(rope)) => {
-                rope.miss.first() != Some(id) && rope.then != id
-            },
-            _ => false,
-        }
     }
 
     pub fn miss(&self, id: NodeId) -> Option<NodeId> {

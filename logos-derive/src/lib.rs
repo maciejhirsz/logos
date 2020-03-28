@@ -164,14 +164,17 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                 match graph.regex(utf8, &regex, then.get()) {
                     Ok((len, id)) => {
-                        // Check if the regex can go to the leaf on a miss
-                        if graph[id].miss() == Some(then.get()) {
-                            errors.push(
-                                Error::new("#[regex]: expression can match empty string.\n\n\
-                                            hint: consider changing * to +").span(span)
-                            );
+                        let then = graph.insert(then, token.priority(len));
+                        if let Some(id) = graph[id].miss() {
+                            if id == then {
+                                errors.push(
+                                    Error::new("#[regex]: expression can match empty string.\n\n\
+                                                hint: consider changing * to +").span(span)
+                                );
+                            } else {
+                                regex_ids.push(id);
+                            }
                         }
-                        graph.insert(then, token.priority(len));
                         regex_ids.push(id);
                     },
                     Err(err) => errors.push(err.span(span)),
@@ -233,7 +236,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     for rope in ropes {
         root.merge(rope.into_fork(&mut graph), &mut graph)
     }
-    // root.flatten(&mut graph);
     let root = graph.push(root);
 
     graph.shake(root);

@@ -59,19 +59,6 @@ impl Fork {
         }
     }
 
-    pub fn flatten<T>(&mut self, graph: &mut Graph<T>)
-    where
-        T: Disambiguate,
-    {
-        while let Some(id) = self.miss {
-            if !graph.can_be_flattened(id) {
-                break;
-            }
-            self.miss = None;
-            self.merge(graph.fork_off(id), graph);
-        }
-    }
-
     pub fn branches(&self) -> ForkIter<'_> {
         ForkIter {
             offset: 0,
