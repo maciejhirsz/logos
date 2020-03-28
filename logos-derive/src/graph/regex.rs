@@ -44,16 +44,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut longest = 0;
 
                 for hir in alternation {
-                    let (len, alt) = self.parse_hir(hir.into_kind(), id, then, None)?;
-                    let alt = match alt {
-                        Node::Fork(fork) => fork,
-                        Node::Rope(rope) => rope.into_fork(self),
-                        Node::Leaf(_) => {
-                            // Leaf is a generic without a constructor, so this is
-                            // impossible to be constructed here
-                            unreachable!()
-                        }
-                    };
+                    let id = self.reserve();
+                    let (len, alt) = self.parse_hir(hir.into_kind(), id.get(), then, None)?;
+                    let id = self.insert(id, alt);
+                    let alt = self.fork_off(id);
 
                     longest = max(longest, len);
 
