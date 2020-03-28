@@ -125,15 +125,15 @@ impl<Leaf> Graph<Leaf> {
             return a;
         }
 
-        // Guard against trying to merge with an empty node
-        match (self.get(a), self.get(b)) {
-            (Some(_), None) => return a,
-            (None, Some(_)) => return b,
-            (None, None) => panic!("Attempt to merge two empty nodes"),
-            _ => (),
-        }
+        // // Guard against trying to merge with an empty node
+        // match (self.get(a), self.get(b)) {
+        //     (Some(_), None) => return a,
+        //     (None, Some(_)) => return b,
+        //     (None, None) => panic!("Attempt to merge two empty nodes"),
+        //     _ => (),
+        // }
 
-        if let (Node::Leaf(left), Node::Leaf(right)) = (&self[a], &self[b]) {
+        if let (Some(Node::Leaf(left)), Some(Node::Leaf(right))) = (self.get(a), self.get(b)) {
             return match Disambiguate::cmp(left, right) {
                 Ordering::Less => b,
                 Ordering::Equal | Ordering::Greater => a,
@@ -155,13 +155,13 @@ impl<Leaf> Graph<Leaf> {
 
         let [a, b] = key;
 
-        let merged_rope = match (&self[a], &self[b]) {
-            (Node::Rope(rope), _) => {
+        let merged_rope = match (self.get(a), self.get(b)) {
+            (Some(Node::Rope(rope)), _) => {
                 let rope = rope.clone();
 
                 self.merge_rope(rope, b)
             },
-            (_, Node::Rope(rope)) => {
+            (_, Some(Node::Rope(rope))) => {
                 let rope = rope.clone();
 
                 self.merge_rope(rope, a)
@@ -184,8 +184,8 @@ impl<Leaf> Graph<Leaf> {
     where
         Leaf: Disambiguate,
     {
-        match self.get(other)? {
-            Node::Fork(fork) if rope.miss.is_none() => {
+        match self.get(other) {
+            Some(Node::Fork(fork)) if rope.miss.is_none() => {
                 // Count how many consecutive ranges in this rope would
                 // branch into the fork that results in a loop.
                 //
@@ -201,7 +201,7 @@ impl<Leaf> Graph<Leaf> {
 
                 Some(rope)
             },
-            Node::Rope(other) => {
+            Some(Node::Rope(other)) => {
                 let (prefix, miss) = rope.prefix(other)?;
 
                 let (a, b) = (rope, other.clone());
@@ -213,8 +213,12 @@ impl<Leaf> Graph<Leaf> {
 
                 Some(rope)
             },
-            Node::Leaf(_) if rope.miss.is_none() => {
-                Some(rope.miss(other))
+            Some(Node::Leaf(_)) | None => {
+                if rope.miss.is_none() {
+                    Some(rope.miss(other))
+                } else {
+                    None
+                }
             },
             _ => None,
         }
@@ -224,10 +228,10 @@ impl<Leaf> Graph<Leaf> {
     where
         Leaf: Disambiguate,
     {
-        match &self[id] {
-            Node::Fork(fork) => fork.clone(),
-            Node::Rope(rope) => rope.clone().into_fork(self),
-            Node::Leaf(_) => Fork::new().miss(id),
+        match self.get(id) {
+            Some(Node::Fork(fork)) => fork.clone(),
+            Some(Node::Rope(rope)) => rope.clone().into_fork(self),
+            Some(Node::Leaf(_)) | None => Fork::new().miss(id),
         }
     }
 

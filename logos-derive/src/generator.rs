@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
@@ -13,7 +15,26 @@ pub struct Generator<'a> {
     rendered: TokenStream,
     idents: Map<(NodeId, Context), Ident>,
     gotos: Map<(NodeId, Context), TokenStream>,
+    meta: Map<NodeId, Meta>,
     stack: Vec<NodeId>,
+}
+
+#[derive(Debug)]
+struct Meta {
+    /// Number of references to this node
+    refcount: usize,
+    /// Ids of other nodes that point to this node while this
+    /// node is on a stack (creating a loop)
+    loop_entry_from: Vec<NodeId>,
+}
+
+impl Meta {
+    fn one() -> Self {
+        Meta {
+            refcount: 1,
+            loop_entry_from: Vec::new(),
+        }
+    }
 }
 
 impl<'a> Generator<'a> {
@@ -25,17 +46,62 @@ impl<'a> Generator<'a> {
             rendered: TokenStream::new(),
             idents: Map::default(),
             gotos: Map::default(),
+            meta: Map::default(),
             stack: Vec::new(),
         }
     }
 
     pub fn generate(&mut self) -> &TokenStream {
+        self.generate_meta(self.root, self.root);
+        assert_eq!(self.stack.len(), 0);
+
         let root = self.goto(self.root, Context::new(0)).clone();
 
         assert_eq!(self.stack.len(), 0);
 
         self.rendered.append_all(root);
         &self.rendered
+    }
+
+    fn generate_meta(&mut self, this: NodeId, parent: NodeId) {
+        if self.stack.contains(&this) {
+            self.meta
+                .get_mut(&parent)
+                .expect("Meta must be already created")
+                .loop_entry_from
+                .push(this);
+        }
+        match self.meta.entry(this) {
+            Entry::Vacant(vacant) => {
+                vacant.insert(Meta::one());
+            },
+            Entry::Occupied(mut occupied) => {
+                occupied.get_mut().refcount += 1;
+                return;
+            },
+        }
+
+        self.stack.push(this);
+
+        match &self.graph[this] {
+            Node::Fork(fork) => {
+                for (_, id) in fork.branches() {
+                    self.generate_meta(id, this);
+                }
+                if let Some(id) = fork.miss {
+                    self.generate_meta(id, this);
+                }
+            },
+            Node::Rope(rope) => {
+                self.generate_meta(rope.then, this);
+                if let Some(id) = rope.miss.first() {
+                    self.generate_meta(id, this);
+                }
+            },
+            Node::Leaf(leaf) => (),
+        }
+
+        self.stack.pop();
     }
 
     fn generate_fn(&mut self, id: NodeId, ctx: Context) -> TokenStream {
@@ -60,48 +126,59 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
-        if fork.branches().all(|(_, id)| id == this) && fork.miss.is_some() {
+        if self.meta[&this].loop_entry_from.contains(&this) {
             return self.generate_fast_loop(fork, ctx);
         }
 
         let miss = match fork.miss {
-            Some(id) => self.goto(id, Context::new(0)).clone(),
-            None => quote! {
-                lex.bump(1);
-                lex.error()
-            },
+            Some(id) => self.goto(id, ctx).clone(),
+            None => {
+                let amount = ctx.unbumped + 1;
+
+                quote!({
+                    lex.bump(#amount);
+                    lex.error()
+                })
+            }
         };
         let end = if this == self.root {
             quote!(_end(lex))
         } else if fork.miss.is_some() {
             miss.clone()
         } else {
-            quote!(lex.error())
+            // TODO: check if needed?
+            let bump = ctx.bump();
+            quote!({
+                #bump
+                lex.error()
+            })
+        };
+        let read = match ctx.unbumped {
+            0 => quote!(lex.read()),
+            n => quote!(lex.read_at(#n)),
         };
 
         let branches = fork.branches().map(|(range, id)| {
-            let next = self.goto(id, Context::new(0));
+            let next = self.goto(id, ctx.push(1));
 
-            quote!(#range => {
-                lex.bump(1);
-                #next
-            })
+            quote!(#range => #next,)
         });
 
         quote! {
-            let byte = match lex.read() {
+            let byte = match #read {
                 Some(byte) => byte,
                 None => return #end,
             };
 
             match byte {
                 #(#branches)*
-                _ => { #miss }
+                _ => #miss,
             }
         }
     }
 
     fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
+        let bump = ctx.bump();
         let miss = fork.miss.unwrap();
         let miss = self.goto(miss, Context::new(0)).clone();
         let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
@@ -124,11 +201,14 @@ impl<'a> Generator<'a> {
         }
 
         quote! {
-            while let Some(bytes) = lex.read::<&[u8; 8]>() {
-                #inner
-                return #miss;
-            }
+            #bump
 
+            // while let Some(bytes) = lex.read::<&[u8; 8]>() {
+            //     #inner
+            //     return #miss;
+            // }
+
+            // Go byte by byte if remaining source is too short
             while let Some(byte) = lex.read() {
                 match byte {
                     #(#ranges)|* => lex.bump(1),
@@ -142,19 +222,20 @@ impl<'a> Generator<'a> {
 
     fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
         let miss = match rope.miss.first() {
-            Some(id) => self.goto(id, Context::new(0)).clone(),
+            Some(id) => self.goto(id, ctx).clone(),
             None => quote!(lex.error()),
         };
         let len = rope.pattern.len();
-        let then = self.goto(rope.then, Context::new(0));
+        let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
+        let read = match ctx.unbumped {
+            0 => quote!(lex.read::<&[u8; #len]>()),
+            n => quote!(lex.read_at::<&[u8; #len]>(#n)),
+        };
 
         if let Some(bytes) = rope.pattern.to_bytes() {
             return quote! {
-                match lex.read::<&[u8; #len]>() {
-                    Some(&[#(#bytes),*]) => {
-                        lex.bump(#len);
-                        #then
-                    },
+                match #read {
+                    Some(&[#(#bytes),*]) => #then,
                     _ => #miss,
                 }
             };
@@ -170,11 +251,9 @@ impl<'a> Generator<'a> {
         });
 
         quote! {
-            match lex.read::<&[u8; #len]>() {
+            match #read {
                 Some(bytes) => {
                     #(#matches)*
-
-                    lex.bump(#len);
 
                     #then
                 },
@@ -184,11 +263,14 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_leaf(&mut self, leaf: &Leaf, ctx: Context) -> TokenStream {
+        let bump = ctx.bump();
+
         match leaf {
             Leaf::Trivia => {
                 let root = self.goto(self.root, Context::new(0));
 
                 quote! {
+                    #bump
                     lex.trivia();
                     return #root;
                 }
@@ -197,6 +279,7 @@ impl<'a> Generator<'a> {
                 let name = self.name;
 
                 quote! {
+                    #bump
                     lex.token = #name::#ident;
                 }
             },
@@ -204,10 +287,21 @@ impl<'a> Generator<'a> {
     }
 
     fn goto(&mut self, id: NodeId, ctx: Context) -> &TokenStream {
+        let (ctx, bump) = match self.meta[&id].loop_entry_from.len() {
+            0 => (ctx, None),
+            _ => (Context::new(0), Some(ctx.bump())),
+        };
+
         if self.gotos.get(&(id, ctx)).is_none() {
             let ident = self.generate_ident(id, ctx);
-            let call_site = quote!(#ident(lex));
+            let mut call_site = quote!(#ident(lex));
 
+            if let Some(bump) = bump {
+                call_site = quote!({
+                    #bump
+                    #call_site
+                });
+            }
             self.gotos.insert((id, ctx), call_site);
 
             let fun = self.generate_fn(id, ctx);
@@ -259,6 +353,13 @@ impl Context {
         Context {
             available: 0,
             unbumped,
+        }
+    }
+
+    pub const fn push(self, n: usize) -> Self {
+        Context {
+            available: self.available,
+            unbumped: self.unbumped + n,
         }
     }
 
