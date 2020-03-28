@@ -140,17 +140,10 @@ impl<'a> Generator<'a> {
         let miss = ctx.miss(self);
         let end = if this == self.root {
             quote!(_end(lex))
-        } else if ctx.miss.is_some() {
-            miss.clone()
         } else {
-            // TODO: check if needed?
-            // let bump = ctx.bump();
-            quote!({
-                // #bump
-                lex.error()
-            })
+            miss.clone()
         };
-        let read = match ctx.unbumped {
+        let read = match ctx.at {
             0 => quote!(lex.read()),
             n => quote!(lex.read_at(#n)),
         };
@@ -216,7 +209,7 @@ impl<'a> Generator<'a> {
         let miss = ctx.miss(self);
         let len = rope.pattern.len();
         let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
-        let read = match ctx.unbumped {
+        let read = match ctx.at {
             0 => quote!(lex.read::<&[u8; #len]>()),
             n => quote!(lex.read_at::<&[u8; #len]>(#n)),
         };
@@ -275,16 +268,13 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn goto(&mut self, id: NodeId, ctx: Context) -> &TokenStream {
-        if self.gotos.get(&(id, ctx)).is_none() {
-            let key = (id, ctx);
-            let mut ctx = ctx;
+    fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
+        let key = (id, ctx);
+
+        if self.gotos.get(&key).is_none() {
             let mut bump = ctx.switch(self.graph[id].miss());
 
-            if self.meta[&id].loop_entry_from.len() > 0 && ctx.unbumped > 0 {
-                if bump.is_some() {
-                    panic!("WHAT");
-                }
+            if self.meta[&id].loop_entry_from.len() > 0 && ctx.at > 0 {
                 bump = ctx.bump();
             }
 
@@ -300,7 +290,7 @@ impl<'a> Generator<'a> {
             self.gotos.insert(key, call_site);
             self.generate_fn(id, ctx);
         }
-        &self.gotos[&(id, ctx)]
+        &self.gotos[&key]
     }
 
     fn generate_ident(&mut self, id: NodeId, ctx: Context) -> &Ident {
@@ -332,7 +322,9 @@ pub struct Context {
 
     /// Amount of bytes that haven't been bumped yet but should
     /// before a new read is performed
-    pub unbumped: usize,
+    pub at: usize,
+
+    bumped: bool,
 
     miss: Option<NodeId>,
 }
@@ -340,8 +332,16 @@ pub struct Context {
 impl Context {
     pub const fn new() -> Self {
         Context {
-            // available,
-            unbumped: 0,
+            at: 0,
+            bumped: false,
+            miss: None,
+        }
+    }
+
+    pub const fn goto_miss(self) -> Self {
+        Context {
+            at: 0,
+            bumped: self.bumped,
             miss: None,
         }
     }
@@ -353,25 +353,27 @@ impl Context {
 
     pub const fn push(self, n: usize) -> Self {
         Context {
-            unbumped: self.unbumped + n,
+            at: self.at + n,
             ..self
         }
     }
 
     pub fn bump(&mut self) -> Option<TokenStream> {
-        match self.unbumped {
+        match self.at {
             0 => None,
             n => {
                 let tokens = quote!(lex.bump(#n););
-                self.unbumped = 0;
+                self.at = 0;
+                self.bumped;
                 Some(tokens)
             },
         }
     }
 
-    pub fn miss(&self, gen: &mut Generator) -> TokenStream {
+    pub fn miss(self, gen: &mut Generator) -> TokenStream {
         match self.miss {
-            Some(id) => gen.goto(id, Context::new()).clone(),
+            Some(id) => gen.goto(id, self.goto_miss()).clone(),
+            None if self.bumped => quote!(lex.error()),
             None => quote!(_error(lex)),
         }
     }
@@ -379,8 +381,8 @@ impl Context {
     pub fn write_suffix(&self, buf: &mut String) {
         use std::fmt::Write;
 
-        if self.unbumped > 0 {
-            let _ = write!(buf, "_at{}", self.unbumped);
+        if self.at > 0 {
+            let _ = write!(buf, "_at{}", self.at);
         }
         if let Some(id) = self.miss {
             let _ = write!(buf, "_else{}", id);
