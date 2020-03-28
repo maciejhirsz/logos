@@ -55,6 +55,8 @@ impl<'a> Generator<'a> {
         self.generate_meta(self.root, self.root);
         assert_eq!(self.stack.len(), 0);
 
+        // panic!("{:#?}\n\n{:#?}", self.meta, self.graph);
+
         let root = self.goto(self.root, Context::new()).clone();
 
         assert_eq!(self.stack.len(), 0);

@@ -233,9 +233,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
     for rope in ropes {
         root.merge(rope.into_fork(&mut graph), &mut graph)
     }
+    // root.flatten(&mut graph);
     let root = graph.push(root);
 
-    graph.shake(&[root]);
+    graph.shake(root);
 
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 

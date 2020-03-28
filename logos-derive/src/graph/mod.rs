@@ -176,6 +176,7 @@ impl<Leaf> Graph<Leaf> {
         let mut fork = self.fork_off(a);
 
         fork.merge(self.fork_off(b), self);
+        fork.flatten(self);
 
         self.insert(id, fork)
     }
@@ -240,13 +241,12 @@ impl<Leaf> Graph<Leaf> {
     }
 
     /// Find all nodes that have no references and remove them.
-    pub fn shake(&mut self, entries: &[NodeId]) {
+    pub fn shake(&mut self, root: NodeId) {
         let mut filter = vec![false; self.nodes.len()];
 
-        for &id in entries.iter() {
-            filter[id] = true;
-            self[id].shake(self, &mut filter);
-        }
+        filter[root] = true;
+
+        self[root].shake(self, &mut filter);
 
         for (id, referenced) in filter.into_iter().enumerate() {
             if !referenced {
@@ -257,6 +257,18 @@ impl<Leaf> Graph<Leaf> {
 
     pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
         self.nodes.get(id)?.as_ref()
+    }
+
+    pub fn can_be_flattened(&self, id: NodeId) -> bool {
+        match self.get(id) {
+            Some(Node::Fork(fork)) => {
+                fork.miss != Some(id) && fork.branches().all(|(_, then)| then != id)
+            },
+            Some(Node::Rope(rope)) => {
+                rope.miss.first() != Some(id) && rope.then != id
+            },
+            _ => false,
+        }
     }
 
     pub fn miss(&self, id: NodeId) -> Option<NodeId> {
