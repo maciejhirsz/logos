@@ -3,7 +3,7 @@ use std::collections::hash_map::Entry;
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
-use fnv::FnvHashMap as Map;
+use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 
 use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
 use crate::leaf::Leaf;
@@ -13,6 +13,7 @@ pub struct Generator<'a> {
     root: NodeId,
     graph: &'a Graph<Leaf>,
     rendered: TokenStream,
+    fns: Set<(NodeId, Context)>,
     idents: Map<(NodeId, Context), Ident>,
     gotos: Map<(NodeId, Context), TokenStream>,
     meta: Map<NodeId, Meta>,
@@ -44,6 +45,7 @@ impl<'a> Generator<'a> {
             root,
             graph,
             rendered: TokenStream::new(),
+            fns: Set::default(),
             idents: Map::default(),
             gotos: Map::default(),
             meta: Map::default(),
@@ -106,7 +108,12 @@ impl<'a> Generator<'a> {
         self.stack.pop();
     }
 
-    fn generate_fn(&mut self, id: NodeId, ctx: Context) -> TokenStream {
+    fn generate_fn(&mut self, id: NodeId, ctx: Context) {
+        if self.fns.contains(&(id, ctx)) {
+            return;
+        }
+        self.fns.insert((id, ctx));
+
         self.stack.push(id);
 
         let body = match &self.graph[id] {
@@ -123,8 +130,7 @@ impl<'a> Generator<'a> {
         };
 
         self.stack.pop();
-
-        out
+        self.rendered.append_all(out);
     }
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
@@ -148,7 +154,6 @@ impl<'a> Generator<'a> {
             0 => quote!(lex.read()),
             n => quote!(lex.read_at(#n)),
         };
-
         let branches = fork.branches().map(|(range, id)| {
             let next = self.goto(id, ctx.push(1));
 
@@ -270,14 +275,19 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
-        let mut bump = ctx.switch(self.graph[id].miss());
-
-        if self.meta[&id].loop_entry_from.len() > 0 && ctx.unbumped > 0 {
-            bump = ctx.bump();
-        }
-
+    fn goto(&mut self, id: NodeId, ctx: Context) -> &TokenStream {
         if self.gotos.get(&(id, ctx)).is_none() {
+            let key = (id, ctx);
+            let mut ctx = ctx;
+            let mut bump = ctx.switch(self.graph[id].miss());
+
+            if self.meta[&id].loop_entry_from.len() > 0 && ctx.unbumped > 0 {
+                if bump.is_some() {
+                    panic!("WHAT");
+                }
+                bump = ctx.bump();
+            }
+
             let ident = self.generate_ident(id, ctx);
             let mut call_site = quote!(#ident(lex));
 
@@ -287,11 +297,8 @@ impl<'a> Generator<'a> {
                     #call_site
                 });
             }
-            self.gotos.insert((id, ctx), call_site);
-
-            let fun = self.generate_fn(id, ctx);
-
-            self.rendered.append_all(fun);
+            self.gotos.insert(key, call_site);
+            self.generate_fn(id, ctx);
         }
         &self.gotos[&(id, ctx)]
     }
@@ -340,13 +347,8 @@ impl Context {
     }
 
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        match self.miss.replace(miss?) {
-            None => {
-                self.unbumped = 0;
-                None
-            },
-            Some(_) => self.bump(),
-        }
+        self.miss = Some(miss?);
+        self.bump()
     }
 
     pub const fn push(self, n: usize) -> Self {
