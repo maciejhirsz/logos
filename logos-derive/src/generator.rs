@@ -134,7 +134,7 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
-        if self.meta[&this].loop_entry_from.contains(&this) {
+        if self.meta[&this].loop_entry_from.contains(&this) && fork.single_then().is_some() {
             return self.generate_fast_loop(fork, ctx);
         }
         let miss = ctx.miss(self);
