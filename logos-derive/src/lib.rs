@@ -163,19 +163,24 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 };
 
                 match graph.regex(utf8, &regex, then.get()) {
-                    Ok((len, id)) => {
+                    Ok((len, mut id)) => {
                         let then = graph.insert(then, token.priority(len));
-                        if let Some(id) = graph[id].miss() {
-                            if id == then {
+                        regex_ids.push(id);
+
+                        // Drain recursive miss values.
+                        // We need the root node to have straight branches.
+                        while let Some(miss) = graph[id].miss() {
+                            if miss == then {
                                 errors.push(
                                     Error::new("#[regex]: expression can match empty string.\n\n\
                                                 hint: consider changing * to +").span(span)
                                 );
+                                break;
                             } else {
-                                regex_ids.push(id);
+                                regex_ids.push(miss);
+                                id = miss;
                             }
                         }
-                        regex_ids.push(id);
                     },
                     Err(err) => errors.push(err.span(span)),
                 }
