@@ -18,35 +18,30 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
         let hir = builder.build().parse(source)?.into_kind();
 
-        let id = self.reserve();
-        let (len, node) = self.parse_hir(hir, id.get(), then, None)?;
-
-        Ok((len, self.insert(id, node)))
+        self.parse_hir(hir, then, None)
     }
 
     fn parse_hir(
         &mut self,
         hir: HirKind,
-        id: NodeId,
         then: NodeId,
         miss: Option<NodeId>,
-    ) -> Result<(usize, Node<Leaf>)> {
+    ) -> Result<(usize, NodeId)> {
         match hir {
             HirKind::Empty => {
                 let miss = match miss {
                     Some(miss) => self.merge(miss, then),
                     None => then,
                 };
-                Ok((0, Fork::new().miss(miss).into()))
+                let id = self.push(Fork::new().miss(miss));
+                Ok((0, id))
             },
             HirKind::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
                 let mut longest = 0;
 
                 for hir in alternation {
-                    let id = self.reserve();
-                    let (len, alt) = self.parse_hir(hir.into_kind(), id.get(), then, None)?;
-                    let id = self.insert(id, alt);
+                    let (len, id) = self.parse_hir(hir.into_kind(), then, None)?;
                     let alt = self.fork_off(id);
 
                     longest = max(longest, len);
@@ -54,7 +49,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     fork.merge(alt, self);
                 }
 
-                Ok((longest, fork.into()))
+                Ok((longest, self.push(fork)))
             }
             HirKind::Literal(literal) => {
                 let pattern = match literal {
@@ -65,8 +60,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         [byte].to_vec()
                     },
                 };
-
-                Ok((pattern.len(), Rope::new(pattern, then).miss(miss).into()))
+                Ok((pattern.len(), self.push(Rope::new(pattern, then).miss(miss))))
             },
             HirKind::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
@@ -115,12 +109,11 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 for hir in concat.drain(1..).rev() {
                     if let Some((len, hir)) = handle_bytes(self, hir.into_kind(), &mut then) {
-                        let nid = self.reserve();
-                        let (nlen, next) = self.parse_hir(hir, nid.get(), then, None)?;
+                        let (nlen, next) = self.parse_hir(hir, then, None)?;
 
                         total_len += len + nlen;
 
-                        then = self.insert(nid, next);
+                        then = next
                     }
                 }
 
@@ -128,10 +121,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => {
                         total_len += end - cur;
 
-                        Ok((total_len, Rope::new(&ropebuf[cur..end], then).miss(miss).into()))
+                        Ok((total_len, self.push(Rope::new(&ropebuf[cur..end], then).miss(miss))))
                     },
                     Some((len, hir)) => {
-                        let (nlen, id) = self.parse_hir(hir, id, then, miss)?;
+                        let (nlen, id) = self.parse_hir(hir, then, miss)?;
 
                         total_len += len + nlen;
 
@@ -140,9 +133,6 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 }
             },
             HirKind::Repetition(repetition) => {
-                if id == then {
-                    Err("#[regex]: repetition inside a repetition.")?;
-                }
                 if !repetition.greedy {
                     Err("#[regex]: non-greedy parsing is currently unsupported.")?;
                 }
@@ -151,23 +141,28 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 match repetition.kind {
                     RepetitionKind::ZeroOrOne => {
-                        let (_, id) = self.parse_hir(hir, id, then, Some(then))?;
+                        let (_, id) = self.parse_hir(hir, then, Some(then))?;
 
                         Ok((0, id))
                     },
                     RepetitionKind::ZeroOrMore => {
-                        let (_, id) = self.parse_hir(hir, id, id, Some(then))?;
+                        let this = self.reserve();
+                        let (_, id) = self.parse_hir(hir, this.get(), Some(then))?;
+                        // Move a fork to the reserved id
+                        let fork = self.fork_off(id);
+                        let id = self.insert(this, fork);
 
                         Ok((0, id))
                     },
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
                         let nid = self.reserve();
-                        let (_, next) = self.parse_hir(hir.clone(), nid.get(), nid.get(), Some(then))?;
+                        let (_, next) = self.parse_hir(hir.clone(), nid.get(), Some(then))?;
+                        let next = self.fork_off(next);
                         let next = self.insert(nid, next);
 
                         // Then parse the same tree into first node, attaching loop
-                        let (_, id) = self.parse_hir(hir, id, next, miss)?;
+                        let (_, id) = self.parse_hir(hir, next, miss)?;
 
                         Ok((0, id))
                     },
@@ -179,7 +174,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
             HirKind::Group(group) => {
                 let hir = group.hir.into_kind();
 
-                self.parse_hir(hir, id, then, miss)
+                self.parse_hir(hir, then, miss)
             },
             HirKind::Class(Class::Unicode(class)) if !is_ascii(&class) => {
                 let mut ropes = class
@@ -191,7 +186,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 if ropes.len() == 0 {
                     let rope = ropes.remove(0);
 
-                    return Ok((rope.pattern.len(), rope.miss(miss).into()));
+                    return Ok((rope.pattern.len(), self.push(rope.miss(miss))));
                 }
 
                 let mut root = Fork::new().miss(miss);
@@ -204,7 +199,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     root.merge(fork, self);
                 }
 
-                Ok((longest, root.into()))
+                Ok((longest, self.push(root)))
             },
             HirKind::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
@@ -221,7 +216,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     fork.add_branch(range, then, self);
                 }
 
-                Ok((1, fork.into()))
+                Ok((1, self.push(fork)))
             },
             HirKind::WordBoundary(_) => {
                 Err("#[regex]: word boundaries are currently unsupported.")?
