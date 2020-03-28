@@ -170,9 +170,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         let next = self.insert(nid, next);
 
                         // Then parse the same tree into first node, attaching loop
-                        let (_, id) = self.parse_hir(hir, next, miss)?;
-
-                        Ok((0, id))
+                        self.parse_hir(hir, next, miss)
                     },
                     RepetitionKind::Range(..) => {
                         Err("#[regex]: {n,m} repetition range is currently unsupported.")?
@@ -337,6 +335,6 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let (len, _) = graph.regex(true, "(fooz|bar)+qux", leaf).unwrap();
 
-        assert_eq!(len, 3); // qux
+        assert_eq!(len, 7); // foozqux
     }
 }

@@ -272,11 +272,13 @@ impl<'a> Generator<'a> {
         let key = (id, ctx);
 
         if self.gotos.get(&key).is_none() {
-            let mut bump = ctx.switch(self.graph[id].miss());
+            let enters_loop = self.meta[&id].loop_entry_from.len() > 0;
 
-            if self.meta[&id].loop_entry_from.len() > 0 && ctx.at > 0 {
-                bump = ctx.bump();
-            }
+            let bump = if enters_loop || !ctx.has_fallback() {
+                ctx.switch(self.graph[id].miss())
+            } else {
+                None
+            };
 
             let ident = self.generate_ident(id, ctx);
             let mut call_site = quote!(#ident(lex));
@@ -343,8 +345,14 @@ impl Context {
         }
     }
 
+    pub fn has_fallback(&self) -> bool {
+        self.fallback.is_some()
+    }
+
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        self.fallback = Some(miss?);
+        if let Some(miss) = miss {
+            self.fallback = Some(miss);
+        }
         self.bump()
     }
 
