@@ -137,7 +137,7 @@ impl<'a> Generator<'a> {
         if self.meta[&this].loop_entry_from.contains(&this) && fork.single_then().is_some() {
             return self.generate_fast_loop(fork, ctx);
         }
-        let miss = ctx.miss(self);
+        let miss = ctx.miss(fork.miss, self);
         let end = if this == self.root {
             quote!(_end(lex))
         } else {
@@ -167,7 +167,7 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
-        let miss = ctx.miss(self);
+        let miss = ctx.miss(fork.miss, self);
         let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
 
         let pat = quote!(#(#ranges)|*);
@@ -206,7 +206,7 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
-        let miss = ctx.miss(self);
+        let miss = ctx.miss(rope.miss.first(), self);
         let len = rope.pattern.len();
         let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
         let read = match ctx.at {
@@ -317,16 +317,13 @@ impl<'a> Generator<'a> {
 /// to be handled by the fork, avoiding bound checks there.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Context {
-    /// Amount of bytes available at local `arr` variable
-    // pub available: usize,
-
     /// Amount of bytes that haven't been bumped yet but should
     /// before a new read is performed
     pub at: usize,
 
     bumped: bool,
 
-    miss: Option<NodeId>,
+    fallback: Option<NodeId>,
 }
 
 impl Context {
@@ -334,20 +331,20 @@ impl Context {
         Context {
             at: 0,
             bumped: false,
-            miss: None,
+            fallback: None,
         }
     }
 
-    pub const fn goto_miss(self) -> Self {
+    pub const fn fallback_ctx(self) -> Self {
         Context {
             at: 0,
             bumped: self.bumped,
-            miss: None,
+            fallback: None,
         }
     }
 
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        self.miss = Some(miss?);
+        self.fallback = Some(miss?);
         self.bump()
     }
 
@@ -370,11 +367,12 @@ impl Context {
         }
     }
 
-    pub fn miss(self, gen: &mut Generator) -> TokenStream {
-        match self.miss {
-            Some(id) => gen.goto(id, self.goto_miss()).clone(),
-            None if self.bumped => quote!(lex.error()),
-            None => quote!(_error(lex)),
+    pub fn miss(self, miss: Option<NodeId>, gen: &mut Generator) -> TokenStream {
+        match (miss, self.fallback) {
+            (Some(id), _) => gen.goto(id, self).clone(),
+            (_, Some(id)) => gen.goto(id, self.fallback_ctx()).clone(),
+            _ if self.bumped => quote!(lex.error()),
+            _ => quote!(_error(lex)),
         }
     }
 
@@ -384,8 +382,8 @@ impl Context {
         if self.at > 0 {
             let _ = write!(buf, "_at{}", self.at);
         }
-        if let Some(id) = self.miss {
-            let _ = write!(buf, "_else{}", id);
+        if let Some(id) = self.fallback {
+            let _ = write!(buf, "_ctx{}", id);
         }
         if self.bumped {
             buf.push_str("_x");
