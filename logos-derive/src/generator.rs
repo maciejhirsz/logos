@@ -22,8 +22,9 @@ pub struct Generator<'a> {
     /// Local function calls. Note: a call might change its context,
     /// so we can't use `idents` for this purpose.
     gotos: Map<(NodeId, Context), TokenStream>,
-    /// Lookup tables for complex patterns
-    luts: Map<Vec<Range>, Ident>,
+    /// Identifiers for helper functions matching a byte to a given
+    /// set of ranges
+    tests: Map<Vec<Range>, Ident>,
     /// Meta data collected for the nodes
     meta: Map<NodeId, Meta>,
     /// Current execution stack, for keeping track of loops and such
@@ -112,7 +113,7 @@ impl<'a> Generator<'a> {
             fns: Set::default(),
             idents: Map::default(),
             gotos: Map::default(),
-            luts: Map::default(),
+            tests: Map::default(),
             meta: Map::default(),
             stack: Vec::new(),
         }
@@ -228,14 +229,10 @@ impl<'a> Generator<'a> {
     fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
         let miss = ctx.miss(fork.miss, self);
         let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
+        let test = self.generate_test(ranges);
 
         quote! {
-            #[inline]
-            fn test(byte: u8) -> bool {
-                matches!(byte, #(#ranges)|*)
-            }
-
-            _fast_loop!(lex, test, #miss);
+            _fast_loop!(lex, #test, #miss);
         }
     }
 
@@ -314,7 +311,7 @@ impl<'a> Generator<'a> {
     fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
         let key = (id, ctx);
 
-        if self.gotos.get(&key).is_none() {
+        if !self.gotos.contains_key(&key) {
             let enters_loop = self.meta[&id].loop_entry_from.len() > 0;
 
             let bump = if enters_loop || !ctx.has_fallback() {
@@ -346,6 +343,54 @@ impl<'a> Generator<'a> {
 
             Ident::new(&ident, Span::call_site())
         })
+    }
+
+    /// Returns an identifier to a function that matches a byte to any
+    /// of the provided ranges. This will generate either a simple
+    /// match expression, or use a lookup table internally.
+    fn generate_test(&mut self, ranges: Vec<Range>) -> &Ident {
+        if !self.tests.contains_key(&ranges) {
+            let idx = self.tests.len();
+            let ident = Ident::new(&format!("pattern{}", idx), Span::call_site());
+
+            let body = match ranges.len() {
+                0..=2 => {
+                    quote! {
+                        match byte {
+                            #(#ranges)|* => true,
+                            _ => false,
+                        }
+                    }
+                },
+                _ => {
+                    let mut table = [false; 256];
+
+                    for byte in ranges.iter().flat_map(|range| *range) {
+                        table[byte as usize] = true;
+                    }
+                    let ltrue = quote!(TT);
+                    let lfalse = quote!(__);
+                    let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
+
+                    quote! {
+                        const #ltrue: bool = true;
+                        const #lfalse: bool = false;
+
+                        static LUT: [bool; 256] = [#( #table ),*];
+
+                        LUT[byte as usize]
+                    }
+                }
+            };
+            self.rendered.append_all(quote! {
+                #[inline]
+                fn #ident(byte: u8) -> bool {
+                    #body
+                }
+            });
+            self.tests.insert(ranges.clone(), ident);
+        }
+        &self.tests[&ranges]
     }
 }
 
