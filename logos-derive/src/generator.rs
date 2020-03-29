@@ -100,7 +100,7 @@ impl<'a> Generator<'a> {
                     self.generate_meta(id, this);
                 }
             },
-            Node::Leaf(leaf) => (),
+            Node::Leaf(_) => (),
         }
 
         self.stack.pop();
@@ -310,10 +310,6 @@ impl<'a> Generator<'a> {
 
             Ident::new(&ident, Span::call_site())
         })
-    }
-
-    fn would_loop(&self, id: NodeId) -> Option<usize> {
-        self.stack.iter().rev().position(|i| i == &id)
     }
 }
 

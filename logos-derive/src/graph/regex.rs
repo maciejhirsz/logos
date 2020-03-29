@@ -1,12 +1,98 @@
 use std::fmt::Debug;
 use std::cmp::max;
 
-use regex_syntax::hir::{Class, ClassUnicode, HirKind, Literal, RepetitionKind};
+use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
 use utf8_ranges::Utf8Sequences;
 
 use crate::graph::{Graph, Disambiguate, NodeId, Range, Rope, Fork};
 use crate::error::Result;
+
+/// Middle Intermediate Representation of the regex, built from
+/// `regex_syntax`'s `Hir`. The goal here is to strip and canonicalize
+/// the tree, so that we don't have to do transformations later on the
+/// graph, with the potential of running into looping references.
+#[derive(Clone, Debug)]
+enum Mir {
+    Empty,
+    Loop(Box<Mir>),
+    Maybe(Box<Mir>),
+    Concat(Vec<Mir>),
+    Alternation(Vec<Mir>),
+    Class(Class),
+    Literal(Literal),
+}
+
+impl Mir {
+    fn from(hir: Hir) -> Result<Mir> {
+        match hir.into_kind() {
+            HirKind::Empty => {
+                Ok(Mir::Empty)
+            },
+            HirKind::Concat(concat) => {
+                let mut out = Vec::with_capacity(concat.len());
+
+                for hir in concat {
+                    match Mir::from(hir)? {
+                        Mir::Concat(nested) => out.extend(nested),
+                        mir => out.push(mir),
+                    }
+                }
+
+                Ok(Mir::Concat(out))
+            },
+            HirKind::Alternation(alternation) => {
+                let alternation = alternation
+                    .into_iter()
+                    .map(Mir::from)
+                    .collect::<Result<_>>()?;
+
+                Ok(Mir::Alternation(alternation))
+            },
+            HirKind::Literal(literal) => {
+                Ok(Mir::Literal(literal))
+            },
+            HirKind::Class(class) => {
+                Ok(Mir::Class(class))
+            },
+            HirKind::Repetition(repetition) => {
+                if !repetition.greedy {
+                    Err("#[regex]: non-greedy parsing is currently unsupported.")?;
+                }
+
+                let kind = repetition.kind;
+                let mir = Mir::from(*repetition.hir)?;
+
+                match kind {
+                    RepetitionKind::ZeroOrOne => {
+                        Ok(Mir::Maybe(Box::new(mir)))
+                    },
+                    RepetitionKind::ZeroOrMore => {
+                        Ok(Mir::Loop(Box::new(mir)))
+                    },
+                    RepetitionKind::OneOrMore => {
+                        Ok(Mir::Concat(vec![
+                            mir.clone(),
+                            Mir::Loop(Box::new(mir)),
+                        ]))
+                    },
+                    RepetitionKind::Range(..) => {
+                        Err("#[regex]: {n,m} repetition range is currently unsupported.")?
+                    },
+                }
+            },
+            HirKind::Group(group) => {
+                Mir::from(*group.hir)
+            },
+            HirKind::WordBoundary(_) => {
+                Err("#[regex]: word boundaries are currently unsupported.")?
+            },
+            HirKind::Anchor(_) => {
+                Err("#[regex]: anchors in #[regex] are currently unsupported.")?
+            },
+        }
+    }
+}
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, utf8: bool, source: &str, then: NodeId) -> Result<(usize, NodeId)> {
@@ -16,31 +102,41 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
             builder.allow_invalid_utf8(true).unicode(false);
         }
 
-        let hir = builder.build().parse(source)?.into_kind();
+        let hir = builder.build().parse(source)?;
+        let mir = Mir::from(hir.clone())?;
 
-        self.parse_hir(hir, then, None)
+        Ok(self.parse_mir(mir, then, None))
     }
 
-    fn parse_hir(
-        &mut self,
-        hir: HirKind,
-        then: NodeId,
-        miss: Option<NodeId>,
-    ) -> Result<(usize, NodeId)> {
-        match hir {
-            HirKind::Empty => {
-                let id = match miss {
-                    Some(miss) => self.merge(miss, then),
+    fn parse_mir(&mut self, mir: Mir, then: NodeId, miss: Option<NodeId>) -> (usize, NodeId) {
+        match mir {
+            Mir::Empty => (0, then),
+            Mir::Loop(mir) => {
+                let this = self.reserve();
+                let (_, id) = self.parse_mir(*mir, this.get(), miss);
+                let id = self.merge(id, then);
+
+                // Move the node to the reserved id
+                let fork = self.fork_off(id);
+                let id = self.insert(this, fork);
+
+                (0, id)
+            }
+            Mir::Maybe(mir) => {
+                let miss = match miss {
+                    Some(id) => self.merge(id, then),
                     None => then,
                 };
-                Ok((0, id))
+                let (_, id) = self.parse_mir(*mir, then, Some(miss));
+
+                (0, id)
             },
-            HirKind::Alternation(alternation) => {
+            Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
                 let mut longest = 0;
 
-                for hir in alternation {
-                    let (len, id) = self.parse_hir(hir.into_kind(), then, None)?;
+                for mir in alternation {
+                    let (len, id) = self.parse_mir(mir, then, None);
                     let alt = self.fork_off(id);
 
                     longest = max(longest, len);
@@ -48,9 +144,9 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     fork.merge(alt, self);
                 }
 
-                Ok((longest, self.push(fork)))
+                (longest, self.push(fork))
             }
-            HirKind::Literal(literal) => {
+            Mir::Literal(literal) => {
                 let pattern = match literal {
                     Literal::Unicode(unicode) => {
                         unicode.encode_utf8(&mut [0; 4]).as_bytes().to_vec()
@@ -59,9 +155,9 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         [byte].to_vec()
                     },
                 };
-                Ok((pattern.len(), self.push(Rope::new(pattern, then).miss(miss))))
+                (pattern.len(), self.push(Rope::new(pattern, then).miss(miss)))
             },
-            HirKind::Concat(mut concat) => {
+            Mir::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
                 // space here. Worst case scenario is all unicode codepoints
                 // producing 4 byte utf8 sequences
@@ -71,44 +167,44 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut then = then;
                 let mut total_len = 0;
 
-                let mut handle_bytes = |graph: &mut Self, hir, then: &mut NodeId| {
-                    match hir {
-                        HirKind::Literal(Literal::Unicode(u)) => {
+                let mut handle_bytes = |graph: &mut Self, mir, then: &mut NodeId| {
+                    match mir {
+                        Mir::Literal(Literal::Unicode(u)) => {
                             cur -= u.len_utf8();
                             for (i, byte) in u.encode_utf8(&mut [0; 4]).bytes().enumerate() {
                                 ropebuf[cur + i] = byte.into();
                             }
                             None
                         },
-                        HirKind::Literal(Literal::Byte(byte)) => {
+                        Mir::Literal(Literal::Byte(byte)) => {
                             cur -= 1;
                             ropebuf[cur] = byte.into();
                             None
                         },
-                        HirKind::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
+                        Mir::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
                             cur -= 1;
                             ropebuf[cur] = class.ranges()[0].into();
                             None
                         },
-                        HirKind::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
+                        Mir::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
                             cur -= 1;
                             ropebuf[cur] = class.ranges()[0].into();
                             None
                         },
-                        hir => {
+                        mir => {
                             let len = end - cur;
                             if len != 0 {
                                 *then = graph.push(Rope::new(&ropebuf[cur..end], *then));
                                 end = cur;
                             }
-                            Some((len, hir))
+                            Some((len, mir))
                         },
                     }
                 };
 
-                for hir in concat.drain(1..).rev() {
-                    if let Some((len, hir)) = handle_bytes(self, hir.into_kind(), &mut then) {
-                        let (nlen, next) = self.parse_hir(hir, then, None)?;
+                for mir in concat.drain(1..).rev() {
+                    if let Some((len, mir)) = handle_bytes(self, mir, &mut then) {
+                        let (nlen, next) = self.parse_mir(mir, then, None);
 
                         total_len += len + nlen;
 
@@ -116,74 +212,22 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     }
                 }
 
-                match handle_bytes(self, concat.remove(0).into_kind(), &mut then) {
+                match handle_bytes(self, concat.remove(0), &mut then) {
                     None => {
                         total_len += end - cur;
 
-                        Ok((total_len, self.push(Rope::new(&ropebuf[cur..end], then).miss(miss))))
+                        (total_len, self.push(Rope::new(&ropebuf[cur..end], then).miss(miss)))
                     },
-                    Some((len, hir)) => {
-                        let (nlen, id) = self.parse_hir(hir, then, miss)?;
+                    Some((len, mir)) => {
+                        let (nlen, id) = self.parse_mir(mir, then, miss);
 
                         total_len += len + nlen;
 
-                        Ok((total_len, id))
+                        (total_len, id)
                     },
                 }
             },
-            HirKind::Repetition(repetition) => {
-                if !repetition.greedy {
-                    Err("#[regex]: non-greedy parsing is currently unsupported.")?;
-                }
-
-                let hir = repetition.hir.into_kind();
-                match repetition.kind {
-                    RepetitionKind::ZeroOrOne => {
-                        let miss = match miss {
-                            Some(id) => self.merge(id, then),
-                            None => then,
-                        };
-
-                        let (_, id) = self.parse_hir(hir, then, Some(miss))?;
-
-                        Ok((0, id))
-                    },
-                    RepetitionKind::ZeroOrMore => {
-                        let miss = match miss {
-                            Some(id) => self.merge(id, then),
-                            None => then,
-                        };
-
-                        let this = self.reserve();
-                        let (_, id) = self.parse_hir(hir, this.get(), Some(miss))?;
-                        // Move a fork to the reserved id
-                        let fork = self.fork_off(id);
-                        let id = self.insert(this, fork);
-
-                        Ok((0, id))
-                    },
-                    RepetitionKind::OneOrMore => {
-                        // Parse the loop first
-                        let nid = self.reserve();
-                        let (_, next) = self.parse_hir(hir.clone(), nid.get(), None)?;
-                        let next = self.merge(next, then);
-                        let next = self.fork_off(next);
-                        let next = self.insert(nid, next);
-
-                        // Then parse the same tree into first node, attaching loop
-                        self.parse_hir(hir, next, miss)
-                    },
-                    RepetitionKind::Range(..) => {
-                        Err("#[regex]: {n,m} repetition range is currently unsupported.")?
-                    },
-                }
-            },
-            HirKind::Group(group) => {
-                let hir = group.hir.into_kind();
-
-                self.parse_hir(hir, then, miss)
-            },
-            HirKind::Class(Class::Unicode(class)) if !is_ascii(&class) => {
+            Mir::Class(Class::Unicode(class)) if !is_ascii(&class) => {
                 let mut ropes = class
                     .iter()
                     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
@@ -193,7 +237,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 if ropes.len() == 0 {
                     let rope = ropes.remove(0);
 
-                    return Ok((rope.pattern.len(), self.push(rope.miss(miss))));
+                    return (rope.pattern.len(), self.push(rope.miss(miss)));
                 }
 
                 let mut root = Fork::new().miss(miss);
@@ -206,9 +250,9 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     root.merge(fork, self);
                 }
 
-                Ok((longest, self.push(root)))
+                (longest, self.push(root))
             },
-            HirKind::Class(class) => {
+            Mir::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
                 let class: Vec<Range> = match class {
                     Class::Unicode(u) => {
@@ -223,13 +267,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     fork.add_branch(range, then, self);
                 }
 
-                Ok((1, self.push(fork)))
-            },
-            HirKind::WordBoundary(_) => {
-                Err("#[regex]: word boundaries are currently unsupported.")?
-            },
-            HirKind::Anchor(_) => {
-                Err("#[regex]: anchors in #[regex] are currently unsupported.")?
+                (1, self.push(fork))
             },
         }
     }
