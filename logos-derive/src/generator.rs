@@ -7,14 +7,26 @@ use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
 use crate::leaf::Leaf;
 
 pub struct Generator<'a> {
+    /// Name of the type we are implementing the `Logos` trait for
     name: &'a Ident,
+    /// Id to the root node
     root: NodeId,
+    /// Reference to the graph with all of the nodes
     graph: &'a Graph<Leaf>,
+    /// Buffer with functions growing during generation
     rendered: TokenStream,
+    /// Set of functions that have already been rendered
     fns: Set<(NodeId, Context)>,
+    /// Function name identifiers
     idents: Map<(NodeId, Context), Ident>,
+    /// Local function calls. Note: a call might change its context,
+    /// so we can't use `idents` for this purpose.
     gotos: Map<(NodeId, Context), TokenStream>,
+    /// Lookup tables for complex patterns
+    luts: Map<Vec<Range>, Ident>,
+    /// Meta data collected for the nodes
     meta: Map<NodeId, Meta>,
+    /// Current execution stack, for keeping track of loops and such
     stack: Vec<NodeId>,
 }
 
@@ -44,14 +56,63 @@ impl Meta {
 
 impl<'a> Generator<'a> {
     pub fn new(name: &'a Ident, root: NodeId, graph: &'a Graph<Leaf>) -> Self {
+        let rendered = quote! {
+            macro_rules! _fast_loop {
+                ($lex:ident, $test:ident, $miss:expr) => {
+                    while let Some(bytes) = $lex.read::<&[u8; 8]>() {
+                        if $test(bytes[0]) {
+                            if $test(bytes[1]) {
+                                if $test(bytes[2]) {
+                                    if $test(bytes[3]) {
+                                        if $test(bytes[4]) {
+                                            if $test(bytes[5]) {
+                                                if $test(bytes[6]) {
+                                                    if $test(bytes[7]) {
+                                                        $lex.bump(8);
+                                                        continue;
+                                                    }
+                                                    $lex.bump(7);
+                                                    return $miss;
+                                                }
+                                                $lex.bump(6);
+                                                return $miss;
+                                            }
+                                            $lex.bump(5);
+                                            return $miss;
+                                        }
+                                        $lex.bump(4);
+                                        return $miss;
+                                    }
+                                    $lex.bump(3);
+                                    return $miss;
+                                }
+                                $lex.bump(2);
+                                return $miss;
+                            }
+                            $lex.bump(1);
+                            return $miss;
+                        }
+                        return $miss;
+                    }
+
+                    while $lex.test($test) {
+                        $lex.bump(1);
+                    }
+
+                    $miss
+                };
+            }
+        };
+
         Generator {
             name,
             root,
             graph,
-            rendered: TokenStream::new(),
+            rendered,
             fns: Set::default(),
             idents: Map::default(),
             gotos: Map::default(),
+            luts: Map::default(),
             meta: Map::default(),
             stack: Vec::new(),
         }
@@ -168,38 +229,13 @@ impl<'a> Generator<'a> {
         let miss = ctx.miss(fork.miss, self);
         let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
 
-        let pat = quote!(#(#ranges)|*);
-        let mut inner = quote !{
-            if matches!(bytes[7], #pat) {
-                lex.bump(8);
-                continue;
-            }
-        };
-        for i in (0..=6usize).rev() {
-            inner = quote! {
-                if matches!(bytes[#i], #pat) {
-                    #inner
-                    lex.bump(#i + 1);
-                    return #miss;
-                }
-            };
-        }
-
         quote! {
-            // while let Some(bytes) = lex.read::<&[u8; 8]>() {
-            //     #inner
-            //     return #miss;
-            // }
-
-            // Go byte by byte if remaining source is too short
-            while let Some(byte) = lex.read() {
-                match byte {
-                    #(#ranges)|* => lex.bump(1),
-                    _ => break,
-                }
+            #[inline]
+            fn test(byte: u8) -> bool {
+                matches!(byte, #(#ranges)|*)
             }
 
-            #miss
+            _fast_loop!(lex, test, #miss);
         }
     }
 
