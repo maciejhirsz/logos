@@ -213,9 +213,11 @@ impl<'a> Generator<'a> {
         };
 
         if let Some(bytes) = rope.pattern.to_bytes() {
+            let pat = byte_slice_literal(&bytes);
+
             return quote! {
                 match #read {
-                    Some(&[#(#bytes),*]) => #then,
+                    Some(#pat) => #then,
                     _ => #miss,
                 }
             };
@@ -402,6 +404,16 @@ impl Context {
             buf.push_str("_x");
         }
     }
+}
+
+fn byte_slice_literal(bytes: &[u8]) -> TokenStream {
+    if bytes.iter().any(|&b| b < 0x20 || b >= 0x7F) {
+        return quote!(&[#(#bytes),*]);
+    }
+
+    let slice = std::str::from_utf8(bytes).unwrap();
+
+    syn::parse_str(&format!("b{:?}", slice)).unwrap()
 }
 
 macro_rules! match_quote {
