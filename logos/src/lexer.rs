@@ -110,7 +110,7 @@ pub trait Extras: Sized + Default {
 
     /// Method called by the `Lexer` when a white space byte has been encountered.
     #[inline]
-    fn on_whitespace(&mut self, _byte: u8) {}
+    fn on_whitespace(&mut self) {}
 }
 
 /// Default `Extras` with no logic
@@ -185,6 +185,7 @@ where
     /// Reset `token_start` to `token_end`.
     #[inline]
     fn trivia(&mut self) {
+        self.extras.on_whitespace();
         self.token_start = self.token_end;
     }
 

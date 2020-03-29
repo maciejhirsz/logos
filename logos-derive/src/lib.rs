@@ -109,6 +109,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
+        // Find if there is a callback defined before tackling individual declarations
+        let global_callback = variant.attrs.iter()
+            .find_map(|attr| util::value_from_attr::<Ident>("callback", attr));
+
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
@@ -132,7 +136,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
-                let token = Leaf::token(variant).callback(definition.callback);
+                let callback = definition.callback.or_else(|| global_callback.clone());
+                let token = Leaf::token(variant).callback(callback);
 
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;
@@ -185,10 +190,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     Err(err) => errors.push(err.span(span)),
                 }
             }
-
-        //     if let Some(callback) = value_from_attr("callback", attr) {
-        //         generator.set_callback(variant, callback);
-        //     }
         }
     }
 

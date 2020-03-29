@@ -1,5 +1,3 @@
-use std::collections::hash_map::Entry;
-
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
@@ -257,12 +255,19 @@ impl<'a> Generator<'a> {
                     return #root;
                 }
             },
-            Leaf::Token { ident, .. } => {
+            Leaf::Token { ident, callback, .. } => {
                 let name = self.name;
-
-                quote! {
+                let out = quote! {
                     #bump
                     lex.token = #name::#ident;
+                };
+
+                match callback {
+                    Some(callback) => quote! {
+                        #out
+                        #callback(lex);
+                    },
+                    None => out,
                 }
             },
         }

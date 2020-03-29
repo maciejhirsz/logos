@@ -5,7 +5,7 @@ use regex_syntax::hir::{Class, ClassUnicode, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
 use utf8_ranges::Utf8Sequences;
 
-use crate::graph::{Graph, Disambiguate, Node, NodeId, Range, Rope, Fork};
+use crate::graph::{Graph, Disambiguate, NodeId, Range, Rope, Fork};
 use crate::error::Result;
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
@@ -258,6 +258,7 @@ fn is_one_ascii(class: &ClassUnicode) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graph::Node;
     use pretty_assertions::assert_eq;
 
     #[test]
