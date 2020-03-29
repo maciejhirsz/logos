@@ -155,8 +155,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         };
 
                         let this = self.reserve();
-                        let (_, id) = self.parse_hir(hir, this.get(), None)?;
-                        let id = self.merge(id, then);
+                        let (_, id) = self.parse_hir(hir, this.get(), Some(miss))?;
                         // Move a fork to the reserved id
                         let fork = self.fork_off(id);
                         let id = self.insert(this, fork);
@@ -166,7 +165,6 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     RepetitionKind::OneOrMore => {
                         // Parse the loop first
                         let nid = self.reserve();
-                        // let (_, next) = self.parse_hir(hir.clone(), nid.get(), Some(then))?;
                         let (_, next) = self.parse_hir(hir.clone(), nid.get(), None)?;
                         let next = self.merge(next, then);
                         let next = self.fork_off(next);

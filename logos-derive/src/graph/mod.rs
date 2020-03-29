@@ -125,11 +125,17 @@ impl<Leaf> Graph<Leaf> {
             return a;
         }
 
-        if let (Some(Node::Leaf(left)), Some(Node::Leaf(right))) = (self.get(a), self.get(b)) {
-            return match Disambiguate::cmp(left, right) {
-                Ordering::Less => b,
-                Ordering::Equal | Ordering::Greater => a,
-            };
+        match (self.get(a), self.get(b)) {
+            (None, None) => {
+                panic!("Merging two reserved nodes!");
+            },
+            (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
+                return match Disambiguate::cmp(left, right) {
+                    Ordering::Less => b,
+                    Ordering::Equal | Ordering::Greater => a,
+                };
+            },
+            _ => (),
         }
 
         let key = if a > b { [b, a] } else { [a, b] };
