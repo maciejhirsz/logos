@@ -1,12 +1,19 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use fnv::FnvHashMap as Map;
 
-use crate::graph::{NodeId, Fork};
+use crate::graph::{NodeId, Fork, Range};
 use crate::generator::{Generator, Context};
 
 impl<'a> Generator<'a> {
     pub fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
-        if self.meta[&this].loop_entry_from.contains(&this) && fork.single_then().is_some() {
+        let mut targets: Map<NodeId, Vec<Range>> = Map::default();
+
+        for (range, then) in fork.branches() {
+            targets.entry(then).or_default().push(range);
+        }
+
+        if self.meta[&this].loop_entry_from.contains(&this) && targets.len() == 1 {
             return self.generate_fast_loop(fork, ctx);
         }
         let miss = ctx.miss(fork.miss, self);
@@ -19,10 +26,19 @@ impl<'a> Generator<'a> {
             0 => quote!(lex.read()),
             n => quote!(lex.read_at(#n)),
         };
-        let branches = fork.branches().map(|(range, id)| {
-            let next = self.goto(id, ctx.push(1));
+        let branches = targets.into_iter().map(|(id, ranges)| {
+            match *ranges {
+                [range] => {
+                    let next = self.goto(id, ctx.push(1));
+                    quote!(#range => #next,)
+                },
+                _ => {
+                    let test = self.generate_test(ranges).clone();
+                    let next = self.goto(id, ctx.push(1));
 
-            quote!(#range => #next,)
+                    quote!(byte if #test(byte) => #next,)
+                },
+            }
         });
 
         quote! {

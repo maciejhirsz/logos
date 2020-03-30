@@ -59,17 +59,6 @@ impl Fork {
         }
     }
 
-    pub fn single_then(&self) -> Option<NodeId> {
-        let mut branches = self.branches();
-
-        let (_, then) = branches.next()?;
-
-        match branches.all(|(_, id)| id == then) {
-            true => Some(then),
-            false => None,
-        }
-    }
-
     pub fn branches(&self) -> ForkIter<'_> {
         ForkIter {
             offset: 0,
