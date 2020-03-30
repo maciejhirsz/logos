@@ -1,12 +1,13 @@
 use std::fmt::Debug;
 use std::cmp::max;
+use std::convert::TryFrom;
 
 use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
 use utf8_ranges::Utf8Sequences;
 
 use crate::graph::{Graph, Disambiguate, NodeId, Range, Rope, Fork};
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 /// Middle Intermediate Representation of the regex, built from
 /// `regex_syntax`'s `Hir`. The goal here is to strip and canonicalize
@@ -23,8 +24,10 @@ enum Mir {
     Literal(Literal),
 }
 
-impl Mir {
-    fn from(hir: Hir) -> Result<Mir> {
+impl TryFrom<Hir> for Mir {
+    type Error = Error;
+
+    fn try_from(hir: Hir) -> Result<Mir> {
         match hir.into_kind() {
             HirKind::Empty => {
                 Ok(Mir::Empty)
@@ -33,7 +36,7 @@ impl Mir {
                 let mut out = Vec::with_capacity(concat.len());
 
                 for hir in concat {
-                    match Mir::from(hir)? {
+                    match Mir::try_from(hir)? {
                         Mir::Concat(nested) => out.extend(nested),
                         mir => out.push(mir),
                     }
@@ -44,7 +47,7 @@ impl Mir {
             HirKind::Alternation(alternation) => {
                 let alternation = alternation
                     .into_iter()
-                    .map(Mir::from)
+                    .map(Mir::try_from)
                     .collect::<Result<_>>()?;
 
                 Ok(Mir::Alternation(alternation))
@@ -61,7 +64,7 @@ impl Mir {
                 }
 
                 let kind = repetition.kind;
-                let mir = Mir::from(*repetition.hir)?;
+                let mir = Mir::try_from(*repetition.hir)?;
 
                 match kind {
                     RepetitionKind::ZeroOrOne => {
@@ -82,7 +85,7 @@ impl Mir {
                 }
             },
             HirKind::Group(group) => {
-                Mir::from(*group.hir)
+                Mir::try_from(*group.hir)
             },
             HirKind::WordBoundary(_) => {
                 Err("#[regex]: word boundaries are currently unsupported.")?
@@ -103,7 +106,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         }
 
         let hir = builder.build().parse(source)?;
-        let mir = Mir::from(hir.clone())?;
+        let mir = Mir::try_from(hir.clone())?;
 
         Ok(self.parse_mir(mir, then, None))
     }

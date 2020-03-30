@@ -31,7 +31,7 @@ pub struct Generator<'a> {
     stack: Vec<NodeId>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Meta {
     /// Number of references to this node
     refcount: usize,
@@ -41,13 +41,6 @@ struct Meta {
 }
 
 impl Meta {
-    fn new() -> Self {
-        Meta {
-            refcount: 0,
-            loop_entry_from: Vec::new(),
-        }
-    }
-
     fn loop_entry(&mut self, id: NodeId) {
         if let Err(idx) = self.loop_entry_from.binary_search(&id) {
             self.loop_entry_from.insert(idx, id);
@@ -111,7 +104,7 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_meta(&mut self, this: NodeId, parent: NodeId) {
-        let meta = self.meta.entry(this).or_insert_with(|| Meta::new());
+        let meta = self.meta.entry(this).or_default();
 
         meta.refcount += 1;
 
