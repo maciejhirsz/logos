@@ -5,16 +5,21 @@ use fnv::FnvHashMap as Map;
 use crate::graph::{NodeId, Fork, Range};
 use crate::generator::{Generator, Context};
 
+type Targets = Map<NodeId, Vec<Range>>;
+
 impl<'a> Generator<'a> {
     pub fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
-        let mut targets: Map<NodeId, Vec<Range>> = Map::default();
+        let mut targets: Targets = Map::default();
 
         for (range, then) in fork.branches() {
             targets.entry(then).or_default().push(range);
         }
+        let loops_to_self = self.meta[&this].loop_entry_from.contains(&this);
 
-        if self.meta[&this].loop_entry_from.contains(&this) && targets.len() == 1 {
-            return self.generate_fast_loop(fork, ctx);
+        match targets.len() {
+            1 if loops_to_self => return self.generate_fast_loop(fork, ctx),
+            0..=2 => (),
+            _ => return self.generate_jump_table(this, fork, targets, ctx),
         }
         let miss = ctx.miss(fork.miss, self);
         let end = if this == self.root {
@@ -49,6 +54,46 @@ impl<'a> Generator<'a> {
 
             match byte {
                 #(#branches)*
+                _ => #miss,
+            }
+        }
+    }
+
+    fn generate_jump_table(&mut self, this: NodeId, fork: &Fork, targets: Targets, ctx: Context) -> TokenStream {
+        let miss = ctx.miss(fork.miss, self);
+        let end = if this == self.root {
+            quote!(_end(lex))
+        } else {
+            miss.clone()
+        };
+        let read = match ctx.at {
+            0 => quote!(lex.read::<u8>()),
+            n => quote!(lex.read_at::<u8>(#n)),
+        };
+
+        let mut table: [u8; 256] = [0; 256];
+
+        let branches = targets.into_iter().enumerate().map(|(idx, (id, ranges))| {
+            let idx = (idx as u8) + 1;
+            let next = self.goto(id, ctx.push(1));
+
+            for byte in ranges.into_iter().flatten() {
+                table[byte as usize] = idx;
+            }
+
+            quote!(#idx => #next,)
+        }).collect::<TokenStream>();
+
+        quote! {
+            static LUT: [u8; 256] = [#(#table),*];
+
+            let byte = match #read {
+                Some(byte) => byte,
+                None => return #end,
+            };
+
+            match LUT[byte as usize] {
+                #branches
                 _ => #miss,
             }
         }
