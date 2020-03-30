@@ -14,7 +14,7 @@ impl Extras for MockExtras {
         self.tokens += 1;
     }
 
-    fn on_whitespace(&mut self, _byte: u8) {
+    fn on_whitespace(&mut self) {
         self.spaces += 1;
     }
 }

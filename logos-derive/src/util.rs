@@ -1,9 +1,6 @@
-use std::cmp::Ordering;
-use std::iter::Peekable;
-
-pub use proc_macro2::Span;
+pub use proc_macro2::{TokenStream, Span};
 use quote::quote;
-pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};
+pub use syn::{Attribute, Expr, Ident, Lit, Meta, NestedMeta};
 
 pub trait OptionExt<T> {
     fn insert(&mut self, val: T, f: impl FnOnce(&T));
@@ -25,8 +22,17 @@ pub struct Definition<V: Value> {
 
 #[derive(Debug)]
 pub enum Literal {
-    Utf8(String),
-    Bytes(Vec<u8>),
+    Utf8(String, Span),
+    Bytes(Vec<u8>, Span),
+}
+
+impl Literal {
+    pub fn into_bytes(self) -> Vec<u8> {
+        match self {
+            Literal::Utf8(string, _) => string.into_bytes(),
+            Literal::Bytes(bytes, _) => bytes,
+        }
+    }
 }
 
 pub trait Value {
@@ -55,10 +61,10 @@ impl Value for Option<Literal> {
 impl Value for String {
     fn value(value: Option<Literal>) -> Self {
         match value {
-            Some(Literal::Utf8(value)) => value,
+            Some(Literal::Utf8(value, _)) => value,
 
             // TODO: Better errors
-            Some(Literal::Bytes(bytes)) => {
+            Some(Literal::Bytes(bytes, _)) => {
                 panic!("Expected a string, got a bytes instead: {:02X?}", bytes)
             }
             None => panic!("Expected a string"),
@@ -82,7 +88,7 @@ impl<V: Value> Value for Definition<V> {
 
     fn nested(&mut self, nested: &NestedMeta) {
         match nested {
-            NestedMeta::Meta(Meta::NameValue(ref nval)) if nval.ident == "callback" => {
+            NestedMeta::Meta(Meta::NameValue(ref nval)) if nval.path.is_ident("callback") => {
                 let callback = match nval.lit {
                     Lit::Str(ref c) => ident(&c.value()),
                     ref lit => panic!("Invalid callback value: {}", quote!(#lit)),
@@ -116,18 +122,18 @@ pub fn read_nested(name: &str, nested: NestedMeta) -> Option<Vec<NestedMeta>> {
 
 pub fn read_meta(name: &str, meta: Meta) -> Option<Vec<NestedMeta>> {
     match meta {
-        Meta::Word(ref ident) if ident == name => {
+        Meta::Path(ref path) if path.is_ident(name) => {
             panic!("Expected #[{} = ...], or #[{}(...)]", name, name);
         }
         Meta::NameValue(nval) => {
-            if nval.ident == name {
-                Some(vec![NestedMeta::Literal(nval.lit)])
+            if nval.path.is_ident(name) {
+                Some(vec![NestedMeta::Lit(nval.lit)])
             } else {
                 None
             }
         }
         Meta::List(list) => {
-            if list.ident == name {
+            if list.path.is_ident(name) {
                 Some(list.nested.into_iter().collect())
             } else {
                 None
@@ -158,8 +164,8 @@ where
     let mut iter = items.iter();
 
     let value = match iter.next() {
-        Some(NestedMeta::Literal(Lit::Str(ref v))) => Some(Literal::Utf8(v.value())),
-        Some(NestedMeta::Literal(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value())),
+        Some(NestedMeta::Lit(Lit::Str(ref v))) => Some(Literal::Utf8(v.value(), v.span())),
+        Some(NestedMeta::Lit(Lit::ByteStr(ref v))) => Some(Literal::Bytes(v.value(), v.span())),
         _ => None,
     };
 
@@ -179,6 +185,15 @@ pub fn ident(ident: &str) -> Ident {
     }
 }
 
+pub fn unpack_int(expr: &Expr) -> Option<usize> {
+    if let Expr::Lit(expr_lit) = expr {
+        if let Lit::Int(int) = &expr_lit.lit {
+            return int.base10_parse().ok();
+        }
+    }
+    None
+}
+
 pub fn bytes_to_regex_string(bytes: &[u8]) -> String {
     let mut string = String::with_capacity(bytes.len());
 
@@ -191,121 +206,4 @@ pub fn bytes_to_regex_string(bytes: &[u8]) -> String {
     }
 
     string
-}
-
-pub struct MergeAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    left: Peekable<L>,
-    right: Peekable<R>,
-}
-
-impl<L, R> MergeAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    pub fn new<LI, RI>(left: LI, right: RI) -> Self
-    where
-        LI: IntoIterator<IntoIter = L, Item = L::Item>,
-        RI: IntoIterator<IntoIter = R, Item = R::Item>,
-    {
-        MergeAscending {
-            left: left.into_iter().peekable(),
-            right: right.into_iter().peekable(),
-        }
-    }
-}
-
-impl<L, R> Iterator for MergeAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-    L::Item: Ord,
-{
-    type Item = L::Item;
-
-    fn next(&mut self) -> Option<L::Item> {
-        let which = match (self.left.peek(), self.right.peek()) {
-            (Some(l), Some(r)) => Some(l.cmp(r)),
-            (Some(_), None) => Some(Ordering::Less),
-            (None, Some(_)) => Some(Ordering::Greater),
-            (None, None) => None,
-        };
-
-        match which {
-            Some(Ordering::Less) => self.left.next(),
-            Some(Ordering::Equal) => {
-                // Advance both
-                self.left.next();
-                self.right.next()
-            }
-            Some(Ordering::Greater) => self.right.next(),
-            None => None,
-        }
-    }
-}
-
-pub struct DiffAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    left: Peekable<L>,
-    right: Peekable<R>,
-}
-
-impl<L, R> DiffAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-{
-    pub fn new<LI, RI>(left: LI, right: RI) -> Self
-    where
-        LI: IntoIterator<IntoIter = L, Item = L::Item>,
-        RI: IntoIterator<IntoIter = R, Item = R::Item>,
-    {
-        DiffAscending {
-            left: left.into_iter().peekable(),
-            right: right.into_iter().peekable(),
-        }
-    }
-}
-
-impl<L, R> Iterator for DiffAscending<L, R>
-where
-    L: Iterator<Item = R::Item>,
-    R: Iterator,
-    L::Item: Ord,
-{
-    type Item = L::Item;
-
-    fn next(&mut self) -> Option<L::Item> {
-        let which = match (self.left.peek(), self.right.peek()) {
-            (Some(l), Some(r)) => Some(l.cmp(r)),
-            (Some(_), None) => Some(Ordering::Less),
-            (None, Some(_)) => Some(Ordering::Greater),
-            (None, None) => None,
-        };
-
-        match which {
-            Some(Ordering::Less) => self.left.next(),
-            Some(Ordering::Equal) => {
-                // Advance both to skip matches
-                self.left.next();
-                self.right.next();
-
-                self.next()
-            }
-            Some(Ordering::Greater) => {
-                // Skip right side
-                self.right.next();
-
-                self.next()
-            }
-            None => None,
-        }
-    }
 }

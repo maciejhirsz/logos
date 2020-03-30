@@ -4,11 +4,6 @@ use super::internal::LexerInternal;
 use super::Logos;
 use crate::source::{self, Source, WithSource};
 
-/// A Lookup Table used internally. It maps indices for every valid
-/// byte to a function that takes a mutable reference to the `Lexer`,
-/// reads the input and sets the correct token variant for it.
-pub type Lexicon<Lexer> = [Option<fn(&mut Lexer)>; 256];
-
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 #[derive(Clone)]
@@ -24,19 +19,6 @@ pub struct Lexer<Token: Logos, Source> {
 
     token_start: usize,
     token_end: usize,
-}
-
-macro_rules! unroll {
-    ($( $code:tt )*) => (
-        $( $code )*
-        $( $code )*
-        $( $code )*
-        $( $code )*
-
-        loop {
-            $( $code )*
-        }
-    )
 }
 
 impl<'source, Token, Source> Lexer<Token, Source>
@@ -63,30 +45,12 @@ where
     }
 
     /// Advance the `Lexer` and attempt to produce the next `Token`.
+    #[inline]
     pub fn advance(&mut self) {
-        let mut byte;
-
+        self.token_start = self.token_end;
         self.extras.on_advance();
 
-        unroll! {
-            byte = match self.read::<u8>() {
-                Some(byte) => byte,
-                None => {
-                    self.token_start = self.token_end;
-
-                    return self.token = Token::END;
-                },
-            };
-
-            if let Some(handler) = Token::lexicon()[byte as usize] {
-                self.token_start = self.token_end;
-
-                return handler(self);
-            }
-
-            self.extras.on_whitespace(byte);
-            self.bump(1);
-        }
+        Token::lex(self);
     }
 
     /// Get the range for the current token in `Source`.
@@ -146,7 +110,7 @@ pub trait Extras: Sized + Default {
 
     /// Method called by the `Lexer` when a white space byte has been encountered.
     #[inline]
-    fn on_whitespace(&mut self, _byte: u8) {}
+    fn on_whitespace(&mut self) {}
 }
 
 /// Default `Extras` with no logic
@@ -216,6 +180,13 @@ where
         );
 
         self.token_end += size;
+    }
+
+    /// Reset `token_start` to `token_end`.
+    #[inline]
+    fn trivia(&mut self) {
+        self.extras.on_whitespace();
+        self.token_start = self.token_end;
     }
 
     /// Set the current token to appropriate `#[error]` variant.

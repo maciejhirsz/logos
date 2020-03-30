@@ -9,23 +9,24 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
 
-extern crate proc_macro;
-
 mod generator;
-mod handlers;
-mod regex;
-mod tree;
+mod error;
+mod graph;
 mod util;
+mod leaf;
 
-use self::generator::Generator;
-use self::handlers::{Handler, Handlers, Trivia};
-use self::regex::Regex;
-use self::tree::{Fork, Leaf, Node};
-use self::util::{value_from_attr, Definition, Literal, OptionExt};
+use error::Error;
+use generator::Generator;
+use graph::{Graph, Fork, Rope};
+use leaf::Leaf;
+use util::{Literal, Definition};
 
+use beef::lean::Cow;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
-use syn::{Fields, Ident, ItemEnum};
+use syn::{Ident, Fields, ItemEnum};
+use syn::spanned::Spanned;
 
 enum Mode {
     Utf8,
@@ -34,10 +35,11 @@ enum Mode {
 
 #[proc_macro_derive(
     Logos,
-    attributes(logos, extras, error, end, token, regex, extras, callback,)
+    attributes(logos, extras, error, end, token, regex, extras, callback)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
+    let super_span = item.span();
 
     let size = item.variants.len();
     let name = &item.ident;
@@ -46,186 +48,214 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut end = None;
     let mut mode = Mode::Utf8;
-    let mut trivia = Trivia::Default;
-
-    // Initially we pack all variants into a single fork, this is where all the logic branching
-    // magic happens.
-    let mut fork = Fork::default();
+    let mut errors = Vec::new();
+    let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
     for attr in &item.attrs {
-        if let Some(ext) = value_from_attr("extras", attr) {
-            extras.insert(ext, |_| {
-                panic!("Only one #[extras] attribute can be declared.")
-            });
+        if let Some(ext) = util::value_from_attr("extras", attr) {
+            if let Some(_) = extras.replace(ext) {
+                errors.push(Error::new("Only one #[extras] attribute can be declared.").span(super_span));
+            }
         }
 
         if let Some(nested) = util::read_attr("logos", attr) {
             for item in nested {
                 if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
-                    let (utf8, regex) = match t {
-                        Some(Literal::Utf8(string)) => (true, string),
-                        Some(Literal::Bytes(bytes)) => {
+                    trivia = match t {
+                        Some(Literal::Utf8(string, span)) => {
+                            Some((true, string.into(), span))
+                        },
+                        Some(Literal::Bytes(bytes, span)) => {
                             mode = Mode::Binary;
 
-                            (false, util::bytes_to_regex_string(&bytes))
-                        }
-                        None => {
-                            match trivia {
-                                Trivia::Patterns(_) => {}
-                                Trivia::Default => trivia = Trivia::Patterns(vec![]),
-                            }
-
-                            continue;
-                        }
+                            Some((false, util::bytes_to_regex_string(&bytes).into(), span))
+                        },
+                        None => None,
                     };
-
-                    let node = Node::from_regex(&regex, utf8);
-
-                    match node {
-                        Node::Branch(ref branch)
-                            if branch.then.is_none() && branch.regex.len() == 1 =>
-                        {
-                            let pattern = branch.regex.first().clone();
-
-                            match trivia {
-                                Trivia::Patterns(ref mut patterns) => patterns.push(pattern),
-                                Trivia::Default => trivia = Trivia::Patterns(vec![pattern]),
-                            }
-
-                            continue;
-                        }
-                        _ => {}
-                    }
-
-                    fork.insert(node.leaf(Leaf::Trivia));
                 }
             }
         }
     }
 
-    // Then the fork is split into handlers using all possible permutations of the first byte of
-    // any branch as the index of a 256-entries-long table.
-    let mut handlers = Handlers::new(trivia);
-
-    // Finally the `Generator` will spit out Rust code for all the handlers.
-    let mut generator = Generator::new(name);
-
     let mut variants = Vec::new();
+    let mut ropes = Vec::new();
+    let mut regex_ids = Vec::new();
+    let mut graph = Graph::new();
 
     for variant in &item.variants {
         variants.push(&variant.ident);
 
-        if variant.discriminant.is_some() {
-            panic!(
-                "`{}::{}` has a discriminant value set. This is not allowed for Tokens.",
-                name, variant.ident
-            );
+        let span = variant.span();
+
+        if let Some((_, value)) = &variant.discriminant {
+            let span = value.span();
+            let value = util::unpack_int(value).unwrap_or(usize::max_value());
+
+            if value >= size {
+                errors.push(Error::new(
+                    format!(
+                        "Discriminant value for `{}` is invalid. Expected integer in range 0..={}.",
+                        variant.ident,
+                        size,
+                    ),
+                ).span(span));
+            }
         }
 
         match variant.fields {
             Fields::Unit => {}
-            _ => panic!(
-                "`{}::{}` has fields. This is not allowed for Tokens.",
-                name, variant.ident
-            ),
+            _ => {
+                errors.push(Error::new(
+                    format!(
+                        "`{}::{}` has fields. This is not allowed for Tokens.",
+                        name, variant.ident
+                    ),
+                ).span(span));
+            }
         }
+
+        // Find if there is a callback defined before tackling individual declarations
+        let global_callback = variant.attrs.iter()
+            .find_map(|attr| util::value_from_attr::<Ident>("callback", attr));
 
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
 
             if ident == "error" {
-                error.insert(variant, |_| {
-                    panic!("Only one #[error] variant can be declared.")
-                });
+                if let Some(previous) = error.replace(variant) {
+                    errors.extend(vec![
+                        Error::new("Only one #[error] variant can be declared.").span(span),
+                        Error::new("Previously declared #[error]:").span(previous.span()),
+                    ]);
+                }
             }
 
             if ident == "end" {
-                end.insert(variant, |_| {
-                    panic!("Only one #[end] variant can be declared.")
-                });
+                if let Some(previous) = end.replace(variant) {
+                    errors.extend(vec![
+                        Error::new("Only one #[end] variant can be declared.").span(span),
+                        Error::new("Previously declared #[end]:").span(previous.span()),
+                    ]);
+                }
             }
 
-            if let Some(definition) = value_from_attr::<Definition<Literal>>("token", attr) {
-                let leaf = Leaf::Token {
-                    token: variant,
-                    callback: definition.callback,
-                };
+            let mut with_definition = |definition: Definition<Literal>| {
+                let callback = definition.callback.or_else(|| global_callback.clone());
+                let token = Leaf::token(variant).callback(callback);
 
-                let bytes = match definition.value {
-                    Literal::Utf8(ref string) => string.as_bytes(),
-                    Literal::Bytes(ref bytes) => {
+                if let Literal::Bytes(..) = definition.value {
+                    mode = Mode::Binary;
+                }
+
+                (token, definition.value)
+            };
+
+            if let Some(definition) = util::value_from_attr("token", attr) {
+                let (token, value) = with_definition(definition);
+
+                let value = value.into_bytes();
+                let then = graph.push(token.priority(value.len()));
+
+                ropes.push(Rope::new(value, then));
+            } else if let Some(definition) = util::value_from_attr("regex", attr) {
+                let (token, value) = with_definition(definition);
+
+                let then = graph.reserve();
+
+                let (utf8, regex, span) = match value {
+                    Literal::Utf8(string, span) => (true, string, span),
+                    Literal::Bytes(bytes, span) => {
                         mode = Mode::Binary;
 
-                        &bytes
+                        (false, util::bytes_to_regex_string(&bytes), span)
                     }
                 };
 
-                fork.insert(Node::new(Regex::sequence(bytes)).leaf(leaf));
-            } else if let Some(definition) = value_from_attr::<Definition<Literal>>("regex", attr) {
-                let leaf = Leaf::Token {
-                    token: variant,
-                    callback: definition.callback,
-                };
+                match graph.regex(utf8, &regex, then.get()) {
+                    Ok((len, mut id)) => {
+                        let then = graph.insert(then, token.priority(len));
+                        regex_ids.push(id);
 
-                let (utf8, regex) = match definition.value {
-                    Literal::Utf8(string) => (true, string),
-                    Literal::Bytes(bytes) => {
-                        mode = Mode::Binary;
-
-                        (false, util::bytes_to_regex_string(&bytes))
-                    }
-                };
-
-                fork.insert(Node::from_regex(&regex, utf8).leaf(leaf));
-            }
-
-            if let Some(callback) = value_from_attr("callback", attr) {
-                generator.set_callback(variant, callback);
+                        // Drain recursive miss values.
+                        // We need the root node to have straight branches.
+                        while let Some(miss) = graph[id].miss() {
+                            if miss == then {
+                                errors.push(
+                                    Error::new("#[regex]: expression can match empty string.\n\n\
+                                                hint: consider changing * to +").span(span)
+                                );
+                                break;
+                            } else {
+                                regex_ids.push(miss);
+                                id = miss;
+                            }
+                        }
+                    },
+                    Err(err) => errors.push(err.span(span)),
+                }
             }
         }
     }
 
-    fork.pack();
+    let mut root = Fork::new();
 
-    // panic!("{:#?}", fork);
+    if let Some((utf8, regex, span)) = trivia {
+        let then = graph.push(Leaf::Trivia);
 
-    for branch in fork.arms.drain(..) {
-        handlers.insert(branch)
+        match graph.regex(utf8, &*regex, then) {
+            Ok((_, id)) => {
+                let trivia = graph.fork_off(id);
+
+                root.merge(trivia, &mut graph);
+            },
+            Err(err) => errors.push(err.span(span)),
+        }
     }
 
-    let error = match error {
-        Some(error) => error,
-        None => panic!("Missing #[error] token variant."),
-    };
+    if error.is_none() {
+        errors.push(Error::new("missing #[error] token variant.").span(super_span));
+    }
 
-    let end = match end {
-        Some(end) => end,
-        None => panic!("Missing #[end] token variant."),
-    };
+    if end.is_none() {
+        errors.push(Error::new("missing #[end] token variant.").span(super_span));
+    }
 
+    if errors.len() > 0 {
+        return quote! {
+            fn _logos_derive_compile_errors() {
+                #(#errors)*
+            }
+        }.into();
+    }
+
+    let error = error.expect("Already checked for none above; qed");
+    let end = end.expect("Already checked for none above; qed");
     let extras = match extras {
         Some(ext) => quote!(#ext),
         None => quote!(()),
     };
-
-    // panic!("{:#?}", handlers);
-
-    let handlers = handlers
-        .into_iter()
-        .map(|handler| match handler {
-            Handler::Error => quote!(Some(_error)),
-            Handler::Whitespace => quote!(None),
-            Handler::Tree(tree) => generator.print_tree(tree),
-        })
-        .collect::<Vec<_>>();
-
-    let fns = generator.fns();
-
     let source = match mode {
         Mode::Utf8 => quote!(Source),
         Mode::Binary => quote!(BinarySource),
     };
+
+    for id in regex_ids {
+        let fork = graph.fork_off(id);
+        root.merge(fork, &mut graph);
+    }
+    for rope in ropes {
+        root.merge(rope.into_fork(&mut graph), &mut graph)
+    }
+    let root = graph.push(root);
+
+    graph.shake(root);
+
+    // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
+
+    let mut generator = Generator::new(name, root, &graph);
+
+    let body = generator.generate();
 
     let tokens = quote! {
         impl ::logos::Logos for #name {
@@ -235,25 +265,27 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
-            fn lexicon<'lexicon, 'source, Source>() -> &'lexicon ::logos::Lexicon<::logos::Lexer<Self, Source>>
+            fn lex<'source, Source>(lex: &mut ::logos::Lexer<#name, Source>)
             where
                 Source: ::logos::Source<'source>,
                 Self: ::logos::source::WithSource<Source>,
             {
                 use ::logos::internal::LexerInternal;
-                use ::logos::source::Split;
+                use ::logos::source::{Source as Src, Split};
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;
 
-                fn _error<'source, S: ::logos::Source<'source>>(lex: &mut Lexer<S>) {
+                fn _end<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
+                    lex.token = #name::#end;
+                }
+
+                fn _error<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
                     lex.bump(1);
 
                     lex.token = #name::#error;
                 }
 
-                #fns
-
-                &[#(#handlers),*]
+                #body
             }
         }
 
