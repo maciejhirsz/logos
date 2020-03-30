@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::Range;
 
-// mod binary;
+mod binary;
 
 pub fn assert_lex<'a, Source, Token>(
     source: Source,

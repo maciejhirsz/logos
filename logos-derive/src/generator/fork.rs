@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{TokenStream, Literal};
 use quote::quote;
 use fnv::FnvHashMap as Map;
 
@@ -80,9 +80,12 @@ impl<'a> Generator<'a> {
             for byte in ranges.into_iter().flatten() {
                 table[byte as usize] = idx;
             }
+            let idx = Literal::u8_unsuffixed(idx);
 
             quote!(#idx => #next,)
         }).collect::<TokenStream>();
+
+        let table = table.iter().copied().map(Literal::u8_unsuffixed);
 
         quote! {
             static LUT: [u8; 256] = [#(#table),*];
