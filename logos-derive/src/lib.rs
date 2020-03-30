@@ -87,14 +87,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
         let span = variant.span();
 
-        if variant.discriminant.is_some() {
-            errors.push(Error::new(
-                format!(
-                    "`{}::{}` has a discriminant value set. This is not allowed for Tokens.",
-                    name,
-                    variant.ident,
-                ),
-            ).span(span));
+        if let Some((_, value)) = &variant.discriminant {
+            let span = value.span();
+            let value = util::unpack_int(value).unwrap_or(usize::max_value());
+
+            if value >= size {
+                errors.push(Error::new(
+                    format!(
+                        "Discriminant value for `{}` is invalid. Expected integer in range 0..={}.",
+                        variant.ident,
+                        size,
+                    ),
+                ).span(span));
+            }
         }
 
         match variant.fields {

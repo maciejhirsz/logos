@@ -27,10 +27,8 @@ impl<'a> Generator<'a> {
         } else {
             miss.clone()
         };
-        let read = match ctx.at {
-            0 => quote!(lex.read()),
-            n => quote!(lex.read_at(#n)),
-        };
+        let read = self.generate_fork_read(this, end, ctx);
+        // let read = ctx.read(1);
         let branches = targets.into_iter().map(|(id, ranges)| {
             match *ranges {
                 [range] => {
@@ -47,10 +45,7 @@ impl<'a> Generator<'a> {
         });
 
         quote! {
-            let byte = match #read {
-                Some(byte) => byte,
-                None => return #end,
-            };
+            #read
 
             match byte {
                 #(#branches)*
@@ -66,10 +61,8 @@ impl<'a> Generator<'a> {
         } else {
             miss.clone()
         };
-        let read = match ctx.at {
-            0 => quote!(lex.read::<u8>()),
-            n => quote!(lex.read_at::<u8>(#n)),
-        };
+        // let read = ctx.read(1);
+        let read = self.generate_fork_read(this, end, ctx);
 
         let mut table: [u8; 256] = [0; 256];
 
@@ -90,15 +83,37 @@ impl<'a> Generator<'a> {
         quote! {
             const LUT: [u8; 256] = [#(#table),*];
 
-            let byte = match #read {
-                Some(byte) => byte,
-                None => return #end,
-            };
+            #read
 
             match LUT[byte as usize] {
                 #branches
                 _ => #miss,
             }
+        }
+    }
+
+    fn generate_fork_read(&self, this: NodeId, end: TokenStream, ctx: Context) -> TokenStream {
+        match self.meta[&this].min_read {
+            0 | 1 => {
+                let read = ctx.read(0);
+
+                quote! {
+                    let byte = match #read {
+                        Some(byte) => byte,
+                        None => return #end,
+                    };
+                }
+            },
+            len => {
+                let read = ctx.read(len);
+
+                quote! {
+                    let byte = match #read {
+                        Some(chunk) => chunk[0],
+                        None => return #end,
+                    };
+                }
+            },
         }
     }
 

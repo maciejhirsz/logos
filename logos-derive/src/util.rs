@@ -1,6 +1,6 @@
 pub use proc_macro2::{TokenStream, Span};
 use quote::quote;
-pub use syn::{Attribute, Ident, Lit, Meta, NestedMeta};
+pub use syn::{Attribute, Expr, Ident, Lit, Meta, NestedMeta};
 
 pub trait OptionExt<T> {
     fn insert(&mut self, val: T, f: impl FnOnce(&T));
@@ -183,6 +183,15 @@ pub fn ident(ident: &str) -> Ident {
         Ok(ident) => ident,
         Err(_) => panic!("Unable to parse {:?} into a Rust identifier.", ident),
     }
+}
+
+pub fn unpack_int(expr: &Expr) -> Option<usize> {
+    if let Expr::Lit(expr_lit) = expr {
+        if let Lit::Int(int) = &expr_lit.lit {
+            return int.base10_parse().ok();
+        }
+    }
+    None
 }
 
 pub fn bytes_to_regex_string(bytes: &[u8]) -> String {

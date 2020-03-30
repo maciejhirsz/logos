@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::cmp::min;
 
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -44,6 +45,8 @@ struct Meta {
     /// Minimum number of bytes that ought to be read for this
     /// node to find a match
     min_read: usize,
+    /// Marks whether or not this node leads to a loop entry node.
+    is_loop_init: bool,
     /// Ids of other nodes that point to this node while this
     /// node is on a stack (creating a loop)
     loop_entry_from: Vec<NodeId>,
@@ -89,37 +92,35 @@ impl<'a> Generator<'a> {
         &self.rendered
     }
 
-    fn generate_meta(&mut self, this: NodeId, parent: NodeId) {
+    fn generate_meta(&mut self, this: NodeId, parent: NodeId) -> &Meta {
         let meta = self.meta.entry(this).or_default();
+        let is_done = meta.refcount > 0;
 
         meta.refcount += 1;
 
         if self.stack.contains(&this) {
             meta.loop_entry(parent);
+            self.meta.get_mut(&parent).unwrap().is_loop_init = true;
         }
-        if meta.refcount > 1 {
-            return;
+        if is_done {
+            return &self.meta[&this];
         }
 
         self.stack.push(this);
 
-        let mut min_read = 0;
+        let mut min_read;
 
         match &self.graph[this] {
             Node::Fork(fork) => {
                 min_read = usize::max_value();
                 for (_, id) in fork.branches() {
-                    self.generate_meta(id, this);
-                    let then_len = {
-                        let meta = &self.meta[&id];
-                        if meta.loop_entry_from.len() == 0 {
-                            meta.min_read
-                        } else {
-                            0
-                        }
-                    };
+                    let meta = self.generate_meta(id, this);
 
-                    min_read = std::cmp::min(min_read, then_len + 1);
+                    if meta.is_loop_init {
+                        min_read = 1;
+                    } else {
+                        min_read = min(min_read, meta.min_read + 1);
+                    }
                 }
                 if let Some(id) = fork.miss {
                     self.generate_meta(id, this);
@@ -129,17 +130,24 @@ impl<'a> Generator<'a> {
                 }
             },
             Node::Rope(rope) => {
-                min_read += rope.pattern.len();
-                self.generate_meta(rope.then, this);
+                min_read = rope.pattern.len();
+                let meta = self.generate_meta(rope.then, this);
+
+                if !meta.is_loop_init {
+                    min_read += meta.min_read;
+                }
+
                 if let Some(id) = rope.miss.first() {
                     self.generate_meta(id, this);
                 }
             },
-            Node::Leaf(_) => (),
+            Node::Leaf(_) => min_read = 0,
         }
 
         self.meta.get_mut(&this).unwrap().min_read = min_read;
         self.stack.pop();
+
+        &self.meta[&this]
     }
 
     fn generate_fn(&mut self, id: NodeId, ctx: Context) {
@@ -315,6 +323,15 @@ impl Context {
                 self.bumped = true;
                 Some(tokens)
             },
+        }
+    }
+
+    pub fn read(&self, len: usize) -> TokenStream {
+        match (self.at, len) {
+            (0, 0) => quote!(lex.read::<u8>()),
+            (a, 0) => quote!(lex.read_at::<u8>(#a)),
+            (0, l) => quote!(lex.read::<&[u8; #l]>()),
+            (a, l) => quote!(lex.read_at::<&[u8; #l]>(#a)),
         }
     }
 

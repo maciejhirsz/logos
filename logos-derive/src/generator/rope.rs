@@ -9,41 +9,23 @@ impl<'a> Generator<'a> {
         let miss = ctx.miss(rope.miss.first(), self);
         let len = rope.pattern.len();
         let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
-        let read = match ctx.at {
-            0 => quote!(lex.read::<&[u8; #len]>()),
-            n => quote!(lex.read_at::<&[u8; #len]>(#n)),
+        let read = ctx.read(len);
+
+        let pat = match rope.pattern.to_bytes() {
+            Some(bytes) => byte_slice_literal(&bytes),
+            None => {
+                let ranges = rope.pattern.iter();
+
+                quote!([#(#ranges),*])
+            },
         };
 
-        if let Some(bytes) = rope.pattern.to_bytes() {
-            let pat = byte_slice_literal(&bytes);
-
-            return quote! {
-                match #read {
-                    Some(#pat) => #then,
-                    _ => #miss,
-                }
-            };
-        }
-
-        let matches = rope.pattern.iter().enumerate().map(|(idx, range)| {
-            quote! {
-                match bytes[#idx] {
-                    #range => (),
-                    _ => return #miss,
-                }
-            }
-        });
-
-        quote! {
+        return quote! {
             match #read {
-                Some(bytes) => {
-                    #(#matches)*
-
-                    #then
-                },
-                None => #miss,
+                Some(#pat) => #then,
+                _ => #miss,
             }
-        }
+        };
     }
 }
 
