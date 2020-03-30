@@ -11,7 +11,7 @@ use crate::generator::Generator;
 /// with smallest branch containing of 2 bytes can do a bounds check
 /// for 6 bytes ahead, and leave the remaining 2 byte array (fixed size)
 /// to be handled by the fork, avoiding bound checks there.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Context {
     /// Amount of bytes that haven't been bumped yet but should
     /// before a new read is performed
@@ -26,17 +26,10 @@ pub struct Context {
 }
 
 impl Context {
-    pub const fn new() -> Self {
-        Context {
-            at: 0,
-            bumped: false,
-            fallback: None,
-        }
-    }
-
     const fn backtrack(self) -> Self {
         Context {
             at: 0,
+            available: 0,
             bumped: self.bumped,
             fallback: None,
         }

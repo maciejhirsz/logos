@@ -87,7 +87,7 @@ impl<'a> Generator<'a> {
 
         // panic!("{:#?}\n\n{:#?}", self.meta, self.graph);
 
-        let root = self.goto(self.root, Context::new()).clone();
+        let root = self.goto(self.root, Context::default()).clone();
 
         assert_eq!(self.stack.len(), 0);
 

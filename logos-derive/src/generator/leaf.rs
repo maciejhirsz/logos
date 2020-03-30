@@ -10,7 +10,7 @@ impl<'a> Generator<'a> {
 
         match leaf {
             Leaf::Trivia => {
-                let root = self.goto(self.root, Context::new());
+                let root = self.goto(self.root, Context::default());
 
                 quote! {
                     #bump

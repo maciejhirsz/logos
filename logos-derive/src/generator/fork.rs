@@ -27,8 +27,7 @@ impl<'a> Generator<'a> {
         } else {
             miss.clone()
         };
-        let read = self.generate_fork_read(this, end, ctx);
-        // let read = ctx.read(1);
+        let (byte, read) = self.generate_fork_read(this, end, ctx);
         let branches = targets.into_iter().map(|(id, ranges)| {
             match *ranges {
                 [range] => {
@@ -47,7 +46,7 @@ impl<'a> Generator<'a> {
         quote! {
             #read
 
-            match byte {
+            match #byte {
                 #(#branches)*
                 _ => #miss,
             }
@@ -61,8 +60,7 @@ impl<'a> Generator<'a> {
         } else {
             miss.clone()
         };
-        // let read = ctx.read(1);
-        let read = self.generate_fork_read(this, end, ctx);
+        let (byte, read) = self.generate_fork_read(this, end, ctx);
 
         let mut table: [u8; 256] = [0; 256];
 
@@ -85,34 +83,34 @@ impl<'a> Generator<'a> {
 
             #read
 
-            match LUT[byte as usize] {
+            match LUT[#byte as usize] {
                 #branches
                 _ => #miss,
             }
         }
     }
 
-    fn generate_fork_read(&self, this: NodeId, end: TokenStream, ctx: Context) -> TokenStream {
+    fn generate_fork_read(&self, this: NodeId, end: TokenStream, ctx: Context) -> (TokenStream, TokenStream) {
         match self.meta[&this].min_read {
             0 | 1 => {
                 let read = ctx.read(0);
 
-                quote! {
+                (quote!(byte), quote! {
                     let byte = match #read {
                         Some(byte) => byte,
                         None => return #end,
                     };
-                }
+                })
             },
             len => {
                 let read = ctx.read(len);
 
-                quote! {
-                    let byte = match #read {
-                        Some(chunk) => chunk[0],
+                (quote!(arr[0]), quote! {
+                    let arr = match #read {
+                        Some(arr) => arr,
                         None => return #end,
                     };
-                }
+                })
             },
         }
     }
