@@ -88,7 +88,7 @@ impl<'a> Generator<'a> {
         let table = table.iter().copied().map(Literal::u8_unsuffixed);
 
         quote! {
-            static LUT: [u8; 256] = [#(#table),*];
+            const LUT: [u8; 256] = [#(#table),*];
 
             let byte = match #read {
                 Some(byte) => byte,
@@ -117,14 +117,20 @@ impl<'a> Generator<'a> {
             macro_rules! _fast_loop {
                 ($lex:ident, $test:ident, $miss:expr) => {
                     // Do one bounds check for multiple bytes till EOF
-                    while let Some(arr) = $lex.read::<&[u8; 8]>() {
-                        if $test(arr[0]) { if $test(arr[1]) { if $test(arr[2]) { if $test(arr[3]) {
-                        if $test(arr[4]) { if $test(arr[5]) { if $test(arr[6]) { if $test(arr[7]) {
+                    while let Some(arr) = $lex.read::<&[u8; 16]>() {
+                        if $test(arr[0])  { if $test(arr[1])  { if $test(arr[2])  { if $test(arr[3]) {
+                        if $test(arr[4])  { if $test(arr[5])  { if $test(arr[6])  { if $test(arr[7]) {
+                        if $test(arr[8])  { if $test(arr[9])  { if $test(arr[10]) { if $test(arr[11]) {
+                        if $test(arr[12]) { if $test(arr[13]) { if $test(arr[14]) { if $test(arr[15]) {
 
-                        $lex.bump(8); continue;     } $lex.bump(7); return $miss; }
-                        $lex.bump(6); return $miss; } $lex.bump(5); return $miss; }
-                        $lex.bump(4); return $miss; } $lex.bump(3); return $miss; }
-                        $lex.bump(2); return $miss; } $lex.bump(1); return $miss; }
+                        $lex.bump(16); continue;     } $lex.bump(15); return $miss; }
+                        $lex.bump(14); return $miss; } $lex.bump(13); return $miss; }
+                        $lex.bump(12); return $miss; } $lex.bump(11); return $miss; }
+                        $lex.bump(10); return $miss; } $lex.bump(9); return $miss;  }
+                        $lex.bump(8); return $miss;  } $lex.bump(7); return $miss;  }
+                        $lex.bump(6); return $miss;  } $lex.bump(5); return $miss;  }
+                        $lex.bump(4); return $miss;  } $lex.bump(3); return $miss;  }
+                        $lex.bump(2); return $miss;  } $lex.bump(1); return $miss;  }
 
                         return $miss;
                     }

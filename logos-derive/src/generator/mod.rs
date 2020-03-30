@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
@@ -30,7 +32,7 @@ pub struct Generator<'a> {
     /// set of ranges
     tests: Map<Vec<Range>, Ident>,
     /// Meta data collected for the nodes
-    meta: Map<NodeId, Meta>,
+    meta: BTreeMap<NodeId, Meta>,
     /// Current execution stack, for keeping track of loops and such
     stack: Vec<NodeId>,
 }
@@ -39,6 +41,9 @@ pub struct Generator<'a> {
 struct Meta {
     /// Number of references to this node
     refcount: usize,
+    /// Minimum number of bytes that ought to be read for this
+    /// node to find a match
+    min_read: usize,
     /// Ids of other nodes that point to this node while this
     /// node is on a stack (creating a loop)
     loop_entry_from: Vec<NodeId>,
@@ -65,7 +70,7 @@ impl<'a> Generator<'a> {
             idents: Map::default(),
             gotos: Map::default(),
             tests: Map::default(),
-            meta: Map::default(),
+            meta: BTreeMap::default(),
             stack: Vec::new(),
         }
     }
@@ -98,16 +103,33 @@ impl<'a> Generator<'a> {
 
         self.stack.push(this);
 
+        let mut min_read = 0;
+
         match &self.graph[this] {
             Node::Fork(fork) => {
+                min_read = usize::max_value();
                 for (_, id) in fork.branches() {
                     self.generate_meta(id, this);
+                    let then_len = {
+                        let meta = &self.meta[&id];
+                        if meta.loop_entry_from.len() == 0 {
+                            meta.min_read
+                        } else {
+                            0
+                        }
+                    };
+
+                    min_read = std::cmp::min(min_read, then_len + 1);
                 }
                 if let Some(id) = fork.miss {
                     self.generate_meta(id, this);
                 }
+                if min_read == usize::max_value() {
+                    min_read = 0;
+                }
             },
             Node::Rope(rope) => {
+                min_read += rope.pattern.len();
                 self.generate_meta(rope.then, this);
                 if let Some(id) = rope.miss.first() {
                     self.generate_meta(id, this);
@@ -116,6 +138,7 @@ impl<'a> Generator<'a> {
             Node::Leaf(_) => (),
         }
 
+        self.meta.get_mut(&this).unwrap().min_read = min_read;
         self.stack.pop();
     }
 
