@@ -3,8 +3,12 @@ use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
 use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 
-use crate::graph::{Graph, Node, NodeId, Fork, Rope, Range};
+use crate::graph::{Graph, Node, NodeId, Range};
 use crate::leaf::Leaf;
+
+mod fork;
+mod leaf;
+mod rope;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
@@ -161,121 +165,6 @@ impl<'a> Generator<'a> {
 
         self.stack.pop();
         self.rendered.append_all(out);
-    }
-
-    fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
-        if self.meta[&this].loop_entry_from.contains(&this) && fork.single_then().is_some() {
-            return self.generate_fast_loop(fork, ctx);
-        }
-        let miss = ctx.miss(fork.miss, self);
-        let end = if this == self.root {
-            quote!(_end(lex))
-        } else {
-            miss.clone()
-        };
-        let read = match ctx.at {
-            0 => quote!(lex.read()),
-            n => quote!(lex.read_at(#n)),
-        };
-        let branches = fork.branches().map(|(range, id)| {
-            let next = self.goto(id, ctx.push(1));
-
-            quote!(#range => #next,)
-        });
-
-        quote! {
-            let byte = match #read {
-                Some(byte) => byte,
-                None => return #end,
-            };
-
-            match byte {
-                #(#branches)*
-                _ => #miss,
-            }
-        }
-    }
-
-    fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
-        let miss = ctx.miss(fork.miss, self);
-        let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
-        let test = self.generate_test(ranges);
-
-        quote! {
-            _fast_loop!(lex, #test, #miss);
-        }
-    }
-
-    fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
-        let miss = ctx.miss(rope.miss.first(), self);
-        let len = rope.pattern.len();
-        let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
-        let read = match ctx.at {
-            0 => quote!(lex.read::<&[u8; #len]>()),
-            n => quote!(lex.read_at::<&[u8; #len]>(#n)),
-        };
-
-        if let Some(bytes) = rope.pattern.to_bytes() {
-            let pat = byte_slice_literal(&bytes);
-
-            return quote! {
-                match #read {
-                    Some(#pat) => #then,
-                    _ => #miss,
-                }
-            };
-        }
-
-        let matches = rope.pattern.iter().enumerate().map(|(idx, range)| {
-            quote! {
-                match bytes[#idx] {
-                    #range => (),
-                    _ => return #miss,
-                }
-            }
-        });
-
-        quote! {
-            match #read {
-                Some(bytes) => {
-                    #(#matches)*
-
-                    #then
-                },
-                None => #miss,
-            }
-        }
-    }
-
-    fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
-        let bump = ctx.bump();
-
-        match leaf {
-            Leaf::Trivia => {
-                let root = self.goto(self.root, Context::new());
-
-                quote! {
-                    #bump
-                    lex.trivia();
-                    return #root;
-                }
-            },
-            Leaf::Token { ident, callback, .. } => {
-                let name = self.name;
-                let out = quote! {
-                    #bump
-                    lex.token = #name::#ident;
-                };
-
-                match callback {
-                    Some(callback) => quote! {
-                        #out
-                        #callback(lex);
-                    },
-                    None => out,
-                }
-            },
-        }
     }
 
     fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
@@ -451,16 +340,6 @@ impl Context {
             buf.push_str("_x");
         }
     }
-}
-
-fn byte_slice_literal(bytes: &[u8]) -> TokenStream {
-    if bytes.iter().any(|&b| b < 0x20 || b >= 0x7F) {
-        return quote!(&[#(#bytes),*]);
-    }
-
-    let slice = std::str::from_utf8(bytes).unwrap();
-
-    syn::parse_str(&format!("b{:?}", slice)).unwrap()
 }
 
 macro_rules! match_quote {
