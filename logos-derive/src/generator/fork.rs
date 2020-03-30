@@ -32,12 +32,12 @@ impl<'a> Generator<'a> {
         let branches = targets.into_iter().map(|(id, ranges)| {
             match *ranges {
                 [range] => {
-                    let next = self.goto(id, ctx.push(1));
+                    let next = self.goto(id, ctx.advance(1));
                     quote!(#range => #next,)
                 },
                 _ => {
                     let test = self.generate_test(ranges).clone();
-                    let next = self.goto(id, ctx.push(1));
+                    let next = self.goto(id, ctx.advance(1));
 
                     quote!(byte if #test(byte) => #next,)
                 },
@@ -68,7 +68,7 @@ impl<'a> Generator<'a> {
 
         let branches = targets.into_iter().enumerate().map(|(idx, (id, ranges))| {
             let idx = (idx as u8) + 1;
-            let next = self.goto(id, ctx.push(1));
+            let next = self.goto(id, ctx.advance(1));
 
             for byte in ranges.into_iter().flatten() {
                 table[byte as usize] = idx;

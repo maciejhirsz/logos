@@ -12,6 +12,9 @@ use crate::leaf::Leaf;
 mod fork;
 mod leaf;
 mod rope;
+mod context;
+
+pub use context::Context;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
@@ -258,104 +261,6 @@ impl<'a> Generator<'a> {
             self.tests.insert(ranges.clone(), ident);
         }
         &self.tests[&ranges]
-    }
-}
-
-/// This struct keeps track of bytes available to be read without
-/// bounds checking across the tree.
-///
-/// For example, a branch that matches 4 bytes followed by a fork
-/// with smallest branch containing of 2 bytes can do a bounds check
-/// for 6 bytes ahead, and leave the remaining 2 byte array (fixed size)
-/// to be handled by the fork, avoiding bound checks there.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct Context {
-    /// Amount of bytes that haven't been bumped yet but should
-    /// before a new read is performed
-    pub at: usize,
-
-    bumped: bool,
-
-    fallback: Option<NodeId>,
-}
-
-impl Context {
-    pub const fn new() -> Self {
-        Context {
-            at: 0,
-            bumped: false,
-            fallback: None,
-        }
-    }
-
-    pub const fn fallback_ctx(self) -> Self {
-        Context {
-            at: 0,
-            bumped: self.bumped,
-            fallback: None,
-        }
-    }
-
-    pub fn has_fallback(&self) -> bool {
-        self.fallback.is_some()
-    }
-
-    pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        if let Some(miss) = miss {
-            self.fallback = Some(miss);
-        }
-        self.bump()
-    }
-
-    pub const fn push(self, n: usize) -> Self {
-        Context {
-            at: self.at + n,
-            ..self
-        }
-    }
-
-    pub fn bump(&mut self) -> Option<TokenStream> {
-        match self.at {
-            0 => None,
-            n => {
-                let tokens = quote!(lex.bump(#n););
-                self.at = 0;
-                self.bumped = true;
-                Some(tokens)
-            },
-        }
-    }
-
-    pub fn read(&self, len: usize) -> TokenStream {
-        match (self.at, len) {
-            (0, 0) => quote!(lex.read::<u8>()),
-            (a, 0) => quote!(lex.read_at::<u8>(#a)),
-            (0, l) => quote!(lex.read::<&[u8; #l]>()),
-            (a, l) => quote!(lex.read_at::<&[u8; #l]>(#a)),
-        }
-    }
-
-    pub fn miss(self, miss: Option<NodeId>, gen: &mut Generator) -> TokenStream {
-        match (miss, self.fallback) {
-            (Some(id), _) => gen.goto(id, self).clone(),
-            (_, Some(id)) => gen.goto(id, self.fallback_ctx()).clone(),
-            _ if self.bumped => quote!(lex.error()),
-            _ => quote!(_error(lex)),
-        }
-    }
-
-    pub fn write_suffix(&self, buf: &mut String) {
-        use std::fmt::Write;
-
-        if self.at > 0 {
-            let _ = write!(buf, "_at{}", self.at);
-        }
-        if let Some(id) = self.fallback {
-            let _ = write!(buf, "_ctx{}", id);
-        }
-        if self.bumped {
-            buf.push_str("_x");
-        }
     }
 }
 

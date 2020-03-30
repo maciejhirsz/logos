@@ -8,7 +8,7 @@ impl<'a> Generator<'a> {
     pub fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
         let miss = ctx.miss(rope.miss.first(), self);
         let len = rope.pattern.len();
-        let then = self.goto(rope.then, ctx.push(rope.pattern.len()));
+        let then = self.goto(rope.then, ctx.advance(rope.pattern.len()));
         let read = ctx.read(len);
 
         let pat = match rope.pattern.to_bytes() {
