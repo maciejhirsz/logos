@@ -47,4 +47,31 @@ impl<'a> Generator<'a> {
             _fast_loop!(lex, #test, #miss);
         }
     }
+
+    pub fn fast_loop_macro() -> TokenStream {
+        quote! {
+            macro_rules! _fast_loop {
+                ($lex:ident, $test:ident, $miss:expr) => {
+                    // Do one bounds check for multiple bytes till EOF
+                    while let Some(arr) = $lex.read::<&[u8; 8]>() {
+                        if $test(arr[0]) { if $test(arr[1]) { if $test(arr[2]) { if $test(arr[3]) {
+                        if $test(arr[4]) { if $test(arr[5]) { if $test(arr[6]) { if $test(arr[7]) {
+
+                        $lex.bump(8); continue;     } $lex.bump(7); return $miss; }
+                        $lex.bump(6); return $miss; } $lex.bump(5); return $miss; }
+                        $lex.bump(4); return $miss; } $lex.bump(3); return $miss; }
+                        $lex.bump(2); return $miss; } $lex.bump(1); return $miss; }
+
+                        return $miss;
+                    }
+
+                    while $lex.test($test) {
+                        $lex.bump(1);
+                    }
+
+                    $miss
+                };
+            }
+        }
+    }
 }
