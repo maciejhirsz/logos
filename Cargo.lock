@@ -39,7 +39,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "logos"
-version = "0.10.0-rc3"
+version = "0.10.0-rc4"
 dependencies = [
  "logos-derive 0.10.0-rc3",
 ]
@@ -124,7 +124,7 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.10.0-rc3",
+ "logos 0.10.0-rc4",
  "logos-derive 0.10.0-rc3",
 ]
 
