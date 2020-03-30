@@ -1,7 +1,7 @@
 [package]
 name = "logos"
 version = "0.10.0-rc3"
-authors = ["maciejhirsz <maciej.hirsz@gmail.com>"]
+authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
 repository = "https://github.com/maciejhirsz/logos"
