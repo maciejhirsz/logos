@@ -5,11 +5,10 @@ use crate::graph::Rope;
 use crate::generator::{Generator, Context};
 
 impl<'a> Generator<'a> {
-    pub fn generate_rope(&mut self, rope: &Rope, ctx: Context) -> TokenStream {
+    pub fn generate_rope(&mut self, rope: &Rope, mut ctx: Context) -> TokenStream {
         let miss = ctx.miss(rope.miss.first(), self);
-        let len = rope.pattern.len();
+        let read = ctx.read(rope.pattern.len());
         let then = self.goto(rope.then, ctx.advance(rope.pattern.len()));
-        let read = ctx.read(len);
 
         let pat = match rope.pattern.to_bytes() {
             Some(bytes) => byte_slice_literal(&bytes),

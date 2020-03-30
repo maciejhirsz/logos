@@ -8,7 +8,7 @@ use crate::generator::{Generator, Context};
 type Targets = Map<NodeId, Vec<Range>>;
 
 impl<'a> Generator<'a> {
-    pub fn generate_fork(&mut self, this: NodeId, fork: &Fork, ctx: Context) -> TokenStream {
+    pub fn generate_fork(&mut self, this: NodeId, fork: &Fork, mut ctx: Context) -> TokenStream {
         let mut targets: Targets = Map::default();
 
         for (range, then) in fork.branches() {
@@ -19,15 +19,11 @@ impl<'a> Generator<'a> {
         match targets.len() {
             1 if loops_to_self => return self.generate_fast_loop(fork, ctx),
             0..=2 => (),
-            _ => return self.generate_jump_table(this, fork, targets, ctx),
+            _ => return self.generate_fork_jump_table(this, fork, targets, ctx),
         }
         let miss = ctx.miss(fork.miss, self);
-        let end = if this == self.root {
-            quote!(_end(lex))
-        } else {
-            miss.clone()
-        };
-        let (byte, read) = self.generate_fork_read(this, end, ctx);
+        let end = self.fork_end(this, &miss);
+        let (byte, read) = self.fork_read(this, end, &mut ctx);
         let branches = targets.into_iter().map(|(id, ranges)| {
             match *ranges {
                 [range] => {
@@ -53,14 +49,10 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_jump_table(&mut self, this: NodeId, fork: &Fork, targets: Targets, ctx: Context) -> TokenStream {
+    fn generate_fork_jump_table(&mut self, this: NodeId, fork: &Fork, targets: Targets, mut ctx: Context) -> TokenStream {
         let miss = ctx.miss(fork.miss, self);
-        let end = if this == self.root {
-            quote!(_end(lex))
-        } else {
-            miss.clone()
-        };
-        let (byte, read) = self.generate_fork_read(this, end, ctx);
+        let end = self.fork_end(this, &miss);
+        let (byte, read) = self.fork_read(this, end, &mut ctx);
 
         let mut table: [u8; 256] = [0; 256];
 
@@ -90,27 +82,52 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_fork_read(&self, this: NodeId, end: TokenStream, ctx: Context) -> (TokenStream, TokenStream) {
+    fn fork_end(&self, this: NodeId, miss: &TokenStream) -> TokenStream {
+        if this == self.root {
+            quote!(_end(lex))
+        } else {
+            miss.clone()
+        }
+    }
+
+    fn fork_read(&self, this: NodeId, end: TokenStream, ctx: &mut Context) -> (TokenStream, TokenStream) {
+        let min_read = self.meta[&this].min_read;
+
+        if ctx.remainder() >= min_read {
+            let at = ctx.at();
+
+            return (
+                quote!(arr[#at]),
+                quote!(),
+            );
+        }
+
         match self.meta[&this].min_read {
             0 | 1 => {
                 let read = ctx.read(0);
 
-                (quote!(byte), quote! {
-                    let byte = match #read {
-                        Some(byte) => byte,
-                        None => return #end,
-                    };
-                })
+                (
+                    quote!(byte),
+                    quote! {
+                        let byte = match #read {
+                            Some(byte) => byte,
+                            None => return #end,
+                        };
+                    },
+                )
             },
             len => {
                 let read = ctx.read(len);
 
-                (quote!(arr[0]), quote! {
-                    let arr = match #read {
-                        Some(arr) => arr,
-                        None => return #end,
-                    };
-                })
+                (
+                    quote!(arr[0]),
+                    quote! {
+                        let arr = match #read {
+                            Some(arr) => arr,
+                            None => return #end,
+                        };
+                    },
+                )
             },
         }
     }

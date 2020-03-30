@@ -22,26 +22,21 @@ pub struct Context {
     bumped: bool,
     /// Node to backtrack to to in case an explicit match has failed.
     /// If `None` will instead produce an error token.
-    fallback: Option<NodeId>,
+    backtrack: Option<NodeId>,
 }
 
 impl Context {
-    const fn backtrack(self) -> Self {
-        Context {
-            at: 0,
-            available: 0,
-            bumped: self.bumped,
-            fallback: None,
-        }
+    pub fn at (&self) -> usize {
+        self.at
     }
 
-    pub fn has_fallback(&self) -> bool {
-        self.fallback.is_some()
+    pub fn can_backtrack(&self) -> bool {
+        self.backtrack.is_some()
     }
 
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
         if let Some(miss) = miss {
-            self.fallback = Some(miss);
+            self.backtrack = Some(miss);
         }
         self.bump()
     }
@@ -59,13 +54,20 @@ impl Context {
             n => {
                 let tokens = quote!(lex.bump(#n););
                 self.at = 0;
+                self.available = 0;
                 self.bumped = true;
                 Some(tokens)
             },
         }
     }
 
-    pub fn read(&self, len: usize) -> TokenStream {
+    pub fn remainder(&self) -> usize {
+        self.available.saturating_sub(self.at)
+    }
+
+    pub fn read(&mut self, len: usize) -> TokenStream {
+        self.available = len;
+
         match (self.at, len) {
             (0, 0) => quote!(lex.read::<u8>()),
             (a, 0) => quote!(lex.read_at::<u8>(#a)),
@@ -74,12 +76,40 @@ impl Context {
         }
     }
 
-    pub fn miss(self, miss: Option<NodeId>, gen: &mut Generator) -> TokenStream {
-        match (miss, self.fallback) {
+    pub fn wipe(&mut self) {
+        self.available = 0;
+    }
+
+    const fn backtrack(self) -> Self {
+        Context {
+            at: 0,
+            available: 0,
+            bumped: self.bumped,
+            backtrack: None,
+        }
+    }
+
+    pub fn miss(mut self, miss: Option<NodeId>, gen: &mut Generator) -> TokenStream {
+        self.wipe();
+        match (miss, self.backtrack) {
             (Some(id), _) => gen.goto(id, self).clone(),
             (_, Some(id)) => gen.goto(id, self.backtrack()).clone(),
             _ if self.bumped => quote!(lex.error()),
             _ => quote!(_error(lex)),
+        }
+    }
+
+    pub fn call_args(&self) -> TokenStream {
+        match self.available {
+            0 | 1 => quote!(),
+            _ => quote!(, arr),
+        }
+    }
+
+    pub fn fn_props(&self) -> TokenStream {
+        match self.available {
+            0 | 1 => quote!(),
+            n => quote!(, arr: &[u8; #n]),
         }
     }
 
@@ -89,7 +119,10 @@ impl Context {
         if self.at > 0 {
             let _ = write!(buf, "_at{}", self.at);
         }
-        if let Some(id) = self.fallback {
+        if self.available > 0 {
+            let _ = write!(buf, "_with{}", self.available);
+        }
+        if let Some(id) = self.backtrack {
             let _ = write!(buf, "_ctx{}", id);
         }
         if self.bumped {
