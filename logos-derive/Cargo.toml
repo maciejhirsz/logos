@@ -1,6 +1,6 @@
 [package]
 name = "logos-derive"
-version = "0.10.0-rc3"
+version = "0.10.0-rc5"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT/Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -18,7 +18,6 @@ proc-macro = true
 [dependencies]
 beef = "0.4.1"
 fnv = "1.0.6"
-rustc-hash = "1.0.1"
 syn = { version = "1.0.17", features = ["extra-traits", "full"] }
 quote = "1.0.3"
 proc-macro2 = "1.0.9"

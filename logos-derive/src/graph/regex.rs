@@ -6,7 +6,7 @@ use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKi
 use regex_syntax::ParserBuilder;
 use utf8_ranges::Utf8Sequences;
 
-use crate::graph::{Graph, Disambiguate, NodeId, Range, Rope, Fork};
+use crate::graph::{Graph, Disambiguate, Node, NodeId, Range, Rope, Fork};
 use crate::error::{Error, Result};
 
 /// Middle Intermediate Representation of the regex, built from
@@ -115,13 +115,20 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         match mir {
             Mir::Empty => (0, then),
             Mir::Loop(mir) => {
+                let miss = match miss {
+                    Some(id) => self.merge(id, then),
+                    None => then,
+                };
                 let this = self.reserve();
-                let (_, id) = self.parse_mir(*mir, this.get(), miss);
-                let id = self.merge(id, then);
+                let (_, id) = self.parse_mir(*mir, this.get(), Some(miss));
 
                 // Move the node to the reserved id
-                let fork = self.fork_off(id);
-                let id = self.insert(this, fork);
+                let node = match &self[id] {
+                    Node::Fork(fork) => Node::Fork(fork.clone()),
+                    Node::Rope(rope) => Node::Rope(rope.clone()),
+                    Node::Leaf(_) => unreachable!(),
+                };
+                let id = self.insert(this, node);
 
                 (0, id)
             }

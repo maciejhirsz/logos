@@ -129,6 +129,10 @@ impl<Leaf> Graph<Leaf> {
             (None, None) => {
                 panic!("Merging two reserved nodes!");
             },
+            // Merging a leaf with an empty slot would produce
+            // an empty self-referencing fork.
+            (Some(Node::Leaf(_)), None) => return a,
+            (None, Some(Node::Leaf(_))) => return b,
             (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
                 return match Disambiguate::cmp(left, right) {
                     Ordering::Less => b,
@@ -172,8 +176,30 @@ impl<Leaf> Graph<Leaf> {
         }
 
         let mut fork = self.fork_off(a);
-
         fork.merge(self.fork_off(b), self);
+
+        let mut stack = vec![id.get()];
+
+        // Flatten the fork
+        while let Some(miss) = fork.miss {
+            if stack.contains(&miss) {
+                break;
+            }
+            stack.push(miss);
+
+            match self.get(miss) {
+                Some(Node::Fork(other)) => {
+                    match other.miss {
+                        Some(id) if self.get(id).is_none() => break,
+                        _ => (),
+                    }
+                    fork.miss = None;
+                    fork.merge(other.clone(), self);
+
+                },
+                _ => break,
+            }
+        }
 
         self.insert(id, fork)
     }
