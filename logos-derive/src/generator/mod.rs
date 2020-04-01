@@ -1,12 +1,9 @@
-use std::collections::BTreeMap;
-use std::cmp::min;
-
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
 use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 
-use crate::graph::{Graph, Node, NodeId, Range};
+use crate::graph::{Graph, Node, NodeId, Range, Meta};
 use crate::leaf::Leaf;
 
 mod fork;
@@ -14,7 +11,7 @@ mod leaf;
 mod rope;
 mod context;
 
-pub use context::Context;
+use self::context::Context;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
@@ -23,6 +20,8 @@ pub struct Generator<'a> {
     root: NodeId,
     /// Reference to the graph with all of the nodes
     graph: &'a Graph<Leaf>,
+    /// Meta data collected for the nodes
+    meta: Meta,
     /// Buffer with functions growing during generation
     rendered: TokenStream,
     /// Set of functions that have already been rendered
@@ -35,122 +34,31 @@ pub struct Generator<'a> {
     /// Identifiers for helper functions matching a byte to a given
     /// set of ranges
     tests: Map<Vec<Range>, Ident>,
-    /// Meta data collected for the nodes
-    meta: BTreeMap<NodeId, Meta>,
-    /// Current execution stack, for keeping track of loops and such
-    stack: Vec<NodeId>,
-}
-
-#[derive(Debug, Default)]
-struct Meta {
-    /// Number of references to this node
-    refcount: usize,
-    /// Minimum number of bytes that ought to be read for this
-    /// node to find a match
-    min_read: usize,
-    /// Marks whether or not this node leads to a loop entry node.
-    is_loop_init: bool,
-    /// Ids of other nodes that point to this node while this
-    /// node is on a stack (creating a loop)
-    loop_entry_from: Vec<NodeId>,
-}
-
-impl Meta {
-    fn loop_entry(&mut self, id: NodeId) {
-        if let Err(idx) = self.loop_entry_from.binary_search(&id) {
-            self.loop_entry_from.insert(idx, id);
-        }
-    }
 }
 
 impl<'a> Generator<'a> {
     pub fn new(name: &'a Ident, root: NodeId, graph: &'a Graph<Leaf>) -> Self {
         let rendered = Self::fast_loop_macro();
+        let meta = Meta::analyze(root, graph);
 
         Generator {
             name,
             root,
             graph,
+            meta,
             rendered,
             fns: Set::default(),
             idents: Map::default(),
             gotos: Map::default(),
             tests: Map::default(),
-            meta: BTreeMap::default(),
-            stack: Vec::new(),
         }
     }
 
     pub fn generate(&mut self) -> &TokenStream {
-        self.generate_meta(self.root, self.root);
-        assert_eq!(self.stack.len(), 0);
-
-        // panic!("{:#?}\n\n{:#?}", self.meta, self.graph);
-
         let root = self.goto(self.root, Context::default()).clone();
-
-        assert_eq!(self.stack.len(), 0);
 
         self.rendered.append_all(root);
         &self.rendered
-    }
-
-    fn generate_meta(&mut self, this: NodeId, parent: NodeId) -> &Meta {
-        let meta = self.meta.entry(this).or_default();
-        let is_done = meta.refcount > 0;
-
-        meta.refcount += 1;
-
-        if self.stack.contains(&this) {
-            meta.loop_entry(parent);
-            self.meta.get_mut(&parent).unwrap().is_loop_init = true;
-        }
-        if is_done {
-            return &self.meta[&this];
-        }
-
-        self.stack.push(this);
-
-        let mut min_read;
-
-        match &self.graph[this] {
-            Node::Fork(fork) => {
-                min_read = usize::max_value();
-                for (_, id) in fork.branches() {
-                    let meta = self.generate_meta(id, this);
-
-                    if meta.is_loop_init {
-                        min_read = 1;
-                    } else {
-                        min_read = min(min_read, meta.min_read + 1);
-                    }
-                }
-                if let Some(id) = fork.miss {
-                    self.generate_meta(id, this);
-                }
-                if min_read == usize::max_value() {
-                    min_read = 0;
-                }
-            },
-            Node::Rope(rope) => {
-                min_read = rope.pattern.len();
-                let meta = self.generate_meta(rope.then, this);
-
-                if !meta.is_loop_init {
-                    min_read += meta.min_read;
-                }
-
-                if let Some(id) = rope.miss.first() {
-                    self.generate_meta(id, this);
-                }
-            },
-            Node::Leaf(_) => min_read = 0,
-        }
-
-        self.meta.get_mut(&this).unwrap().min_read = min_read;
-        self.stack.pop();
-
-        &self.meta[&this]
     }
 
     fn generate_fn(&mut self, id: NodeId, ctx: Context) {
@@ -158,8 +66,6 @@ impl<'a> Generator<'a> {
             return;
         }
         self.fns.insert((id, ctx));
-
-        self.stack.push(id);
 
         let body = match &self.graph[id] {
             Node::Fork(fork) => self.generate_fork(id, fork, ctx),
@@ -175,7 +81,6 @@ impl<'a> Generator<'a> {
             }
         };
 
-        self.stack.pop();
         self.rendered.append_all(out);
     }
 
@@ -183,7 +88,7 @@ impl<'a> Generator<'a> {
         let key = (id, ctx);
 
         if !self.gotos.contains_key(&key) {
-            let meta = &self.meta[&id];
+            let meta = &self.meta[id];
             let enters_loop = meta.loop_entry_from.len() > 0;
 
             let bump = if enters_loop || !ctx.can_backtrack() {

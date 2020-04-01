@@ -7,14 +7,16 @@ use std::hash::{Hash, Hasher};
 use fnv::FnvHasher;
 
 mod impls;
+mod meta;
 mod fork;
 mod rope;
 mod range;
 mod regex;
 
-pub use fork::Fork;
-pub use rope::Rope;
-pub use range::Range;
+pub use self::meta::Meta;
+pub use self::fork::Fork;
+pub use self::rope::Rope;
+pub use self::range::Range;
 
 pub struct Graph<Leaf> {
     /// Internal storage of all allocated nodes. Once a node is

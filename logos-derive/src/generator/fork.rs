@@ -14,7 +14,7 @@ impl<'a> Generator<'a> {
         for (range, then) in fork.branches() {
             targets.entry(then).or_default().push(range);
         }
-        let loops_to_self = self.meta[&this].loop_entry_from.contains(&this);
+        let loops_to_self = self.meta[this].loop_entry_from.contains(&this);
 
         match targets.len() {
             1 if loops_to_self => return self.generate_fast_loop(fork, ctx),
@@ -91,7 +91,7 @@ impl<'a> Generator<'a> {
     }
 
     fn fork_read(&self, this: NodeId, end: TokenStream, ctx: &mut Context) -> (TokenStream, TokenStream) {
-        let min_read = self.meta[&this].min_read;
+        let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= min_read {
             let at = ctx.at();
@@ -102,7 +102,7 @@ impl<'a> Generator<'a> {
             );
         }
 
-        match self.meta[&this].min_read {
+        match self.meta[this].min_read {
             0 | 1 => {
                 let read = ctx.read(0);
 
