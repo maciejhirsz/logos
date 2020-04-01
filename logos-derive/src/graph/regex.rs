@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::cmp::max;
+use std::cmp::min;
 use std::convert::TryFrom;
 
 use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
@@ -143,18 +143,18 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
             },
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
-                let mut longest = 0;
+                let mut shortest = if alternation.len() > 0 { usize::max_value() } else { 0 };
 
                 for mir in alternation {
                     let (len, id) = self.parse_mir(mir, then, None);
                     let alt = self.fork_off(id);
 
-                    longest = max(longest, len);
+                    shortest = min(shortest, len);
 
                     fork.merge(alt, self);
                 }
 
-                (longest, self.push(fork))
+                (shortest, self.push(fork))
             }
             Mir::Literal(literal) => {
                 let pattern = match literal {
@@ -165,7 +165,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         [byte].to_vec()
                     },
                 };
-                (pattern.len(), self.push(Rope::new(pattern, then).miss(miss)))
+                (pattern.len() * 2, self.push(Rope::new(pattern, then).miss(miss)))
             },
             Mir::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
@@ -202,12 +202,17 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                             None
                         },
                         mir => {
-                            let len = end - cur;
-                            if len != 0 {
-                                *then = graph.push(Rope::new(&ropebuf[cur..end], *then));
+                            if end > cur {
+                                let rope = Rope::new(&ropebuf[cur..end], *then);
+                                let len = rope.priority();
+
+                                *then = graph.push(rope);
                                 end = cur;
+
+                                Some((len, mir))
+                            } else {
+                                Some((0, mir))
                             }
-                            Some((len, mir))
                         },
                     }
                 };
@@ -224,9 +229,11 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 match handle_bytes(self, concat.remove(0), &mut then) {
                     None => {
-                        total_len += end - cur;
+                        let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
 
-                        (total_len, self.push(Rope::new(&ropebuf[cur..end], then).miss(miss)))
+                        total_len += rope.priority();
+
+                        (total_len, self.push(rope))
                     },
                     Some((len, mir)) => {
                         let (nlen, id) = self.parse_mir(mir, then, miss);
@@ -251,19 +258,21 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 }
 
                 let mut root = Fork::new().miss(miss);
-                let mut longest = 0;
+                let mut shortest = usize::max_value();
 
                 for rope in ropes {
-                    longest = max(longest, rope.pattern.len());
+                    shortest = min(shortest, rope.priority());
 
                     let fork = rope.into_fork(self);
                     root.merge(fork, self);
                 }
 
-                (longest, self.push(root))
+                (shortest, self.push(root))
             },
             Mir::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
+                let mut len = 2;
+
                 let class: Vec<Range> = match class {
                     Class::Unicode(u) => {
                         u.iter().copied().map(Into::into).collect()
@@ -274,10 +283,13 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 };
 
                 for range in class {
+                    if range.as_byte().is_none() {
+                        len = 1;
+                    }
                     fork.add_branch(range, then, self);
                 }
 
-                (1, self.push(fork))
+                (len, self.push(fork))
             },
         }
     }
@@ -317,7 +329,7 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let (len, parsed) = graph.regex(true, "foobar", leaf).unwrap();
 
-        assert_eq!(len, 6);
+        assert_eq!(len, 12);
         assert_eq!(
             graph[parsed],
             Node::Rope(Rope::new("foobar", leaf)),
@@ -331,7 +343,7 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let (len, parsed) = graph.regex(true, "a|b", leaf).unwrap();
 
-        assert_eq!(len, 1);
+        assert_eq!(len, 2);
         assert_eq!(
             graph[parsed],
             Node::Fork(
@@ -379,12 +391,23 @@ mod tests {
     }
 
     #[test]
-    fn regex_combine_len() {
+    fn priorities() {
         let mut graph = Graph::new();
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let (len, _) = graph.regex(true, "(fooz|bar)+qux", leaf).unwrap();
 
-        assert_eq!(len, 7); // foozqux
+        let regexes = [
+            ("[a-z]+", 1),
+            ("a|b", 2),
+            ("a|[b-z]", 1),
+            ("(foo)+", 6),
+            ("foobar", 12),
+            ("(fooz|bar)+qux", 12),
+        ];
+
+        for (regex, expected) in regexes.iter() {
+            let (len, _) = graph.regex(true, regex, leaf).unwrap();
+            assert_eq!(len, *expected);
+        }
     }
 }

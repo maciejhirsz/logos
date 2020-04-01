@@ -97,6 +97,16 @@ impl Rope {
         self
     }
 
+    pub fn priority(&self) -> usize {
+        self.pattern
+            .iter()
+            .map(|range| match range.as_byte() {
+                Some(_) => 2,
+                None => 1,
+            })
+            .sum()
+    }
+
     pub fn into_fork<T>(mut self, graph: &mut Graph<T>) -> Fork
     where
         T: Disambiguate,
