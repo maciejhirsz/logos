@@ -15,6 +15,9 @@ pub enum Token {
     #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
     Identifier,
 
+    #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
+    String,
+
     #[token = "private"]
     Private,
 
@@ -114,6 +117,9 @@ static IDENTIFIERS: &str = "It was the year when they finally immanentized the E
                             It was the year when they finally immanentized the Eschaton \
                             It was the year when they finally immanentized the Eschaton";
 
+
+static STRINGS: &str = r#""tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree." "tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree." "tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree." "tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree.""#;
+
 #[bench]
 fn identifiers(b: &mut Bencher) {
     use logos::Logos;
@@ -139,6 +145,23 @@ fn keywords_operators_and_punctators(b: &mut Bencher) {
 
     b.iter(|| {
         let mut lex = Token::lexer(SOURCE);
+
+        while lex.token != Token::EndOfProgram {
+            lex.advance();
+        }
+
+        black_box(lex.token)
+    });
+}
+
+#[bench]
+fn strings(b: &mut Bencher) {
+    use logos::Logos;
+
+    b.bytes = STRINGS.len() as u64;
+
+    b.iter(|| {
+        let mut lex = Token::lexer(STRINGS);
 
         while lex.token != Token::EndOfProgram {
             lex.advance();

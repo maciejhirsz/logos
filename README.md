@@ -9,10 +9,10 @@
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
 
 **Logos** works by:
-+ Resolving all logical branching of token definitions into a tree.
+
++ Resolving all logical branching of token definitions into a state machine.
 + Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
-+ Always using a Lookup Table for the first byte of a token.
-+ Producing code that never backtracks, thus running at linear time or close to it.
++ Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
 
 In practice it means that for most grammars the lexing performance is virtually unaffected by the number
 of tokens defined in the grammar. Or, in other words, **it is really fast**.
@@ -83,13 +83,33 @@ fn main() {
 }
 ```
 
+## Token disambiguation
+
+Rule of thumb is:
+
++ Longer beats shorter.
++ Specific beats generic.
+
+If any two definitions could match the same input, like `fast` and `[a-zA-Z]+`
+in the example above, it's the longer and more specific definition of `Token::Fast`
+that will be the result.
+
+This is done by comparing numeric priority attached to each definition. Every consecutive,
+non-repeating single byte adds 2 to the priority, while every range or regex class adds 1.
+Loops or optional blocks are ignored, while alternations count the shortest alternative:
+
++ `[a-zA-Z]+` has a priority of 1 (lowest possible), because at minimum it can match a single byte to a class.
++ `foobar` has a priority of 12.
++ `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
+
 ## How fast?
 
 Ridiculously fast!
 
 ```
-test identifiers                       ... bench:         675 ns/iter (+/- 3) = 1154 MB/s
-test keywords_operators_and_punctators ... bench:       1,814 ns/iter (+/- 16) = 1174 MB/s
+test identifiers                       ... bench:         667 ns/iter (+/- 26) = 1167 MB/s
+test keywords_operators_and_punctators ... bench:       1,984 ns/iter (+/- 105) = 1074 MB/s
+test strings                           ... bench:         613 ns/iter (+/- 38) = 1420 MB/s
 ```
 
 ## License

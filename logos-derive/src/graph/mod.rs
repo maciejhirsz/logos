@@ -7,14 +7,16 @@ use std::hash::{Hash, Hasher};
 use fnv::FnvHasher;
 
 mod impls;
+mod meta;
 mod fork;
 mod rope;
 mod range;
 mod regex;
 
-pub use fork::Fork;
-pub use rope::Rope;
-pub use range::Range;
+pub use self::meta::Meta;
+pub use self::fork::Fork;
+pub use self::rope::Rope;
+pub use self::range::Range;
 
 pub struct Graph<Leaf> {
     /// Internal storage of all allocated nodes. Once a node is
@@ -110,9 +112,11 @@ impl<Leaf> Graph<Leaf> {
         self.push_unchecked(node)
     }
 
-    fn push_unchecked(&mut self, node: Node<Leaf>) -> NodeId{
+    fn push_unchecked(&mut self, node: Node<Leaf>) -> NodeId {
         let id = self.nodes.len();
+
         self.nodes.push(Some(node));
+
         id
     }
 
@@ -178,7 +182,7 @@ impl<Leaf> Graph<Leaf> {
         let mut fork = self.fork_off(a);
         fork.merge(self.fork_off(b), self);
 
-        let mut stack = vec![id.get()];
+        let mut stack = vec![id.get(), a, b];
 
         // Flatten the fork
         while let Some(miss) = fork.miss {
@@ -187,18 +191,18 @@ impl<Leaf> Graph<Leaf> {
             }
             stack.push(miss);
 
-            match self.get(miss) {
-                Some(Node::Fork(other)) => {
-                    match other.miss {
-                        Some(id) if self.get(id).is_none() => break,
-                        _ => (),
-                    }
-                    fork.miss = None;
-                    fork.merge(other.clone(), self);
-
-                },
+            let other = match self.get(miss) {
+                Some(Node::Fork(other)) => other.clone(),
+                Some(Node::Rope(other)) => other.clone().into_fork(self),
                 _ => break,
+            };
+            match other.miss {
+                Some(id) if self.get(id).is_none() => break,
+                _ => (),
             }
+            fork.miss = None;
+            fork.merge(other, self);
+
         }
 
         self.insert(id, fork)

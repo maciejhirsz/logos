@@ -35,9 +35,7 @@ impl Context {
     }
 
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        if let Some(miss) = miss {
-            self.backtrack = Some(miss);
-        }
+        self.backtrack = miss;
         self.bump()
     }
 
