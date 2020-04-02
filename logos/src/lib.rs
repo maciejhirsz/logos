@@ -86,6 +86,7 @@
 //! ```rust
 //! use logos::{Logos, Lexer, Extras};
 //!
+//! // This struct will be created alongside the `Lexer`.
 //! #[derive(Default)]
 //! struct TokenExtras {
 //!     denomination: u32,
@@ -106,8 +107,8 @@
 //! }
 //!
 //! #[derive(Logos, Debug, PartialEq)]
-//! #[extras = "TokenExtras"]
-//! enum Token {
+//! #[extras = "TokenExtras"] // Use the `extras` to inform that we want
+//! enum Token {              // to use `TokenExtras` inside our `Lexer`.
 //!     #[end]
 //!     End,
 //!

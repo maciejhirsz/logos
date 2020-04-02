@@ -90,6 +90,7 @@ On top of using the enum variants, **Logos** can also call arbitrary functions w
 ```rust
 use logos::{Logos, Lexer, Extras};
 
+// This struct will be created alongside the `Lexer`.
 #[derive(Default)]
 struct TokenExtras {
     denomination: u32,
@@ -110,8 +111,8 @@ fn mega<S>(lexer: &mut Lexer<Token, S>) {
 }
 
 #[derive(Logos, Debug, PartialEq)]
-#[extras = "TokenExtras"]
-enum Token {
+#[extras = "TokenExtras"] // Use the `extras` to inform that we want
+enum Token {              // to use `TokenExtras` inside our `Lexer`.
     #[end]
     End,
 
