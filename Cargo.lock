@@ -34,14 +34,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "logos"
-version = "0.10.0-rc5"
+version = "0.10.0-rc6"
 dependencies = [
- "logos-derive 0.10.0-rc5",
+ "logos-derive 0.10.0-rc6",
 ]
 
 [[package]]
 name = "logos-derive"
-version = "0.10.0-rc5"
+version = "0.10.0-rc6"
 dependencies = [
  "beef 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -110,8 +110,8 @@ dependencies = [
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "logos 0.10.0-rc5",
- "logos-derive 0.10.0-rc5",
+ "logos 0.10.0-rc6",
+ "logos-derive 0.10.0-rc6",
 ]
 
 [[package]]
