@@ -107,9 +107,9 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 Ridiculously fast!
 
 ```
-test identifiers                       ... bench:         659 ns/iter (+/- 21) = 1182 MB/s
-test keywords_operators_and_punctators ... bench:       2,010 ns/iter (+/- 66) = 1060 MB/s
-test strings                           ... bench:         216 ns/iter (+/- 12) = 1009 MB/s
+test identifiers                       ... bench:         667 ns/iter (+/- 26) = 1167 MB/s
+test keywords_operators_and_punctators ... bench:       1,984 ns/iter (+/- 105) = 1074 MB/s
+test strings                           ... bench:         613 ns/iter (+/- 38) = 1420 MB/s
 ```
 
 ## License
