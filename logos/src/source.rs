@@ -219,33 +219,6 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     unsafe fn from_ptr(ptr: *const u8) -> Self;
 }
 
-/// A trait implemented for byte arrays that allow splitting them into two,
-/// with the resulting sizes known at compile time.
-pub trait Split<Target> {
-    /// Remainder after splitting. This must be statically safe so that
-    /// `Target` + `Remainder` = `Self`.
-    ///
-    /// **Implementations must guarantee that these are not overlapping!**
-    type Remainder;
-
-    /// Split self into `Target` and `Remainder`.
-    ///
-    /// ```rust
-    /// use logos::source::Split;
-    ///
-    /// fn main() {
-    ///     let bytes = b"foobar";
-    ///
-    ///     assert_eq!(bytes.split(), (b'f', b"oobar")); // (u8,       &[u8; 5])
-    ///     assert_eq!(bytes.split(), (b"f", b"oobar")); // (&[u8; 1], &[u8; 5])
-    ///     assert_eq!(bytes.split(), (b"fo", b"obar")); // ...
-    ///     assert_eq!(bytes.split(), (b"foo", b"bar"));
-    ///     assert_eq!(bytes.split(), (b"foob", b"ar"));
-    ///     assert_eq!(bytes.split(), (b"fooba", b"r"));
-    /// }
-    fn split(self) -> (Target, Self::Remainder);
-}
-
 impl<'source> Chunk<'source> for u8 {
     const SIZE: usize = 1;
 
@@ -256,23 +229,7 @@ impl<'source> Chunk<'source> for u8 {
 }
 
 macro_rules! impl_array {
-    (@byte $size:expr, 1) => (
-        impl<'source> Split<u8> for &'source [u8; $size] {
-            type Remainder = &'source [u8; $size - 1];
-
-            #[inline]
-            fn split(self) -> (u8, &'source [u8; $size - 1]) {
-                unsafe {(
-                    self[0],
-                    Chunk::from_ptr((self as *const u8).add(1)),
-                )}
-            }
-        }
-    );
-
-    (@byte $size:expr, $ignore:tt) => ();
-
-    ($($size:expr => ( $( $split:tt ),* ))*) => ($(
+    ($($size:expr),*) => ($(
         impl<'source> Chunk<'source> for &'source [u8; $size] {
             const SIZE: usize = $size;
 
@@ -281,40 +238,7 @@ macro_rules! impl_array {
                 &*(ptr as *const [u8; $size])
             }
         }
-
-        $(
-            impl_array! { @byte $size, $split }
-
-            impl<'source> Split<&'source [u8; $split]> for &'source [u8; $size] {
-                type Remainder = &'source [u8; $size - $split];
-
-                #[inline]
-                fn split(self) -> (&'source [u8; $split], &'source [u8; $size - $split]) {
-                    unsafe {(
-                        Chunk::from_ptr(self as *const u8),
-                        Chunk::from_ptr((self as *const u8).add($split)),
-                    )}
-                }
-            }
-        )*
     )*);
 }
 
-impl_array! {
-    1  => ()
-    2  => (1)
-    3  => (1, 2)
-    4  => (1, 2, 3)
-    5  => (1, 2, 3, 4)
-    6  => (1, 2, 3, 4, 5)
-    7  => (1, 2, 3, 4, 5, 6)
-    8  => (1, 2, 3, 4, 5, 6, 7)
-    9  => (1, 2, 3, 4, 5, 6, 7, 8)
-    10 => (1, 2, 3, 4, 5, 6, 7, 8, 9)
-    11 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-    12 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-    13 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    14 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
-    15 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
-    16 => (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
-}
+impl_array!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);

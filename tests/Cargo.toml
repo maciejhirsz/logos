@@ -2,7 +2,7 @@
 name = "tests"
 version = "0.0.0"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/maciejhirsz/logos"
 edition = "2018"
 
