@@ -83,6 +83,75 @@ fn main() {
 }
 ```
 
+### Callbacks
+
+On top of using the enum variants, **Logos** can also call arbitrary functions whenever a pattern is matched:
+
+```rust
+use logos::{Logos, Lexer, Extras};
+
+// This struct will be created alongside the `Lexer`.
+#[derive(Default)]
+struct TokenExtras {
+    denomination: u32,
+}
+
+impl Extras for TokenExtras {}
+
+fn one<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.denomination = 1;
+}
+
+fn kilo<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.denomination = 1_000;
+}
+
+fn mega<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.denomination = 1_000_000;
+}
+
+#[derive(Logos, Debug, PartialEq)]
+#[extras = "TokenExtras"] // Use the `extras` to inform that we want
+enum Token {              // to use `TokenExtras` inside our `Lexer`.
+    #[end]
+    End,
+
+    #[error]
+    Error,
+
+    // You can apply multiple definitions to a single variant,
+    // each with it's own callback.
+    #[regex("[0-9]+", callback = "one")]
+    #[regex("[0-9]+k", callback = "kilo")]
+    #[regex("[0-9]+m", callback = "mega")]
+    Number,
+}
+
+fn main() {
+    let mut lexer = Token::lexer("5 42k 75m");
+
+    assert_eq!(lexer.token, Token::Number);
+    assert_eq!(lexer.slice(), "5");
+    assert_eq!(lexer.extras.denomination, 1);
+
+    lexer.advance();
+
+    assert_eq!(lexer.token, Token::Number);
+    assert_eq!(lexer.slice(), "42k");
+    assert_eq!(lexer.extras.denomination, 1_000);
+
+    lexer.advance();
+
+    assert_eq!(lexer.token, Token::Number);
+    assert_eq!(lexer.slice(), "75m");
+    assert_eq!(lexer.extras.denomination, 1_000_000);
+
+    lexer.advance();
+
+    assert_eq!(lexer.token, Token::End);
+}
+```
+
 ## Token disambiguation
 
 Rule of thumb is:
