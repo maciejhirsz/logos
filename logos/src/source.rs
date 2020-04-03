@@ -76,7 +76,7 @@ pub trait Source {
     /// fn main() {
     ///     let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
-    ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
+    ///     assert_eq!(<str as Source>::slice(&foo, 51..59), Some("Eschaton"));
     /// }
     /// ```
     fn slice(&self, range: Range<usize>) -> Option<&Self::Slice>;
@@ -93,7 +93,7 @@ pub trait Source {
     ///     let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
     ///     unsafe {
-    ///         assert_eq!(Source::slice_unchecked(&foo, 51..59), "Eschaton");
+    ///         assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     ///     }
     /// }
     /// ```

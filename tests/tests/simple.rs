@@ -19,19 +19,19 @@ impl Extras for MockExtras {
     }
 }
 
-fn count_numbers<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
+fn count_numbers(lexer: &mut Lexer<Token>) {
     lexer.extras.numbers += 1;
 }
 
-fn byte_size_1<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
+fn byte_size_1(lexer: &mut Lexer<Token>) {
     lexer.extras.byte_size = 1;
 }
 
-fn byte_size_2<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
+fn byte_size_2(lexer: &mut Lexer<Token>) {
     lexer.extras.byte_size = 2;
 }
 
-fn byte_size_4<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
+fn byte_size_4(lexer: &mut Lexer<Token>) {
     lexer.extras.byte_size = 4;
 }
 
@@ -47,8 +47,7 @@ enum Token {
     #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
     Identifier,
 
-    #[regex = "[1-9][0-9]*|0"]
-    #[callback = "count_numbers"]
+    #[regex("[1-9][0-9]*|0", |lex| lex.extras.numbers += 1)]
     Number,
 
     #[regex = "0b[01]+"]
@@ -334,26 +333,6 @@ mod simple {
         assert_eq!(lex.extras.tokens, 7); // End counts as a token
 
         assert_eq!(lex.extras.numbers, 2);
-    }
-
-    #[test]
-    fn u8_source() {
-        assert_lex(
-            &b"It was the year when they finally immanentized the Eschaton."[..],
-            &[
-                (Token::Identifier, b"It", 0..2),
-                (Token::Identifier, b"was", 3..6),
-                (Token::Identifier, b"the", 7..10),
-                (Token::Identifier, b"year", 11..15),
-                (Token::Identifier, b"when", 16..20),
-                (Token::Identifier, b"they", 21..25),
-                (Token::Identifier, b"finally", 26..33),
-                (Token::Identifier, b"immanentized", 34..46),
-                (Token::Identifier, b"the", 47..50),
-                (Token::Identifier, b"Eschaton", 51..59),
-                (Token::Accessor, b".", 59..60),
-            ],
-        );
     }
 
     #[test]

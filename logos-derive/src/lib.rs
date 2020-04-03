@@ -260,8 +260,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
         None => quote!(()),
     };
     let source = match mode {
-        Mode::Utf8 => quote!(Source),
-        Mode::Binary => quote!(BinarySource),
+        Mode::Utf8 => quote!(str),
+        Mode::Binary => quote!([u8]),
     };
 
     for id in regex_ids {
@@ -285,25 +285,22 @@ pub fn logos(input: TokenStream) -> TokenStream {
         impl ::logos::Logos for #name {
             type Extras = #extras;
 
+            type Source = #source;
+
             const SIZE: usize = #size;
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
-            fn lex<'source, Source>(lex: &mut ::logos::Lexer<'source, #name, Source>)
-            where
-                Source: ::logos::Source + ?Sized,
-                // Self: ::logos::source::WithSource<Source>,
-            {
+            fn lex<'source>(lex: &mut ::logos::Lexer<'source, #name>) {
                 use ::logos::internal::{LexerInternal, Bump};
-                use ::logos::source::{Source as Src};
 
-                type Lexer<'s, S> = ::logos::Lexer<'s, #name, S>;
+                type Lexer<'s> = ::logos::Lexer<'s, #name>;
 
-                fn _end<'s, S: Src + ?Sized>(lex: &mut Lexer<'s, S>) {
+                fn _end<'s>(lex: &mut Lexer<'s>) {
                     lex.token = #name::#end;
                 }
 
-                fn _error<'s, S: Src + ?Sized>(lex: &mut Lexer<'s, S>) {
+                fn _error<'s>(lex: &mut Lexer<'s>) {
                     lex.bump(1);
 
                     lex.token = #name::#error;

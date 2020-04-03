@@ -98,15 +98,15 @@ struct TokenExtras {
 
 impl Extras for TokenExtras {}
 
-fn one<S>(lexer: &mut Lexer<Token, S>) {
+fn one(lexer: &mut Lexer<Token>) {
     lexer.extras.denomination = 1;
 }
 
-fn kilo<S>(lexer: &mut Lexer<Token, S>) {
+fn kilo(lexer: &mut Lexer<Token>) {
     lexer.extras.denomination = 1_000;
 }
 
-fn mega<S>(lexer: &mut Lexer<Token, S>) {
+fn mega(lexer: &mut Lexer<Token>) {
     lexer.extras.denomination = 1_000_000;
 }
 

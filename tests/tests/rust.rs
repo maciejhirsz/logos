@@ -15,21 +15,13 @@ enum Token {
 
     /// Adaptation of implementation by matklad:
     /// https://github.com/matklad/fall/blob/527ab331f82b8394949041bab668742868c0c282/lang/rust/syntax/src/rust.fall#L1294-L1324
-    #[regex(
-        "r#*\"",
-        |lexer| {
-            let closing = lexer.slice().as_bytes().len() - 1; // skip 'r'
-            // Who needs more then 25 hashes anyway? :)
-            let q_hashes = concat!('"', "######", "######", "######", "######", "######");
-            let closing_match = q_hashes[..closing].as_bytes();
+    #[regex("r#*\"", |lexer| {
+        // Who needs more then 25 hashes anyway? :)
+        let q_hashes = concat!('"', "######", "######", "######", "######", "######");
+        let closing = &q_hashes[..lexer.slice().len() - 1]; // skip initial 'r'
 
-            lexer.remainder()
-                .as_bytes()
-                .windows(closing)
-                .position(|window| window == closing_match)
-                .map(|i| i + closing)
-        },
-    )]
+        lexer.remainder().find(closing).map(|i| i + closing.len())
+    })]
     RawString,
 }
 

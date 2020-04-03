@@ -1,14 +1,16 @@
+use logos::Logos;
+use logos::source::Source;
+
 use std::fmt;
 use std::ops::Range;
 
 // mod binary;
 
-pub fn assert_lex<'a, Source, Token>(
-    source: &'a Source,
-    tokens: &[(Token, &'a Source::Slice, Range<usize>)],
+pub fn assert_lex<'a, Token>(
+    source: &'a Token::Source,
+    tokens: &[(Token, &'a <<Token as Logos>::Source as Source>::Slice, Range<usize>)],
 ) where
     Token: logos::Logos + fmt::Debug + PartialEq + Clone + Copy,
-    Source: logos::Source + ?Sized,
 {
     let mut lex = Token::lexer(source);
 

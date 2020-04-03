@@ -7,9 +7,9 @@ use crate::source::{self, Source};
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 #[derive(Clone)]
-pub struct Lexer<'source, Token: Logos, Source: ?Sized> {
+pub struct Lexer<'source, Token: Logos> {
     /// Source from which the Lexer is reading tokens.
-    pub source: &'source Source,
+    pub source: &'source Token::Source,
 
     /// Current token. Call the `advance` method to get a new token.
     pub token: Token,
@@ -21,16 +21,12 @@ pub struct Lexer<'source, Token: Logos, Source: ?Sized> {
     token_end: usize,
 }
 
-impl<'source, Token, Source> Lexer<'source, Token, Source>
-where
-    Token: self::Logos,
-    Source: self::Source + ?Sized,
-{
+impl<'source, Token: Logos> Lexer<'source, Token> {
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
-    pub fn new(source: &'source Source) -> Self {
+    pub fn new(source: &'source Token::Source) -> Self {
         let mut lex = Lexer {
             source,
             token: Token::ERROR,
@@ -61,13 +57,13 @@ where
 
     /// Get a string slice of the current token.
     #[inline]
-    pub fn slice(&self) -> &'source Source::Slice {
+    pub fn slice(&self) -> &'source <<Token as Logos>::Source as Source>::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
 
     /// Get a slice of remaining source, starting at end of current token.
     #[inline]
-    pub fn remainder(&self) -> &'source Source::Slice {
+    pub fn remainder(&self) -> &'source <<Token as Logos>::Source as Source>::Slice {
         unsafe { self.source.slice_unchecked(self.token_end..self.source.len()) }
     }
 
@@ -77,9 +73,9 @@ where
     /// and the current token becomes the error token of the new token type.
     /// If you want to start reading from the new lexer immediately,
     /// consider using `Lexer::advance_as` instead.
-    pub fn morph<Token2>(self) -> Lexer<'source, Token2, Source>
+    pub fn morph<Token2>(self) -> Lexer<'source, Token2>
     where
-        Token2: Logos,
+        Token2: Logos<Source = Token::Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         Lexer {
@@ -95,9 +91,9 @@ where
     ///
     /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
     /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    pub fn advance_as<Token2>(self) -> Lexer<'source, Token2, Source>
+    pub fn advance_as<Token2>(self) -> Lexer<'source, Token2>
     where
-        Token2: Logos,
+        Token2: Logos<Source = Token::Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         let mut lex = self.morph();
@@ -127,10 +123,9 @@ impl Extras for () {}
 ///
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
-impl<'source, Token, Source> LexerInternal<'source> for Lexer<'source, Token, Source>
+impl<'source, Token> LexerInternal<'source> for Lexer<'source, Token>
 where
     Token: self::Logos,
-    Source: self::Source + ?Sized,
 {
     /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
