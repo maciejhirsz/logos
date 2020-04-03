@@ -61,13 +61,13 @@ where
 
     /// Get a string slice of the current token.
     #[inline]
-    pub fn slice(&self) -> Source::Slice {
+    pub fn slice(&self) -> &'source Source::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
 
     /// Get a slice of remaining source, starting at end of current token.
     #[inline]
-    pub fn remainder(&self) -> Source::Slice {
+    pub fn remainder(&self) -> &'source Source::Slice {
         unsafe { self.source.slice_unchecked(self.token_end..self.source.len()) }
     }
 

@@ -12,23 +12,23 @@ use std::ops::Range;
 /// Most commonly, those will be the same types:
 /// * `&str` slice for `&str` source.
 /// * `&[u8]` slice for `&[u8]` source.
-pub trait Slice<'source>: Sized + PartialEq + Eq + Debug {
+pub trait Slice: PartialEq + Eq + Debug {
     /// In all implementations we should at least be able to obtain a
     /// slice of bytes as the lowest level common denominator.
-    fn as_bytes(&self) -> &'source [u8];
+    fn as_bytes(&self) -> &[u8];
 }
 
-impl<'source> Slice<'source> for &'source str {
+impl Slice for str {
     #[inline]
-    fn as_bytes(&self) -> &'source [u8] {
+    fn as_bytes(&self) -> &[u8] {
         (*self).as_bytes()
     }
 }
 
-impl<'source> Slice<'source> for &'source [u8] {
+impl Slice for [u8] {
     #[inline]
-    fn as_bytes(&self) -> &'source [u8] {
-        *self
+    fn as_bytes(&self) -> &[u8] {
+        self
     }
 }
 
@@ -39,7 +39,7 @@ impl<'source> Slice<'source> for &'source [u8] {
 /// the `Lexer` can use.
 pub trait Source<'source> {
     /// A type this `Source` can be sliced into.
-    type Slice: self::Slice<'source>;
+    type Slice: ?Sized + self::Slice + 'source;
 
     /// Length of the source
     fn len(&self) -> usize;
@@ -79,7 +79,7 @@ pub trait Source<'source> {
     ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
     /// }
     /// ```
-    fn slice(&self, range: Range<usize>) -> Option<Self::Slice>;
+    fn slice(&self, range: Range<usize>) -> Option<&'source Self::Slice>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
@@ -97,12 +97,13 @@ pub trait Source<'source> {
     ///     }
     /// }
     /// ```
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice;
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source Self::Slice;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
     /// can be sliced, starting from `index`.
     ///
     /// For binary sources (`&[u8]`) this should just return `index` back.
+    #[inline]
     fn find_boundary(&self, index: usize) -> usize {
         index
     }
@@ -124,7 +125,7 @@ pub trait BinarySource<'source>: Source<'source> {}
 pub trait WithSource<Source> {}
 
 impl<'source> Source<'source> for &'source str {
-    type Slice = &'source str;
+    type Slice = str;
 
     #[inline]
     fn len(&self) -> usize {
@@ -171,7 +172,7 @@ impl<'source> Source<'source> for &'source str {
 }
 
 impl<'source> Source<'source> for &'source [u8] {
-    type Slice = &'source [u8];
+    type Slice = [u8];
 
     #[inline]
     fn len(&self) -> usize {
