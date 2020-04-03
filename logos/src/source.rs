@@ -37,9 +37,9 @@ impl Slice for [u8] {
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
-pub trait Source<'source> {
+pub trait Source {
     /// A type this `Source` can be sliced into.
-    type Slice: ?Sized + self::Slice + 'source;
+    type Slice: ?Sized + self::Slice;
 
     /// Length of the source
     fn len(&self) -> usize;
@@ -63,9 +63,9 @@ pub trait Source<'source> {
     ///     assert_eq!(foo.read::<&[u8; 2]>(2), None); // Out of bounds
     /// }
     /// ```
-    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>;
+        Chunk: self::Chunk<'a>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
@@ -79,7 +79,7 @@ pub trait Source<'source> {
     ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
     /// }
     /// ```
-    fn slice(&self, range: Range<usize>) -> Option<&'source Self::Slice>;
+    fn slice(&self, range: Range<usize>) -> Option<&Self::Slice>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
@@ -97,7 +97,7 @@ pub trait Source<'source> {
     ///     }
     /// }
     /// ```
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source Self::Slice;
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self::Slice;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
     /// can be sliced, starting from `index`.
@@ -111,7 +111,7 @@ pub trait Source<'source> {
 
 /// Marker trait for any `Source` that can be sliced into arbitrary byte chunks,
 /// with no regard for UTF-8 (or any other) character encoding.
-pub trait BinarySource<'source>: Source<'source> {}
+pub trait BinarySource: Source {}
 
 /// Marker trait for any `Logos`, which will constrain it to a specific subset of
 /// `Source`s.
@@ -122,9 +122,9 @@ pub trait BinarySource<'source>: Source<'source> {}
 ///
 /// **Note:** You shouldn't implement this trait yourself, `#[derive(Logos)]` will
 /// do it for you.
-pub trait WithSource<Source> {}
+// pub trait WithSource<Source: ?Sized> {}
 
-impl<'source> Source<'source> for &'source str {
+impl Source for str {
     type Slice = str;
 
     #[inline]
@@ -133,9 +133,9 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>,
+        Chunk: self::Chunk<'a>,
     {
         if offset + (Chunk::SIZE - 1) < (*self).len() {
             Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
@@ -145,12 +145,12 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    fn slice(&self, range: Range<usize>) -> Option<&'source str> {
+    fn slice(&self, range: Range<usize>) -> Option<&str> {
         self.get(range)
     }
 
     #[inline]
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str {
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!",
@@ -171,7 +171,7 @@ impl<'source> Source<'source> for &'source str {
     }
 }
 
-impl<'source> Source<'source> for &'source [u8] {
+impl Source for [u8] {
     type Slice = [u8];
 
     #[inline]
@@ -180,9 +180,9 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>,
+        Chunk: self::Chunk<'a>,
     {
         if offset + (Chunk::SIZE - 1) < (*self).len() {
             Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
@@ -192,12 +192,12 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    fn slice(&self, range: Range<usize>) -> Option<&'source [u8]> {
+    fn slice(&self, range: Range<usize>) -> Option<&[u8]> {
         self.get(range)
     }
 
     #[inline]
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source [u8] {
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &[u8] {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!",
@@ -209,7 +209,7 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 }
 
-impl<'source> BinarySource<'source> for &'source [u8] {}
+impl BinarySource for [u8] {}
 
 /// A fixed, statically sized chunk of data that can be read from the `Source`.
 ///

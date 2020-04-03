@@ -2,14 +2,14 @@ use std::ops::Range;
 
 use super::internal::LexerInternal;
 use super::Logos;
-use crate::source::{self, Source, WithSource};
+use crate::source::{self, Source};
 
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 #[derive(Clone)]
-pub struct Lexer<Token: Logos, Source> {
+pub struct Lexer<'source, Token: Logos, Source: ?Sized> {
     /// Source from which the Lexer is reading tokens.
-    pub source: Source,
+    pub source: &'source Source,
 
     /// Current token. Call the `advance` method to get a new token.
     pub token: Token,
@@ -21,16 +21,16 @@ pub struct Lexer<Token: Logos, Source> {
     token_end: usize,
 }
 
-impl<'source, Token, Source> Lexer<Token, Source>
+impl<'source, Token, Source> Lexer<'source, Token, Source>
 where
-    Token: self::Logos + WithSource<Source>,
-    Source: self::Source<'source>,
+    Token: self::Logos,
+    Source: self::Source + ?Sized,
 {
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
-    pub fn new(source: Source) -> Self {
+    pub fn new(source: &'source Source) -> Self {
         let mut lex = Lexer {
             source,
             token: Token::ERROR,
@@ -77,9 +77,9 @@ where
     /// and the current token becomes the error token of the new token type.
     /// If you want to start reading from the new lexer immediately,
     /// consider using `Lexer::advance_as` instead.
-    pub fn morph<Token2>(self) -> Lexer<Token2, Source>
+    pub fn morph<Token2>(self) -> Lexer<'source, Token2, Source>
     where
-        Token2: Logos + WithSource<Source>,
+        Token2: Logos,
         Token::Extras: Into<Token2::Extras>,
     {
         Lexer {
@@ -95,9 +95,9 @@ where
     ///
     /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
     /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    pub fn advance_as<Token2>(self) -> Lexer<Token2, Source>
+    pub fn advance_as<Token2>(self) -> Lexer<'source, Token2, Source>
     where
-        Token2: Logos + WithSource<Source>,
+        Token2: Logos,
         Token::Extras: Into<Token2::Extras>,
     {
         let mut lex = self.morph();
@@ -127,10 +127,10 @@ impl Extras for () {}
 ///
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
-impl<'source, Token, Source> LexerInternal<'source> for Lexer<Token, Source>
+impl<'source, Token, Source> LexerInternal<'source> for Lexer<'source, Token, Source>
 where
     Token: self::Logos,
-    Source: self::Source<'source>,
+    Source: self::Source + ?Sized,
 {
     /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.

@@ -4,11 +4,11 @@ use std::ops::Range;
 // mod binary;
 
 pub fn assert_lex<'a, Source, Token>(
-    source: Source,
+    source: &'a Source,
     tokens: &[(Token, &'a Source::Slice, Range<usize>)],
 ) where
-    Token: logos::Logos + logos::source::WithSource<Source> + fmt::Debug + PartialEq + Clone + Copy,
-    Source: logos::Source<'a>,
+    Token: logos::Logos + fmt::Debug + PartialEq + Clone + Copy,
+    Source: logos::Source + ?Sized,
 {
     let mut lex = Token::lexer(source);
 

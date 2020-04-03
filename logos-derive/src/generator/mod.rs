@@ -76,7 +76,7 @@ impl<'a> Generator<'a> {
         let props = ctx.fn_props();
         let out = quote! {
             #[inline]
-            fn #ident<'s, S: Src<'s>>(lex: &mut Lexer<S> #props) {
+            fn #ident<'s, S: Src + ?Sized>(lex: &mut Lexer<'s, S> #props) {
                 #body
             }
         };

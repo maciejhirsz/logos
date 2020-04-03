@@ -19,19 +19,19 @@ impl Extras for MockExtras {
     }
 }
 
-fn count_numbers<S>(lexer: &mut Lexer<Token, S>) {
+fn count_numbers<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
     lexer.extras.numbers += 1;
 }
 
-fn byte_size_1<S>(lexer: &mut Lexer<Token, S>) {
+fn byte_size_1<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
     lexer.extras.byte_size = 1;
 }
 
-fn byte_size_2<S>(lexer: &mut Lexer<Token, S>) {
+fn byte_size_2<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
     lexer.extras.byte_size = 2;
 }
 
-fn byte_size_4<S>(lexer: &mut Lexer<Token, S>) {
+fn byte_size_4<S: ?Sized>(lexer: &mut Lexer<Token, S>) {
     lexer.extras.byte_size = 4;
 }
 

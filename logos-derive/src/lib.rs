@@ -289,21 +289,21 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
-            fn lex<'source, Source>(lex: &mut ::logos::Lexer<#name, Source>)
+            fn lex<'source, Source>(lex: &mut ::logos::Lexer<'source, #name, Source>)
             where
-                Source: ::logos::Source<'source>,
-                Self: ::logos::source::WithSource<Source>,
+                Source: ::logos::Source + ?Sized,
+                // Self: ::logos::source::WithSource<Source>,
             {
                 use ::logos::internal::{LexerInternal, Bump};
                 use ::logos::source::{Source as Src};
 
-                type Lexer<S> = ::logos::Lexer<#name, S>;
+                type Lexer<'s, S> = ::logos::Lexer<'s, #name, S>;
 
-                fn _end<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
+                fn _end<'s, S: Src + ?Sized>(lex: &mut Lexer<'s, S>) {
                     lex.token = #name::#end;
                 }
 
-                fn _error<'s, S: Src<'s>>(lex: &mut Lexer<S>) {
+                fn _error<'s, S: Src + ?Sized>(lex: &mut Lexer<'s, S>) {
                     lex.bump(1);
 
                     lex.token = #name::#error;
@@ -313,7 +313,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl<'source, Source: ::logos::source::#source<'source>> ::logos::source::WithSource<Source> for #name {}
+        // impl<Source: ::logos::source::#source> ::logos::source::WithSource<Source> for #name {}
     };
 
     // panic!("{}", tokens);
