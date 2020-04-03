@@ -121,9 +121,9 @@ enum Token {              // to use `TokenExtras` inside our `Lexer`.
 
     // You can apply multiple definitions to a single variant,
     // each with it's own callback.
-    #[regex("[0-9]+", callback = "one")]
-    #[regex("[0-9]+k", callback = "kilo")]
-    #[regex("[0-9]+m", callback = "mega")]
+    #[regex("[0-9]+", one)]
+    #[regex("[0-9]+k", kilo)]
+    #[regex("[0-9]+m", mega)]
     Number,
 }
 

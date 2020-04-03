@@ -2,16 +2,16 @@ use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
 use syn::Ident;
+use proc_macro2::TokenStream;
 
 use crate::graph::{Node, Disambiguate};
 
-#[cfg_attr(test, derive(PartialEq))]
 pub enum Leaf {
     Trivia,
     Token {
         ident: Ident,
         priority: usize,
-        callback: Option<Ident>,
+        callback: Option<TokenStream>,
     },
 }
 
@@ -24,7 +24,7 @@ impl Leaf {
         }
     }
 
-    pub fn callback(mut self, cb: Option<Ident>) -> Self {
+    pub fn callback(mut self, cb: Option<TokenStream>) -> Self {
         match self {
             Leaf::Token { ref mut callback, .. } => *callback = cb,
             Leaf::Trivia => panic!("Oh no :("),

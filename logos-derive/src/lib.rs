@@ -25,7 +25,7 @@ use beef::lean::Cow;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum};
+use syn::{Ident, Fields, ItemEnum, Attribute};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -51,29 +51,35 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut errors = Vec::new();
     let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
-    for attr in &item.attrs {
-        if let Some(ext) = util::value_from_attr("extras", attr) {
+    let mut parse_attr = |attr: &Attribute, errors: &mut Vec<_>| -> Result<(), error::SpannedError> {
+        if let Some(ext) = util::value_from_attr("extras", attr)? {
             if let Some(_) = extras.replace(ext) {
                 errors.push(Error::new("Only one #[extras] attribute can be declared.").span(super_span));
             }
         }
 
-        if let Some(nested) = util::read_attr("logos", attr) {
-            for item in nested {
-                if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", item) {
-                    trivia = match t {
-                        Some(Literal::Utf8(string, span)) => {
-                            Some((true, string.into(), span))
-                        },
-                        Some(Literal::Bytes(bytes, span)) => {
-                            mode = Mode::Binary;
+        if let Some(nested) = util::read_attr("logos", attr)? {
+            if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", nested)? {
+                trivia = match t {
+                    Some(Literal::Utf8(string, span)) => {
+                        Some((true, string.into(), span))
+                    },
+                    Some(Literal::Bytes(bytes, span)) => {
+                        mode = Mode::Binary;
 
-                            Some((false, util::bytes_to_regex_string(&bytes).into(), span))
-                        },
-                        None => None,
-                    };
-                }
+                        Some((false, util::bytes_to_regex_string(&bytes).into(), span))
+                    },
+                    None => None,
+                };
             }
+        }
+
+        Ok(())
+    };
+
+    for attr in &item.attrs {
+        if let Err(err) = parse_attr(attr, &mut errors) {
+            errors.push(err);
         }
     }
 
@@ -116,7 +122,15 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
         // Find if there is a callback defined before tackling individual declarations
         let global_callback = variant.attrs.iter()
-            .find_map(|attr| util::value_from_attr::<Ident>("callback", attr));
+            .find_map(|attr| {
+                match util::value_from_attr::<Ident>("callback", attr) {
+                    Ok(ident) => ident.map(|ident| quote!(#ident)),
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
+                }
+            });
 
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
@@ -151,49 +165,59 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 (token, definition.value)
             };
 
-            if let Some(definition) = util::value_from_attr("token", attr) {
-                let (token, value) = with_definition(definition);
+            match util::value_from_attr("token", attr) {
+                Ok(Some(definition)) => {
+                    let (token, value) = with_definition(definition);
 
-                let value = value.into_bytes();
-                let then = graph.push(token.priority(value.len()));
+                    let value = value.into_bytes();
+                    let then = graph.push(token.priority(value.len()));
 
-                ropes.push(Rope::new(value, then));
-            } else if let Some(definition) = util::value_from_attr("regex", attr) {
-                let (token, value) = with_definition(definition);
+                    ropes.push(Rope::new(value, then));
+                },
+                Err(err) => errors.push(err),
+                _ => (),
+            }
 
-                let then = graph.reserve();
+            match util::value_from_attr("regex", attr) {
+                Ok(Some(definition)) => {
+                    let (token, value) = with_definition(definition);
 
-                let (utf8, regex, span) = match value {
-                    Literal::Utf8(string, span) => (true, string, span),
-                    Literal::Bytes(bytes, span) => {
-                        mode = Mode::Binary;
+                    let then = graph.reserve();
 
-                        (false, util::bytes_to_regex_string(&bytes), span)
-                    }
-                };
+                    let (utf8, regex, span) = match value {
+                        Literal::Utf8(string, span) => (true, string, span),
+                        Literal::Bytes(bytes, span) => {
+                            mode = Mode::Binary;
 
-                match graph.regex(utf8, &regex, then.get()) {
-                    Ok((len, mut id)) => {
-                        let then = graph.insert(then, token.priority(len));
-                        regex_ids.push(id);
-
-                        // Drain recursive miss values.
-                        // We need the root node to have straight branches.
-                        while let Some(miss) = graph[id].miss() {
-                            if miss == then {
-                                errors.push(
-                                    Error::new("#[regex]: expression can match empty string.\n\n\
-                                                hint: consider changing * to +").span(span)
-                                );
-                                break;
-                            } else {
-                                regex_ids.push(miss);
-                                id = miss;
-                            }
+                            (false, util::bytes_to_regex_string(&bytes), span)
                         }
-                    },
-                    Err(err) => errors.push(err.span(span)),
-                }
+                    };
+
+                    match graph.regex(utf8, &regex, then.get()) {
+                        Ok((len, mut id)) => {
+                            let then = graph.insert(then, token.priority(len));
+                            regex_ids.push(id);
+
+                            // Drain recursive miss values.
+                            // We need the root node to have straight branches.
+                            while let Some(miss) = graph[id].miss() {
+                                if miss == then {
+                                    errors.push(
+                                        Error::new("#[regex]: expression can match empty string.\n\n\
+                                                    hint: consider changing * to +").span(span)
+                                    );
+                                    break;
+                                } else {
+                                    regex_ids.push(miss);
+                                    id = miss;
+                                }
+                            }
+                        },
+                        Err(err) => errors.push(err.span(span)),
+                    }
+                },
+                Err(err) => errors.push(err),
+                _ => (),
             }
         }
     }

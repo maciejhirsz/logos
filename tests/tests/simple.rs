@@ -19,20 +19,20 @@ impl Extras for MockExtras {
     }
 }
 
-fn count_numbers<S>(lex: &mut Lexer<Token, S>) {
-    lex.extras.numbers += 1;
+fn count_numbers<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.numbers += 1;
 }
 
-fn byte_size_1<S>(lex: &mut Lexer<Token, S>) {
-    lex.extras.byte_size = 1;
+fn byte_size_1<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.byte_size = 1;
 }
 
-fn byte_size_2<S>(lex: &mut Lexer<Token, S>) {
-    lex.extras.byte_size = 2;
+fn byte_size_2<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.byte_size = 2;
 }
 
-fn byte_size_4<S>(lex: &mut Lexer<Token, S>) {
-    lex.extras.byte_size = 4;
+fn byte_size_4<S>(lexer: &mut Lexer<Token, S>) {
+    lexer.extras.byte_size = 4;
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
@@ -84,12 +84,12 @@ enum Token {
     #[regex = "byte|bytes[1-9][0-9]?"]
     Byte,
 
-    #[regex("int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)")]
+    #[regex = "int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"]
     Int,
 
-    #[token("uint8", callback = "byte_size_1")]
-    #[token("uint16", callback = "byte_size_2")]
-    #[token("uint32", callback = "byte_size_4")]
+    #[token("uint8", |lex| lex.extras.byte_size = 1)]
+    #[token("uint16", byte_size_2)]
+    #[token("uint32", byte_size_4)]
     Uint,
 
     #[token = "."]
