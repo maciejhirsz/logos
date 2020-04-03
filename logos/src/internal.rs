@@ -29,3 +29,29 @@ pub trait LexerInternal<'source> {
     /// Guarantee that `token_end` is at char boundary for `&str`.
     fn error(&mut self);
 }
+
+pub trait Bump {
+    fn bump<'source, L: LexerInternal<'source>>(self, lexer: &mut L);
+}
+
+impl Bump for () {
+    #[inline]
+    fn bump<'source, L: LexerInternal<'source>>(self, _: &mut L) {}
+}
+
+impl Bump for usize {
+    #[inline]
+    fn bump<'source, L: LexerInternal<'source>>(self, lexer: &mut L) {
+        lexer.bump(self)
+    }
+}
+
+impl Bump for Option<usize> {
+    #[inline]
+    fn bump<'source, L: LexerInternal<'source>>(self, lexer: &mut L) {
+        match self {
+            Some(n) => lexer.bump(n),
+            None => lexer.error(),
+        }
+    }
+}

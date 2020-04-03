@@ -270,7 +270,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 Source: ::logos::Source<'source>,
                 Self: ::logos::source::WithSource<Source>,
             {
-                use ::logos::internal::LexerInternal;
+                use ::logos::internal::{LexerInternal, Bump};
                 use ::logos::source::{Source as Src};
 
                 type Lexer<S> = ::logos::Lexer<#name, S>;

@@ -65,6 +65,12 @@ where
         unsafe { self.source.slice_unchecked(self.range()) }
     }
 
+    /// Get a slice of remaining source, starting at end of current token.
+    #[inline]
+    pub fn remainder(&self) -> Source::Slice {
+        unsafe { self.source.slice_unchecked(self.token_end..self.source.len()) }
+    }
+
     /// Turn this lexer into a lexer for a new token type.
     ///
     /// The new lexer continues to point at the same span as the current lexer,

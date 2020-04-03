@@ -28,7 +28,7 @@ impl<'a> Generator<'a> {
                 match callback {
                     Some(callback) => quote! {
                         #out
-                        #callback(lex);
+                        #callback(lex).bump(lex);
                     },
                     None => out,
                 }

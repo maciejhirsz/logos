@@ -19,12 +19,14 @@ pub trait Slice<'source>: Sized + PartialEq + Eq + Debug {
 }
 
 impl<'source> Slice<'source> for &'source str {
+    #[inline]
     fn as_bytes(&self) -> &'source [u8] {
         (*self).as_bytes()
     }
 }
 
 impl<'source> Slice<'source> for &'source [u8] {
+    #[inline]
     fn as_bytes(&self) -> &'source [u8] {
         *self
     }
