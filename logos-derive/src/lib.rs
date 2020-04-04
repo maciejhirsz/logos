@@ -108,17 +108,28 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-        match variant.fields {
-            Fields::Unit => {}
-            _ => {
-                errors.push(Error::new(
-                    format!(
-                        "`{}::{}` has fields. This is not allowed for Tokens.",
-                        name, variant.ident
-                    ),
-                ).span(span));
+        let field = match &variant.fields {
+            Fields::Unit => None,
+            Fields::Unnamed(ref fields) => {
+                if fields.unnamed.len() != 1 {
+                    errors.push(Error::new(
+                        format!(
+                            "Logos currently only supports variants with one field, found {}",
+                            fields.unnamed.len(),
+                        )
+                    ).span(fields.span()))
+                }
+
+                let field = fields.unnamed.first().expect("Already checked len; qed");
+
+                Some(field.ty.clone())
             }
-        }
+            Fields::Named(_) => {
+                errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
+
+                None
+            }
+        };
 
         // Find if there is a callback defined before tackling individual declarations
         let global_callback = variant.attrs.iter()
@@ -156,7 +167,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             let mut with_definition = |definition: Definition<Literal>| {
                 let callback = definition.callback.or_else(|| global_callback.clone());
-                let token = Leaf::token(variant).callback(callback);
+                let token = Leaf::token(variant).field(field.clone()).callback(callback);
 
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;

@@ -1,4 +1,3 @@
-use logos::Lexer;
 use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
@@ -9,15 +8,16 @@ enum Token {
     #[end]
     End,
 
-    #[regex("-?[0-9]+", |lex| lex.slice().prase())]
+    #[regex("-?[0-9]+", |lex| lex.slice().parse())]
     Integer(i64),
 
-    #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().prase())]
+    #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse())]
     Float(f64),
 }
 
 mod data {
     use super::*;
+    use logos::Logos;
     use tests::assert_lex;
 
     #[test]

@@ -1,7 +1,7 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
-use syn::Ident;
+use syn::{Ident, Type};
 use proc_macro2::{TokenStream, Span};
 
 use crate::graph::{Node, Disambiguate};
@@ -11,10 +11,12 @@ pub enum Leaf {
     Token {
         ident: Ident,
         priority: usize,
+        field: Option<Type>,
         callback: Callback,
     },
 }
 
+#[derive(Debug)]
 pub enum Callback {
     None,
     Label(Ident),
@@ -55,6 +57,7 @@ impl Leaf {
         Leaf::Token {
             ident: ident.clone(),
             priority: 0,
+            field: None,
             callback: Callback::None,
         }
     }
@@ -62,6 +65,14 @@ impl Leaf {
     pub fn callback(mut self, cb: Callback) -> Self {
         match self {
             Leaf::Token { ref mut callback, .. } => *callback = cb,
+            Leaf::Trivia => panic!("Oh no :("),
+        }
+        self
+    }
+
+    pub fn field(mut self, ty: Option<Type>) -> Self {
+        match self {
+            Leaf::Token { ref mut field, .. } => *field = ty,
             Leaf::Trivia => panic!("Oh no :("),
         }
         self
