@@ -107,6 +107,21 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
         lex.advance();
         lex
     }
+
+    /// Bumps the end of currently lexed token by `n` bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if adding `n` to current offset would place the `Lexer` beyond the last byte,
+    /// or in the middle of an UTF-8 code point (does not apply when lexing raw `&[u8]`).
+    pub fn bump(&mut self, n: usize) {
+        self.token_end += n;
+
+        assert!(
+            self.source.is_boundary(self.token_end),
+            "Invalid Lexer bump",
+        )
+    }
 }
 
 impl<Token: Logos> Iterator for Lexer<'_, Token> {
@@ -218,7 +233,7 @@ where
 
     /// Bump the position `Lexer` is reading from by `size`.
     #[inline]
-    fn bump(&mut self, size: usize) {
+    fn bump_unchecked(&mut self, size: usize) {
         debug_assert!(
             self.token_end + size <= self.source.len(),
             "Bumping out of bounds!"

@@ -10,7 +10,7 @@ pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,
     tokens: &[(Token, &'a <Token::Source as Source>::Slice, Range<usize>)],
 ) where
-    Token: logos::Logos + fmt::Debug + PartialEq + Clone + Copy,
+    Token: Logos + fmt::Debug + PartialEq + Clone + Copy,
 {
     let mut lex = Token::lexer(source);
 

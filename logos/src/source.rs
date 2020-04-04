@@ -82,6 +82,8 @@ pub trait Source {
     fn find_boundary(&self, index: usize) -> usize {
         index
     }
+
+    fn is_boundary(&self, index: usize) -> bool;
 }
 
 impl Source for str {
@@ -129,6 +131,11 @@ impl Source for str {
 
         index
     }
+
+    #[inline]
+    fn is_boundary(&self, index: usize) -> bool {
+        self.is_char_boundary(index)
+    }
 }
 
 impl Source for [u8] {
@@ -166,6 +173,11 @@ impl Source for [u8] {
         );
 
         self.get_unchecked(range)
+    }
+
+    #[inline]
+    fn is_boundary(&self, index: usize) -> bool {
+        index <= self.len()
     }
 }
 

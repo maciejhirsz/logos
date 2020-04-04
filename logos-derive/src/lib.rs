@@ -308,7 +308,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             fn lex<'source>(lex: &mut ::logos::Lexer<'source, #name>) {
-                use ::logos::internal::{LexerInternal, Bump};
+                use ::logos::internal::{LexerInternal, CallbackResult};
 
                 type Lexer<'s> = ::logos::Lexer<'s, #name>;
 
@@ -317,7 +317,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 }
 
                 fn _error<'s>(lex: &mut Lexer<'s>) {
-                    lex.bump(1);
+                    lex.bump_unchecked(1);
 
                     lex.token = #name::#error;
                 }

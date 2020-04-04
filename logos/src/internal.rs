@@ -22,7 +22,7 @@ pub trait LexerInternal<'source> {
     fn test_at<T: source::Chunk<'source>, F: FnOnce(T) -> bool>(&self, n: usize, test: F) -> bool;
 
     /// Bump the position by `size`.
-    fn bump(&mut self, size: usize);
+    fn bump_unchecked(&mut self, size: usize);
 
     /// Reset `token_start` to `token_end`.
     fn trivia(&mut self);
@@ -32,28 +32,87 @@ pub trait LexerInternal<'source> {
     fn error(&mut self);
 }
 
-pub trait Bump {
-    fn bump<'source, L: LexerInternal<'source>>(self, lexer: &mut L);
+/// This is a marker trait with no logic.
+///
+/// Types implementing this trait can be returned directly from
+/// a callback constructor, without having to be wrapped in an
+/// `Option` or `Result`.
+pub trait CallbackProduct {}
+
+pub trait CallbackResult {
+    type Product;
+
+    fn construct<F, T: Logos>(self, constructor: F) -> T
+    where
+        F: Fn(Self::Product) -> T;
 }
 
-impl Bump for () {
-    #[inline]
-    fn bump<'source, L: LexerInternal<'source>>(self, _: &mut L) {}
-}
+impl<P: CallbackProduct> CallbackResult for P {
+    type Product = P;
 
-impl Bump for usize {
     #[inline]
-    fn bump<'source, L: LexerInternal<'source>>(self, lexer: &mut L) {
-        lexer.bump(self)
+    fn construct<F, T: Logos>(self, constructor: F) -> T
+    where
+        F: Fn(P) -> T,
+    {
+        constructor(self)
     }
 }
 
-impl Bump for Option<usize> {
+impl CallbackResult for bool {
+    type Product = ();
+
     #[inline]
-    fn bump<'source, L: LexerInternal<'source>>(self, lexer: &mut L) {
+    fn construct<F, T: Logos>(self, constructor: F) -> T
+    where
+        F: Fn(()) -> T,
+    {
         match self {
-            Some(n) => lexer.bump(n),
-            None => lexer.error(),
+            true => constructor(()),
+            false => T::ERROR,
         }
     }
 }
+
+impl<P> CallbackResult for Option<P> {
+    type Product = P;
+
+    #[inline]
+    fn construct<F, T: Logos>(self, constructor: F) -> T
+    where
+        F: Fn(P) -> T,
+    {
+        match self {
+            Some(product) => constructor(product),
+            None => T::ERROR,
+        }
+    }
+}
+
+impl<P, E> CallbackResult for Result<P, E> {
+    type Product = P;
+
+    #[inline]
+    fn construct<F, T: Logos>(self, constructor: F) -> T
+    where
+        F: Fn(P) -> T,
+    {
+        match self {
+            Ok(product) => constructor(product),
+            Err(_) => T::ERROR,
+        }
+    }
+}
+
+macro_rules! impl_product {
+    ($($t:ty $(: $g:ident)?),*) => {
+        $(
+            impl $(<$g>)* CallbackProduct for $t {}
+        )*
+    };
+}
+
+impl_product!(
+    (), u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, &str, String,
+    &[T]: T, Vec<T>: T
+);

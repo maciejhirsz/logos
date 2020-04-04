@@ -20,17 +20,16 @@ impl<'a> Generator<'a> {
             },
             Leaf::Token { ident, callback, .. } => {
                 let name = self.name;
-                let out = quote! {
-                    #bump
-                    lex.token = #name::#ident;
-                };
 
                 match callback {
                     Some(callback) => quote! {
-                        #out
-                        (#callback)(lex).bump(lex);
+                        #bump
+                        lex.token = (#callback)(lex).construct(|()| #name::#ident);
                     },
-                    None => out,
+                    None => quote! {
+                        #bump
+                        lex.token = #name::#ident;
+                    },
                 }
             },
         }
