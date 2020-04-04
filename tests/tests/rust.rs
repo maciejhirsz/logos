@@ -1,6 +1,15 @@
 use logos::Lexer;
-use logos::source::{Source, Slice};
 use logos_derive::Logos;
+
+/// Adaptation of implementation by matklad:
+/// https://github.com/matklad/fall/blob/527ab331f82b8394949041bab668742868c0c282/lang/rust/syntax/src/rust.fall#L1294-L1324
+fn parse_raw_string(lexer: &mut Lexer<Token>) -> Option<usize> {
+    // Who needs more then 25 hashes anyway? :)
+    let q_hashes = concat!('"', "######", "######", "######", "######", "######");
+    let closing = &q_hashes[..lexer.slice().len() - 1]; // skip initial 'r'
+
+    lexer.remainder().find(closing).map(|i| i + closing.len())
+}
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
@@ -13,21 +22,12 @@ enum Token {
     #[regex = "[a-zA-Z_][a-zA-Z0-9_]*"]
     Ident,
 
-    /// Adaptation of implementation by matklad:
-    /// https://github.com/matklad/fall/blob/527ab331f82b8394949041bab668742868c0c282/lang/rust/syntax/src/rust.fall#L1294-L1324
-    #[regex("r#*\"", |lexer| {
-        // Who needs more then 25 hashes anyway? :)
-        let q_hashes = concat!('"', "######", "######", "######", "######", "######");
-        let closing = &q_hashes[..lexer.slice().len() - 1]; // skip initial 'r'
-
-        lexer.remainder().find(closing).map(|i| i + closing.len())
-    })]
+    #[regex("r#*\"", parse_raw_string)]
     RawString,
 }
 
 mod rust {
     use super::*;
-    use logos::Logos;
     use tests::assert_lex;
 
     #[test]

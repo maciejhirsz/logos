@@ -7,31 +7,6 @@
 use std::fmt::Debug;
 use std::ops::Range;
 
-/// Trait for a `Slice` of a `Source` that the `Lexer` can consume.
-///
-/// Most commonly, those will be the same types:
-/// * `&str` slice for `&str` source.
-/// * `&[u8]` slice for `&[u8]` source.
-pub trait Slice: PartialEq + Eq + Debug {
-    /// In all implementations we should at least be able to obtain a
-    /// slice of bytes as the lowest level common denominator.
-    fn as_bytes(&self) -> &[u8];
-}
-
-impl Slice for str {
-    #[inline]
-    fn as_bytes(&self) -> &[u8] {
-        (*self).as_bytes()
-    }
-}
-
-impl Slice for [u8] {
-    #[inline]
-    fn as_bytes(&self) -> &[u8] {
-        self
-    }
-}
-
 /// Trait for types the `Lexer` can read from.
 ///
 /// Most notably this is implemented for `&str`. It is unlikely you will
@@ -39,7 +14,7 @@ impl Slice for [u8] {
 /// the `Lexer` can use.
 pub trait Source {
     /// A type this `Source` can be sliced into.
-    type Slice: ?Sized + self::Slice;
+    type Slice: ?Sized + PartialEq + Eq + Debug;
 
     /// Length of the source
     fn len(&self) -> usize;
@@ -108,21 +83,6 @@ pub trait Source {
         index
     }
 }
-
-/// Marker trait for any `Source` that can be sliced into arbitrary byte chunks,
-/// with no regard for UTF-8 (or any other) character encoding.
-pub trait BinarySource: Source {}
-
-/// Marker trait for any `Logos`, which will constrain it to a specific subset of
-/// `Source`s.
-///
-/// In particular, if your token definitions would allow reading invalid UTF-8,
-/// the `Logos` derive macro will restrict you to lexing on `Source`s that also
-/// implement the `BinarySource` marker (`&[u8]` is provided).
-///
-/// **Note:** You shouldn't implement this trait yourself, `#[derive(Logos)]` will
-/// do it for you.
-// pub trait WithSource<Source: ?Sized> {}
 
 impl Source for str {
     type Slice = str;
@@ -208,8 +168,6 @@ impl Source for [u8] {
         self.get_unchecked(range)
     }
 }
-
-impl BinarySource for [u8] {}
 
 /// A fixed, statically sized chunk of data that can be read from the `Source`.
 ///

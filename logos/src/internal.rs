@@ -1,4 +1,4 @@
-use crate::source::{self, Source, Slice};
+use crate::source::{self, Source};
 use crate::lexer::Lexer;
 use crate::{Logos, Extras};
 

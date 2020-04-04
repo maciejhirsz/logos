@@ -8,7 +8,7 @@ use std::ops::Range;
 
 pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,
-    tokens: &[(Token, &'a <<Token as Logos>::Source as Source>::Slice, Range<usize>)],
+    tokens: &[(Token, &'a <Token::Source as Source>::Slice, Range<usize>)],
 ) where
     Token: logos::Logos + fmt::Debug + PartialEq + Clone + Copy,
 {

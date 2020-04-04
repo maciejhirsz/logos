@@ -57,7 +57,7 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
 
     /// Get a string slice of the current token.
     #[inline]
-    pub fn slice(&self) -> &'source <<Token as Logos>::Source as Source>::Slice {
+    pub fn slice(&self) -> &'source <Token::Source as Source>::Slice {
         unsafe { self.source.slice_unchecked(self.range()) }
     }
 
