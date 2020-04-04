@@ -25,7 +25,7 @@ use beef::lean::Cow;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam};
+use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam, Lifetime, Type};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -136,9 +136,16 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     ).span(fields.span()))
                 }
 
-                let field = fields.unnamed.first().expect("Already checked len; qed");
+                let mut field = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
 
-                Some(field.ty.clone())
+                // Replacing the lifetime should be done in the generator
+                if let Type::Reference(ref mut typeref) = field {
+                    let span = typeref.lifetime.as_ref().map(|lt| lt.span()).unwrap_or_else(|| Span::call_site());
+
+                    typeref.lifetime = Some(Lifetime::new("'s", span));
+                }
+
+                Some(field)
             }
             Fields::Named(_) => {
                 errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
