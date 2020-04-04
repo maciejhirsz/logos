@@ -49,6 +49,13 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
         Token::lex(self);
     }
 
+    #[inline]
+    pub fn spanned(self) -> SpannedIter<'source, Token> {
+        SpannedIter {
+            lexer: self,
+        }
+    }
+
     /// Get the range for the current token in `Source`.
     #[inline]
     pub fn range(&self) -> Range<usize> {
@@ -99,6 +106,43 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
         let mut lex = self.morph();
         lex.advance();
         lex
+    }
+}
+
+impl<Token: Logos> Iterator for Lexer<'_, Token> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        if self.token.is_end() {
+            return None;
+        }
+
+        let token = std::mem::replace(&mut self.token, Token::ERROR);
+
+        self.advance();
+
+        Some(token)
+    }
+}
+
+pub struct SpannedIter<'source, Token: Logos> {
+    lexer: Lexer<'source, Token>,
+}
+
+impl<Token: Logos> Iterator for SpannedIter<'_, Token> {
+    type Item = (Token, Range<usize>);
+
+    fn next(&mut self) -> Option<(Token, Range<usize>)> {
+        if self.lexer.token.is_end() {
+            return None;
+        }
+
+        let token = std::mem::replace(&mut self.lexer.token, Token::ERROR);
+        let range = self.lexer.range();
+
+        self.lexer.advance();
+
+        Some((token, range))
     }
 }
 

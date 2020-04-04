@@ -291,6 +291,22 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
+            #[inline]
+            fn is_end(&self) -> bool {
+                match self {
+                    #name::#end => true,
+                    _ => false,
+                }
+            }
+
+            #[inline]
+            fn is_error(&self) -> bool {
+                match self {
+                    #name::#error => true,
+                    _ => false,
+                }
+            }
+
             fn lex<'source>(lex: &mut ::logos::Lexer<'source, #name>) {
                 use ::logos::internal::{LexerInternal, Bump};
 

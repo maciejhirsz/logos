@@ -227,6 +227,30 @@ mod simple {
     }
 
     #[test]
+    fn iterator() {
+        let tokens: Vec<_> = Token::lexer("pri priv priva private").collect();
+
+        assert_eq!(tokens, &[
+            Token::Identifier,
+            Token::Priv,
+            Token::Identifier,
+            Token::Private,
+        ]);
+    }
+
+    #[test]
+    fn spanned_iterator() {
+        let tokens: Vec<_> = Token::lexer("pri priv priva private").spanned().collect();
+
+        assert_eq!(tokens, &[
+            (Token::Identifier, 0..3),
+            (Token::Priv, 4..8),
+            (Token::Identifier, 9..14),
+            (Token::Private, 15..22),
+        ]);
+    }
+
+    #[test]
     fn numbers() {
         assert_lex(
             "0 1 2 3 4 10 42 1337",
