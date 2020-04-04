@@ -6,28 +6,33 @@ mod data {
     use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
-    enum Token {
+    enum Token<'a> {
         #[error]
         Error,
 
         #[end]
         End,
 
-        #[regex("-?[0-9]+", |lex| lex.slice().parse())]
+        // #[regex(r"[a-zA-Z]+", |lex| lex.slice())]
+        Text(&'a str),
+
+        #[regex(r"-?[0-9]+", |lex| lex.slice().parse())]
         Integer(i64),
 
-        #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse())]
+        #[regex(r"-?[0-9]+\.[0-9]+", |lex| lex.slice().parse())]
         Float(f64),
     }
 
     #[test]
     fn numbers() {
-        let tokens: Vec<_> = Token::lexer("1 42 -100 3.14 -77.77").collect();
+        let tokens: Vec<_> = Token::lexer("Hello 1 42 -100 pi 3.14 -77.77").collect();
 
         assert_eq!(tokens, &[
+            Token::Text("Hello"),
             Token::Integer(1),
             Token::Integer(42),
             Token::Integer(-100),
+            Token::Text("pi"),
             Token::Float(3.14),
             Token::Float(-77.77),
         ]);

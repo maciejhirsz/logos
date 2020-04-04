@@ -25,7 +25,7 @@ use beef::lean::Cow;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, Attribute};
+use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -50,6 +50,22 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
     let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
+
+    let generics = match item.generics.params.len() {
+        0 => {
+            None
+        },
+        1 if matches!(item.generics.params.first(), Some(GenericParam::Lifetime(..))) => {
+            Some(quote!(<'s>))
+        },
+        _ => {
+            let span = item.generics.span();
+
+            errors.push(Error::new("Logos currently supports permits a single lifetime generic.").span(span));
+
+            None
+        }
+    };
 
     let mut parse_attr = |attr: &Attribute, errors: &mut Vec<_>| -> Result<(), error::SpannedError> {
         if let Some(ext) = util::value_from_attr("extras", attr)? {
@@ -293,7 +309,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let body = generator.generate();
 
     let tokens = quote! {
-        impl ::logos::Logos for #name {
+        impl #generics ::logos::Logos for #name #generics {
             type Extras = #extras;
 
             type Source = #source;
@@ -318,10 +334,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn lex<'source>(lex: &mut ::logos::Lexer<'source, #name>) {
+            fn lex<'source>(lex: &mut ::logos::Lexer<'source, Self>) {
                 use ::logos::internal::{LexerInternal, CallbackResult};
 
-                type Lexer<'s> = ::logos::Lexer<'s, #name>;
+                type Lexer<'s> = ::logos::Lexer<'s, #name #generics>;
 
                 fn _end<'s>(lex: &mut Lexer<'s>) {
                     lex.token = #name::#end;
@@ -340,7 +356,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         // impl<Source: ::logos::source::#source> ::logos::source::WithSource<Source> for #name {}
     };
 
-    // panic!("{}", tokens);
+    panic!("{}", tokens);
 
     TokenStream::from(tokens)
 }
