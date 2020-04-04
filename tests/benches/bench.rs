@@ -170,3 +170,18 @@ fn strings(b: &mut Bencher) {
         black_box(lex.token)
     });
 }
+
+#[bench]
+fn x_identifiers_iter(b: &mut Bencher) {
+    use logos::Logos;
+
+    b.bytes = IDENTIFIERS.len() as u64;
+
+    b.iter(|| {
+        let mut lex = Token::lexer(IDENTIFIERS);
+
+        while let Some(token) = lex.next() {
+            black_box(token);
+        }
+    });
+}
