@@ -184,7 +184,6 @@ pub mod internal;
 
 pub use self::lexer::{Extras, Lexer, SpannedIter};
 pub use self::source::Source;
-pub use self::internal::CallbackProduct;
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.

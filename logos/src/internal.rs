@@ -32,24 +32,13 @@ pub trait LexerInternal<'source> {
     fn error(&mut self);
 }
 
-/// This is a marker trait with no logic.
-///
-/// Types implementing this trait can be returned directly from
-/// a callback constructor, without having to be wrapped in an
-/// `Option` or `Result`.
-pub trait CallbackProduct {}
-
-pub trait CallbackResult {
-    type Product;
-
+pub trait CallbackResult<P> {
     fn construct<F, T: Logos>(self, constructor: F) -> T
     where
-        F: Fn(Self::Product) -> T;
+        F: Fn(P) -> T;
 }
 
-impl<P: CallbackProduct> CallbackResult for P {
-    type Product = P;
-
+impl<P> CallbackResult<P> for P {
     #[inline]
     fn construct<F, T: Logos>(self, constructor: F) -> T
     where
@@ -59,9 +48,7 @@ impl<P: CallbackProduct> CallbackResult for P {
     }
 }
 
-impl CallbackResult for bool {
-    type Product = ();
-
+impl CallbackResult<()> for bool {
     #[inline]
     fn construct<F, T: Logos>(self, constructor: F) -> T
     where
@@ -74,9 +61,7 @@ impl CallbackResult for bool {
     }
 }
 
-impl<P> CallbackResult for Option<P> {
-    type Product = P;
-
+impl<P> CallbackResult<P> for Option<P> {
     #[inline]
     fn construct<F, T: Logos>(self, constructor: F) -> T
     where
@@ -89,9 +74,7 @@ impl<P> CallbackResult for Option<P> {
     }
 }
 
-impl<P, E> CallbackResult for Result<P, E> {
-    type Product = P;
-
+impl<P, E> CallbackResult<P> for Result<P, E> {
     #[inline]
     fn construct<F, T: Logos>(self, constructor: F) -> T
     where
@@ -103,16 +86,3 @@ impl<P, E> CallbackResult for Result<P, E> {
         }
     }
 }
-
-macro_rules! impl_product {
-    ($($t:ty $(: $g:ident)?),*) => {
-        $(
-            impl $(<$g>)* CallbackProduct for $t {}
-        )*
-    };
-}
-
-impl_product!(
-    (), u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, &str, String,
-    &[T]: T, Vec<T>: T
-);

@@ -235,7 +235,7 @@ fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Spa
 
     Ok(quote!({
         #[inline]
-        fn callback<'s>(#ident: &mut Lexer<'s>) -> impl CallbackResult<Product = ()> {
+        fn callback<'s>(#ident: &mut Lexer<'s>) -> impl CallbackResult<()> {
             #body
         }
 
