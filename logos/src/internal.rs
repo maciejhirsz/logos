@@ -32,14 +32,14 @@ pub trait LexerInternal<'source> {
 }
 
 pub trait CallbackResult<P> {
-    fn construct<F, T: Logos>(self, constructor: F) -> T
+    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
     where
         F: Fn(P) -> T;
 }
 
 impl<P> CallbackResult<P> for P {
     #[inline]
-    fn construct<F, T: Logos>(self, constructor: F) -> T
+    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
     where
         F: Fn(P) -> T,
     {
@@ -49,7 +49,7 @@ impl<P> CallbackResult<P> for P {
 
 impl CallbackResult<()> for bool {
     #[inline]
-    fn construct<F, T: Logos>(self, constructor: F) -> T
+    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
     where
         F: Fn(()) -> T,
     {
@@ -62,7 +62,7 @@ impl CallbackResult<()> for bool {
 
 impl<P> CallbackResult<P> for Option<P> {
     #[inline]
-    fn construct<F, T: Logos>(self, constructor: F) -> T
+    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
     where
         F: Fn(P) -> T,
     {
@@ -75,7 +75,7 @@ impl<P> CallbackResult<P> for Option<P> {
 
 impl<P, E> CallbackResult<P> for Result<P, E> {
     #[inline]
-    fn construct<F, T: Logos>(self, constructor: F) -> T
+    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
     where
         F: Fn(P) -> T,
     {

@@ -7,7 +7,7 @@ use crate::source::{self, Source};
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 #[derive(Clone)]
-pub struct Lexer<'source, Token: Logos> {
+pub struct Lexer<'source, Token: Logos<'source>> {
     /// Source from which the Lexer is reading tokens.
     pub source: &'source Token::Source,
 
@@ -21,7 +21,7 @@ pub struct Lexer<'source, Token: Logos> {
     token_end: usize,
 }
 
-impl<'source, Token: Logos> Lexer<'source, Token> {
+impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
@@ -70,7 +70,7 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
 
     /// Get a slice of remaining source, starting at end of current token.
     #[inline]
-    pub fn remainder(&self) -> &'source <<Token as Logos>::Source as Source>::Slice {
+    pub fn remainder(&self) -> &'source <Token::Source as Source>::Slice {
         unsafe { self.source.slice_unchecked(self.token_end..self.source.len()) }
     }
 
@@ -82,7 +82,7 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
     /// consider using `Lexer::advance_as` instead.
     pub fn morph<Token2>(self) -> Lexer<'source, Token2>
     where
-        Token2: Logos<Source = Token::Source>,
+        Token2: Logos<'source, Source = Token::Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         Lexer {
@@ -100,7 +100,7 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
     /// clone the old lexer to call this method, then don't forget to update the old lexer!
     pub fn advance_as<Token2>(self) -> Lexer<'source, Token2>
     where
-        Token2: Logos<Source = Token::Source>,
+        Token2: Logos<'source, Source = Token::Source>,
         Token::Extras: Into<Token2::Extras>,
     {
         let mut lex = self.morph();
@@ -124,7 +124,10 @@ impl<'source, Token: Logos> Lexer<'source, Token> {
     }
 }
 
-impl<Token: Logos> Iterator for Lexer<'_, Token> {
+impl<'source, Token> Iterator for Lexer<'source, Token>
+where
+    Token: Logos<'source>,
+{
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
@@ -140,11 +143,14 @@ impl<Token: Logos> Iterator for Lexer<'_, Token> {
     }
 }
 
-pub struct SpannedIter<'source, Token: Logos> {
+pub struct SpannedIter<'source, Token: Logos<'source>> {
     lexer: Lexer<'source, Token>,
 }
 
-impl<Token: Logos> Iterator for SpannedIter<'_, Token> {
+impl<'source, Token> Iterator for SpannedIter<'source, Token>
+where
+    Token: Logos<'source>,
+{
     type Item = (Token, Range<usize>);
 
     fn next(&mut self) -> Option<(Token, Range<usize>)> {
@@ -184,7 +190,7 @@ impl Extras for () {}
 /// code produced by `#[derive(Logos)]` macro.**
 impl<'source, Token> LexerInternal<'source> for Lexer<'source, Token>
 where
-    Token: self::Logos,
+    Token: Logos<'source>,
 {
     /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.

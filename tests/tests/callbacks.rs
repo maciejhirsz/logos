@@ -13,7 +13,7 @@ mod data {
         #[end]
         End,
 
-        // #[regex(r"[a-zA-Z]+", |lex| lex.slice())]
+        #[regex(r"[a-zA-Z]+", |lex| lex.slice())]
         Text(&'a str),
 
         #[regex(r"-?[0-9]+", |lex| lex.slice().parse())]

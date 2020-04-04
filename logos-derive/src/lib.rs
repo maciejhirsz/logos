@@ -56,7 +56,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             None
         },
         1 if matches!(item.generics.params.first(), Some(GenericParam::Lifetime(..))) => {
-            Some(quote!(<'s>))
+            Some(quote!(<'source>))
         },
         _ => {
             let span = item.generics.span();
@@ -309,7 +309,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let body = generator.generate();
 
     let tokens = quote! {
-        impl #generics ::logos::Logos for #name #generics {
+        impl<'source> ::logos::Logos<'source> for #name #generics {
             type Extras = #extras;
 
             type Source = #source;
@@ -334,10 +334,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn lex<'source>(lex: &mut ::logos::Lexer<'source, Self>) {
+            fn lex(lex: &mut ::logos::Lexer<'source, Self>) {
                 use ::logos::internal::{LexerInternal, CallbackResult};
 
-                type Lexer<'s> = ::logos::Lexer<'s, #name #generics>;
+                type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
 
                 fn _end<'s>(lex: &mut Lexer<'s>) {
                     lex.token = #name::#end;
@@ -356,7 +356,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         // impl<Source: ::logos::source::#source> ::logos::source::WithSource<Source> for #name {}
     };
 
-    panic!("{}", tokens);
+    // panic!("{}", tokens);
 
     TokenStream::from(tokens)
 }
