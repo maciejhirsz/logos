@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::leaf::Leaf;
+use crate::leaf::{Leaf, Callback};
 use crate::generator::{Generator, Context};
 
 impl<'a> Generator<'a> {
@@ -22,11 +22,21 @@ impl<'a> Generator<'a> {
                 let name = self.name;
 
                 match callback {
-                    Some(callback) => quote! {
+                    Callback::Label(callback) => quote! {
                         #bump
-                        lex.token = (#callback)(lex).construct(|()| #name::#ident);
+                        lex.token = #callback(lex).construct(|()| #name::#ident);
                     },
-                    None => quote! {
+                    Callback::Inline(arg, body) => quote! {
+                        #bump
+
+                        #[inline]
+                        fn __callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<()> {
+                            #body
+                        }
+
+                        lex.token = __callback(lex).construct(|()| #name::#ident);
+                    },
+                    Callback::None => quote! {
                         #bump
                         lex.token = #name::#ident;
                     },

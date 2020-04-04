@@ -1,8 +1,9 @@
 use proc_macro2::{TokenStream, TokenTree, Span, Spacing};
-use quote::{quote, TokenStreamExt};
-use syn::{Attribute, Expr, Ident, Lit, Meta, NestedMeta};
+use quote::quote;
+use syn::{Attribute, Expr, Ident, Lit};
 use syn::spanned::Spanned;
 
+use crate::leaf::Callback;
 use crate::error::{Error, SpannedError};
 
 type Result<T> = std::result::Result<T, SpannedError>;
@@ -22,7 +23,7 @@ impl<T> OptionExt<T> for Option<T> {
 
 pub struct Definition<V: Value> {
     pub value: V,
-    pub callback: Option<TokenStream>,
+    pub callback: Callback,
 }
 
 #[derive(Debug)]
@@ -43,8 +44,14 @@ impl Literal {
 pub trait Value {
     fn value(value: Option<Literal>) -> Self;
 
-    fn nested(&mut self, nested: TokenStream) -> Result<()> {
-        Err(Error::new("Unexpected nested attribute").span(nested.span()))
+    fn nested(&mut self, nested: Callback) -> Result<()> {
+        let span = match nested {
+            Callback::Label(label) => label.span(),
+            Callback::Inline(arg, ..) => arg.span(),
+            _ => return Ok(()),
+        };
+
+        Err(Error::new("Unexpected nested attribute").span(span))
     }
 }
 
@@ -87,16 +94,19 @@ impl<V: Value> Value for Definition<V> {
     fn value(value: Option<Literal>) -> Self {
         Definition {
             value: V::value(value),
-            callback: None,
+            callback: Callback::None,
         }
     }
 
-    fn nested(&mut self, nested: TokenStream) -> Result<()> {
-        if let Some(prev) = &self.callback {
-            return Err(Error::new("Only one callback can be defined").span(prev.span()));
+    fn nested(&mut self, nested: Callback) -> Result<()> {
+        match self.callback.span() {
+            Some(span) => {
+                return Err(Error::new("Only one callback can be defined").span(span));
+            },
+            _ => (),
         }
 
-        self.callback = Some(nested);
+        self.callback = nested;
 
         Ok(())
     }
@@ -199,7 +209,7 @@ where
 
             let nested = match tt {
                 tt if is_punct(&tt, '|') => parse_inline_callback(&mut iter, tt.span())?,
-                TokenTree::Ident(_) => tt.into(),
+                TokenTree::Ident(label) => Callback::Label(label),
                 tt => {
                     return Err(Error::new("Expected an function label or an inline callback").span(tt.span()));
                 }
@@ -212,7 +222,7 @@ where
     Ok(value)
 }
 
-fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Span) -> Result<TokenStream> {
+fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Span) -> Result<Callback> {
     let ident = match tokens.next() {
         Some(TokenTree::Ident(ident)) => ident,
         _ => return Err(Error::new("Expected identifier following this token").span(span)),
@@ -233,14 +243,7 @@ fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Spa
         }
     };
 
-    Ok(quote!({
-        #[inline]
-        fn callback<'s>(#ident: &mut Lexer<'s>) -> impl CallbackResult<()> {
-            #body
-        }
-
-        callback
-    }))
+    Ok(Callback::Inline(ident, body))
 }
 
 pub fn ident(ident: &str) -> Ident {

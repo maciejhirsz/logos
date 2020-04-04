@@ -124,7 +124,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         let global_callback = variant.attrs.iter()
             .find_map(|attr| {
                 match util::value_from_attr::<Ident>("callback", attr) {
-                    Ok(ident) => ident.map(|ident| quote!(#ident)),
+                    Ok(ident) => ident,
                     Err(err) => {
                         errors.push(err);
                         None
