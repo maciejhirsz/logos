@@ -9,9 +9,6 @@ pub enum Token {
     #[error]
     InvalidToken,
 
-    #[end]
-    EndOfProgram,
-
     #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
     Identifier,
 
@@ -129,11 +126,9 @@ fn identifiers(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(IDENTIFIERS);
 
-        while lex.token != Token::EndOfProgram {
-            lex.advance();
+        while let Some(token) = lex.next() {
+            black_box(token);
         }
-
-        black_box(lex.token)
     });
 }
 
@@ -146,11 +141,9 @@ fn keywords_operators_and_punctators(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(SOURCE);
 
-        while lex.token != Token::EndOfProgram {
-            lex.advance();
+        while let Some(token) = lex.next() {
+            black_box(token);
         }
-
-        black_box(lex.token)
     });
 }
 
@@ -163,10 +156,8 @@ fn strings(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(STRINGS);
 
-        while lex.token != Token::EndOfProgram {
-            lex.advance();
+        while let Some(token) = lex.next() {
+            black_box(token);
         }
-
-        black_box(lex.token)
     });
 }

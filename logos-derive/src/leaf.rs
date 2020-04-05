@@ -1,18 +1,55 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
-use syn::Ident;
+use syn::{Ident, Type};
+use proc_macro2::{TokenStream, Span};
 
 use crate::graph::{Node, Disambiguate};
 
-#[cfg_attr(test, derive(PartialEq))]
 pub enum Leaf {
     Trivia,
     Token {
         ident: Ident,
         priority: usize,
-        callback: Option<Ident>,
+        field: Option<Type>,
+        callback: Callback,
     },
+}
+
+#[derive(Debug)]
+pub enum Callback {
+    None,
+    Label(Ident),
+    Inline(Ident, TokenStream),
+}
+
+impl Callback {
+    pub fn or_else<F>(self, f: F) -> Callback
+    where
+        F: Fn() -> Option<Ident>,
+    {
+        match self {
+            Callback::None => f().into(),
+            _ => self,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            Callback::Label(ident) => Some(ident.span()),
+            Callback::Inline(arg, ..) => Some(arg.span()),
+            _ => None,
+        }
+    }
+}
+
+impl From<Option<Ident>> for Callback {
+    fn from(label: Option<Ident>) -> Self {
+        match label {
+            Some(ident) => Callback::Label(ident),
+            None => Callback::None,
+        }
+    }
 }
 
 impl Leaf {
@@ -20,13 +57,22 @@ impl Leaf {
         Leaf::Token {
             ident: ident.clone(),
             priority: 0,
-            callback: None,
+            field: None,
+            callback: Callback::None,
         }
     }
 
-    pub fn callback(mut self, cb: Option<Ident>) -> Self {
+    pub fn callback(mut self, cb: Callback) -> Self {
         match self {
             Leaf::Token { ref mut callback, .. } => *callback = cb,
+            Leaf::Trivia => panic!("Oh no :("),
+        }
+        self
+    }
+
+    pub fn field(mut self, ty: Option<Type>) -> Self {
+        match self {
+            Leaf::Token { ref mut field, .. } => *field = ty,
             Leaf::Trivia => panic!("Oh no :("),
         }
         self
@@ -65,10 +111,12 @@ impl Debug for Leaf {
         match self {
             Leaf::Trivia => f.write_str("<trivia>"),
             Leaf::Token { ident, callback, .. } => {
-                 write!(f, "::{}", ident)?;
+                write!(f, "::{}", ident)?;
 
-                if let Some(ref callback) = callback {
-                    write!(f, " ({})", callback)?;
+                match callback {
+                    Callback::Label(ref label) => write!(f, " ({})", label)?,
+                    Callback::Inline(..) => f.write_str(" (<inline>)")?,
+                    _ => (),
                 }
 
                 Ok(())

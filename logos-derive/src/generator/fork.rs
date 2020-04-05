@@ -153,20 +153,20 @@ impl<'a> Generator<'a> {
                         if $test(arr[8])  { if $test(arr[9])  { if $test(arr[10]) { if $test(arr[11]) {
                         if $test(arr[12]) { if $test(arr[13]) { if $test(arr[14]) { if $test(arr[15]) {
 
-                        $lex.bump(16); continue;     } $lex.bump(15); return $miss; }
-                        $lex.bump(14); return $miss; } $lex.bump(13); return $miss; }
-                        $lex.bump(12); return $miss; } $lex.bump(11); return $miss; }
-                        $lex.bump(10); return $miss; } $lex.bump(9); return $miss;  }
-                        $lex.bump(8); return $miss;  } $lex.bump(7); return $miss;  }
-                        $lex.bump(6); return $miss;  } $lex.bump(5); return $miss;  }
-                        $lex.bump(4); return $miss;  } $lex.bump(3); return $miss;  }
-                        $lex.bump(2); return $miss;  } $lex.bump(1); return $miss;  }
+                        $lex.bump_unchecked(16); continue;     } $lex.bump_unchecked(15); return $miss; }
+                        $lex.bump_unchecked(14); return $miss; } $lex.bump_unchecked(13); return $miss; }
+                        $lex.bump_unchecked(12); return $miss; } $lex.bump_unchecked(11); return $miss; }
+                        $lex.bump_unchecked(10); return $miss; } $lex.bump_unchecked(9); return $miss;  }
+                        $lex.bump_unchecked(8); return $miss;  } $lex.bump_unchecked(7); return $miss;  }
+                        $lex.bump_unchecked(6); return $miss;  } $lex.bump_unchecked(5); return $miss;  }
+                        $lex.bump_unchecked(4); return $miss;  } $lex.bump_unchecked(3); return $miss;  }
+                        $lex.bump_unchecked(2); return $miss;  } $lex.bump_unchecked(1); return $miss;  }
 
                         return $miss;
                     }
 
                     while $lex.test($test) {
-                        $lex.bump(1);
+                        $lex.bump_unchecked(1);
                     }
 
                     $miss

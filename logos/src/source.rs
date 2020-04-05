@@ -7,37 +7,14 @@
 use std::fmt::Debug;
 use std::ops::Range;
 
-/// Trait for a `Slice` of a `Source` that the `Lexer` can consume.
-///
-/// Most commonly, those will be the same types:
-/// * `&str` slice for `&str` source.
-/// * `&[u8]` slice for `&[u8]` source.
-pub trait Slice<'source>: Sized + PartialEq + Eq + Debug {
-    /// In all implementations we should at least be able to obtain a
-    /// slice of bytes as the lowest level common denominator.
-    fn as_bytes(&self) -> &'source [u8];
-}
-
-impl<'source> Slice<'source> for &'source str {
-    fn as_bytes(&self) -> &'source [u8] {
-        (*self).as_bytes()
-    }
-}
-
-impl<'source> Slice<'source> for &'source [u8] {
-    fn as_bytes(&self) -> &'source [u8] {
-        *self
-    }
-}
-
 /// Trait for types the `Lexer` can read from.
 ///
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
-pub trait Source<'source> {
+pub trait Source {
     /// A type this `Source` can be sliced into.
-    type Slice: self::Slice<'source>;
+    type Slice: ?Sized + PartialEq + Eq + Debug;
 
     /// Length of the source
     fn len(&self) -> usize;
@@ -61,9 +38,9 @@ pub trait Source<'source> {
     ///     assert_eq!(foo.read::<&[u8; 2]>(2), None); // Out of bounds
     /// }
     /// ```
-    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>;
+        Chunk: self::Chunk<'a>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
@@ -74,10 +51,10 @@ pub trait Source<'source> {
     /// fn main() {
     ///     let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
-    ///     assert_eq!(Source::slice(&foo, 51..59), Some("Eschaton"));
+    ///     assert_eq!(<str as Source>::slice(&foo, 51..59), Some("Eschaton"));
     /// }
     /// ```
-    fn slice(&self, range: Range<usize>) -> Option<Self::Slice>;
+    fn slice(&self, range: Range<usize>) -> Option<&Self::Slice>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
@@ -91,38 +68,30 @@ pub trait Source<'source> {
     ///     let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
     ///     unsafe {
-    ///         assert_eq!(Source::slice_unchecked(&foo, 51..59), "Eschaton");
+    ///         assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     ///     }
     /// }
     /// ```
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice;
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self::Slice;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
     /// can be sliced, starting from `index`.
     ///
     /// For binary sources (`&[u8]`) this should just return `index` back.
+    #[inline]
     fn find_boundary(&self, index: usize) -> usize {
         index
     }
+
+    /// Check if `index` is valid for this `Source`, that is:
+    ///
+    /// + It's not larger than the byte length of the `Source`.
+    /// + (`str` only) It doesn't land in the middle of a UTF-8 code point.
+    fn is_boundary(&self, index: usize) -> bool;
 }
 
-/// Marker trait for any `Source` that can be sliced into arbitrary byte chunks,
-/// with no regard for UTF-8 (or any other) character encoding.
-pub trait BinarySource<'source>: Source<'source> {}
-
-/// Marker trait for any `Logos`, which will constrain it to a specific subset of
-/// `Source`s.
-///
-/// In particular, if your token definitions would allow reading invalid UTF-8,
-/// the `Logos` derive macro will restrict you to lexing on `Source`s that also
-/// implement the `BinarySource` marker (`&[u8]` is provided).
-///
-/// **Note:** You shouldn't implement this trait yourself, `#[derive(Logos)]` will
-/// do it for you.
-pub trait WithSource<Source> {}
-
-impl<'source> Source<'source> for &'source str {
-    type Slice = &'source str;
+impl Source for str {
+    type Slice = str;
 
     #[inline]
     fn len(&self) -> usize {
@@ -130,9 +99,9 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>,
+        Chunk: self::Chunk<'a>,
     {
         if offset + (Chunk::SIZE - 1) < (*self).len() {
             Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
@@ -142,12 +111,12 @@ impl<'source> Source<'source> for &'source str {
     }
 
     #[inline]
-    fn slice(&self, range: Range<usize>) -> Option<&'source str> {
+    fn slice(&self, range: Range<usize>) -> Option<&str> {
         self.get(range)
     }
 
     #[inline]
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source str {
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &str {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!",
@@ -166,10 +135,15 @@ impl<'source> Source<'source> for &'source str {
 
         index
     }
+
+    #[inline]
+    fn is_boundary(&self, index: usize) -> bool {
+        self.is_char_boundary(index)
+    }
 }
 
-impl<'source> Source<'source> for &'source [u8] {
-    type Slice = &'source [u8];
+impl Source for [u8] {
+    type Slice = [u8];
 
     #[inline]
     fn len(&self) -> usize {
@@ -177,9 +151,9 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
-        Chunk: self::Chunk<'source>,
+        Chunk: self::Chunk<'a>,
     {
         if offset + (Chunk::SIZE - 1) < (*self).len() {
             Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
@@ -189,12 +163,12 @@ impl<'source> Source<'source> for &'source [u8] {
     }
 
     #[inline]
-    fn slice(&self, range: Range<usize>) -> Option<&'source [u8]> {
+    fn slice(&self, range: Range<usize>) -> Option<&[u8]> {
         self.get(range)
     }
 
     #[inline]
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &'source [u8] {
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &[u8] {
         debug_assert!(
             range.start <= self.len() && range.end <= self.len(),
             "Reading out of bounds {:?} for {}!",
@@ -204,9 +178,12 @@ impl<'source> Source<'source> for &'source [u8] {
 
         self.get_unchecked(range)
     }
-}
 
-impl<'source> BinarySource<'source> for &'source [u8] {}
+    #[inline]
+    fn is_boundary(&self, index: usize) -> bool {
+        index <= self.len()
+    }
+}
 
 /// A fixed, statically sized chunk of data that can be read from the `Source`.
 ///

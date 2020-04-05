@@ -17,20 +17,15 @@
 In practice it means that for most grammars the lexing performance is virtually unaffected by the number
 of tokens defined in the grammar. Or, in other words, **it is really fast**.
 
-## Usage
+## Example
 
 ```rust
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
 enum Token {
-    // Logos requires that we define two default variants,
-    // one for end of input source,
-    #[end]
-    End,
-
-    // ...and one for errors. Those can be named anything
-    // you wish as long as the attributes are there.
+    // Logos requires one token variant to handle errors,
+    // it can be named anything you wish.
     #[error]
     Error,
 
@@ -47,110 +42,98 @@ enum Token {
 }
 
 fn main() {
-    let mut lexer = Token::lexer("Create ridiculously fast Lexers.");
+    let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 
-    assert_eq!(lexer.token, Token::Text);
-    assert_eq!(lexer.slice(), "Create");
-    assert_eq!(lexer.range(), 0..6);
+    assert_eq!(lex.next(), Some(Token::Text));
+    assert_eq!(lex.span(), 0..6);
+    assert_eq!(lex.slice(), "Create");
 
-    lexer.advance();
+    assert_eq!(lex.next(), Some(Token::Text));
+    assert_eq!(lex.span(), 7..19);
+    assert_eq!(lex.slice(), "ridiculously");
 
-    assert_eq!(lexer.token, Token::Text);
-    assert_eq!(lexer.slice(), "ridiculously");
-    assert_eq!(lexer.range(), 7..19);
+    assert_eq!(lex.next(), Some(Token::Fast));
+    assert_eq!(lex.span(), 20..24);
+    assert_eq!(lex.slice(), "fast");
 
-    lexer.advance();
+    assert_eq!(lex.next(), Some(Token::Text));
+    assert_eq!(lex.span(), 25..31);
+    assert_eq!(lex.slice(), "Lexers");
 
-    assert_eq!(lexer.token, Token::Fast);
-    assert_eq!(lexer.slice(), "fast");
-    assert_eq!(lexer.range(), 20..24);
+    assert_eq!(lex.next(), Some(Token::Period));
+    assert_eq!(lex.span(), 31..32);
+    assert_eq!(lex.slice(), ".");
 
-    lexer.advance();
-
-    assert_eq!(lexer.token, Token::Text);
-    assert_eq!(lexer.slice(), "Lexers");
-    assert_eq!(lexer.range(), 25..31);
-
-    lexer.advance();
-
-    assert_eq!(lexer.token, Token::Period);
-    assert_eq!(lexer.slice(), ".");
-    assert_eq!(lexer.range(), 31..32);
-
-    lexer.advance();
-
-    assert_eq!(lexer.token, Token::End);
+    assert_eq!(lex.next(), None);
 }
 ```
 
 ### Callbacks
 
-On top of using the enum variants, **Logos** can also call arbitrary functions whenever a pattern is matched:
+**Logos** can also call arbitrary functions whenever a pattern is matched,
+which can be used to put data into a variant:
 
 ```rust
 use logos::{Logos, Lexer, Extras};
 
-// This struct will be created alongside the `Lexer`.
-#[derive(Default)]
-struct TokenExtras {
-    denomination: u32,
+// Note: callbacks can return `Option` or `Result`
+fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
+    let slice = lex.slice();
+    let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'k'
+    Some(n * 1_000)
 }
 
-impl Extras for TokenExtras {}
-
-fn one<S>(lexer: &mut Lexer<Token, S>) {
-    lexer.extras.denomination = 1;
-}
-
-fn kilo<S>(lexer: &mut Lexer<Token, S>) {
-    lexer.extras.denomination = 1_000;
-}
-
-fn mega<S>(lexer: &mut Lexer<Token, S>) {
-    lexer.extras.denomination = 1_000_000;
+fn mega(lex: &mut Lexer<Token>) -> Option<u64> {
+    let slice = lex.slice();
+    let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'm'
+    Some(n * 1_000_000)
 }
 
 #[derive(Logos, Debug, PartialEq)]
-#[extras = "TokenExtras"] // Use the `extras` to inform that we want
-enum Token {              // to use `TokenExtras` inside our `Lexer`.
-    #[end]
-    End,
-
+enum Token {
     #[error]
     Error,
 
-    // You can apply multiple definitions to a single variant,
-    // each with it's own callback.
-    #[regex("[0-9]+", callback = "one")]
-    #[regex("[0-9]+k", callback = "kilo")]
-    #[regex("[0-9]+m", callback = "mega")]
-    Number,
+    // Callbacks can use closure syntax, or refer
+    // to a function defined elsewhere.
+    //
+    // Each pattern can have it's own callback.
+    #[regex("[0-9]+", |lex| lex.slice().parse())]
+    #[regex("[0-9]+k", kilo)]
+    #[regex("[0-9]+m", mega)]
+    Number(u64),
 }
 
 fn main() {
-    let mut lexer = Token::lexer("5 42k 75m");
+    let mut lex = Token::lexer("5 42k 75m");
 
-    assert_eq!(lexer.token, Token::Number);
-    assert_eq!(lexer.slice(), "5");
-    assert_eq!(lexer.extras.denomination, 1);
+    assert_eq!(lex.next(), Some(Token::Number(5)));
+    assert_eq!(lex.slice(), "5");
 
-    lexer.advance();
+    assert_eq!(lex.next(), Some(Token::Number(42_000)));
+    assert_eq!(lex.slice(), "42k");
 
-    assert_eq!(lexer.token, Token::Number);
-    assert_eq!(lexer.slice(), "42k");
-    assert_eq!(lexer.extras.denomination, 1_000);
+    assert_eq!(lex.next(), Some(Token::Number(75_000_000)));
+    assert_eq!(lex.slice(), "75m");
 
-    lexer.advance();
-
-    assert_eq!(lexer.token, Token::Number);
-    assert_eq!(lexer.slice(), "75m");
-    assert_eq!(lexer.extras.denomination, 1_000_000);
-
-    lexer.advance();
-
-    assert_eq!(lexer.token, Token::End);
+    assert_eq!(lex.next(), None);
 }
 ```
+
+Logos can handle callbacks with following return types:
+
+| Return type     | Produces                                           |
+|-----------------|----------------------------------------------------|
+| `()`            | `Token::Unit`                                      |
+| `bool`          | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+| `Result<(), _>` | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+| `T`             | `Token::Value(T)`                                  |
+| `Option<T>`     | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| `Result<T, _>`  | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+
+Callbacks can be also used to do perform more specialized lexing in place
+where regular expressions are too limiting. For specifics look at
+`Lexer::remainder` and `Lexer::bump`.
 
 ## Token disambiguation
 
@@ -176,9 +159,9 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 Ridiculously fast!
 
 ```
-test identifiers                       ... bench:         667 ns/iter (+/- 26) = 1167 MB/s
-test keywords_operators_and_punctators ... bench:       1,984 ns/iter (+/- 105) = 1074 MB/s
-test strings                           ... bench:         613 ns/iter (+/- 38) = 1420 MB/s
+test identifiers                       ... bench:         660 ns/iter (+/- 54) = 1180 MB/s
+test keywords_operators_and_punctators ... bench:       2,033 ns/iter (+/- 69) = 1048 MB/s
+test strings                           ... bench:         557 ns/iter (+/- 28) = 1563 MB/s
 ```
 
 ## License

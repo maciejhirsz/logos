@@ -50,7 +50,7 @@ impl Context {
         match self.at {
             0 => None,
             n => {
-                let tokens = quote!(lex.bump(#n););
+                let tokens = quote!(lex.bump_unchecked(#n););
                 self.at = 0;
                 self.available = 0;
                 self.bumped = true;

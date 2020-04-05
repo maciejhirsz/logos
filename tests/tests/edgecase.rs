@@ -6,8 +6,6 @@ mod crunch {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
-        #[end]
-        End,
         #[error]
         Error,
         #[token = "else"]
@@ -34,8 +32,6 @@ mod numbers {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
-        #[end]
-        End,
         #[error]
         Error,
         #[regex = r"[0-9][0-9_]*"]
@@ -75,9 +71,6 @@ mod benches {
     pub enum Token {
         #[error]
         InvalidToken,
-
-        #[end]
-        EndOfProgram,
 
         #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
         Identifier,
@@ -206,5 +199,58 @@ mod benches {
                 (Token::String, r#""of trying to build up all possible permutations in a tree.""#, 157..217),
             ]
         )
+    }
+}
+
+mod unicode_whitespace {
+    use super::*;
+
+    #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+    #[logos(trivia = r"\p{Whitespace}")]
+    enum Token {
+        #[error]
+        Error,
+
+        #[regex = "[0-9]+"]
+        Number,
+    }
+
+    #[test]
+    fn abcdef_trivia() {
+        assert_lex(
+            "   12345\u{2029}67890\t  x ",
+            &[
+                (Token::Number, "12345", 3..8),
+                (Token::Number, "67890", 11..16),
+                (Token::Error, "x", 19..20),
+            ],
+        );
+    }
+}
+
+mod trivia {
+    use super::*;
+
+    #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+    #[logos(trivia = "[a-f]")]
+    enum Token {
+        #[error]
+        Error,
+
+        #[regex = "[0-9]+"]
+        Number,
+    }
+
+    #[test]
+    fn abcdef_trivia() {
+        assert_lex(
+            "abc12345def67890 afx",
+            &[
+                (Token::Number, "12345", 3..8),
+                (Token::Number, "67890", 11..16),
+                (Token::Error, " ", 16..17),
+                (Token::Error, "x", 19..20),
+            ],
+        );
     }
 }
