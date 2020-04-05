@@ -335,13 +335,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
         type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
-            lex.token = None;
+            lex.end()
         }
 
         fn _error<'s>(lex: &mut Lexer<'s>) {
             lex.bump_unchecked(1);
 
-            lex.token = Some(#name::#error);
+            lex.set(#name::#error);
         }
 
         #body

@@ -29,7 +29,8 @@ impl<'a> Generator<'a> {
                 match callback {
                     Callback::Label(callback) => quote! {
                         #bump
-                        lex.token = Some(#callback(lex).construct(#constructor));
+                        let token = #callback(lex).construct(#constructor);
+                        lex.set(token);
                     },
                     Callback::Inline(arg, body) => quote! {
                         #bump
@@ -39,11 +40,12 @@ impl<'a> Generator<'a> {
                             #body
                         }
 
-                        lex.token = Some(__callback(lex).construct(#constructor));
+                        let token = __callback(lex).construct(#constructor);
+                        lex.set(token);
                     },
                     Callback::None => quote! {
                         #bump
-                        lex.token = Some(#name::#ident);
+                        lex.set(#name::#ident);
                     },
                 }
             },

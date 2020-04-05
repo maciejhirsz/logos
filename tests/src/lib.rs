@@ -10,15 +10,13 @@ pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,
     tokens: &[(Token, &'a <Token::Source as Source>::Slice, Range<usize>)],
 ) where
-    Token: Logos<'a> + fmt::Debug + PartialEq + Clone + Copy,
+    Token: Logos<'a> + fmt::Debug + PartialEq,
 {
     let mut lex = Token::lexer(source);
 
     for tuple in tokens {
-        assert_eq!(&(lex.token.expect("Unexpected end"), lex.slice(), lex.range()), tuple);
-
-        lex.advance();
+        assert_eq!(&(lex.next().expect("Unexpected end"), lex.slice(), lex.range()), tuple);
     }
 
-    assert_eq!(lex.token, None);
+    assert_eq!(lex.next(), None);
 }

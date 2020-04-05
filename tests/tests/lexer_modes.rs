@@ -40,25 +40,17 @@ fn main() {
     let mut outer = Outer::lexer(s);
 
     // The outer lexer has picked up the initial quote character
-    assert_eq!(outer.token, Some(Outer::StartString));
+    assert_eq!(outer.next(), Some(Outer::StartString));
 
     // We've entered a string, parser creates sublexer
-    let mut inner = outer.advance_as::<Inner>();
-    assert_eq!(inner.token, Some(Inner::Text));
-    inner.advance();
-
-    assert_eq!(inner.token, Some(Inner::EscapedCodepoint));
-    inner.advance();
-
-    assert_eq!(inner.token, Some(Inner::Text));
-    inner.advance();
-
-    assert_eq!(inner.token, Some(Inner::EscapedNewline));
-    inner.advance();
-
-    assert_eq!(inner.token, Some(Inner::EndString));
+    let mut inner = outer.morph();
+    assert_eq!(inner.next(), Some(Inner::Text));
+    assert_eq!(inner.next(), Some(Inner::EscapedCodepoint));
+    assert_eq!(inner.next(), Some(Inner::Text));
+    assert_eq!(inner.next(), Some(Inner::EscapedNewline));
+    assert_eq!(inner.next(), Some(Inner::EndString));
 
     // We've exited the string, parser returns to outer lexer
-    outer = inner.advance_as();
-    assert_eq!(outer.token, None);
+    outer = inner.morph();
+    assert_eq!(outer.next(), None);
 }

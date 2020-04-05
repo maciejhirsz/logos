@@ -38,105 +38,81 @@
 //! }
 //!
 //! fn main() {
-//!     let mut lexer = Token::lexer("Create ridiculously fast Lexers.");
+//!     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 //!
-//!     assert_eq!(lexer.token, Some(Token::Text));
-//!     assert_eq!(lexer.slice(), "Create");
-//!     assert_eq!(lexer.range(), 0..6);
+//!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.slice(), "Create");
+//!     assert_eq!(lex.range(), 0..6);
 //!
-//!     lexer.advance();
+//!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.slice(), "ridiculously");
+//!     assert_eq!(lex.range(), 7..19);
 //!
-//!     assert_eq!(lexer.token, Some(Token::Text));
-//!     assert_eq!(lexer.slice(), "ridiculously");
-//!     assert_eq!(lexer.range(), 7..19);
+//!     assert_eq!(lex.next(), Some(Token::Fast));
+//!     assert_eq!(lex.slice(), "fast");
+//!     assert_eq!(lex.range(), 20..24);
 //!
-//!     lexer.advance();
+//!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.slice(), "Lexers");
+//!     assert_eq!(lex.range(), 25..31);
 //!
-//!     assert_eq!(lexer.token, Some(Token::Fast));
-//!     assert_eq!(lexer.slice(), "fast");
-//!     assert_eq!(lexer.range(), 20..24);
+//!     assert_eq!(lex.next(), Some(Token::Period));
+//!     assert_eq!(lex.slice(), ".");
+//!     assert_eq!(lex.range(), 31..32);
 //!
-//!     lexer.advance();
-//!
-//!     assert_eq!(lexer.token, Some(Token::Text));
-//!     assert_eq!(lexer.slice(), "Lexers");
-//!     assert_eq!(lexer.range(), 25..31);
-//!
-//!     lexer.advance();
-//!
-//!     assert_eq!(lexer.token, Some(Token::Period));
-//!     assert_eq!(lexer.slice(), ".");
-//!     assert_eq!(lexer.range(), 31..32);
-//!
-//!     lexer.advance();
-//!
-//!     assert_eq!(lexer.token, None);
+//!     assert_eq!(lex.next(), None);
 //! }
 //! ```
 //!
 //! ### Callbacks
 //!
-//! On top of using the enum variants, **Logos** can also call arbitrary functions whenever a pattern is matched:
+//! On top of using the enum variants, **Logos** can also call arbitrary functions whenever a pattern is matched,
+//! which can be used to put data into a variant:
 //!
 //! ```rust
 //! use logos::{Logos, Lexer, Extras};
 //!
-//! // This struct will be created alongside the `Lexer`.
-//! #[derive(Default)]
-//! struct TokenExtras {
-//!     denomination: u32,
+//! // Note: callbacks can return `Option` or `Result`
+//! fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
+//!     let slice = lex.slice();
+//!     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'k'
+//!     Some(n * 1_000)
 //! }
 //!
-//! impl Extras for TokenExtras {}
-//!
-//! fn one(lexer: &mut Lexer<Token>) {
-//!     lexer.extras.denomination = 1;
-//! }
-//!
-//! fn kilo(lexer: &mut Lexer<Token>) {
-//!     lexer.extras.denomination = 1_000;
-//! }
-//!
-//! fn mega(lexer: &mut Lexer<Token>) {
-//!     lexer.extras.denomination = 1_000_000;
+//! fn mega(lex: &mut Lexer<Token>) -> Option<u64> {
+//!     let slice = lex.slice();
+//!     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'm'
+//!     Some(n * 1_000_000)
 //! }
 //!
 //! #[derive(Logos, Debug, PartialEq)]
-//! #[extras = "TokenExtras"] // Use the `extras` to inform that we want
-//! enum Token {              // to use `TokenExtras` inside our `Lexer`.
+//! enum Token {
 //!     #[error]
 //!     Error,
 //!
-//!     // You can apply multiple definitions to a single variant,
-//!     // each with it's own callback.
-//!     #[regex("[0-9]+", one)]
+//!     // Callbacks can be inline using closure syntax, or refer
+//!     // to a function defined elsewhere.
+//!     //
+//!     // Each pattern can have it's own callback.
+//!     #[regex("[0-9]+", |lex| lex.slice().parse())]
 //!     #[regex("[0-9]+k", kilo)]
 //!     #[regex("[0-9]+m", mega)]
-//!     Number,
+//!     Number(u64),
 //! }
 //!
 //! fn main() {
-//!     let mut lexer = Token::lexer("5 42k 75m");
+//!     let mut lex = Token::lexer("5 42k 75m");
 //!
-//!     assert_eq!(lexer.token, Some(Token::Number));
-//!     assert_eq!(lexer.slice(), "5");
-//!     assert_eq!(lexer.extras.denomination, 1);
+//!     assert_eq!(lex.next(), Some(Token::Number(5)));
+//!     assert_eq!(lex.slice(), "5");
 //!
-//!     lexer.advance();
+//!     assert_eq!(lex.next(), Some(Token::Number(42_000)));
+//!     assert_eq!(lex.slice(), "42k");
 //!
-//!     assert_eq!(lexer.token, Some(Token::Number));
-//!     assert_eq!(lexer.slice(), "42k");
-//!     assert_eq!(lexer.extras.denomination, 1_000);
+//!     assert_eq!(lex.next(), Some(Token::Number(75_000_000)));
+//!     assert_eq!(lex.slice(), "75m");
 //!
-//!     lexer.advance();
-//!
-//!     assert_eq!(lexer.token, Some(Token::Number));
-//!     assert_eq!(lexer.slice(), "75m");
-//!     assert_eq!(lexer.extras.denomination, 1_000_000);
-//!
-//!     lexer.advance();
-//!
-//!     assert_eq!(lexer.token, None);
+//!     assert_eq!(lex.next(), None);
 //! }
 //! ```
 //!
@@ -244,18 +220,17 @@ pub trait Logos<'source>: Sized {
 /// fn main() {
 ///     let mut lexer = Token::lexer("Immanetize the Eschaton");
 ///
-///     assert_eq!(lexer.token, Some(Token::Immanetize));
-///     assert_eq!(LUT[lexer.token.unwrap() as usize](2), 9001); // 2 + 8999
+///     let mut token = lexer.next().unwrap();
+///     assert_eq!(token, Token::Immanetize);
+///     assert_eq!(LUT[token as usize](2), 9001); // 2 + 8999
 ///
-///     lexer.advance();
+///     token = lexer.next().unwrap();
+///     assert_eq!(token, Token::The);
+///     assert_eq!(LUT[token as usize](2), 0); // always 0
 ///
-///     assert_eq!(lexer.token, Some(Token::The));
-///     assert_eq!(LUT[lexer.token.unwrap() as usize](2), 0); // always 0
-///
-///     lexer.advance();
-///
-///     assert_eq!(lexer.token, Some(Token::Eschaton));
-///     assert_eq!(LUT[lexer.token.unwrap() as usize](2), 42); // 2 + 40
+///     token = lexer.next().unwrap();
+///     assert_eq!(token, Token::Eschaton);
+///     assert_eq!(LUT[token as usize](2), 42); // 2 + 40
 /// }
 /// ```
 #[macro_export]

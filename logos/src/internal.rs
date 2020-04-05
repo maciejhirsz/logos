@@ -8,6 +8,8 @@ use crate::Logos;
 /// **This trait, and it's methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
 pub trait LexerInternal<'source> {
+    type Token;
+
     /// Read a chunk at current position.
     fn read<T: Chunk<'source>>(&self) -> Option<T>;
 
@@ -29,6 +31,10 @@ pub trait LexerInternal<'source> {
     /// Set the current token to appropriate `#[error]` variant.
     /// Guarantee that `token_end` is at char boundary for `&str`.
     fn error(&mut self);
+
+    fn end(&mut self);
+
+    fn set(&mut self, token: Self::Token);
 }
 
 pub trait CallbackResult<P> {

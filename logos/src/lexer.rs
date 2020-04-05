@@ -11,12 +11,10 @@ pub struct Lexer<'source, Token: Logos<'source>> {
     /// Source from which the Lexer is reading tokens.
     pub source: &'source Token::Source,
 
-    /// Current token. Call the `advance` method to get a new token.
-    pub token: Option<Token>,
-
     /// Extras associated with the `Token`.
     pub extras: Token::Extras,
 
+    token: Option<Token>,
     token_start: usize,
     token_end: usize,
 }
@@ -27,22 +25,18 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
     pub fn new(source: &'source Token::Source) -> Self {
-        let mut lex = Lexer {
+        Lexer {
             source,
             token: None,
             extras: Default::default(),
             token_start: 0,
             token_end: 0,
-        };
-
-        lex.advance();
-
-        lex
+        }
     }
 
     /// Advance the `Lexer` and attempt to produce the next `Token`.
     #[inline]
-    pub fn advance(&mut self) {
+    fn advance(&mut self) {
         self.token_start = self.token_end;
         self.extras.on_advance();
 
@@ -94,19 +88,19 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         }
     }
 
-    /// Advance the `Lexer` and attempt to produce the next `Token` of a new token type.
-    ///
-    /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
-    /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    pub fn advance_as<Token2>(self) -> Lexer<'source, Token2>
-    where
-        Token2: Logos<'source, Source = Token::Source>,
-        Token::Extras: Into<Token2::Extras>,
-    {
-        let mut lex = self.morph();
-        lex.advance();
-        lex
-    }
+    // /// Advance the `Lexer` and attempt to produce the next `Token` of a new token type.
+    // ///
+    // /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
+    // /// clone the old lexer to call this method, then don't forget to update the old lexer!
+    // pub fn advance_as<Token2>(self) -> Lexer<'source, Token2>
+    // where
+    //     Token2: Logos<'source, Source = Token::Source>,
+    //     Token::Extras: Into<Token2::Extras>,
+    // {
+    //     let mut lex = self.morph();
+    //     lex.advance();
+    //     lex
+    // }
 
     /// Bumps the end of currently lexed token by `n` bytes.
     ///
@@ -130,12 +124,11 @@ where
 {
     type Item = Token;
 
+    #[inline]
     fn next(&mut self) -> Option<Token> {
-        let token = std::mem::replace(&mut self.token, None)?;
-
         self.advance();
 
-        Some(token)
+        self.token.take()
     }
 }
 
@@ -150,10 +143,8 @@ where
     type Item = (Token, Range<usize>);
 
     fn next(&mut self) -> Option<(Token, Range<usize>)> {
-        let token = std::mem::replace(&mut self.lexer.token, None)?;
+        let token = self.lexer.next()?;
         let range = self.lexer.range();
-
-        self.lexer.advance();
 
         Some((token, range))
     }
@@ -184,6 +175,8 @@ impl<'source, Token> LexerInternal<'source> for Lexer<'source, Token>
 where
     Token: Logos<'source>,
 {
+    type Token = Token;
+
     /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
     #[inline]
@@ -253,5 +246,15 @@ where
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
         self.token = Some(Token::ERROR);
+    }
+
+    #[inline]
+    fn end(&mut self) {
+        self.token = None;
+    }
+
+    #[inline]
+    fn set(&mut self, token: Token) {
+        self.token = Some(token);
     }
 }

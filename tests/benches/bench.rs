@@ -126,11 +126,9 @@ fn identifiers(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(IDENTIFIERS);
 
-        while lex.token != None {
-            lex.advance();
+        while let Some(token) = lex.next() {
+            black_box(token);
         }
-
-        black_box(lex.token)
     });
 }
 
@@ -143,11 +141,9 @@ fn keywords_operators_and_punctators(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(SOURCE);
 
-        while lex.token != None {
-            lex.advance();
+        while let Some(token) = lex.next() {
+            black_box(token);
         }
-
-        black_box(lex.token)
     });
 }
 
@@ -159,23 +155,6 @@ fn strings(b: &mut Bencher) {
 
     b.iter(|| {
         let mut lex = Token::lexer(STRINGS);
-
-        while lex.token != None {
-            lex.advance();
-        }
-
-        black_box(lex.token)
-    });
-}
-
-#[bench]
-fn x_identifiers_iter(b: &mut Bencher) {
-    use logos::Logos;
-
-    b.bytes = IDENTIFIERS.len() as u64;
-
-    b.iter(|| {
-        let mut lex = Token::lexer(IDENTIFIERS);
 
         while let Some(token) = lex.next() {
             black_box(token);
