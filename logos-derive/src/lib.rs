@@ -46,7 +46,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut extras: Option<Ident> = None;
     let mut error = None;
-    let mut end = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
     let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
@@ -180,12 +179,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             if ident == "end" {
-                if let Some(previous) = end.replace(variant) {
-                    errors.extend(vec![
-                        Error::new("Only one #[end] variant can be declared.").span(span),
-                        Error::new("Previously declared #[end]:").span(previous.span()),
-                    ]);
-                }
+                errors.push(
+                    Error::new(
+                        "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
+
+                        For help with migration see release notes: https://github.com/maciejhirsz/logos/releases"
+                    ).span(attr.span()));
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
@@ -271,24 +270,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    if error.is_none() {
-        errors.push(Error::new("missing #[error] token variant.").span(super_span));
-    }
-
-    if end.is_none() {
-        errors.push(Error::new("missing #[end] token variant.").span(super_span));
-    }
-
-    if errors.len() > 0 {
-        return quote! {
-            fn _logos_derive_compile_errors() {
-                #(#errors)*
-            }
-        }.into();
-    }
-
-    let error = error.expect("Already checked for none above; qed");
-    let end = end.expect("Already checked for none above; qed");
     let extras = match extras {
         Some(ext) => quote!(#ext),
         None => quote!(()),
@@ -297,6 +278,40 @@ pub fn logos(input: TokenStream) -> TokenStream {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
     };
+
+    let error_def = match error {
+        Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
+        None => {
+            errors.push(Error::new("missing #[error] token variant.").span(super_span));
+            None
+        },
+    };
+
+    let impl_logos = |body| {
+        quote! {
+            impl<'source> ::logos::Logos<'source> for #name #generics {
+                type Extras = #extras;
+
+                type Source = #source;
+
+                const SIZE: usize = #size;
+
+                #error_def
+
+                fn lex(lex: &mut ::logos::Lexer<'source, Self>) {
+                    #body
+                }
+            }
+        }
+    };
+
+    if errors.len() > 0 {
+        return impl_logos(quote! {
+            fn _logos_derive_compile_errors() {
+                #(#errors)*
+            }
+        }).into()
+    }
 
     for id in regex_ids {
         let fork = graph.fork_off(id);
@@ -314,38 +329,23 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut generator = Generator::new(name, root, &graph);
 
     let body = generator.generate();
+    let tokens = impl_logos(quote! {
+        use ::logos::internal::{LexerInternal, CallbackResult};
 
-    let tokens = quote! {
-        impl<'source> ::logos::Logos<'source> for #name #generics {
-            type Extras = #extras;
+        type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
 
-            type Source = #source;
-
-            const SIZE: usize = #size;
-            const ERROR: Self = #name::#error;
-            const END: Self = #name::#end;
-
-            fn lex(lex: &mut ::logos::Lexer<'source, Self>) {
-                use ::logos::internal::{LexerInternal, CallbackResult};
-
-                type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
-
-                fn _end<'s>(lex: &mut Lexer<'s>) {
-                    lex.token = None;
-                }
-
-                fn _error<'s>(lex: &mut Lexer<'s>) {
-                    lex.bump_unchecked(1);
-
-                    lex.token = Some(#name::#error);
-                }
-
-                #body
-            }
+        fn _end<'s>(lex: &mut Lexer<'s>) {
+            lex.token = None;
         }
 
-        // impl<Source: ::logos::source::#source> ::logos::source::WithSource<Source> for #name {}
-    };
+        fn _error<'s>(lex: &mut Lexer<'s>) {
+            lex.bump_unchecked(1);
+
+            lex.token = Some(#name::#error);
+        }
+
+        #body
+    });
 
     // panic!("{}", tokens);
 

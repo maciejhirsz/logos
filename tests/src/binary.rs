@@ -4,9 +4,6 @@
 //!
 //! #[derive(Logos)]
 //! enum Token {
-//!     #[end]
-//!     End,
-//!
 //!     #[error]
 //!     Error,
 //!
@@ -26,9 +23,6 @@
 //!
 //! #[derive(Logos)]
 //! enum Token {
-//!     #[end]
-//!     End,
-//!
 //!     #[error]
 //!     Error,
 //!
@@ -50,9 +44,6 @@ use logos_derive::Logos;
 enum Token {
     #[error]
     Error,
-
-    #[end]
-    End,
 
     #[token = "foo"]
     Foo,

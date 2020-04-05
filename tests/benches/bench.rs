@@ -9,9 +9,6 @@ pub enum Token {
     #[error]
     InvalidToken,
 
-    #[end]
-    EndOfProgram,
-
     #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
     Identifier,
 

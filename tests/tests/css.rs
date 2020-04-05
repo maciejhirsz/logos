@@ -5,9 +5,6 @@ enum Token {
     #[error]
     Error,
 
-    #[end]
-    End,
-
     #[regex = "em|ex|ch|rem|vw|vh|vmin|vmax"]
     RelativeLength,
 

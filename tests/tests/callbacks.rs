@@ -10,9 +10,6 @@ mod data {
         #[error]
         Error,
 
-        #[end]
-        End,
-
         #[regex(r"[a-zA-Z]+", |lex| lex.slice())]
         Text(&'a str),
 
@@ -56,9 +53,6 @@ mod rust {
     enum Token {
         #[error]
         Error,
-
-        #[end]
-        End,
 
         #[regex = "[a-zA-Z_][a-zA-Z0-9_]*"]
         Ident,

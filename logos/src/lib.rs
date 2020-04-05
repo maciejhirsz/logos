@@ -20,13 +20,8 @@
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
-//!     // Logos requires that we define two default variants,
-//!     // one for end of input source,
-//!     #[end]
-//!     End,
-//!
-//!     // ...and one for errors. Those can be named anything
-//!     // you wish as long as the attributes are there.
+//!     // Logos requires one token variant to handle errors,
+//!     // it can be named anything you wish.
 //!     #[error]
 //!     Error,
 //!
@@ -109,9 +104,6 @@
 //! #[derive(Logos, Debug, PartialEq)]
 //! #[extras = "TokenExtras"] // Use the `extras` to inform that we want
 //! enum Token {              // to use `TokenExtras` inside our `Lexer`.
-//!     #[end]
-//!     End,
-//!
 //!     #[error]
 //!     Error,
 //!
@@ -202,9 +194,6 @@ pub trait Logos<'source>: Sized {
     /// This can be extremely useful for creating `Logos` Lookup Tables.
     const SIZE: usize;
 
-    /// Helper `const` of the variant marked as `#[end]`.
-    const END: Self;
-
     /// Helper `const` of the variant marked as `#[error]`.
     const ERROR: Self;
 
@@ -231,9 +220,6 @@ pub trait Logos<'source>: Sized {
 ///
 /// #[derive(Logos, Clone, Copy, PartialEq, Debug)]
 /// enum Token {
-///     #[end]
-///     End,
-///
 ///     #[error]
 ///     Error,
 ///

@@ -6,8 +6,6 @@ mod crunch {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
-        #[end]
-        End,
         #[error]
         Error,
         #[token = "else"]
@@ -34,8 +32,6 @@ mod numbers {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
-        #[end]
-        End,
         #[error]
         Error,
         #[regex = r"[0-9][0-9_]*"]
@@ -75,9 +71,6 @@ mod benches {
     pub enum Token {
         #[error]
         InvalidToken,
-
-        #[end]
-        EndOfProgram,
 
         #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
         Identifier,
@@ -218,9 +211,6 @@ mod unicode_whitespace {
         #[error]
         Error,
 
-        #[end]
-        End,
-
         #[regex = "[0-9]+"]
         Number,
     }
@@ -246,9 +236,6 @@ mod trivia {
     enum Token {
         #[error]
         Error,
-
-        #[end]
-        End,
 
         #[regex = "[0-9]+"]
         Number,

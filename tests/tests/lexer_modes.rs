@@ -3,9 +3,6 @@ use logos_derive::Logos;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Outer {
-    #[end]
-    End,
-
     #[error]
     Error,
 
@@ -18,9 +15,6 @@ enum Outer {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Inner {
-    #[end]
-    End,
-
     #[error]
     Error,
 

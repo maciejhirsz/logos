@@ -6,9 +6,6 @@ enum Token {
     #[error]
     Error,
 
-    #[end]
-    End,
-
     #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
     LiteralString,
 
