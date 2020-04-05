@@ -41,24 +41,24 @@
 //!     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.span(), 0..6);
 //!     assert_eq!(lex.slice(), "Create");
-//!     assert_eq!(lex.range(), 0..6);
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.span(), 7..19);
 //!     assert_eq!(lex.slice(), "ridiculously");
-//!     assert_eq!(lex.range(), 7..19);
 //!
 //!     assert_eq!(lex.next(), Some(Token::Fast));
+//!     assert_eq!(lex.span(), 20..24);
 //!     assert_eq!(lex.slice(), "fast");
-//!     assert_eq!(lex.range(), 20..24);
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.span(), 25..31);
 //!     assert_eq!(lex.slice(), "Lexers");
-//!     assert_eq!(lex.range(), 25..31);
 //!
 //!     assert_eq!(lex.next(), Some(Token::Period));
+//!     assert_eq!(lex.span(), 31..32);
 //!     assert_eq!(lex.slice(), ".");
-//!     assert_eq!(lex.range(), 31..32);
 //!
 //!     assert_eq!(lex.next(), None);
 //! }
@@ -90,7 +90,7 @@
 //!     #[error]
 //!     Error,
 //!
-//!     // Callbacks can be inline using closure syntax, or refer
+//!     // Callbacks can use closure syntax, or refer
 //!     // to a function defined elsewhere.
 //!     //
 //!     // Each pattern can have it's own callback.
@@ -150,8 +150,8 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use self::lexer::{Extras, Lexer, SpannedIter};
-pub use self::source::Source;
+pub use crate::lexer::{Extras, Lexer, Span, SpannedIter};
+pub use crate::source::Source;
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
@@ -159,9 +159,12 @@ pub trait Logos<'source>: Sized {
     /// Associated type `Extras` for the particular lexer. Those can handle things that
     /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
     /// in JavaScript.
-    type Extras: self::Extras;
+    type Extras: Extras;
 
-    type Source: self::Source + ?Sized + 'source;
+    /// Source type this token can be lexed from. This will default to `str`,
+    /// unless one of the defined patterns explicitly uses non-unicode byte values
+    /// or byte slices, in which case that implementation will use `[u8]`.
+    type Source: Source + ?Sized + 'source;
 
     /// `SIZE` is simply a number of possible variants of the `Logos` enum. The
     /// `derive` macro will make sure that all variants don't hold values larger

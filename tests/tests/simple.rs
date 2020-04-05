@@ -20,14 +20,6 @@ impl Extras for MockExtras {
     }
 }
 
-fn count_numbers(lexer: &mut Lexer<Token>) {
-    lexer.extras.numbers += 1;
-}
-
-fn byte_size_1(lexer: &mut Lexer<Token>) {
-    lexer.extras.byte_size = 1;
-}
-
 fn byte_size_2(lexer: &mut Lexer<Token>) {
     lexer.extras.byte_size = 2;
 }
@@ -125,7 +117,7 @@ fn empty() {
     let mut lex = Token::lexer("");
 
     assert_eq!(lex.next(), None);
-    assert_eq!(lex.range(), 0..0);
+    assert_eq!(lex.span(), 0..0);
 }
 
 #[test]
@@ -133,7 +125,7 @@ fn whitespace() {
     let mut lex = Token::lexer("     ");
 
     assert_eq!(lex.next(), None);
-    assert_eq!(lex.range(), 5..5);
+    assert_eq!(lex.span(), 5..5);
 }
 
 #[test]
@@ -399,15 +391,15 @@ fn uints() {
     let mut lex = Token::lexer("uint8 uint16 uint32");
 
     assert_eq!(lex.next(), Some(Token::Uint));
-    assert_eq!(lex.range(), 0..5);
+    assert_eq!(lex.span(), 0..5);
     assert_eq!(lex.extras.byte_size, 1);
 
     assert_eq!(lex.next(), Some(Token::Uint));
-    assert_eq!(lex.range(), 6..12);
+    assert_eq!(lex.span(), 6..12);
     assert_eq!(lex.extras.byte_size, 2);
 
     assert_eq!(lex.next(), Some(Token::Uint));
-    assert_eq!(lex.range(), 13..19);
+    assert_eq!(lex.span(), 13..19);
     assert_eq!(lex.extras.byte_size, 4);
 
     assert_eq!(lex.next(), None);

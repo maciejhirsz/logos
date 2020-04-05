@@ -1,12 +1,12 @@
-use std::ops::Range;
-
 use super::internal::LexerInternal;
 use super::Logos;
 use crate::source::{self, Source};
 
+/// Byte range in the source.
+pub type Span = std::ops::Range<usize>;
+
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
-#[derive(Clone)]
 pub struct Lexer<'source, Token: Logos<'source>> {
     /// Source from which the Lexer is reading tokens.
     pub source: &'source Token::Source,
@@ -23,7 +23,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
-    /// it by calling `Token::lexer(source)`, where `Token` implements `Logos`.
+    /// it by calling [`Token::lexer`](./trait.Logos.html#method.lexer) on any `Token` with derived `Logos`.
     pub fn new(source: &'source Token::Source) -> Self {
         Lexer {
             source,
@@ -50,16 +50,23 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         }
     }
 
+    #[inline]
+    #[doc(hidden)]
+    #[deprecated(since="0.11.0", note="please use `span` instead")]
+    pub fn range(&self) -> Span {
+        self.span()
+    }
+
     /// Get the range for the current token in `Source`.
     #[inline]
-    pub fn range(&self) -> Range<usize> {
+    pub fn span(&self) -> Span {
         self.token_start..self.token_end
     }
 
     /// Get a string slice of the current token.
     #[inline]
     pub fn slice(&self) -> &'source <Token::Source as Source>::Slice {
-        unsafe { self.source.slice_unchecked(self.range()) }
+        unsafe { self.source.slice_unchecked(self.span()) }
     }
 
     /// Get a slice of remaining source, starting at end of current token.
@@ -118,6 +125,20 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     }
 }
 
+impl<'source, Token> Clone for Lexer<'source, Token>
+where
+    Token: Logos<'source> + Clone,
+    Token::Extras: Clone,
+{
+    fn clone(&self) -> Self {
+        Lexer {
+            extras: self.extras.clone(),
+            token: self.token.clone(),
+            ..*self
+        }
+    }
+}
+
 impl<'source, Token> Iterator for Lexer<'source, Token>
 where
     Token: Logos<'source>,
@@ -132,6 +153,9 @@ where
     }
 }
 
+/// Iterator that pairs tokens with their position in the source.
+///
+/// Look at [`Lexer::spanned`](./struct.Lexer.html#method.spanned) for documentation.
 pub struct SpannedIter<'source, Token: Logos<'source>> {
     lexer: Lexer<'source, Token>,
 }
@@ -140,13 +164,13 @@ impl<'source, Token> Iterator for SpannedIter<'source, Token>
 where
     Token: Logos<'source>,
 {
-    type Item = (Token, Range<usize>);
+    type Item = (Token, Span);
 
-    fn next(&mut self) -> Option<(Token, Range<usize>)> {
-        let token = self.lexer.next()?;
-        let range = self.lexer.range();
-
-        Some((token, range))
+    fn next(&mut self) -> Option<Self::Item> {
+        self.lexer.next().map(|token| (
+            token,
+            self.lexer.span(),
+        ))
     }
 }
 
