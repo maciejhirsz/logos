@@ -325,35 +325,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
             const ERROR: Self = #name::#error;
             const END: Self = #name::#end;
 
-            #[inline]
-            fn is_end(&self) -> bool {
-                match self {
-                    #name::#end => true,
-                    _ => false,
-                }
-            }
-
-            #[inline]
-            fn is_error(&self) -> bool {
-                match self {
-                    #name::#error => true,
-                    _ => false,
-                }
-            }
-
             fn lex(lex: &mut ::logos::Lexer<'source, Self>) {
                 use ::logos::internal::{LexerInternal, CallbackResult};
 
                 type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
 
                 fn _end<'s>(lex: &mut Lexer<'s>) {
-                    lex.token = #name::#end;
+                    lex.token = None;
                 }
 
                 fn _error<'s>(lex: &mut Lexer<'s>) {
                     lex.bump_unchecked(1);
 
-                    lex.token = #name::#error;
+                    lex.token = Some(#name::#error);
                 }
 
                 #body

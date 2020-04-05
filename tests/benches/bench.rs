@@ -129,7 +129,7 @@ fn identifiers(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(IDENTIFIERS);
 
-        while lex.token != Token::EndOfProgram {
+        while lex.token != None {
             lex.advance();
         }
 
@@ -146,7 +146,7 @@ fn keywords_operators_and_punctators(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(SOURCE);
 
-        while lex.token != Token::EndOfProgram {
+        while lex.token != None {
             lex.advance();
         }
 
@@ -163,7 +163,7 @@ fn strings(b: &mut Bencher) {
     b.iter(|| {
         let mut lex = Token::lexer(STRINGS);
 
-        while lex.token != Token::EndOfProgram {
+        while lex.token != None {
             lex.advance();
         }
 

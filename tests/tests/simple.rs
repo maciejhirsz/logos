@@ -127,7 +127,7 @@ enum Token {
 fn empty() {
     let lex = Token::lexer("");
 
-    assert_eq!(lex.token, Token::End);
+    assert_eq!(lex.token, None);
     assert_eq!(lex.range(), 0..0);
 }
 
@@ -135,7 +135,7 @@ fn empty() {
 fn whitespace() {
     let lex = Token::lexer("     ");
 
-    assert_eq!(lex.token, Token::End);
+    assert_eq!(lex.token, None);
     assert_eq!(lex.range(), 5..5);
 }
 
@@ -345,7 +345,7 @@ fn extras_and_callbacks() {
     let source = "foo  bar       42      HAL=9000";
     let mut lex = Token::lexer(source);
 
-    while lex.token != Token::End {
+    while lex.token.is_some() {
         lex.advance();
     }
 
@@ -403,23 +403,23 @@ fn ints() {
 fn uints() {
     let mut lex = Token::lexer("uint8 uint16 uint32");
 
-    assert_eq!(lex.token, Token::Uint);
+    assert_eq!(lex.token, Some(Token::Uint));
     assert_eq!(lex.range(), 0..5);
     assert_eq!(lex.extras.byte_size, 1);
 
     lex.advance();
 
-    assert_eq!(lex.token, Token::Uint);
+    assert_eq!(lex.token, Some(Token::Uint));
     assert_eq!(lex.range(), 6..12);
     assert_eq!(lex.extras.byte_size, 2);
 
     lex.advance();
 
-    assert_eq!(lex.token, Token::Uint);
+    assert_eq!(lex.token, Some(Token::Uint));
     assert_eq!(lex.range(), 13..19);
     assert_eq!(lex.extras.byte_size, 4);
 
     lex.advance();
 
-    assert_eq!(lex.token, Token::End);
+    assert_eq!(lex.token, None);
 }

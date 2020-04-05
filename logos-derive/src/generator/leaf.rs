@@ -29,7 +29,7 @@ impl<'a> Generator<'a> {
                 match callback {
                     Callback::Label(callback) => quote! {
                         #bump
-                        lex.token = #callback(lex).construct(#constructor);
+                        lex.token = Some(#callback(lex).construct(#constructor));
                     },
                     Callback::Inline(arg, body) => quote! {
                         #bump
@@ -39,11 +39,11 @@ impl<'a> Generator<'a> {
                             #body
                         }
 
-                        lex.token = __callback(lex).construct(#constructor);
+                        lex.token = Some(__callback(lex).construct(#constructor));
                     },
                     Callback::None => quote! {
                         #bump
-                        lex.token = #name::#ident;
+                        lex.token = Some(#name::#ident);
                     },
                 }
             },

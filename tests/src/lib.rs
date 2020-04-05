@@ -15,10 +15,10 @@ pub fn assert_lex<'a, Token>(
     let mut lex = Token::lexer(source);
 
     for tuple in tokens {
-        assert_eq!(&(lex.token, lex.slice(), lex.range()), tuple);
+        assert_eq!(&(lex.token.expect("Unexpected end"), lex.slice(), lex.range()), tuple);
 
         lex.advance();
     }
 
-    assert_eq!(lex.token, Token::END);
+    assert_eq!(lex.token, None);
 }

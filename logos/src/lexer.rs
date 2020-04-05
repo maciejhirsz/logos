@@ -12,7 +12,7 @@ pub struct Lexer<'source, Token: Logos<'source>> {
     pub source: &'source Token::Source,
 
     /// Current token. Call the `advance` method to get a new token.
-    pub token: Token,
+    pub token: Option<Token>,
 
     /// Extras associated with the `Token`.
     pub extras: Token::Extras,
@@ -29,7 +29,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     pub fn new(source: &'source Token::Source) -> Self {
         let mut lex = Lexer {
             source,
-            token: Token::ERROR,
+            token: None,
             extras: Default::default(),
             token_start: 0,
             token_end: 0,
@@ -87,7 +87,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     {
         Lexer {
             source: self.source,
-            token: Token2::ERROR,
+            token: None,
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
@@ -131,11 +131,7 @@ where
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
-        if self.token.is_end() {
-            return None;
-        }
-
-        let token = std::mem::replace(&mut self.token, Token::ERROR);
+        let token = std::mem::replace(&mut self.token, None)?;
 
         self.advance();
 
@@ -154,11 +150,7 @@ where
     type Item = (Token, Range<usize>);
 
     fn next(&mut self) -> Option<(Token, Range<usize>)> {
-        if self.lexer.token.is_end() {
-            return None;
-        }
-
-        let token = std::mem::replace(&mut self.lexer.token, Token::ERROR);
+        let token = std::mem::replace(&mut self.lexer.token, None)?;
         let range = self.lexer.range();
 
         self.lexer.advance();
@@ -260,6 +252,6 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        self.token = Token::ERROR;
+        self.token = Some(Token::ERROR);
     }
 }
