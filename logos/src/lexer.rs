@@ -8,15 +8,13 @@ pub type Span = std::ops::Range<usize>;
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<'source, Token: Logos<'source>> {
-    /// Source from which the Lexer is reading tokens.
-    pub source: &'source Token::Source,
-
-    /// Extras associated with the `Token`.
-    pub extras: Token::Extras,
-
+    source: &'source Token::Source,
     token: Option<Token>,
     token_start: usize,
     token_end: usize,
+
+    /// Extras associated with the `Token`.
+    pub extras: Token::Extras,
 }
 
 impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
@@ -43,6 +41,44 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         Token::lex(self);
     }
 
+    /// Source from which this Lexer is reading tokens.
+    #[inline]
+    pub fn source(&self) -> &'source Token::Source {
+        self.source
+    }
+
+    /// Wrap the `Lexer` in an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
+    /// that produces tuples of `(Token, `[`Span`](./type.Span.html)`)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use logos::Logos;
+    ///
+    /// #[derive(Logos, Debug, PartialEq)]
+    /// enum Example {
+    ///     #[error]
+    ///     Error,
+    ///
+    ///     #[regex("-?[0-9]+", |lex| lex.slice().parse())]
+    ///     Integer(i64),
+    ///
+    ///     #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse())]
+    ///     Float(f64),
+    /// }
+    ///
+    /// let tokens: Vec<_> = Example::lexer("42 3.14 -5 f").spanned().collect();
+    ///
+    /// assert_eq!(
+    ///     tokens,
+    ///     &[
+    ///         (Example::Integer(42), 0..2),
+    ///         (Example::Float(3.14), 3..7),
+    ///         (Example::Integer(-5), 8..10),
+    ///         (Example::Error, 11..12), // 'f' is not a recognized token
+    ///     ],
+    /// );
+    /// ```
     #[inline]
     pub fn spanned(self) -> SpannedIter<'source, Token> {
         SpannedIter {
@@ -69,7 +105,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         unsafe { self.source.slice_unchecked(self.span()) }
     }
 
-    /// Get a slice of remaining source, starting at end of current token.
+    /// Get a slice of remaining source, starting at the end of current token.
     #[inline]
     pub fn remainder(&self) -> &'source <Token::Source as Source>::Slice {
         unsafe { self.source.slice_unchecked(self.token_end..self.source.len()) }

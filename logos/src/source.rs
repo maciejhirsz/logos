@@ -83,6 +83,10 @@ pub trait Source {
         index
     }
 
+    /// Check if `index` is valid for this `Source`, that is:
+    ///
+    /// + It's not larger than the byte length of the `Source`.
+    /// + (`str` only) It doesn't land in the middle of a UTF-8 code point.
     fn is_boundary(&self, index: usize) -> bool;
 }
 

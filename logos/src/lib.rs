@@ -66,7 +66,7 @@
 //!
 //! ### Callbacks
 //!
-//! On top of using the enum variants, **Logos** can also call arbitrary functions whenever a pattern is matched,
+//! **Logos** can also call arbitrary functions whenever a pattern is matched,
 //! which can be used to put data into a variant:
 //!
 //! ```rust
@@ -115,6 +115,22 @@
 //!     assert_eq!(lex.next(), None);
 //! }
 //! ```
+//!
+//! Logos can handle callbacks with following return types:
+//!
+//! | Return type     | Produces                                           |
+//! |-----------------|----------------------------------------------------|
+//! | `()`            | `Token::Unit`                                      |
+//! | `bool`          | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+//! | `Result<(), _>` | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+//! | `T`             | `Token::Value(T)`                                  |
+//! | `Option<T>`     | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | `Result<T, _>`  | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//!
+//! Callbacks can be also used to do perform more specialized lexing in place
+//! where regular expressions are too limiting. For specifics look at
+//! [`Lexer::remainder`](./struct.Lexer.html#method.remainder) and
+//! [`Lexer::bump`](./struct.Lexer.html#method.bump).
 //!
 //! ## Token disambiguation
 //!
