@@ -106,7 +106,7 @@ fn iterating_modes() {
     use Inner::*;
     use Tokens::*;
     let s = r#""Hello W\u{00f4}rld\n""#;
-    let mut moded = ModeBridge {
+    let moded = ModeBridge {
         mode: Modes::new(s),
     };
 

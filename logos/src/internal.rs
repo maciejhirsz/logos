@@ -38,56 +38,61 @@ pub trait LexerInternal<'source> {
 }
 
 pub trait CallbackResult<P> {
-    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
+    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
     where
-        F: Fn(P) -> T;
+        Token: Logos<'s>,
+        Constructor: Fn(P) -> Token;
 }
 
 impl<P> CallbackResult<P> for P {
     #[inline]
-    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
+    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
     where
-        F: Fn(P) -> T,
+        Token: Logos<'s>,
+        Constructor: Fn(P) -> Token,
     {
-        constructor(self)
+        c(self)
     }
 }
 
 impl CallbackResult<()> for bool {
     #[inline]
-    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
+    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
     where
-        F: Fn(()) -> T,
+        Token: Logos<'s>,
+        Constructor: Fn(()) -> Token,
     {
         match self {
-            true => constructor(()),
-            false => T::ERROR,
+            true => c(()),
+            false => Token::ERROR,
         }
     }
 }
 
 impl<P> CallbackResult<P> for Option<P> {
     #[inline]
-    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
+    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
     where
-        F: Fn(P) -> T,
+        Token: Logos<'s>,
+        Constructor: Fn(P) -> Token,
     {
         match self {
-            Some(product) => constructor(product),
-            None => T::ERROR,
+            Some(product) => c(product),
+            None => Token::ERROR,
         }
     }
 }
 
 impl<P, E> CallbackResult<P> for Result<P, E> {
     #[inline]
-    fn construct<'s, F, T: Logos<'s>>(self, constructor: F) -> T
+    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
     where
-        F: Fn(P) -> T,
+        Token: Logos<'s>,
+        Constructor: Fn(P) -> Token,
     {
         match self {
-            Ok(product) => constructor(product),
-            Err(_) => T::ERROR,
+            Ok(product) => c(product),
+            Err(_) => Token::ERROR,
         }
     }
 }

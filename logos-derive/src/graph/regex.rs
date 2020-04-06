@@ -35,11 +35,19 @@ impl TryFrom<Hir> for Mir {
             HirKind::Concat(concat) => {
                 let mut out = Vec::with_capacity(concat.len());
 
-                for hir in concat {
-                    match Mir::try_from(hir)? {
-                        Mir::Concat(nested) => out.extend(nested),
+                fn extend(mir: Mir, out: &mut Vec<Mir>) {
+                    match mir {
+                        Mir::Concat(nested) => {
+                            for child in nested {
+                                extend(child, out);
+                            }
+                        },
                         mir => out.push(mir),
                     }
+                }
+
+                for hir in concat {
+                    extend(Mir::try_from(hir)?, &mut out);
                 }
 
                 Ok(Mir::Concat(out))
@@ -135,7 +143,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     Some(id) => self.merge(id, then),
                     None => then,
                 };
-                let (_, id) = self.parse_mir(*mir, then, Some(miss), None);
+                let (_, id) = self.parse_mir(*mir, then, Some(miss), reserved);
 
                 (0, id)
             },
