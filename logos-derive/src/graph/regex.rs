@@ -143,7 +143,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     Some(id) => self.merge(id, then),
                     None => then,
                 };
-                let (_, id) = self.parse_mir(*mir, then, Some(miss), None);
+                let (_, id) = self.parse_mir(*mir, then, Some(miss), reserved);
 
                 (0, id)
             },
