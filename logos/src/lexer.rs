@@ -2,14 +2,16 @@ use super::internal::LexerInternal;
 use super::Logos;
 use crate::source::{self, Source};
 
+use core::mem::ManuallyDrop;
+
 /// Byte range in the source.
-pub type Span = std::ops::Range<usize>;
+pub type Span = core::ops::Range<usize>;
 
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
-    token: Option<Token>,
+    token: ManuallyDrop<Option<Token>>,
     token_start: usize,
     token_end: usize,
 
@@ -25,20 +27,11 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     pub fn new(source: &'source Token::Source) -> Self {
         Lexer {
             source,
-            token: None,
+            token: ManuallyDrop::new(None),
             extras: Default::default(),
             token_start: 0,
             token_end: 0,
         }
-    }
-
-    /// Advance the `Lexer` and attempt to produce the next `Token`.
-    #[inline]
-    fn advance(&mut self) {
-        self.token_start = self.token_end;
-        self.extras.on_advance();
-
-        Token::lex(self);
     }
 
     /// Source from which this Lexer is reading tokens.
@@ -124,7 +117,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     {
         Lexer {
             source: self.source,
-            token: None,
+            token: ManuallyDrop::new(None),
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
@@ -183,9 +176,13 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Token> {
-        self.advance();
+        self.token_start = self.token_end;
+        self.extras.on_advance();
 
-        self.token.take()
+        Token::lex(self);
+
+        // self.token.take()
+        unsafe { ManuallyDrop::take(&mut self.token) }
     }
 }
 
@@ -305,16 +302,16 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        self.token = Some(Token::ERROR);
+        self.token = ManuallyDrop::new(Some(Token::ERROR));
     }
 
     #[inline]
     fn end(&mut self) {
-        self.token = None;
+        self.token = ManuallyDrop::new(None);
     }
 
     #[inline]
     fn set(&mut self, token: Token) {
-        self.token = Some(token);
+        self.token = ManuallyDrop::new(Some(token));
     }
 }
