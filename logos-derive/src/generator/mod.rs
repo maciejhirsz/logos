@@ -73,10 +73,9 @@ impl<'a> Generator<'a> {
             Node::Leaf(leaf) => self.generate_leaf(leaf, ctx),
         };
         let ident = self.generate_ident(id, ctx);
-        let props = ctx.fn_props();
         let out = quote! {
             #[inline]
-            fn #ident<'s>(lex: &mut Lexer<'s> #props) {
+            fn #ident<'s>(lex: &mut Lexer<'s>) {
                 #body
             }
         };
@@ -101,8 +100,7 @@ impl<'a> Generator<'a> {
             }
 
             let ident = self.generate_ident(id, ctx);
-            let args = ctx.call_args();
-            let mut call_site = quote!(#ident(lex #args));
+            let mut call_site = quote!(#ident(lex));
 
             if let Some(bump) = bump {
                 call_site = quote!({

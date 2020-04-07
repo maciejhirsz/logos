@@ -108,22 +108,6 @@ impl Context {
         }
     }
 
-    pub fn call_args(&self) -> TokenStream {
-        quote!()
-        // match self.available {
-        //     0 | 1 => quote!(),
-        //     _ => quote!(, arr),
-        // }
-    }
-
-    pub fn fn_props(&self) -> TokenStream {
-        quote!()
-        // match self.available {
-        //     0 | 1 => quote!(),
-        //     n => quote!(, arr: &[u8; #n]),
-        // }
-    }
-
     pub fn write_suffix(&self, buf: &mut String) {
         use std::fmt::Write;
 
