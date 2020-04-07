@@ -4,7 +4,7 @@ use logos::source::Source;
 use std::fmt;
 use std::ops::Range;
 
-mod binary;
+// mod binary;
 
 pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,

@@ -95,14 +95,15 @@ impl<'a> Generator<'a> {
 
         if ctx.remainder() >= min_read {
             let at = ctx.at();
+            let read = ctx.read_unchecked(0);
 
             return (
-                quote!(arr[#at]),
-                quote!(),
+                quote!(byte),
+                quote!(let byte = unsafe { #read };),
             );
         }
 
-        match self.meta[this].min_read {
+        match min_read {
             0 | 1 => {
                 let read = ctx.read(0);
 

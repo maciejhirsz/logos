@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -63,6 +65,15 @@ impl Context {
         self.available.saturating_sub(self.at)
     }
 
+    pub fn read_unchecked(&self, len: usize) -> TokenStream {
+        let at = self.at;
+
+        match len {
+            0 => quote!(lex.read_unchecked::<u8>(#at)),
+            l => quote!(lex.read_unchecked::<&[u8; #l]>(#at)),
+        }
+    }
+
     pub fn read(&mut self, len: usize) -> TokenStream {
         self.available = len;
 
@@ -98,17 +109,19 @@ impl Context {
     }
 
     pub fn call_args(&self) -> TokenStream {
-        match self.available {
-            0 | 1 => quote!(),
-            _ => quote!(, arr),
-        }
+        quote!()
+        // match self.available {
+        //     0 | 1 => quote!(),
+        //     _ => quote!(, arr),
+        // }
     }
 
     pub fn fn_props(&self) -> TokenStream {
-        match self.available {
-            0 | 1 => quote!(),
-            n => quote!(, arr: &[u8; #n]),
-        }
+        quote!()
+        // match self.available {
+        //     0 | 1 => quote!(),
+        //     n => quote!(, arr: &[u8; #n]),
+        // }
     }
 
     pub fn write_suffix(&self, buf: &mut String) {

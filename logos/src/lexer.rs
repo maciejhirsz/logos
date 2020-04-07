@@ -181,7 +181,10 @@ where
 
         Token::lex(self);
 
-        // self.token.take()
+        // This basically treats self.token as a temporary field.
+        // Since we always immediately return a newly set token here,
+        // we don't have to replace it with `None` or manually drop
+        // it later.
         unsafe { ManuallyDrop::take(&mut self.token) }
     }
 }
@@ -251,6 +254,14 @@ where
         Chunk: source::Chunk<'source>,
     {
         self.source.read(self.token_end + n)
+    }
+
+    #[inline]
+    unsafe fn read_unchecked<Chunk>(&self, n: usize) -> Chunk
+    where
+        Chunk: source::Chunk<'source>,
+    {
+        self.source.read_unchecked(self.token_end + n)
     }
 
     /// Test a chunk at current position with a closure.

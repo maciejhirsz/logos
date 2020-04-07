@@ -42,6 +42,10 @@ pub trait Source {
     where
         Chunk: self::Chunk<'a>;
 
+    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
+    where
+        Chunk: self::Chunk<'a>;
+
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
     ///
@@ -95,7 +99,7 @@ impl Source for str {
 
     #[inline]
     fn len(&self) -> usize {
-        (*self).len()
+        self.len()
     }
 
     #[inline]
@@ -103,11 +107,19 @@ impl Source for str {
     where
         Chunk: self::Chunk<'a>,
     {
-        if offset + (Chunk::SIZE - 1) < (*self).len() {
-            Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
+        if offset + (Chunk::SIZE - 1) < self.len() {
+            Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
         }
+    }
+
+    #[inline]
+    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
+    where
+        Chunk: self::Chunk<'a>,
+    {
+        Chunk::from_ptr(self.as_ptr().add(offset))
     }
 
     #[inline]
@@ -147,7 +159,7 @@ impl Source for [u8] {
 
     #[inline]
     fn len(&self) -> usize {
-        (*self).len()
+        self.len()
     }
 
     #[inline]
@@ -155,11 +167,19 @@ impl Source for [u8] {
     where
         Chunk: self::Chunk<'a>,
     {
-        if offset + (Chunk::SIZE - 1) < (*self).len() {
-            Some(unsafe { Chunk::from_ptr((*self).as_ptr().add(offset)) })
+        if offset + (Chunk::SIZE - 1) < self.len() {
+            Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
         }
+    }
+
+    #[inline]
+    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
+    where
+        Chunk: self::Chunk<'a>,
+    {
+        Chunk::from_ptr(self.as_ptr().add(offset))
     }
 
     #[inline]
