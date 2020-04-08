@@ -37,7 +37,7 @@ impl Context {
     }
 
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        self.backtrack = miss;
+        self.backtrack = Some(miss?);
         self.bump()
     }
 
@@ -65,12 +65,20 @@ impl Context {
         self.available.saturating_sub(self.at)
     }
 
-    pub fn read_unchecked(&self, len: usize) -> TokenStream {
+    pub fn read_unchecked(&mut self, len: usize) -> TokenStream {
         let at = self.at;
 
         match len {
-            0 => quote!(lex.read_unchecked::<u8>(#at)),
-            l => quote!(lex.read_unchecked::<&[u8; #l]>(#at)),
+            0 => {
+                self.advance(1);
+
+                quote!(lex.read_unchecked::<u8>(#at))
+            },
+            l => {
+                self.advance(l);
+
+                quote!(lex.read_unchecked::<&[u8; #l]>(#at))
+            },
         }
     }
 

@@ -90,11 +90,20 @@ impl<'a> Generator<'a> {
             let meta = &self.meta[id];
             let enters_loop = meta.loop_entry_from.len() > 0;
 
-            let bump = if enters_loop || !ctx.can_backtrack() {
+
+            let bump = if !ctx.can_backtrack() {
                 ctx.switch(self.graph[id].miss())
             } else {
                 None
             };
+
+            let bump = match (bump, enters_loop, meta.min_read) {
+                (Some(t), _, _) => Some(t),
+                (None, true, _) => ctx.bump(),
+                (None, false, 0) => ctx.bump(),
+                (None, false, _) => None,
+            };
+
             if meta.min_read == 0 || ctx.remainder() < meta.min_read  {
                 ctx.wipe();
             }

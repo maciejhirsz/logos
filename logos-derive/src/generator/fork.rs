@@ -94,7 +94,6 @@ impl<'a> Generator<'a> {
         let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= min_read {
-            let at = ctx.at();
             let read = ctx.read_unchecked(0);
 
             return (
