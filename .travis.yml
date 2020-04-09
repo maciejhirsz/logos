@@ -16,4 +16,4 @@ matrix:
 os:
   - linux
 
-script: ./test.sh
+script: cargo test
