@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use proc_macro2::{TokenStream, Literal};
 use quote::quote;
 use fnv::FnvHashMap as Map;
@@ -25,10 +27,14 @@ impl<'a> Generator<'a> {
         let end = self.fork_end(this, &miss);
         let (byte, read) = self.fork_read(this, end, &mut ctx);
         let branches = targets.into_iter().map(|(id, ranges)| {
+            let next = self.goto(id, ctx.advance(1));
+
             match *ranges {
                 [range] => {
-                    let next = self.goto(id, ctx.advance(1));
                     quote!(#range => #next,)
+                },
+                [a, b] if a.is_byte() && b.is_byte() => {
+                    quote!(#a | #b => #next,)
                 },
                 _ => {
                     let test = self.generate_test(ranges).clone();
@@ -93,7 +99,7 @@ impl<'a> Generator<'a> {
     fn fork_read(&self, this: NodeId, end: TokenStream, ctx: &mut Context) -> (TokenStream, TokenStream) {
         let min_read = self.meta[this].min_read;
 
-        if ctx.remainder() >= min_read {
+        if ctx.remainder() >= max(min_read, 1) {
             let read = ctx.read_unchecked(0);
 
             return (

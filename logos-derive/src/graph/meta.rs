@@ -93,7 +93,13 @@ impl Meta {
                     }
                 }
                 if let Some(id) = fork.miss {
-                    self.first_pass(id, this, graph, stack);
+                    let meta = self.first_pass(id, this, graph, stack);
+
+                    if meta.is_loop_init {
+                        min_read = 0;
+                    } else {
+                        min_read = min(min_read, meta.min_read);
+                    }
                 }
                 if min_read == usize::max_value() {
                     min_read = 0;
@@ -108,7 +114,13 @@ impl Meta {
                 }
 
                 if let Some(id) = rope.miss.first() {
-                    self.first_pass(id, this, graph, stack);
+                    let meta = self.first_pass(id, this, graph, stack);
+
+                    if meta.is_loop_init {
+                        min_read = 0;
+                    } else {
+                        min_read = min(min_read, meta.min_read);
+                    }
                 }
             },
             Node::Leaf(_) => min_read = 0,

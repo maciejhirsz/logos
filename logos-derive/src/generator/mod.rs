@@ -91,7 +91,7 @@ impl<'a> Generator<'a> {
             let enters_loop = meta.loop_entry_from.len() > 0;
 
 
-            let bump = if !ctx.can_backtrack() {
+            let bump = if enters_loop || !ctx.can_backtrack() {
                 ctx.switch(self.graph[id].miss())
             } else {
                 None
