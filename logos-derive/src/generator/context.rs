@@ -1,5 +1,3 @@
-use std::cmp::max;
-
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -28,10 +26,6 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn at (&self) -> usize {
-        self.at
-    }
-
     pub fn can_backtrack(&self) -> bool {
         self.backtrack.is_some()
     }

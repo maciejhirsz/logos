@@ -256,7 +256,6 @@ mod trivia {
 }
 
 mod maybe {
-    use super::*;
     use logos::Logos;
 
     #[derive(Logos, Debug, PartialEq)]
