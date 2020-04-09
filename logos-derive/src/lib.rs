@@ -55,7 +55,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             None
         },
         1 if matches!(item.generics.params.first(), Some(GenericParam::Lifetime(..))) => {
-            Some(quote!(<'source>))
+            Some(quote!(<'s>))
         },
         _ => {
             let span = item.generics.span();
@@ -287,9 +287,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
         },
     };
 
+    let this = quote!(#name #generics);
+
     let impl_logos = |body| {
         quote! {
-            impl<'source> ::logos::Logos<'source> for #name #generics {
+            impl<'s> ::logos::Logos<'s> for #this {
                 type Extras = #extras;
 
                 type Source = #source;
@@ -298,7 +300,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                 #error_def
 
-                fn lex(lex: &mut ::logos::Lexer<'source, Self>) {
+                fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
                     #body
                 }
             }
@@ -335,13 +337,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
-    let mut generator = Generator::new(name, root, &graph);
+    let mut generator = Generator::new(name, &this, root, &graph);
 
     let body = generator.generate();
     let tokens = impl_logos(quote! {
         use ::logos::internal::{LexerInternal, CallbackResult};
 
-        type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
+        type Lexer<'s> = ::logos::Lexer<'s, #name #generics>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()

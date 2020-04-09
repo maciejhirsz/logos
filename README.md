@@ -4,7 +4,7 @@
 
 ## Create ridiculously fast Lexers.
 
-[![Travis shield](https://travis-ci.org/maciejhirsz/logos.svg)](https://travis-ci.org/maciejhirsz/logos)
+![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
 
