@@ -13,8 +13,11 @@ pub trait LexerInternal<'source> {
     /// Read a chunk at current position.
     fn read<T: Chunk<'source>>(&self) -> Option<T>;
 
-    /// Read a chunk at current position offset by `n`.
+    /// Read a chunk at current position, offset by `n`.
     fn read_at<T: Chunk<'source>>(&self, n: usize) -> Option<T>;
+
+    /// Unchecked read a chunk at current position, offset by `n`.
+    unsafe fn read_unchecked<T: Chunk<'source>>(&self, n: usize) -> T;
 
     /// Test a chunk at current position with a closure.
     fn test<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, test: F) -> bool;

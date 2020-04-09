@@ -26,16 +26,12 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn at (&self) -> usize {
-        self.at
-    }
-
     pub fn can_backtrack(&self) -> bool {
         self.backtrack.is_some()
     }
 
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
-        self.backtrack = miss;
+        self.backtrack = Some(miss?);
         self.bump()
     }
 
@@ -61,6 +57,23 @@ impl Context {
 
     pub fn remainder(&self) -> usize {
         self.available.saturating_sub(self.at)
+    }
+
+    pub fn read_unchecked(&mut self, len: usize) -> TokenStream {
+        let at = self.at;
+
+        match len {
+            0 => {
+                self.advance(1);
+
+                quote!(lex.read_unchecked::<u8>(#at))
+            },
+            l => {
+                self.advance(l);
+
+                quote!(lex.read_unchecked::<&[u8; #l]>(#at))
+            },
+        }
     }
 
     pub fn read(&mut self, len: usize) -> TokenStream {
@@ -94,20 +107,6 @@ impl Context {
             (_, Some(id)) => gen.goto(id, self.backtrack()).clone(),
             _ if self.bumped => quote!(lex.error()),
             _ => quote!(_error(lex)),
-        }
-    }
-
-    pub fn call_args(&self) -> TokenStream {
-        match self.available {
-            0 | 1 => quote!(),
-            _ => quote!(, arr),
-        }
-    }
-
-    pub fn fn_props(&self) -> TokenStream {
-        match self.available {
-            0 | 1 => quote!(),
-            n => quote!(, arr: &[u8; #n]),
         }
     }
 

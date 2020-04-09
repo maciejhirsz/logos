@@ -320,6 +320,15 @@ pub fn logos(input: TokenStream) -> TokenStream {
     for rope in ropes {
         root.merge(rope.into_fork(&mut graph), &mut graph)
     }
+    while let Some(id) = root.miss.take() {
+        let fork = graph.fork_off(id);
+
+        if fork.branches().next().is_some() {
+            root.merge(fork, &mut graph);
+        } else {
+            break;
+        }
+    }
     let root = graph.push(root);
 
     graph.shake(root);

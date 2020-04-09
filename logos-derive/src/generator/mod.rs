@@ -73,10 +73,9 @@ impl<'a> Generator<'a> {
             Node::Leaf(leaf) => self.generate_leaf(leaf, ctx),
         };
         let ident = self.generate_ident(id, ctx);
-        let props = ctx.fn_props();
         let out = quote! {
             #[inline]
-            fn #ident<'s>(lex: &mut Lexer<'s> #props) {
+            fn #ident<'s>(lex: &mut Lexer<'s>) {
                 #body
             }
         };
@@ -91,18 +90,26 @@ impl<'a> Generator<'a> {
             let meta = &self.meta[id];
             let enters_loop = meta.loop_entry_from.len() > 0;
 
+
             let bump = if enters_loop || !ctx.can_backtrack() {
                 ctx.switch(self.graph[id].miss())
             } else {
                 None
             };
+
+            let bump = match (bump, enters_loop, meta.min_read) {
+                (Some(t), _, _) => Some(t),
+                (None, true, _) => ctx.bump(),
+                (None, false, 0) => ctx.bump(),
+                (None, false, _) => None,
+            };
+
             if meta.min_read == 0 || ctx.remainder() < meta.min_read  {
                 ctx.wipe();
             }
 
             let ident = self.generate_ident(id, ctx);
-            let args = ctx.call_args();
-            let mut call_site = quote!(#ident(lex #args));
+            let mut call_site = quote!(#ident(lex));
 
             if let Some(bump) = bump {
                 call_site = quote!({

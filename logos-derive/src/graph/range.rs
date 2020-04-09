@@ -9,11 +9,15 @@ pub struct Range(pub u8, pub u8);
 
 impl Range {
     pub fn as_byte(&self) -> Option<u8> {
-        if self.0 == self.1 {
+        if self.is_byte() {
             Some(self.0)
         } else {
             None
         }
+    }
+
+    pub fn is_byte(&self) -> bool {
+        self.0 == self.1
     }
 }
 

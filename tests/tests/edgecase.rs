@@ -254,3 +254,22 @@ mod trivia {
         );
     }
 }
+
+mod maybe {
+    use logos::Logos;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token {
+        #[error]
+        Error,
+
+        #[regex("[0-9A-F][0-9A-F]a?")]
+        Tok,
+    }
+
+    #[test]
+    fn maybe_at_the_end() {
+        let mut lexer = Token::lexer("F0");
+        assert_eq!(lexer.next().unwrap(), Token::Tok);
+    }
+}
