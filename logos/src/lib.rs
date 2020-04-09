@@ -203,6 +203,71 @@ pub trait Logos<'source>: Sized {
     }
 }
 
+/// Type that can be returned from a callback, informing the `Lexer`, to skip
+/// a given definition. See also [`logos::skip`](./fn.skip.html).
+///
+/// # Example
+///
+/// ```rust
+/// use logos::{Logos, Skip};
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token<'a> {
+///     // We will treat "abc" as if it was whitespace.
+///     // This is identical to using `logos::skip`.
+///     #[token("abc", |_| Skip)]
+///     #[error]
+///     Error,
+///
+///     #[regex("[a-zA-Z]+")]
+///     Text(&'a str),
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("Hello abc world").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::Text("Hello"),
+///         Token::Text("world"),
+///     ],
+/// );
+/// ```
+pub struct Skip;
+
+/// Predefined callback that will inform the `Lexer` to skip a definition.
+///
+/// # Example
+///
+/// ```rust
+/// use logos::Logos;
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token<'a> {
+///     // We will treat "abc" as if it was whitespace
+///     #[token("abc", logos::skip)]
+///     #[error]
+///     Error,
+///
+///     #[regex("[a-zA-Z]+")]
+///     Text(&'a str),
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("Hello abc world").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::Text("Hello"),
+///         Token::Text("world"),
+///     ],
+/// );
+/// ```
+#[inline]
+pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Skip {
+    Skip
+}
+
 /// Macro for creating lookup tables where index matches the token variant
 /// as `usize`.
 ///
@@ -210,10 +275,12 @@ pub trait Logos<'source>: Sized {
 /// function pointers, enabling an O(1) branching at the cost of introducing some
 /// indirection.
 ///
+/// # Example
+///
 /// ```rust
 /// use logos::{Logos, lookup};
 ///
-/// #[derive(Logos, Clone, Copy, PartialEq, Debug)]
+/// #[derive(Logos, Clone, Copy, Debug, PartialEq)]
 /// enum Token {
 ///     #[error]
 ///     Error,

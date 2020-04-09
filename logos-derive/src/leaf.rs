@@ -1,8 +1,9 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
-use syn::{Ident, Type};
+use syn::{Ident, Type, spanned::Spanned};
 use proc_macro2::{TokenStream, Span};
+use quote::quote;
 
 use crate::graph::{Node, Disambiguate};
 
@@ -19,7 +20,7 @@ pub enum Leaf {
 #[derive(Debug)]
 pub enum Callback {
     None,
-    Label(Ident),
+    Label(TokenStream),
     Inline(Ident, TokenStream),
 }
 
@@ -46,7 +47,7 @@ impl Callback {
 impl From<Option<Ident>> for Callback {
     fn from(label: Option<Ident>) -> Self {
         match label {
-            Some(ident) => Callback::Label(ident),
+            Some(ident) => Callback::Label(quote!(#ident)),
             None => Callback::None,
         }
     }

@@ -1,5 +1,5 @@
 use proc_macro2::{TokenStream, TokenTree, Span, Spacing};
-use quote::quote;
+use quote::{quote, TokenStreamExt};
 use syn::{Attribute, Expr, Ident, Lit};
 use syn::spanned::Spanned;
 
@@ -209,7 +209,19 @@ where
 
             let nested = match tt {
                 tt if is_punct(&tt, '|') => parse_inline_callback(&mut iter, tt.span())?,
-                TokenTree::Ident(label) => Callback::Label(label),
+                TokenTree::Ident(label) => {
+                    let mut out = quote!(#label);
+
+                    while let Some(tt) = iter.next() {
+                        if is_punct(&tt, ',') {
+                            break;
+                        }
+
+                        out.append(tt);
+                    }
+
+                    Callback::Label(out)
+                },
                 tt => {
                     return Err(Error::new("Expected an function label or an inline callback").span(tt.span()));
                 }

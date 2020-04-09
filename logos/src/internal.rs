@@ -1,5 +1,5 @@
 use crate::source::Chunk;
-use crate::Logos;
+use crate::{Logos, Lexer, Skip};
 
 /// Trait used by the functions contained in the `Lexicon`.
 ///
@@ -40,62 +40,68 @@ pub trait LexerInternal<'source> {
     fn set(&mut self, token: Self::Token);
 }
 
-pub trait CallbackResult<P> {
-    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
+pub trait CallbackResult<'s, P, T: Logos<'s>> {
+    fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
     where
-        Token: Logos<'s>,
-        Constructor: Fn(P) -> Token;
+        Constructor: Fn(P) -> T;
 }
 
-impl<P> CallbackResult<P> for P {
+impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for P {
     #[inline]
-    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
+    fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
     where
-        Token: Logos<'s>,
-        Constructor: Fn(P) -> Token,
+        Constructor: Fn(P) -> T,
     {
-        c(self)
+        lex.set(c(self))
     }
 }
 
-impl CallbackResult<()> for bool {
+impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for bool {
     #[inline]
-    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
+    fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
     where
-        Token: Logos<'s>,
-        Constructor: Fn(()) -> Token,
+        Constructor: Fn(()) -> T,
     {
         match self {
-            true => c(()),
-            false => Token::ERROR,
+            true => lex.set(c(())),
+            false => lex.set(T::ERROR),
         }
     }
 }
 
-impl<P> CallbackResult<P> for Option<P> {
+impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Option<P> {
     #[inline]
-    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
+    fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
     where
-        Token: Logos<'s>,
-        Constructor: Fn(P) -> Token,
+        Constructor: Fn(P) -> T,
     {
         match self {
-            Some(product) => c(product),
-            None => Token::ERROR,
+            Some(product) => lex.set(c(product)),
+            None => lex.set(T::ERROR),
         }
     }
 }
 
-impl<P, E> CallbackResult<P> for Result<P, E> {
+impl<'s, P, E, T: Logos<'s>> CallbackResult<'s, P, T> for Result<P, E> {
     #[inline]
-    fn construct<'s, Constructor, Token>(self, c: Constructor) -> Token
+    fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
     where
-        Token: Logos<'s>,
-        Constructor: Fn(P) -> Token,
+        Constructor: Fn(P) -> T,
     {
         match self {
-            Ok(product) => c(product),
-            Err(_) => Token::ERROR,
+            Ok(product) => lex.set(c(product)),
+            Err(_) => lex.set(T::ERROR),
         }
+    }
+}
+
+impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Skip {
+    #[inline]
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        lex.trivia();
+        T::lex(lex);
     }
 }
