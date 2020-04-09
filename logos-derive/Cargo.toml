@@ -1,6 +1,6 @@
 [package]
 name = "logos-derive"
-version = "0.11.0-rc3"
+version = "0.11.0-rc4"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT OR Apache-2.0"
 description = "Create ridiculously fast Lexers"
