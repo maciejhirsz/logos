@@ -118,14 +118,16 @@
 //!
 //! Logos can handle callbacks with following return types:
 //!
-//! | Return type     | Produces                                           |
-//! |-----------------|----------------------------------------------------|
-//! | `()`            | `Token::Unit`                                      |
-//! | `bool`          | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-//! | `Result<(), _>` | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-//! | `T`             | `Token::Value(T)`                                  |
-//! | `Option<T>`     | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-//! | `Result<T, _>`  | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | Return type                       | Produces                                           |
+//! |-----------------------------------|----------------------------------------------------|
+//! | `()`                              | `Token::Unit`                                      |
+//! | `bool`                            | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+//! | `Result<(), _>`                   | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+//! | `T`                               | `Token::Value(T)`                                  |
+//! | `Option<T>`                       | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | `Result<T, _>`                    | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | [`Skip`](./struct.Skip.html)      | _skips matched input_                              |
+//! | [`Filter<T>`](./enum.Filter.html) | `Token::Value(T)` **or** _skips matched input_     |
 //!
 //! Callbacks can be also used to do perform more specialized lexing in place
 //! where regular expressions are too limiting. For specifics look at
@@ -204,7 +206,7 @@ pub trait Logos<'source>: Sized {
 }
 
 /// Type that can be returned from a callback, informing the `Lexer`, to skip
-/// a given definition. See also [`logos::skip`](./fn.skip.html).
+/// current token match. See also [`logos::skip`](./fn.skip.html).
 ///
 /// # Example
 ///
@@ -234,6 +236,52 @@ pub trait Logos<'source>: Sized {
 /// );
 /// ```
 pub struct Skip;
+
+/// Type that can be returned from a callback, either producing a field
+/// for a token, or skipping it.
+///
+/// # Example
+///
+/// ```rust
+/// use logos::{Logos, Filter};
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token {
+///     #[error]
+///     Error,
+///
+///     #[regex("[0-9]+", |lex| {
+///         let n: u64 = lex.slice().parse().unwrap();
+///
+///         // Only emit a token if `n` is an even number
+///         match n % 2 {
+///             0 => Filter::Emit(n),
+///             _ => Filter::Skip,
+///         }
+///     })]
+///     EvenNumber(u64)
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("20 11 42 23 100 8002").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::EvenNumber(20),
+///         // skipping 11
+///         Token::EvenNumber(42),
+///         // skipping 23
+///         Token::EvenNumber(100),
+///         Token::EvenNumber(8002),
+///     ]
+/// );
+/// ```
+pub enum Filter<T> {
+    /// Emit a token with a given value `T`. Use `()` for unit variants without fields.
+    Emit(T),
+    /// Skip current match, analog to [`Skip`](./struct.Skip.html).
+    Skip,
+}
 
 /// Predefined callback that will inform the `Lexer` to skip a definition.
 ///
