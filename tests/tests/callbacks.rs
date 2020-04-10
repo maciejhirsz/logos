@@ -36,6 +36,43 @@ mod data {
     }
 }
 
+mod nested_lifetime {
+    use super::*;
+    use std::borrow::Cow;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token<'a> {
+        #[error]
+        Error,
+
+        #[regex(r"[0-9]+", |lex| {
+            let slice = lex.slice();
+
+            slice.parse::<u64>().map(|n| {
+                (slice, n)
+            })
+        })]
+        Integer((&'a str, u64)),
+
+        #[regex(r"[a-z]+", |lex| Cow::Borrowed(lex.slice()))]
+        Text(Cow<'a, str>)
+    }
+
+    #[test]
+    fn supplement_lifetime_in_types() {
+        let tokens: Vec<_> = Token::lexer("123 hello 42").collect();
+
+        assert_eq!(
+            tokens,
+            &[
+                Token::Integer(("123", 123)),
+                Token::Text(Cow::Borrowed("hello")),
+                Token::Integer(("42", 42)),
+            ],
+        );
+    }
+}
+
 mod rust {
     use super::*;
 
