@@ -122,14 +122,16 @@ fn main() {
 
 Logos can handle callbacks with following return types:
 
-| Return type     | Produces                                           |
-|-----------------|----------------------------------------------------|
-| `()`            | `Token::Unit`                                      |
-| `bool`          | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-| `Result<(), _>` | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-| `T`             | `Token::Value(T)`                                  |
-| `Option<T>`     | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-| `Result<T, _>`  | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| Return type                       | Produces                                           |
+|-----------------------------------|----------------------------------------------------|
+| `()`                              | `Token::Unit`                                      |
+| `bool`                            | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+| `Result<(), _>`                   | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+| `T`                               | `Token::Value(T)`                                  |
+| `Option<T>`                       | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| `Result<T, _>`                    | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| `Skip`]                           | _skips matched input_                              |
+| `Filter<T>`]                      | `Token::Value(T)` **or** _skips matched input_     |
 
 Callbacks can be also used to do perform more specialized lexing in place
 where regular expressions are too limiting. For specifics look at
