@@ -2,6 +2,7 @@ use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
+    #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]
     Error,
 

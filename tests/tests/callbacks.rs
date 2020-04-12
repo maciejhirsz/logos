@@ -7,6 +7,7 @@ mod data {
 
     #[derive(Logos, Debug, PartialEq)]
     enum Token<'a> {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
 
@@ -42,6 +43,7 @@ mod nested_lifetime {
 
     #[derive(Logos, Debug, PartialEq)]
     enum Token<'a> {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
 
@@ -88,6 +90,7 @@ mod rust {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
 

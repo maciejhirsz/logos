@@ -48,7 +48,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
-    let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
+    // let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
     let generics = match item.generics.params.len() {
         0 => {
@@ -74,18 +74,16 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
 
         if let Some(nested) = util::read_attr("logos", attr)? {
-            if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", nested)? {
-                trivia = match t {
-                    Some(Literal::Utf8(string, span)) => {
-                        Some((true, string.into(), span))
-                    },
-                    Some(Literal::Bytes(bytes, span)) => {
-                        mode = Mode::Binary;
+            let span = nested.span();
 
-                        Some((false, util::bytes_to_regex_string(&bytes).into(), span))
-                    },
-                    None => None,
-                };
+            if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", nested)? {
+                errors.push(
+                    Error::new(
+                        "trivia are no longer supported.\n\n\
+
+                        For help with migration see release notes: https://github.com/maciejhirsz/logos/releases",
+                    ).span(span)
+                );
             }
         }
 
@@ -249,19 +247,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     }
 
     let mut root = Fork::new();
-
-    if let Some((utf8, regex, span)) = trivia {
-        let then = graph.push(Leaf::Trivia);
-
-        match graph.regex(utf8, &*regex, then) {
-            Ok((_, id)) => {
-                let trivia = graph.fork_off(id);
-
-                root.merge(trivia, &mut graph);
-            },
-            Err(err) => errors.push(err.span(span)),
-        }
-    }
 
     let extras = match extras {
         Some(ext) => quote!(#ext),

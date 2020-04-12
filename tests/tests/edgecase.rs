@@ -6,6 +6,7 @@ mod crunch {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
         #[token = "else"]
@@ -32,6 +33,7 @@ mod numbers {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
         #[regex = r"[0-9][0-9_]*"]
@@ -69,6 +71,7 @@ mod benches {
 
     #[derive(Debug, Clone, Copy, PartialEq, Logos)]
     pub enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         InvalidToken,
 
@@ -206,8 +209,8 @@ mod unicode_whitespace {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-    #[logos(trivia = r"\p{Whitespace}")]
     enum Token {
+        #[regex(r"\p{Whitespace}+", logos::skip)]
         #[error]
         Error,
 
@@ -232,8 +235,8 @@ mod trivia {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-    #[logos(trivia = "[a-f]")]
     enum Token {
+        #[regex("[a-f]+", logos::skip)]
         #[error]
         Error,
 

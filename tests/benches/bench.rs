@@ -6,6 +6,7 @@ use test::{black_box, Bencher};
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {
+    #[regex(r"[ \n\t\f]", logos::skip)]
     #[error]
     InvalidToken,
 

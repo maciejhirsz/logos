@@ -6,20 +6,11 @@ use tests::assert_lex;
 struct MockExtras {
     spaces: usize,
     line_breaks: usize,
-    tokens: usize,
     numbers: usize,
     byte_size: u8,
 }
 
-impl Extras for MockExtras {
-    fn on_advance(&mut self) {
-        self.tokens += 1;
-    }
-
-    fn on_whitespace(&mut self) {
-        self.spaces += 1;
-    }
-}
+impl Extras for MockExtras {}
 
 fn byte_size_2(lexer: &mut Lexer<Token>) {
     lexer.extras.byte_size = 2;
@@ -34,6 +25,11 @@ fn byte_size_4(lexer: &mut Lexer<Token>) {
 enum Token {
     #[token("\n", |lex| {
         lex.extras.line_breaks += 1;
+
+        logos::Skip
+    })]
+    #[regex(r"[ \t\f]", |lex| {
+        lex.extras.spaces += 1;
 
         logos::Skip
     })]
@@ -342,9 +338,8 @@ fn extras_and_callbacks() {
 
     while lex.next().is_some() {}
 
-    assert_eq!(lex.extras.spaces, 15); // new-lines still count as trivia here
+    assert_eq!(lex.extras.spaces, 13); // new-lines still count as trivia here
     assert_eq!(lex.extras.line_breaks, 2);
-    assert_eq!(lex.extras.tokens, 7); // End counts as a token
 
     assert_eq!(lex.extras.numbers, 2);
 }

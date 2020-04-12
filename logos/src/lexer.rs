@@ -50,6 +50,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// #[derive(Logos, Debug, PartialEq)]
     /// enum Example {
+    ///     #[regex(r"[ \n\t\f]+", logos::skip)]
     ///     #[error]
     ///     Error,
     ///

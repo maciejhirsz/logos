@@ -23,6 +23,9 @@
 //!     // Logos requires one token variant to handle errors,
 //!     // it can be named anything you wish.
 //!     #[error]
+//!     // We can also use this variant to define whitespace,
+//!     // or any other matches we wish to skip.
+//!     #[regex(r"[ \t\n\f]+", logos::skip)]
 //!     Error,
 //!
 //!     // Tokens can be literal strings, of any length.
@@ -87,6 +90,7 @@
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
+//!     #[regex(r"[ \t\n\f]+", logos::skip)]
 //!     #[error]
 //!     Error,
 //!
@@ -217,7 +221,7 @@ pub trait Logos<'source>: Sized {
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace.
 ///     // This is identical to using `logos::skip`.
-///     #[token("abc", |_| Skip)]
+///     #[regex(" |abc", |_| Skip)]
 ///     #[error]
 ///     Error,
 ///
@@ -247,6 +251,7 @@ pub struct Skip;
 ///
 /// #[derive(Logos, Debug, PartialEq)]
 /// enum Token {
+///     #[regex(r"[ \n\f\t]+", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
@@ -293,7 +298,7 @@ pub enum Filter<T> {
 /// #[derive(Logos, Debug, PartialEq)]
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace
-///     #[token("abc", logos::skip)]
+///     #[regex(" |abc", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
@@ -330,6 +335,7 @@ pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Sk
 ///
 /// #[derive(Logos, Clone, Copy, Debug, PartialEq)]
 /// enum Token {
+///     #[regex(r"[ \n\t\f]+", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
