@@ -9,54 +9,42 @@ impl<'a> Generator<'a> {
     pub fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
         let bump = ctx.bump();
 
-        match leaf {
-            Leaf::Trivia => {
-                let root = self.goto(self.root, Context::default());
+        let ident = &leaf.ident;
+        let name = self.name;
+        let this = self.this;
 
-                quote! {
-                    #bump
-                    lex.trivia();
-                    return #root;
-                }
+        let (ty, constructor) = match leaf.field.clone() {
+            Some(mut ty) => {
+                replace_lifetimes(&mut ty);
+
+                (quote!(#ty), quote!(#name::#ident))
             },
-            Leaf::Token { ident, callback, field, .. } => {
-                let name = self.name;
-                let this = self.this;
+            None => (quote!(()), quote!(|()| #name::#ident)),
+        };
 
-                let (ty, constructor) = match field.clone() {
-                    Some(mut ty) => {
-                        replace_lifetimes(&mut ty);
+        match &leaf.callback {
+            Callback::Label(callback) => quote! {
+                #bump
+                #callback(lex).construct(#constructor, lex);
+            },
+            Callback::Inline(arg, body) => quote! {
+                #bump
 
-                        (quote!(#ty), quote!(#name::#ident))
-                    },
-                    None => (quote!(()), quote!(|()| #name::#ident)),
-                };
-
-                match callback {
-                    Callback::Label(callback) => quote! {
-                        #bump
-                        #callback(lex).construct(#constructor, lex);
-                    },
-                    Callback::Inline(arg, body) => quote! {
-                        #bump
-
-                        #[inline]
-                        fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
-                            #body
-                        }
-
-                        callback(lex).construct(#constructor, lex);
-                    },
-                    Callback::None if field.is_none() => quote! {
-                        #bump
-                        lex.set(#name::#ident);
-                    },
-                    Callback::None => quote! {
-                        #bump
-                        let token = #name::#ident(lex.slice());
-                        lex.set(token);
-                    },
+                #[inline]
+                fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
+                    #body
                 }
+
+                callback(lex).construct(#constructor, lex);
+            },
+            Callback::None if leaf.field.is_none() => quote! {
+                #bump
+                lex.set(#name::#ident);
+            },
+            Callback::None => quote! {
+                #bump
+                let token = #name::#ident(lex.slice());
+                lex.set(token);
             },
         }
     }
