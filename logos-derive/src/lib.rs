@@ -23,7 +23,7 @@ use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam};
+use syn::{Ident, Fields, ItemEnum, GenericParam};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -33,7 +33,7 @@ enum Mode {
 
 #[proc_macro_derive(
     Logos,
-    attributes(logos, extras, error, end, token, regex, extras, callback)
+    attributes(logos, extras, error, end, token, regex, extras)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
@@ -63,32 +63,40 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    let mut parse_attr = |attr: &Attribute, errors: &mut Vec<_>| -> Result<(), error::SpannedError> {
-        if let Some(ext) = util::value_from_attr("extras", attr)? {
-            if let Some(_) = extras.replace(ext) {
-                errors.push(Error::new("Only one #[extras] attribute can be declared.").span(super_span));
-            }
-        }
-
+    let mut parse_attr = |attr| -> Result<(), error::SpannedError> {
         if let Some(nested) = util::read_attr("logos", attr)? {
             let span = nested.span();
 
-            if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", nested)? {
-                errors.push(
-                    Error::new(
-                        "trivia are no longer supported.\n\n\
-
-                        For help with migration see release notes: https://github.com/maciejhirsz/logos/releases",
-                    ).span(span)
-                );
+            if let Some(ext) = util::value_from_nested::<Ident>("extras", &nested)? {
+                if extras.replace(ext).is_some() {
+                    return Err(Error::new("Extras can be defined only once.").span(span));
+                }
             }
+
+            if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", &nested)? {
+                const ERR: &str = "\
+                trivia are no longer supported.\n\n\
+
+                For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+                return Err(Error::new(ERR).span(span));
+            }
+        }
+
+        if attr.path.is_ident("extras") {
+            const ERR: &str = "\
+            #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n\
+
+            For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+            return Err(Error::new(ERR).span(attr.span()));
         }
 
         Ok(())
     };
 
     for attr in &item.attrs {
-        if let Err(err) = parse_attr(attr, &mut errors) {
+        if let Err(err) = parse_attr(attr) {
             errors.push(err);
         }
     }
@@ -141,18 +149,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         };
 
-        // Find if there is a callback defined before tackling individual declarations
-        let global_callback = variant.attrs.iter()
-            .find_map(|attr| {
-                match util::value_from_attr::<Ident>("callback", attr) {
-                    Ok(ident) => ident,
-                    Err(err) => {
-                        errors.push(err);
-                        None
-                    }
-                }
-            });
-
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
@@ -176,14 +172,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
-                let callback = definition.callback.or_else(|| global_callback.clone());
-                let token = Leaf::token(variant).field(field.clone()).callback(callback);
-
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;
                 }
 
-                (token, definition.value)
+                (
+                    Leaf::token(variant).field(field.clone()).callback(definition.callback),
+                    definition.value,
+                )
             };
 
             match util::value_from_attr("token", attr) {

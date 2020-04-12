@@ -8,19 +8,6 @@ use crate::error::{Error, SpannedError};
 
 type Result<T> = std::result::Result<T, SpannedError>;
 
-pub trait OptionExt<T> {
-    fn insert(&mut self, val: T, f: impl FnOnce(&T));
-}
-
-impl<T> OptionExt<T> for Option<T> {
-    fn insert(&mut self, val: T, f: impl FnOnce(&T)) {
-        match self {
-            Some(t) => f(t),
-            slot => *slot = Some(val),
-        }
-    }
-}
-
 pub struct Definition<V: Value> {
     pub value: V,
     pub callback: Callback,
@@ -153,12 +140,12 @@ where
     read_attr(name, attr)?.map(parse_value).transpose()
 }
 
-pub fn value_from_nested<V>(name: &str, nested: TokenStream) -> Result<Option<V>>
+pub fn value_from_nested<V>(name: &str, nested: &TokenStream) -> Result<Option<V>>
 where
     V: Value,
 {
     let span = nested.span();
-    let mut iter = nested.into_iter();
+    let mut iter = nested.clone().into_iter();
 
     match iter.next() {
         Some(TokenTree::Ident(ident)) if ident == name => (),

@@ -22,16 +22,6 @@ pub enum Callback {
 }
 
 impl Callback {
-    pub fn or_else<F>(self, f: F) -> Callback
-    where
-        F: Fn() -> Option<Ident>,
-    {
-        match self {
-            Callback::None => f().into(),
-            _ => self,
-        }
-    }
-
     pub fn span(&self) -> Option<Span> {
         match self {
             Callback::Label(ident) => Some(ident.span()),
