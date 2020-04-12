@@ -21,9 +21,7 @@ use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
 
-use beef::lean::Cow;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
 use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam};
 use syn::spanned::Spanned;
@@ -48,7 +46,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
-    // let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
     let generics = match item.generics.params.len() {
         0 => {

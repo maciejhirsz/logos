@@ -1,4 +1,4 @@
-use logos::{Extras, Lexer, Logos as _};
+use logos::{Lexer, Logos as _};
 use logos_derive::Logos;
 use tests::assert_lex;
 
@@ -9,8 +9,6 @@ struct MockExtras {
     numbers: usize,
     byte_size: u8,
 }
-
-impl Extras for MockExtras {}
 
 fn byte_size_2(lexer: &mut Lexer<Token>) {
     lexer.extras.byte_size = 2;

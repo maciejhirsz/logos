@@ -73,7 +73,7 @@
 //! which can be used to put data into a variant:
 //!
 //! ```rust
-//! use logos::{Logos, Lexer, Extras};
+//! use logos::{Logos, Lexer};
 //!
 //! // Note: callbacks can return `Option` or `Result`
 //! fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
@@ -172,16 +172,15 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use crate::lexer::{Extras, Lexer, Span, SpannedIter};
+pub use crate::lexer::{Lexer, Span, SpannedIter};
 pub use crate::source::Source;
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
 pub trait Logos<'source>: Sized {
-    /// Associated type `Extras` for the particular lexer. Those can handle things that
-    /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
-    /// in JavaScript.
-    type Extras: Extras;
+    /// Associated type `Extras` for the particular lexer. This can be set using
+    /// `#[logos(extras = MyExtras)]` and accessed inside callbacks.
+    type Extras: Default;
 
     /// Source type this token can be lexed from. This will default to `str`,
     /// unless one of the defined patterns explicitly uses non-unicode byte values
