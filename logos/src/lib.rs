@@ -1,13 +1,13 @@
-//! <p align="center">
-//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png" width="60%" alt="Logos">
-//! </p>
+//! <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 //!
-//! ## Create ridiculously fast Lexers.
+//! # Logos
+//!
+//! High performance lexer generator.
 //!
 //! **Logos** works by:
 //!
 //! + Resolving all logical branching of token definitions into a state machine.
-//! + Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
+//! + Optimizing complex patterns into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) and [jump tables](https://en.wikipedia.org/wiki/Branch_table).
 //! + Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
 //!
 //! In practice it means that for most grammars the lexing performance is virtually unaffected by the number

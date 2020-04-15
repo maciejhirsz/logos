@@ -1,8 +1,6 @@
-//! <p align="center">
-//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
-//! </p>
+//! <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 //!
-//! ## Create ridiculously fast Lexers.
+//! # Logos
 //!
 //! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos).
 
