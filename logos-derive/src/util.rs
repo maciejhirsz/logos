@@ -246,10 +246,7 @@ fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Spa
 }
 
 pub fn ident(ident: &str) -> Ident {
-    match syn::parse_str::<Ident>(ident) {
-        Ok(ident) => ident,
-        Err(_) => panic!("Unable to parse {:?} into a Rust identifier.", ident),
-    }
+    Ident::new(ident, Span::call_site())
 }
 
 pub fn unpack_int(expr: &Expr) -> Option<usize> {
