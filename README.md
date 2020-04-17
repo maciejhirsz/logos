@@ -1,17 +1,17 @@
-<p align="center">
-    <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.png" width="60%" alt="Logos">
-</p>
+<img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 
-## Create ridiculously fast Lexers.
+# Logos
 
-[![Travis shield](https://travis-ci.org/maciejhirsz/logos.svg)](https://travis-ci.org/maciejhirsz/logos)
+![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
+
+High performance lexer generator.
 
 **Logos** works by:
 
 + Resolving all logical branching of token definitions into a state machine.
-+ Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
++ Optimizing complex patterns into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) and [jump tables](https://en.wikipedia.org/wiki/Branch_table).
 + Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
 
 In practice it means that for most grammars the lexing performance is virtually unaffected by the number
@@ -122,14 +122,16 @@ fn main() {
 
 Logos can handle callbacks with following return types:
 
-| Return type     | Produces                                           |
-|-----------------|----------------------------------------------------|
-| `()`            | `Token::Unit`                                      |
-| `bool`          | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-| `Result<(), _>` | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-| `T`             | `Token::Value(T)`                                  |
-| `Option<T>`     | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-| `Result<T, _>`  | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| Return type                       | Produces                                           |
+|-----------------------------------|----------------------------------------------------|
+| `()`                              | `Token::Unit`                                      |
+| `bool`                            | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+| `Result<(), _>`                   | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+| `T`                               | `Token::Value(T)`                                  |
+| `Option<T>`                       | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| `Result<T, _>`                    | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+| `Skip`                            | _skips matched input_                              |
+| `Filter<T>`                       | `Token::Value(T)` **or** _skips matched input_     |
 
 Callbacks can be also used to do perform more specialized lexing in place
 where regular expressions are too limiting. For specifics look at
@@ -163,6 +165,10 @@ test identifiers                       ... bench:         660 ns/iter (+/- 54) =
 test keywords_operators_and_punctators ... bench:       2,033 ns/iter (+/- 69) = 1048 MB/s
 test strings                           ... bench:         557 ns/iter (+/- 28) = 1563 MB/s
 ```
+
+## Acknowledgements
+
++ [Pedrors](https://pedrors.pt/) for the **Logos** logo.
 
 ## License
 

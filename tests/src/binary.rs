@@ -40,7 +40,6 @@ pub use super::assert_lex;
 use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(trivia())]
 enum Token {
     #[error]
     Error,

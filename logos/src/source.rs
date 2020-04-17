@@ -42,6 +42,7 @@ pub trait Source {
     where
         Chunk: self::Chunk<'a>;
 
+    /// Read a chunk of bytes into an array without doing bounds checks.
     unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
     where
         Chunk: self::Chunk<'a>;

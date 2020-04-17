@@ -1,5 +1,5 @@
 use proc_macro2::{TokenStream, TokenTree, Span, Spacing};
-use quote::quote;
+use quote::{quote, TokenStreamExt};
 use syn::{Attribute, Expr, Ident, Lit};
 use syn::spanned::Spanned;
 
@@ -7,19 +7,6 @@ use crate::leaf::Callback;
 use crate::error::{Error, SpannedError};
 
 type Result<T> = std::result::Result<T, SpannedError>;
-
-pub trait OptionExt<T> {
-    fn insert(&mut self, val: T, f: impl FnOnce(&T));
-}
-
-impl<T> OptionExt<T> for Option<T> {
-    fn insert(&mut self, val: T, f: impl FnOnce(&T)) {
-        match self {
-            Some(t) => f(t),
-            slot => *slot = Some(val),
-        }
-    }
-}
 
 pub struct Definition<V: Value> {
     pub value: V,
@@ -153,12 +140,12 @@ where
     read_attr(name, attr)?.map(parse_value).transpose()
 }
 
-pub fn value_from_nested<V>(name: &str, nested: TokenStream) -> Result<Option<V>>
+pub fn value_from_nested<V>(name: &str, nested: &TokenStream) -> Result<Option<V>>
 where
     V: Value,
 {
     let span = nested.span();
-    let mut iter = nested.into_iter();
+    let mut iter = nested.clone().into_iter();
 
     match iter.next() {
         Some(TokenTree::Ident(ident)) if ident == name => (),
@@ -209,7 +196,19 @@ where
 
             let nested = match tt {
                 tt if is_punct(&tt, '|') => parse_inline_callback(&mut iter, tt.span())?,
-                TokenTree::Ident(label) => Callback::Label(label),
+                TokenTree::Ident(label) => {
+                    let mut out = quote!(#label);
+
+                    while let Some(tt) = iter.next() {
+                        if is_punct(&tt, ',') {
+                            break;
+                        }
+
+                        out.append(tt);
+                    }
+
+                    Callback::Label(out)
+                },
                 tt => {
                     return Err(Error::new("Expected an function label or an inline callback").span(tt.span()));
                 }

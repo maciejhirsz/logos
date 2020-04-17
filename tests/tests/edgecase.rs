@@ -6,6 +6,7 @@ mod crunch {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
         #[token = "else"]
@@ -32,6 +33,7 @@ mod numbers {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
         #[regex = r"[0-9][0-9_]*"]
@@ -69,6 +71,7 @@ mod benches {
 
     #[derive(Debug, Clone, Copy, PartialEq, Logos)]
     pub enum Token {
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         InvalidToken,
 
@@ -206,8 +209,8 @@ mod unicode_whitespace {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-    #[logos(trivia = r"\p{Whitespace}")]
     enum Token {
+        #[regex(r"\p{Whitespace}+", logos::skip)]
         #[error]
         Error,
 
@@ -232,8 +235,8 @@ mod trivia {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-    #[logos(trivia = "[a-f]")]
     enum Token {
+        #[regex("[a-f]+", logos::skip)]
         #[error]
         Error,
 
@@ -252,5 +255,24 @@ mod trivia {
                 (Token::Error, "x", 19..20),
             ],
         );
+    }
+}
+
+mod maybe {
+    use logos::Logos;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token {
+        #[error]
+        Error,
+
+        #[regex("[0-9A-F][0-9A-F]a?")]
+        Tok,
+    }
+
+    #[test]
+    fn maybe_at_the_end() {
+        let mut lexer = Token::lexer("F0");
+        assert_eq!(lexer.next().unwrap(), Token::Tok);
     }
 }

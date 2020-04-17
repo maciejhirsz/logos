@@ -182,7 +182,7 @@ impl<Leaf> Graph<Leaf> {
         let mut fork = self.fork_off(a);
         fork.merge(self.fork_off(b), self);
 
-        let mut stack = vec![id.get(), a, b];
+        let mut stack = vec![id.get()];
 
         // Flatten the fork
         while let Some(miss) = fork.miss {

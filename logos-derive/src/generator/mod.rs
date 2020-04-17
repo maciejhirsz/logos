@@ -16,6 +16,8 @@ use self::context::Context;
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
     name: &'a Ident,
+    /// Name of the type with any generics it might need
+    this: &'a TokenStream,
     /// Id to the root node
     root: NodeId,
     /// Reference to the graph with all of the nodes
@@ -37,12 +39,18 @@ pub struct Generator<'a> {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(name: &'a Ident, root: NodeId, graph: &'a Graph<Leaf>) -> Self {
+    pub fn new(
+        name: &'a Ident,
+        this: &'a TokenStream,
+        root: NodeId, graph:
+        &'a Graph<Leaf>,
+    ) -> Self {
         let rendered = Self::fast_loop_macro();
         let meta = Meta::analyze(root, graph);
 
         Generator {
             name,
+            this,
             root,
             graph,
             meta,
@@ -91,7 +99,7 @@ impl<'a> Generator<'a> {
             let enters_loop = meta.loop_entry_from.len() > 0;
 
 
-            let bump = if !ctx.can_backtrack() {
+            let bump = if enters_loop || !ctx.can_backtrack() {
                 ctx.switch(self.graph[id].miss())
             } else {
                 None

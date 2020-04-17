@@ -1,8 +1,6 @@
-//! <p align="center">
-//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
-//! </p>
+//! <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 //!
-//! ## Create ridiculously fast Lexers.
+//! # Logos
 //!
 //! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos).
 
@@ -21,11 +19,9 @@ use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
 
-use beef::lean::Cow;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam, Lifetime, Type};
+use syn::{Ident, Fields, ItemEnum, GenericParam};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -35,7 +31,7 @@ enum Mode {
 
 #[proc_macro_derive(
     Logos,
-    attributes(logos, extras, error, end, token, regex, extras, callback)
+    attributes(logos, extras, error, end, token, regex, extras)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
@@ -48,14 +44,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
-    let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
     let generics = match item.generics.params.len() {
         0 => {
             None
         },
         1 if matches!(item.generics.params.first(), Some(GenericParam::Lifetime(..))) => {
-            Some(quote!(<'source>))
+            Some(quote!(<'s>))
         },
         _ => {
             let span = item.generics.span();
@@ -66,34 +61,40 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    let mut parse_attr = |attr: &Attribute, errors: &mut Vec<_>| -> Result<(), error::SpannedError> {
-        if let Some(ext) = util::value_from_attr("extras", attr)? {
-            if let Some(_) = extras.replace(ext) {
-                errors.push(Error::new("Only one #[extras] attribute can be declared.").span(super_span));
+    let mut parse_attr = |attr| -> Result<(), error::SpannedError> {
+        if let Some(nested) = util::read_attr("logos", attr)? {
+            let span = nested.span();
+
+            if let Some(ext) = util::value_from_nested::<Ident>("extras", &nested)? {
+                if extras.replace(ext).is_some() {
+                    return Err(Error::new("Extras can be defined only once.").span(span));
+                }
+            }
+
+            if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", &nested)? {
+                const ERR: &str = "\
+                trivia are no longer supported.\n\n\
+
+                For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+                return Err(Error::new(ERR).span(span));
             }
         }
 
-        if let Some(nested) = util::read_attr("logos", attr)? {
-            if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", nested)? {
-                trivia = match t {
-                    Some(Literal::Utf8(string, span)) => {
-                        Some((true, string.into(), span))
-                    },
-                    Some(Literal::Bytes(bytes, span)) => {
-                        mode = Mode::Binary;
+        if attr.path.is_ident("extras") {
+            const ERR: &str = "\
+            #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n\
 
-                        Some((false, util::bytes_to_regex_string(&bytes).into(), span))
-                    },
-                    None => None,
-                };
-            }
+            For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+            return Err(Error::new(ERR).span(attr.span()));
         }
 
         Ok(())
     };
 
     for attr in &item.attrs {
-        if let Err(err) = parse_attr(attr, &mut errors) {
+        if let Err(err) = parse_attr(attr) {
             errors.push(err);
         }
     }
@@ -135,14 +136,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     ).span(fields.span()))
                 }
 
-                let mut field = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
-
-                // Replacing the lifetime should be done in the generator
-                if let Type::Reference(ref mut typeref) = field {
-                    let span = typeref.lifetime.as_ref().map(|lt| lt.span()).unwrap_or_else(|| Span::call_site());
-
-                    typeref.lifetime = Some(Lifetime::new("'s", span));
-                }
+                let field = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
 
                 Some(field)
             }
@@ -152,18 +146,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 None
             }
         };
-
-        // Find if there is a callback defined before tackling individual declarations
-        let global_callback = variant.attrs.iter()
-            .find_map(|attr| {
-                match util::value_from_attr::<Ident>("callback", attr) {
-                    Ok(ident) => ident,
-                    Err(err) => {
-                        errors.push(err);
-                        None
-                    }
-                }
-            });
 
         for attr in &variant.attrs {
             let ident = &attr.path.segments[0].ident;
@@ -188,14 +170,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
 
             let mut with_definition = |definition: Definition<Literal>| {
-                let callback = definition.callback.or_else(|| global_callback.clone());
-                let token = Leaf::token(variant).field(field.clone()).callback(callback);
-
                 if let Literal::Bytes(..) = definition.value {
                     mode = Mode::Binary;
                 }
 
-                (token, definition.value)
+                (
+                    Leaf::token(variant).field(field.clone()).callback(definition.callback),
+                    definition.value,
+                )
             };
 
             match util::value_from_attr("token", attr) {
@@ -257,19 +239,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
-    if let Some((utf8, regex, span)) = trivia {
-        let then = graph.push(Leaf::Trivia);
-
-        match graph.regex(utf8, &*regex, then) {
-            Ok((_, id)) => {
-                let trivia = graph.fork_off(id);
-
-                root.merge(trivia, &mut graph);
-            },
-            Err(err) => errors.push(err.span(span)),
-        }
-    }
-
     let extras = match extras {
         Some(ext) => quote!(#ext),
         None => quote!(()),
@@ -287,9 +256,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
         },
     };
 
+    let this = quote!(#name #generics);
+
     let impl_logos = |body| {
         quote! {
-            impl<'source> ::logos::Logos<'source> for #name #generics {
+            impl<'s> ::logos::Logos<'s> for #this {
                 type Extras = #extras;
 
                 type Source = #source;
@@ -298,7 +269,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                 #error_def
 
-                fn lex(lex: &mut ::logos::Lexer<'source, Self>) {
+                fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
                     #body
                 }
             }
@@ -320,19 +291,28 @@ pub fn logos(input: TokenStream) -> TokenStream {
     for rope in ropes {
         root.merge(rope.into_fork(&mut graph), &mut graph)
     }
+    while let Some(id) = root.miss.take() {
+        let fork = graph.fork_off(id);
+
+        if fork.branches().next().is_some() {
+            root.merge(fork, &mut graph);
+        } else {
+            break;
+        }
+    }
     let root = graph.push(root);
 
     graph.shake(root);
 
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
-    let mut generator = Generator::new(name, root, &graph);
+    let mut generator = Generator::new(name, &this, root, &graph);
 
     let body = generator.generate();
     let tokens = impl_logos(quote! {
         use ::logos::internal::{LexerInternal, CallbackResult};
 
-        type Lexer<'source> = ::logos::Lexer<'source, #name #generics>;
+        type Lexer<'s> = ::logos::Lexer<'s, #name #generics>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()

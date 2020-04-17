@@ -1,13 +1,13 @@
-//! <p align="center">
-//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png" width="60%" alt="Logos">
-//! </p>
+//! <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 //!
-//! ## Create ridiculously fast Lexers.
+//! # Logos
+//!
+//! High performance lexer generator.
 //!
 //! **Logos** works by:
 //!
 //! + Resolving all logical branching of token definitions into a state machine.
-//! + Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
+//! + Optimizing complex patterns into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) and [jump tables](https://en.wikipedia.org/wiki/Branch_table).
 //! + Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
 //!
 //! In practice it means that for most grammars the lexing performance is virtually unaffected by the number
@@ -23,6 +23,9 @@
 //!     // Logos requires one token variant to handle errors,
 //!     // it can be named anything you wish.
 //!     #[error]
+//!     // We can also use this variant to define whitespace,
+//!     // or any other matches we wish to skip.
+//!     #[regex(r"[ \t\n\f]+", logos::skip)]
 //!     Error,
 //!
 //!     // Tokens can be literal strings, of any length.
@@ -70,7 +73,7 @@
 //! which can be used to put data into a variant:
 //!
 //! ```rust
-//! use logos::{Logos, Lexer, Extras};
+//! use logos::{Logos, Lexer};
 //!
 //! // Note: callbacks can return `Option` or `Result`
 //! fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
@@ -87,6 +90,7 @@
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
+//!     #[regex(r"[ \t\n\f]+", logos::skip)]
 //!     #[error]
 //!     Error,
 //!
@@ -118,14 +122,16 @@
 //!
 //! Logos can handle callbacks with following return types:
 //!
-//! | Return type     | Produces                                           |
-//! |-----------------|----------------------------------------------------|
-//! | `()`            | `Token::Unit`                                      |
-//! | `bool`          | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-//! | `Result<(), _>` | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-//! | `T`             | `Token::Value(T)`                                  |
-//! | `Option<T>`     | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-//! | `Result<T, _>`  | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | Return type                       | Produces                                           |
+//! |-----------------------------------|----------------------------------------------------|
+//! | `()`                              | `Token::Unit`                                      |
+//! | `bool`                            | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+//! | `Result<(), _>`                   | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
+//! | `T`                               | `Token::Value(T)`                                  |
+//! | `Option<T>`                       | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | `Result<T, _>`                    | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
+//! | [`Skip`](./struct.Skip.html)      | _skips matched input_                              |
+//! | [`Filter<T>`](./enum.Filter.html) | `Token::Value(T)` **or** _skips matched input_     |
 //!
 //! Callbacks can be also used to do perform more specialized lexing in place
 //! where regular expressions are too limiting. For specifics look at
@@ -166,16 +172,15 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use crate::lexer::{Extras, Lexer, Span, SpannedIter};
+pub use crate::lexer::{Lexer, Span, SpannedIter};
 pub use crate::source::Source;
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
 pub trait Logos<'source>: Sized {
-    /// Associated type `Extras` for the particular lexer. Those can handle things that
-    /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
-    /// in JavaScript.
-    type Extras: Extras;
+    /// Associated type `Extras` for the particular lexer. This can be set using
+    /// `#[logos(extras = MyExtras)]` and accessed inside callbacks.
+    type Extras: Default;
 
     /// Source type this token can be lexed from. This will default to `str`,
     /// unless one of the defined patterns explicitly uses non-unicode byte values
@@ -203,6 +208,118 @@ pub trait Logos<'source>: Sized {
     }
 }
 
+/// Type that can be returned from a callback, informing the `Lexer`, to skip
+/// current token match. See also [`logos::skip`](./fn.skip.html).
+///
+/// # Example
+///
+/// ```rust
+/// use logos::{Logos, Skip};
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token<'a> {
+///     // We will treat "abc" as if it was whitespace.
+///     // This is identical to using `logos::skip`.
+///     #[regex(" |abc", |_| Skip)]
+///     #[error]
+///     Error,
+///
+///     #[regex("[a-zA-Z]+")]
+///     Text(&'a str),
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("Hello abc world").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::Text("Hello"),
+///         Token::Text("world"),
+///     ],
+/// );
+/// ```
+pub struct Skip;
+
+/// Type that can be returned from a callback, either producing a field
+/// for a token, or skipping it.
+///
+/// # Example
+///
+/// ```rust
+/// use logos::{Logos, Filter};
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token {
+///     #[regex(r"[ \n\f\t]+", logos::skip)]
+///     #[error]
+///     Error,
+///
+///     #[regex("[0-9]+", |lex| {
+///         let n: u64 = lex.slice().parse().unwrap();
+///
+///         // Only emit a token if `n` is an even number
+///         match n % 2 {
+///             0 => Filter::Emit(n),
+///             _ => Filter::Skip,
+///         }
+///     })]
+///     EvenNumber(u64)
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("20 11 42 23 100 8002").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::EvenNumber(20),
+///         // skipping 11
+///         Token::EvenNumber(42),
+///         // skipping 23
+///         Token::EvenNumber(100),
+///         Token::EvenNumber(8002),
+///     ]
+/// );
+/// ```
+pub enum Filter<T> {
+    /// Emit a token with a given value `T`. Use `()` for unit variants without fields.
+    Emit(T),
+    /// Skip current match, analog to [`Skip`](./struct.Skip.html).
+    Skip,
+}
+
+/// Predefined callback that will inform the `Lexer` to skip a definition.
+///
+/// # Example
+///
+/// ```rust
+/// use logos::Logos;
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token<'a> {
+///     // We will treat "abc" as if it was whitespace
+///     #[regex(" |abc", logos::skip)]
+///     #[error]
+///     Error,
+///
+///     #[regex("[a-zA-Z]+")]
+///     Text(&'a str),
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("Hello abc world").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::Text("Hello"),
+///         Token::Text("world"),
+///     ],
+/// );
+/// ```
+#[inline]
+pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Skip {
+    Skip
+}
+
 /// Macro for creating lookup tables where index matches the token variant
 /// as `usize`.
 ///
@@ -210,11 +327,14 @@ pub trait Logos<'source>: Sized {
 /// function pointers, enabling an O(1) branching at the cost of introducing some
 /// indirection.
 ///
+/// # Example
+///
 /// ```rust
 /// use logos::{Logos, lookup};
 ///
-/// #[derive(Logos, Clone, Copy, PartialEq, Debug)]
+/// #[derive(Logos, Clone, Copy, Debug, PartialEq)]
 /// enum Token {
+///     #[regex(r"[ \n\t\f]+", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
