@@ -1,6 +1,6 @@
 use std::cmp::max;
 
-use proc_macro2::{TokenStream, Literal};
+use proc_macro2::TokenStream;
 use quote::quote;
 use fnv::FnvHashMap as Map;
 

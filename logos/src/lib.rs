@@ -56,8 +56,8 @@
 //!     assert_eq!(lex.slice(), "fast");
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
-//!     assert_eq!(lex.span(), 25..31);
 //!     assert_eq!(lex.slice(), "Lexers");
+//!     assert_eq!(lex.span(), 25..31);
 //!
 //!     assert_eq!(lex.next(), Some(Token::Period));
 //!     assert_eq!(lex.span(), 31..32);

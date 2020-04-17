@@ -5,25 +5,31 @@ use utf8_ranges::Utf8Range;
 use std::cmp::{Ord, Ordering};
 
 #[derive(Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
-pub struct Range(pub u8, pub u8);
+pub struct Range {
+    pub start: u8,
+    pub end: u8,
+}
 
 impl Range {
     pub fn as_byte(&self) -> Option<u8> {
         if self.is_byte() {
-            Some(self.0)
+            Some(self.start)
         } else {
             None
         }
     }
 
     pub fn is_byte(&self) -> bool {
-        self.0 == self.1
+        self.start == self.end
     }
 }
 
 impl From<u8> for Range {
     fn from(byte: u8) -> Range {
-        Range(byte, byte)
+        Range {
+            start: byte,
+            end: byte,
+        }
     }
 }
 
@@ -37,17 +43,17 @@ impl Iterator for Range {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
-        if self.0 < self.1 {
-            let res = self.0;
-            self.0 += 1;
+        if self.start < self.end {
+            let res = self.start;
+            self.start += 1;
 
             Some(res)
-        } else if self.0 == self.1 {
-            let res = self.0;
+        } else if self.start == self.end {
+            let res = self.start;
 
             // Necessary so that range 0xFF-0xFF doesn't loop forever
-            self.0 = 0xFF;
-            self.1 = 0x00;
+            self.start = 0xFF;
+            self.end = 0x00;
 
             Some(res)
         } else {
@@ -58,13 +64,16 @@ impl Iterator for Range {
 
 impl Ord for Range {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.cmp(&other.0)
+        self.start.cmp(&other.start)
     }
 }
 
 impl From<Utf8Range> for Range {
     fn from(r: Utf8Range) -> Range {
-        Range(r.start, r.end)
+        Range {
+            start: r.start,
+            end: r.end,
+        }
     }
 }
 
@@ -77,13 +86,19 @@ impl From<ClassUnicodeRange> for Range {
             panic!("Casting non-ascii ClassUnicodeRange to Range")
         }
 
-        Range(start as u8, end as u8)
+        Range {
+            start: start as u8,
+            end: end as u8,
+        }
     }
 }
 
 impl From<ClassBytesRange> for Range {
     fn from(r: ClassBytesRange) -> Range {
-        Range(r.start(), r.end())
+        Range {
+            start: r.start(),
+            end: r.end(),
+        }
     }
 }
 
@@ -101,7 +116,7 @@ mod tests {
 
     #[test]
     fn range_iter_few() {
-        let byte = Range(b'a', b'd');
+        let byte = Range { start: b'a', end: b'd' };
         let collected = byte.into_iter().take(1000).collect::<Vec<_>>();
 
         assert_eq!(b"abcd", &collected[..]);

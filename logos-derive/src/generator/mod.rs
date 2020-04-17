@@ -149,12 +149,45 @@ impl<'a> Generator<'a> {
             let idx = self.tests.len();
             let ident = Ident::new(&format!("pattern{}", idx), Span::call_site());
 
+            let lo = ranges.first().unwrap().start;
+            let hi = ranges.last().unwrap().end;
+
             let body = match ranges.len() {
                 0..=2 => {
                     quote! {
                         match byte {
                             #(#ranges)|* => true,
                             _ => false,
+                        }
+                    }
+                },
+                _ if hi - lo < 64 => {
+                    let mut offset = hi.saturating_sub(63);
+
+                    while offset.count_ones() > 1 && lo - offset > 0 {
+                        offset += 1;
+                    }
+
+                    let mut table = 0u64;
+
+                    for byte in ranges.iter().flat_map(|range| *range) {
+                        if byte - offset >= 64 {
+                            panic!("{:#?} {} {} {}", ranges, hi, lo, offset);
+                        }
+                        table |= 1 << (byte - offset);
+                    }
+
+                    let search = match offset {
+                        0 => quote!(byte),
+                        _ => quote!(byte.wrapping_sub(#offset)),
+                    };
+
+                    quote! {
+                        const LUT: u64 = #table;
+
+                        match 1u64.checked_shl(#search as u32) {
+                            Some(shift) => LUT & << shift != 0,
+                            None => false,
                         }
                     }
                 },
@@ -215,7 +248,7 @@ fn byte_to_tokens(byte: u8) -> TokenStream {
 
 impl ToTokens for Range {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Range(start, end) = self;
+        let Range { start, end } = self;
 
         tokens.append_all(byte_to_tokens(*start));
 
