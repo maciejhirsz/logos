@@ -186,7 +186,7 @@ impl<'a> Generator<'a> {
                         const LUT: u64 = #table;
 
                         match 1u64.checked_shl(#search as u32) {
-                            Some(shift) => LUT & << shift != 0,
+                            Some(shift) => LUT & shift != 0,
                             None => false,
                         }
                     }
