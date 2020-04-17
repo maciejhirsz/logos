@@ -19,7 +19,7 @@ fn byte_size_4(lexer: &mut Lexer<Token>) {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(extras = "MockExtras")]
+#[logos(extras = MockExtras)]
 enum Token {
     #[token("\n", |lex| {
         lex.extras.line_breaks += 1;

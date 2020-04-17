@@ -147,10 +147,7 @@ where
     read_attr(name, attr)?.map(parse_value).transpose()
 }
 
-pub fn value_from_nested<V>(name: &str, nested: &TokenStream) -> Result<Option<V>>
-where
-    V: Value,
-{
+pub fn value_from_nested(name: &str, nested: &TokenStream) -> Result<Option<Ident>> {
     let span = nested.span();
     let mut iter = nested.clone().into_iter();
 
@@ -159,12 +156,15 @@ where
         _ => return Ok(None),
     };
 
-    let stream = nested_attr_fields(name, iter, span)?;
+    let tt = nested_attr_fields(name, iter, span)?;
 
-    parse_value(stream).map(Some)
+    match tt {
+        TokenTree::Ident(ident) => Ok(Some(ident)),
+        _ => Err(Error::new("Expected identifier").span(tt.span())),
+    }
 }
 
-fn nested_attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenStream>
+fn nested_attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenTree>
 where
     Tokens: IntoIterator<Item = TokenTree>,
 {
@@ -174,7 +174,7 @@ where
         Some(tt) if is_punct(&tt, '=') => {
             match tokens.next() {
                 None => Err(Error::new("Expected value after =").span(tt.span())),
-                Some(next) => Ok(next.into())
+                Some(next) => Ok(next)
             }
         },
         _ => {

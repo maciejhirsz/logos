@@ -66,15 +66,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
             if let Some(nested) = util::read_attr("logos", attr)? {
                 let span = nested.span();
 
-                // panic!("{:#?}", nested);
-
-                if let Some(ext) = util::value_from_nested::<Ident>("extras", &nested)? {
+                if let Some(ext) = util::value_from_nested("extras", &nested)? {
                     if extras.replace(ext).is_some() {
                         return Err(Error::new("Extras can be defined only once.").span(span));
                     }
                 }
 
-                if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", &nested)? {
+                if let Err(_) = util::value_from_nested("trivia", &nested) {
                     const ERR: &str = "\
                     trivia are no longer supported.\n\n\
 
