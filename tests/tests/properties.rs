@@ -7,13 +7,13 @@ enum Token {
     #[error]
     Error,
 
-    #[regex = r"[a-zA-Z]+"]
+    #[regex(r"[a-zA-Z]+")]
     Ascii,
 
-    #[regex = r"\p{Greek}+"]
+    #[regex(r"\p{Greek}+")]
     Greek,
 
-    #[regex = r"\p{Cyrillic}+"]
+    #[regex(r"\p{Cyrillic}+")]
     Cyrillic,
 }
 

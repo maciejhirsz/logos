@@ -21,7 +21,7 @@ use util::{Literal, Definition};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, GenericParam};
+use syn::{Ident, Fields, ItemEnum, GenericParam, Attribute};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -61,23 +61,27 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    let mut parse_attr = |attr| -> Result<(), error::SpannedError> {
-        if let Some(nested) = util::read_attr("logos", attr)? {
-            let span = nested.span();
+    let mut parse_attr = |attr: &Attribute| -> Result<(), error::SpannedError> {
+        if attr.path.is_ident("logos") {
+            if let Some(nested) = util::read_attr("logos", attr)? {
+                let span = nested.span();
 
-            if let Some(ext) = util::value_from_nested::<Ident>("extras", &nested)? {
-                if extras.replace(ext).is_some() {
-                    return Err(Error::new("Extras can be defined only once.").span(span));
+                // panic!("{:#?}", nested);
+
+                if let Some(ext) = util::value_from_nested::<Ident>("extras", &nested)? {
+                    if extras.replace(ext).is_some() {
+                        return Err(Error::new("Extras can be defined only once.").span(span));
+                    }
                 }
-            }
 
-            if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", &nested)? {
-                const ERR: &str = "\
-                trivia are no longer supported.\n\n\
+                if let Some(_) = util::value_from_nested::<Option<Literal>>("trivia", &nested)? {
+                    const ERR: &str = "\
+                    trivia are no longer supported.\n\n\
 
-                For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
 
-                return Err(Error::new(ERR).span(span));
+                    return Err(Error::new(ERR).span(span));
+                }
             }
         }
 
@@ -148,26 +152,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         };
 
         for attr in &variant.attrs {
-            let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
-
-            if ident == "error" {
-                if let Some(previous) = error.replace(variant) {
-                    errors.extend(vec![
-                        Error::new("Only one #[error] variant can be declared.").span(span),
-                        Error::new("Previously declared #[error]:").span(previous.span()),
-                    ]);
-                }
-            }
-
-            if ident == "end" {
-                errors.push(
-                    Error::new(
-                        "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
-
-                        For help with migration see release notes: https://github.com/maciejhirsz/logos/releases"
-                    ).span(attr.span()));
-            }
 
             let mut with_definition = |definition: Definition<Literal>| {
                 if let Literal::Bytes(..) = definition.value {
@@ -180,59 +165,76 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 )
             };
 
-            match util::value_from_attr("token", attr) {
-                Ok(Some(definition)) => {
-                    let (token, value) = with_definition(definition);
+            if attr.path.is_ident("error") {
+                if let Some(previous) = error.replace(variant) {
+                    errors.extend(vec![
+                        Error::new("Only one #[error] variant can be declared.").span(span),
+                        Error::new("Previously declared #[error]:").span(previous.span()),
+                    ]);
+                }
+            } else if attr.path.is_ident("end") {
+                errors.push(
+                    Error::new(
+                        "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
 
-                    let value = value.into_bytes();
-                    let then = graph.push(token.priority(value.len()));
+                        For help with migration see release notes: https://github.com/maciejhirsz/logos/releases"
+                    ).span(attr.span())
+                );
+            } else if attr.path.is_ident("token") {
+                match util::value_from_attr("token", attr) {
+                    Ok(Some(definition)) => {
+                        let (token, value) = with_definition(definition);
 
-                    ropes.push(Rope::new(value, then));
-                },
-                Err(err) => errors.push(err),
-                _ => (),
-            }
+                        let value = value.into_bytes();
+                        let then = graph.push(token.priority(value.len()));
 
-            match util::value_from_attr("regex", attr) {
-                Ok(Some(definition)) => {
-                    let (token, value) = with_definition(definition);
+                        ropes.push(Rope::new(value, then));
+                    },
+                    Err(err) => errors.push(err),
+                    _ => (),
+                }
+            } else if attr.path.is_ident("regex") {
+                match util::value_from_attr("regex", attr) {
+                    Ok(Some(definition)) => {
+                        let (token, value) = with_definition(definition);
 
-                    let then = graph.reserve();
+                        let then = graph.reserve();
 
-                    let (utf8, regex, span) = match value {
-                        Literal::Utf8(string, span) => (true, string, span),
-                        Literal::Bytes(bytes, span) => {
-                            mode = Mode::Binary;
+                        let (utf8, regex, span) = match value {
+                            Literal::Utf8(string, span) => (true, string, span),
+                            Literal::Bytes(bytes, span) => {
+                                mode = Mode::Binary;
 
-                            (false, util::bytes_to_regex_string(&bytes), span)
-                        }
-                    };
-
-                    match graph.regex(utf8, &regex, then.get()) {
-                        Ok((len, mut id)) => {
-                            let then = graph.insert(then, token.priority(len));
-                            regex_ids.push(id);
-
-                            // Drain recursive miss values.
-                            // We need the root node to have straight branches.
-                            while let Some(miss) = graph[id].miss() {
-                                if miss == then {
-                                    errors.push(
-                                        Error::new("#[regex]: expression can match empty string.\n\n\
-                                                    hint: consider changing * to +").span(span)
-                                    );
-                                    break;
-                                } else {
-                                    regex_ids.push(miss);
-                                    id = miss;
-                                }
+                                (false, util::bytes_to_regex_string(&bytes), span)
                             }
-                        },
-                        Err(err) => errors.push(err.span(span)),
-                    }
-                },
-                Err(err) => errors.push(err),
-                _ => (),
+                        };
+
+                        match graph.regex(utf8, &regex, then.get()) {
+                            Ok((len, mut id)) => {
+                                let then = graph.insert(then, token.priority(len));
+                                regex_ids.push(id);
+
+                                // Drain recursive miss values.
+                                // We need the root node to have straight branches.
+                                while let Some(miss) = graph[id].miss() {
+                                    if miss == then {
+                                        errors.push(
+                                            Error::new("#[regex]: expression can match empty string.\n\n\
+                                                        hint: consider changing * to +").span(span)
+                                        );
+                                        break;
+                                    } else {
+                                        regex_ids.push(miss);
+                                        id = miss;
+                                    }
+                                }
+                            },
+                            Err(err) => errors.push(err.span(span)),
+                        }
+                    },
+                    Err(err) => errors.push(err),
+                    _ => (),
+                }
             }
         }
     }

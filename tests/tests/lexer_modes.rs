@@ -7,10 +7,10 @@ enum Outer {
     #[error]
     Error,
 
-    #[token = "\""]
+    #[token("\"")]
     StartString,
 
-    #[regex = r"\p{White_Space}"]
+    #[regex(r"\p{White_Space}")]
     WhiteSpace,
 }
 
@@ -19,19 +19,19 @@ enum Inner {
     #[error]
     Error,
 
-    #[regex = r#"[^\\"]+"#]
+    #[regex(r#"[^\\"]+"#)]
     Text,
 
-    #[token = "\\n"]
+    #[token("\\n")]
     EscapedNewline,
 
-    #[regex = r"\\u\{[^}]*\}"]
+    #[regex(r"\\u\{[^}]*\}")]
     EscapedCodepoint,
 
-    #[token = r#"\""#]
+    #[token(r#"\""#)]
     EscapedQuote,
 
-    #[token = "\""]
+    #[token("\"")]
     EndString,
 }
 

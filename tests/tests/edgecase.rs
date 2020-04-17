@@ -9,11 +9,14 @@ mod crunch {
         #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
-        #[token = "else"]
+
+        #[token("else")]
         Else,
-        #[token = "exposed"]
+
+        #[token("exposed")]
         Exposed,
-        #[regex = "[^ \t\n\r\"\'!@#$%\\^&*()-+=,.<>/?;:\\[\\]{}\\\\|`~]+"]
+
+        #[regex("[^ \t\n\r\"\'!@#$%\\^&*()-+=,.<>/?;:\\[\\]{}\\\\|`~]+")]
         Ident,
     }
 
@@ -36,17 +39,23 @@ mod numbers {
         #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
-        #[regex = r"[0-9][0-9_]*"]
+
+        #[regex(r"[0-9][0-9_]*")]
         LiteralUnsignedNumber,
-        #[regex = r"[0-9][0-9_]*\.[0-9][0-9_]*[TGMKkmupfa]"]
+
+        #[regex(r"[0-9][0-9_]*\.[0-9][0-9_]*[TGMKkmupfa]")]
         LiteralRealNumberDotScaleChar,
-        #[regex = r"[0-9][0-9_]*\.[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*"]
+
+        #[regex(r"[0-9][0-9_]*\.[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*")]
         LiteralRealNumberDotExp,
-        #[regex = r"[0-9][0-9_]*[TGMKkmupfa]"]
+
+        #[regex(r"[0-9][0-9_]*[TGMKkmupfa]")]
         LiteralRealNumberScaleChar,
-        #[regex = r"[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*"]
+
+        #[regex(r"[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*")]
         LiteralRealNumberExp,
-        #[regex = r"[0-9][0-9_]*\.[0-9][0-9_]*"]
+
+        #[regex(r"[0-9][0-9_]*\.[0-9][0-9_]*")]
         LiteralRealNumberDot,
     }
 
@@ -75,61 +84,61 @@ mod benches {
         #[error]
         InvalidToken,
 
-        #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
+        #[regex("[a-zA-Z_$][a-zA-Z0-9_$]*")]
         Identifier,
 
-        #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
+        #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
         String,
 
-        #[token = "private"]
+        #[token("private")]
         Private,
 
-        #[token = "primitive"]
+        #[token("primitive")]
         Primitive,
 
-        #[token = "protected"]
+        #[token("protected")]
         Protected,
 
-        #[token = "in"]
+        #[token("in")]
         In,
 
-        #[token = "instanceof"]
+        #[token("instanceof")]
         Instanceof,
 
-        #[token = "."]
+        #[token(".")]
         Accessor,
 
-        #[token = "..."]
+        #[token("...")]
         Ellipsis,
 
-        #[token = "("]
+        #[token("(")]
         ParenOpen,
 
-        #[token = ")"]
+        #[token(")")]
         ParenClose,
 
-        #[token = "{"]
+        #[token("{")]
         BraceOpen,
 
-        #[token = "}"]
+        #[token("}")]
         BraceClose,
 
-        #[token = "+"]
+        #[token("+")]
         OpAddition,
 
-        #[token = "++"]
+        #[token("++")]
         OpIncrement,
 
-        #[token = "="]
+        #[token("=")]
         OpAssign,
 
-        #[token = "=="]
+        #[token("==")]
         OpEquality,
 
-        #[token = "==="]
+        #[token("===")]
         OpStrictEquality,
 
-        #[token = "=>"]
+        #[token("=>")]
         FatArrow,
     }
 
@@ -214,7 +223,7 @@ mod unicode_whitespace {
         #[error]
         Error,
 
-        #[regex = "[0-9]+"]
+        #[regex("[0-9]+")]
         Number,
     }
 
@@ -240,7 +249,7 @@ mod trivia {
         #[error]
         Error,
 
-        #[regex = "[0-9]+"]
+        #[regex("[0-9]+")]
         Number,
     }
 

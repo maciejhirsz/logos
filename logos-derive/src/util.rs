@@ -100,10 +100,6 @@ impl<V: Value> Value for Definition<V> {
 }
 
 pub fn read_attr(name: &str, attr: &Attribute) -> Result<Option<TokenStream>> {
-    if !attr.path.is_ident(name) {
-        return Ok(None);
-    }
-
     let stream = attr_fields(name, attr.tokens.clone(), attr.span())?;
 
     Ok(Some(stream))
@@ -118,15 +114,26 @@ where
     match tokens.next() {
         Some(tt) if is_punct(&tt, '=') => {
             match tokens.next() {
-                None => return Err(Error::new("Expected value after =").span(tt.span())),
-                Some(next) => Ok(next.into()),
+                None => Err(Error::new("Expected value after =").span(tt.span())),
+                Some(next) => {
+                    let err = format!(
+                        "#[{} = ...] definitions are not supported since v0.11.\n\n\
+
+                        Use instead: #[{}({})]\n",
+                        name,
+                        name,
+                        next,
+                    );
+
+                    Err(Error::new(err).span(span))
+                }
             }
         },
         Some(TokenTree::Group(group)) => {
             Ok(group.stream())
         }
         _ => {
-            let err = format!("Expected #[{} = ...] or #[{}(...)]", name, name);
+            let err = format!("Expected #[{}(...)]", name);
 
             Err(Error::new(err).span(span))
         }
@@ -152,10 +159,30 @@ where
         _ => return Ok(None),
     };
 
-
-    let stream = attr_fields(name, iter, span)?;
+    let stream = nested_attr_fields(name, iter, span)?;
 
     parse_value(stream).map(Some)
+}
+
+fn nested_attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenStream>
+where
+    Tokens: IntoIterator<Item = TokenTree>,
+{
+    let mut tokens = stream.into_iter();
+
+    match tokens.next() {
+        Some(tt) if is_punct(&tt, '=') => {
+            match tokens.next() {
+                None => Err(Error::new("Expected value after =").span(tt.span())),
+                Some(next) => Ok(next.into())
+            }
+        },
+        _ => {
+            let err = format!("Expected #[logos({} = ...)]", name);
+
+            Err(Error::new(err).span(span))
+        }
+    }
 }
 
 fn is_punct(tt: &TokenTree, expect: char) -> bool {

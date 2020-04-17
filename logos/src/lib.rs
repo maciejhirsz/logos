@@ -20,6 +20,17 @@
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
+//!     // Tokens can be literal strings, of any length.
+//!     #[token("fast")]
+//!     Fast,
+//!
+//!     #[token(".")]
+//!     Period,
+//!
+//!     // Or regular expressions.
+//!     #[regex("[a-zA-Z]+")]
+//!     Text,
+//!
 //!     // Logos requires one token variant to handle errors,
 //!     // it can be named anything you wish.
 //!     #[error]
@@ -27,17 +38,6 @@
 //!     // or any other matches we wish to skip.
 //!     #[regex(r"[ \t\n\f]+", logos::skip)]
 //!     Error,
-//!
-//!     // Tokens can be literal strings, of any length.
-//!     #[token = "fast"]
-//!     Fast,
-//!
-//!     #[token = "."]
-//!     Period,
-//!
-//!     // Or regular expressions.
-//!     #[regex = "[a-zA-Z]+"]
-//!     Text,
 //! }
 //!
 //! fn main() {
@@ -338,13 +338,13 @@ pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Sk
 ///     #[error]
 ///     Error,
 ///
-///     #[token = "Immanetize"]
+///     #[token("Immanetize")]
 ///     Immanetize,
 ///
-///     #[token = "the"]
+///     #[token("the")]
 ///     The,
 ///
-///     #[token = "Eschaton"]
+///     #[token("Eschaton")]
 ///     Eschaton,
 /// }
 ///

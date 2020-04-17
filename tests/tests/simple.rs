@@ -34,46 +34,46 @@ enum Token {
     #[error]
     Error,
 
-    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
+    #[regex("[a-zA-Z$_][a-zA-Z0-9$_]*")]
     Identifier,
 
     #[regex("[1-9][0-9]*|0", |lex| lex.extras.numbers += 1)]
     Number,
 
-    #[regex = "0b[01]+"]
+    #[regex("0b[01]+")]
     Binary,
 
-    #[regex = "0x[0-9a-fA-F]+"]
+    #[regex("0x[0-9a-fA-F]+")]
     Hex,
 
-    #[regex = "(abc)+(def|xyz)?"]
+    #[regex("(abc)+(def|xyz)?")]
     Abc,
 
-    #[token = "priv"]
+    #[token("priv")]
     Priv,
 
-    #[token = "private"]
+    #[token("private")]
     Private,
 
-    #[token = "primitive"]
+    #[token("primitive")]
     Primitive,
 
-    #[token = "protected"]
+    #[token("protected")]
     Protected,
 
-    #[token = "protectee"]
+    #[token("protectee")]
     Protectee,
 
-    #[token = "in"]
+    #[token("in")]
     In,
 
-    #[token = "instanceof"]
+    #[token("instanceof")]
     Instanceof,
 
-    #[regex = "byte|bytes[1-9][0-9]?"]
+    #[regex("byte|bytes[1-9][0-9]?")]
     Byte,
 
-    #[regex = "int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"]
+    #[regex("int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)")]
     Int,
 
     #[token("uint8", |lex| lex.extras.byte_size = 1)]
@@ -81,34 +81,34 @@ enum Token {
     #[token("uint32", byte_size_4)]
     Uint,
 
-    #[token = "."]
+    #[token(".")]
     Accessor,
 
     #[token("...")]
     Ellipsis,
 
-    #[token = "{"]
+    #[token("{")]
     BraceOpen,
 
-    #[token = "}"]
+    #[token("}")]
     BraceClose,
 
-    #[token = "+"]
+    #[token("+")]
     OpAddition,
 
-    #[token = "++"]
+    #[token("++")]
     OpIncrement,
 
-    #[token = "="]
+    #[token("=")]
     OpAssign,
 
-    #[token = "=="]
+    #[token("==")]
     OpEquality,
 
-    #[token = "==="]
+    #[token("===")]
     OpStrictEquality,
 
-    #[token = "=>"]
+    #[token("=>")]
     FatArrow,
 }
 

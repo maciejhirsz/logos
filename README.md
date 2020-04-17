@@ -24,21 +24,24 @@ use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
 enum Token {
-    // Logos requires one token variant to handle errors,
-    // it can be named anything you wish.
-    #[error]
-    Error,
-
     // Tokens can be literal strings, of any length.
-    #[token = "fast"]
+    #[token("fast")]
     Fast,
 
-    #[token = "."]
+    #[token(".")]
     Period,
 
     // Or regular expressions.
-    #[regex = "[a-zA-Z]+"]
+    #[regex("[a-zA-Z]+")]
     Text,
+
+    // Logos requires one token variant to handle errors,
+    // it can be named anything you wish.
+    #[error]
+    // We can also use this variant to define whitespace,
+    // or any other matches we wish to skip.
+    #[regex(r"[ \t\n\f]+", logos::skip)]
+    Error,
 }
 
 fn main() {

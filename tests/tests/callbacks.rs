@@ -94,7 +94,7 @@ mod rust {
         #[error]
         Error,
 
-        #[regex = "[a-zA-Z_][a-zA-Z0-9_]*"]
+        #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
         Ident,
 
         #[regex("r#*\"", parse_raw_string)]
