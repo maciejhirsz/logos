@@ -11,10 +11,10 @@ mod fork;
 mod leaf;
 mod rope;
 mod context;
-mod table;
+mod tables;
 
 use self::context::Context;
-use self::table::TableStack;
+use self::tables::TableStack;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
