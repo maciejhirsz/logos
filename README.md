@@ -4,6 +4,7 @@
 
 ![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
+[![Docs](https://docs.rs/logos/badge.svg)](https://docs.rs/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
 
 _Create ridiculously fast Lexers._
