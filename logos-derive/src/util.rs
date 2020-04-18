@@ -8,19 +8,6 @@ use crate::error::{Error, SpannedError};
 
 type Result<T> = std::result::Result<T, SpannedError>;
 
-pub trait OptionExt<T> {
-    fn insert(&mut self, val: T, f: impl FnOnce(&T));
-}
-
-impl<T> OptionExt<T> for Option<T> {
-    fn insert(&mut self, val: T, f: impl FnOnce(&T)) {
-        match self {
-            Some(t) => f(t),
-            slot => *slot = Some(val),
-        }
-    }
-}
-
 pub struct Definition<V: Value> {
     pub value: V,
     pub callback: Callback,
@@ -77,7 +64,7 @@ impl Value for String {
 
             // TODO: Better errors
             Some(Literal::Bytes(bytes, _)) => {
-                panic!("Expected a string, got a bytes instead: {:02X?}", bytes)
+                panic!("Expected a string, got bytes instead: {:02X?}", bytes)
             }
             None => panic!("Expected a string"),
         }
@@ -86,7 +73,7 @@ impl Value for String {
 
 impl Value for Ident {
     fn value(value: Option<Literal>) -> Self {
-        ident(&String::value(value))
+        String::value(value).to_ident()
     }
 }
 
@@ -113,10 +100,6 @@ impl<V: Value> Value for Definition<V> {
 }
 
 pub fn read_attr(name: &str, attr: &Attribute) -> Result<Option<TokenStream>> {
-    if !attr.path.is_ident(name) {
-        return Ok(None);
-    }
-
     let stream = attr_fields(name, attr.tokens.clone(), attr.span())?;
 
     Ok(Some(stream))
@@ -131,15 +114,26 @@ where
     match tokens.next() {
         Some(tt) if is_punct(&tt, '=') => {
             match tokens.next() {
-                None => return Err(Error::new("Expected value after =").span(tt.span())),
-                Some(next) => Ok(next.into()),
+                None => Err(Error::new("Expected value after =").span(tt.span())),
+                Some(next) => {
+                    let err = format!(
+                        "#[{} = ...] definitions are not supported since v0.11.\n\n\
+
+                        Use instead: #[{}({})]\n",
+                        name,
+                        name,
+                        next,
+                    );
+
+                    Err(Error::new(err).span(span))
+                }
             }
         },
         Some(TokenTree::Group(group)) => {
             Ok(group.stream())
         }
         _ => {
-            let err = format!("Expected #[{} = ...] or #[{}(...)]", name, name);
+            let err = format!("Expected #[{}(...)]", name);
 
             Err(Error::new(err).span(span))
         }
@@ -153,22 +147,42 @@ where
     read_attr(name, attr)?.map(parse_value).transpose()
 }
 
-pub fn value_from_nested<V>(name: &str, nested: TokenStream) -> Result<Option<V>>
-where
-    V: Value,
-{
+pub fn value_from_nested(name: &str, nested: &TokenStream) -> Result<Option<Ident>> {
     let span = nested.span();
-    let mut iter = nested.into_iter();
+    let mut iter = nested.clone().into_iter();
 
     match iter.next() {
         Some(TokenTree::Ident(ident)) if ident == name => (),
         _ => return Ok(None),
     };
 
+    let tt = nested_attr_fields(name, iter, span)?;
 
-    let stream = attr_fields(name, iter, span)?;
+    match tt {
+        TokenTree::Ident(ident) => Ok(Some(ident)),
+        _ => Err(Error::new("Expected identifier").span(tt.span())),
+    }
+}
 
-    parse_value(stream).map(Some)
+fn nested_attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenTree>
+where
+    Tokens: IntoIterator<Item = TokenTree>,
+{
+    let mut tokens = stream.into_iter();
+
+    match tokens.next() {
+        Some(tt) if is_punct(&tt, '=') => {
+            match tokens.next() {
+                None => Err(Error::new("Expected value after =").span(tt.span())),
+                Some(next) => Ok(next)
+            }
+        },
+        _ => {
+            let err = format!("Expected #[logos({} = ...)]", name);
+
+            Err(Error::new(err).span(span))
+        }
+    }
 }
 
 fn is_punct(tt: &TokenTree, expect: char) -> bool {
@@ -258,10 +272,13 @@ fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Spa
     Ok(Callback::Inline(ident, body))
 }
 
-pub fn ident(ident: &str) -> Ident {
-    match syn::parse_str::<Ident>(ident) {
-        Ok(ident) => ident,
-        Err(_) => panic!("Unable to parse {:?} into a Rust identifier.", ident),
+pub trait ToIdent {
+    fn to_ident(&self) -> Ident;
+}
+
+impl ToIdent for str {
+    fn to_ident(&self) -> Ident {
+        Ident::new(self, Span::call_site())
     }
 }
 

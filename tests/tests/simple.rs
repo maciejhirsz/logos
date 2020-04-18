@@ -1,4 +1,4 @@
-use logos::{Extras, Lexer, Logos as _};
+use logos::{Lexer, Logos as _};
 use logos_derive::Logos;
 use tests::assert_lex;
 
@@ -6,19 +6,8 @@ use tests::assert_lex;
 struct MockExtras {
     spaces: usize,
     line_breaks: usize,
-    tokens: usize,
     numbers: usize,
     byte_size: u8,
-}
-
-impl Extras for MockExtras {
-    fn on_advance(&mut self) {
-        self.tokens += 1;
-    }
-
-    fn on_whitespace(&mut self) {
-        self.spaces += 1;
-    }
 }
 
 fn byte_size_2(lexer: &mut Lexer<Token>) {
@@ -30,56 +19,61 @@ fn byte_size_4(lexer: &mut Lexer<Token>) {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[extras = "MockExtras"]
+#[logos(extras = MockExtras)]
 enum Token {
     #[token("\n", |lex| {
         lex.extras.line_breaks += 1;
 
         logos::Skip
     })]
+    #[regex(r"[ \t\f]", |lex| {
+        lex.extras.spaces += 1;
+
+        logos::Skip
+    })]
     #[error]
     Error,
 
-    #[regex = "[a-zA-Z$_][a-zA-Z0-9$_]*"]
+    #[regex("[a-zA-Z$_][a-zA-Z0-9$_]*")]
     Identifier,
 
     #[regex("[1-9][0-9]*|0", |lex| lex.extras.numbers += 1)]
     Number,
 
-    #[regex = "0b[01]+"]
+    #[regex("0b[01]+")]
     Binary,
 
-    #[regex = "0x[0-9a-fA-F]+"]
+    #[regex("0x[0-9a-fA-F]+")]
     Hex,
 
-    #[regex = "(abc)+(def|xyz)?"]
+    #[regex("(abc)+(def|xyz)?")]
     Abc,
 
-    #[token = "priv"]
+    #[token("priv")]
     Priv,
 
-    #[token = "private"]
+    #[token("private")]
     Private,
 
-    #[token = "primitive"]
+    #[token("primitive")]
     Primitive,
 
-    #[token = "protected"]
+    #[token("protected")]
     Protected,
 
-    #[token = "protectee"]
+    #[token("protectee")]
     Protectee,
 
-    #[token = "in"]
+    #[token("in")]
     In,
 
-    #[token = "instanceof"]
+    #[token("instanceof")]
     Instanceof,
 
-    #[regex = "byte|bytes[1-9][0-9]?"]
+    #[regex("byte|bytes[1-9][0-9]?")]
     Byte,
 
-    #[regex = "int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"]
+    #[regex("int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)")]
     Int,
 
     #[token("uint8", |lex| lex.extras.byte_size = 1)]
@@ -87,34 +81,34 @@ enum Token {
     #[token("uint32", byte_size_4)]
     Uint,
 
-    #[token = "."]
+    #[token(".")]
     Accessor,
 
     #[token("...")]
     Ellipsis,
 
-    #[token = "{"]
+    #[token("{")]
     BraceOpen,
 
-    #[token = "}"]
+    #[token("}")]
     BraceClose,
 
-    #[token = "+"]
+    #[token("+")]
     OpAddition,
 
-    #[token = "++"]
+    #[token("++")]
     OpIncrement,
 
-    #[token = "="]
+    #[token("=")]
     OpAssign,
 
-    #[token = "=="]
+    #[token("==")]
     OpEquality,
 
-    #[token = "==="]
+    #[token("===")]
     OpStrictEquality,
 
-    #[token = "=>"]
+    #[token("=>")]
     FatArrow,
 }
 
@@ -342,9 +336,8 @@ fn extras_and_callbacks() {
 
     while lex.next().is_some() {}
 
-    assert_eq!(lex.extras.spaces, 15); // new-lines still count as trivia here
+    assert_eq!(lex.extras.spaces, 13); // new-lines still count as trivia here
     assert_eq!(lex.extras.line_breaks, 2);
-    assert_eq!(lex.extras.tokens, 7); // End counts as a token
 
     assert_eq!(lex.extras.numbers, 2);
 }

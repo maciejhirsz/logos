@@ -3,62 +3,63 @@ use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
+    #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]
     Error,
 
-    #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
+    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
     LiteralString,
 
-    #[regex = "0[xX][0-9a-fA-F]+"]
+    #[regex("0[xX][0-9a-fA-F]+")]
     LiteralHex,
 
-    #[regex = "-?[0-9]+"]
+    #[regex("-?[0-9]+")]
     LiteralInteger,
 
-    #[regex = "[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+"]
+    #[regex("[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+")]
     LiteralFloat,
 
-    #[token = "~"]
+    #[token("~")]
     LiteralNull,
 
-    #[token = "~?"]
+    #[token("~?")]
     Sgwt,
 
-    #[token = "~%"]
+    #[token("~%")]
     Sgcn,
 
-    #[token = "~["]
+    #[token("~[")]
     Sglc,
 
-    #[regex = "~[a-z][a-z]+"]
+    #[regex("~[a-z][a-z]+")]
     LiteralUrbitAddress,
 
-    #[regex = "~[0-9]+-?[\\.0-9a-f]+"]
+    #[regex("~[0-9]+-?[\\.0-9a-f]+")]
     LiteralAbsDate,
 
-    #[regex = "~s[0-9]+(\\.\\.[0-9a-f\\.]+)?"]
-    #[regex = "~[hm][0-9]+"]
+    #[regex("~s[0-9]+(\\.\\.[0-9a-f\\.]+)?")]
+    #[regex("~[hm][0-9]+")]
     LiteralRelDate,
 
-    #[token = "'"]
+    #[token("'")]
     SingleQuote,
 
-    #[token = "'''"]
+    #[token("'''")]
     TripleQuote,
 
-    #[regex = "🦀+"]
+    #[regex("🦀+")]
     Rustaceans,
 
-    #[regex = "[ąęśćżźńół]+"]
+    #[regex("[ąęśćżźńół]+")]
     Polish,
 
-    #[regex = r"[\u0400-\u04FF]+"]
+    #[regex(r"[\u0400-\u04FF]+")]
     Cyrillic,
 
-    #[regex = r"([#@!\\?][#@!\\?][#@!\\?][#@!\\?])+"]
+    #[regex(r"([#@!\\?][#@!\\?][#@!\\?][#@!\\?])+")]
     WhatTheHeck,
 
-    #[regex = "try|type|typeof"]
+    #[regex("try|type|typeof")]
     Keyword,
 }
 

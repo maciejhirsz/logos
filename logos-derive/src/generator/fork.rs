@@ -1,11 +1,12 @@
 use std::cmp::max;
 
-use proc_macro2::{TokenStream, Literal};
+use proc_macro2::TokenStream;
 use quote::quote;
 use fnv::FnvHashMap as Map;
 
 use crate::graph::{NodeId, Fork, Range};
 use crate::generator::{Generator, Context};
+use crate::util::ToIdent;
 
 type Targets = Map<NodeId, Vec<Range>>;
 
@@ -61,29 +62,40 @@ impl<'a> Generator<'a> {
         let (byte, read) = self.fork_read(this, end, &mut ctx);
 
         let mut table: [u8; 256] = [0; 256];
+        let mut jumps = vec!["__".to_ident()];
 
         let branches = targets.into_iter().enumerate().map(|(idx, (id, ranges))| {
             let idx = (idx as u8) + 1;
             let next = self.goto(id, ctx.advance(1));
+            jumps.push(format!("J{}", id).to_ident());
 
             for byte in ranges.into_iter().flatten() {
                 table[byte as usize] = idx;
             }
-            let idx = Literal::u8_unsuffixed(idx);
+            let jump = jumps.last().unwrap();
 
-            quote!(#idx => #next,)
+            quote!(Jump::#jump => #next,)
         }).collect::<TokenStream>();
 
-        let table = table.iter().copied().map(Literal::u8_unsuffixed);
+        let jumps = &jumps;
+        let table = table.iter().copied().map(|idx| &jumps[idx as usize]);
 
         quote! {
-            const LUT: [u8; 256] = [#(#table),*];
+            enum Jump {
+                #(#jumps,)*
+            }
+
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+
+                [#(#table),*]
+            };
 
             #read
 
             match LUT[#byte as usize] {
                 #branches
-                _ => #miss,
+                Jump::__ => #miss,
             }
         }
     }

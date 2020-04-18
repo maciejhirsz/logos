@@ -50,6 +50,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// #[derive(Logos, Debug, PartialEq)]
     /// enum Example {
+    ///     #[regex(r"[ \n\t\f]+", logos::skip)]
     ///     #[error]
     ///     Error,
     ///
@@ -177,7 +178,6 @@ where
     #[inline]
     fn next(&mut self) -> Option<Token> {
         self.token_start = self.token_end;
-        self.extras.on_advance();
 
         Token::lex(self);
 
@@ -209,22 +209,6 @@ where
         ))
     }
 }
-
-/// Helper trait that can be injected into the `Lexer` to handle things that
-/// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
-/// in JavaScript.
-pub trait Extras: Sized + Default {
-    /// Method called by the `Lexer` when a new token is about to be produced.
-    #[inline]
-    fn on_advance(&mut self) {}
-
-    /// Method called by the `Lexer` when a white space byte has been encountered.
-    #[inline]
-    fn on_whitespace(&mut self) {}
-}
-
-/// Default `Extras` with no logic
-impl Extras for () {}
 
 #[doc(hidden)]
 /// # WARNING!
@@ -304,7 +288,6 @@ where
     /// Reset `token_start` to `token_end`.
     #[inline]
     fn trivia(&mut self) {
-        self.extras.on_whitespace();
         self.token_start = self.token_end;
     }
 

@@ -141,7 +141,13 @@ impl<'a> Iterator for ForkIter<'a> {
             .take_while(|next| **next == Some(then))
             .count();
 
-        Some((Range(start as u8, (self.offset - 1) as u8), then))
+        Some((
+            Range {
+                start: start as u8,
+                end: (self.offset - 1) as u8,
+            },
+            then,
+        ))
     }
 }
 
@@ -169,8 +175,8 @@ mod tests {
 
         assert_eq!(
             &[
-                (Range(b'4', b'7'), 1),
-                (Range(b'a', b'd'), 2),
+                (Range { start: b'4', end: b'7' }, 1),
+                (Range { start: b'a', end: b'd' }, 2),
             ],
             &*iter.collect::<Vec<_>>(),
         );

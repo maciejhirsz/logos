@@ -1,8 +1,6 @@
-//! <p align="center">
-//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png?sanitize=true" width="60%" alt="Logos">
-//! </p>
+//! <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 //!
-//! ## Create ridiculously fast Lexers.
+//! # Logos
 //!
 //! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos).
 
@@ -21,11 +19,9 @@ use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
 
-use beef::lean::Cow;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, Attribute, GenericParam};
+use syn::{Ident, Fields, ItemEnum, GenericParam, Attribute};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -35,7 +31,7 @@ enum Mode {
 
 #[proc_macro_derive(
     Logos,
-    attributes(logos, extras, error, end, token, regex, extras, callback)
+    attributes(logos, extras, error, end, token, regex, extras)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
@@ -48,7 +44,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
-    let mut trivia = Some((true, Cow::borrowed(r"[ \t\f]"), Span::call_site()));
 
     let generics = match item.generics.params.len() {
         0 => {
@@ -66,34 +61,42 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    let mut parse_attr = |attr: &Attribute, errors: &mut Vec<_>| -> Result<(), error::SpannedError> {
-        if let Some(ext) = util::value_from_attr("extras", attr)? {
-            if let Some(_) = extras.replace(ext) {
-                errors.push(Error::new("Only one #[extras] attribute can be declared.").span(super_span));
+    let mut parse_attr = |attr: &Attribute| -> Result<(), error::SpannedError> {
+        if attr.path.is_ident("logos") {
+            if let Some(nested) = util::read_attr("logos", attr)? {
+                let span = nested.span();
+
+                if let Some(ext) = util::value_from_nested("extras", &nested)? {
+                    if extras.replace(ext).is_some() {
+                        return Err(Error::new("Extras can be defined only once.").span(span));
+                    }
+                }
+
+                if let Err(_) = util::value_from_nested("trivia", &nested) {
+                    const ERR: &str = "\
+                    trivia are no longer supported.\n\n\
+
+                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+                    return Err(Error::new(ERR).span(span));
+                }
             }
         }
 
-        if let Some(nested) = util::read_attr("logos", attr)? {
-            if let Some(t) = util::value_from_nested::<Option<Literal>>("trivia", nested)? {
-                trivia = match t {
-                    Some(Literal::Utf8(string, span)) => {
-                        Some((true, string.into(), span))
-                    },
-                    Some(Literal::Bytes(bytes, span)) => {
-                        mode = Mode::Binary;
+        if attr.path.is_ident("extras") {
+            const ERR: &str = "\
+            #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n\
 
-                        Some((false, util::bytes_to_regex_string(&bytes).into(), span))
-                    },
-                    None => None,
-                };
-            }
+            For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+            return Err(Error::new(ERR).span(attr.span()));
         }
 
         Ok(())
     };
 
     for attr in &item.attrs {
-        if let Err(err) = parse_attr(attr, &mut errors) {
+        if let Err(err) = parse_attr(attr) {
             errors.push(err);
         }
     }
@@ -146,122 +149,95 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         };
 
-        // Find if there is a callback defined before tackling individual declarations
-        let global_callback = variant.attrs.iter()
-            .find_map(|attr| {
-                match util::value_from_attr::<Ident>("callback", attr) {
-                    Ok(ident) => ident,
-                    Err(err) => {
-                        errors.push(err);
-                        None
-                    }
-                }
-            });
-
         for attr in &variant.attrs {
-            let ident = &attr.path.segments[0].ident;
             let variant = &variant.ident;
 
-            if ident == "error" {
+            let mut with_definition = |definition: Definition<Literal>| {
+                if let Literal::Bytes(..) = definition.value {
+                    mode = Mode::Binary;
+                }
+
+                (
+                    Leaf::token(variant).field(field.clone()).callback(definition.callback),
+                    definition.value,
+                )
+            };
+
+            if attr.path.is_ident("error") {
                 if let Some(previous) = error.replace(variant) {
                     errors.extend(vec![
                         Error::new("Only one #[error] variant can be declared.").span(span),
                         Error::new("Previously declared #[error]:").span(previous.span()),
                     ]);
                 }
-            }
-
-            if ident == "end" {
+            } else if attr.path.is_ident("end") {
                 errors.push(
                     Error::new(
                         "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
 
                         For help with migration see release notes: https://github.com/maciejhirsz/logos/releases"
-                    ).span(attr.span()));
-            }
+                    ).span(attr.span())
+                );
+            } else if attr.path.is_ident("token") {
+                match util::value_from_attr("token", attr) {
+                    Ok(Some(definition)) => {
+                        let (token, value) = with_definition(definition);
 
-            let mut with_definition = |definition: Definition<Literal>| {
-                let callback = definition.callback.or_else(|| global_callback.clone());
-                let token = Leaf::token(variant).field(field.clone()).callback(callback);
+                        let value = value.into_bytes();
+                        let then = graph.push(token.priority(value.len()));
 
-                if let Literal::Bytes(..) = definition.value {
-                    mode = Mode::Binary;
+                        ropes.push(Rope::new(value, then));
+                    },
+                    Err(err) => errors.push(err),
+                    _ => (),
                 }
+            } else if attr.path.is_ident("regex") {
+                match util::value_from_attr("regex", attr) {
+                    Ok(Some(definition)) => {
+                        let (token, value) = with_definition(definition);
 
-                (token, definition.value)
-            };
+                        let then = graph.reserve();
 
-            match util::value_from_attr("token", attr) {
-                Ok(Some(definition)) => {
-                    let (token, value) = with_definition(definition);
+                        let (utf8, regex, span) = match value {
+                            Literal::Utf8(string, span) => (true, string, span),
+                            Literal::Bytes(bytes, span) => {
+                                mode = Mode::Binary;
 
-                    let value = value.into_bytes();
-                    let then = graph.push(token.priority(value.len()));
-
-                    ropes.push(Rope::new(value, then));
-                },
-                Err(err) => errors.push(err),
-                _ => (),
-            }
-
-            match util::value_from_attr("regex", attr) {
-                Ok(Some(definition)) => {
-                    let (token, value) = with_definition(definition);
-
-                    let then = graph.reserve();
-
-                    let (utf8, regex, span) = match value {
-                        Literal::Utf8(string, span) => (true, string, span),
-                        Literal::Bytes(bytes, span) => {
-                            mode = Mode::Binary;
-
-                            (false, util::bytes_to_regex_string(&bytes), span)
-                        }
-                    };
-
-                    match graph.regex(utf8, &regex, then.get()) {
-                        Ok((len, mut id)) => {
-                            let then = graph.insert(then, token.priority(len));
-                            regex_ids.push(id);
-
-                            // Drain recursive miss values.
-                            // We need the root node to have straight branches.
-                            while let Some(miss) = graph[id].miss() {
-                                if miss == then {
-                                    errors.push(
-                                        Error::new("#[regex]: expression can match empty string.\n\n\
-                                                    hint: consider changing * to +").span(span)
-                                    );
-                                    break;
-                                } else {
-                                    regex_ids.push(miss);
-                                    id = miss;
-                                }
+                                (false, util::bytes_to_regex_string(&bytes), span)
                             }
-                        },
-                        Err(err) => errors.push(err.span(span)),
-                    }
-                },
-                Err(err) => errors.push(err),
-                _ => (),
+                        };
+
+                        match graph.regex(utf8, &regex, then.get()) {
+                            Ok((len, mut id)) => {
+                                let then = graph.insert(then, token.priority(len));
+                                regex_ids.push(id);
+
+                                // Drain recursive miss values.
+                                // We need the root node to have straight branches.
+                                while let Some(miss) = graph[id].miss() {
+                                    if miss == then {
+                                        errors.push(
+                                            Error::new("#[regex]: expression can match empty string.\n\n\
+                                                        hint: consider changing * to +").span(span)
+                                        );
+                                        break;
+                                    } else {
+                                        regex_ids.push(miss);
+                                        id = miss;
+                                    }
+                                }
+                            },
+                            Err(err) => errors.push(err.span(span)),
+                        }
+                    },
+                    Err(err) => errors.push(err),
+                    _ => (),
+                }
             }
         }
     }
 
     let mut root = Fork::new();
-
-    if let Some((utf8, regex, span)) = trivia {
-        let then = graph.push(Leaf::Trivia);
-
-        match graph.regex(utf8, &*regex, then) {
-            Ok((_, id)) => {
-                let trivia = graph.fork_off(id);
-
-                root.merge(trivia, &mut graph);
-            },
-            Err(err) => errors.push(err.span(span)),
-        }
-    }
 
     let extras = match extras {
         Some(ext) => quote!(#ext),
@@ -330,7 +306,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
-    let mut generator = Generator::new(name, &this, root, &graph);
+    let generator = Generator::new(name, &this, root, &graph);
 
     let body = generator.generate();
     let tokens = impl_logos(quote! {

@@ -7,14 +7,11 @@ use quote::quote;
 
 use crate::graph::{Node, Disambiguate};
 
-pub enum Leaf {
-    Trivia,
-    Token {
-        ident: Ident,
-        priority: usize,
-        field: Option<Type>,
-        callback: Callback,
-    },
+pub struct Leaf {
+    pub ident: Ident,
+    pub priority: usize,
+    pub field: Option<Type>,
+    pub callback: Callback,
 }
 
 #[derive(Debug)]
@@ -25,16 +22,6 @@ pub enum Callback {
 }
 
 impl Callback {
-    pub fn or_else<F>(self, f: F) -> Callback
-    where
-        F: Fn() -> Option<Ident>,
-    {
-        match self {
-            Callback::None => f().into(),
-            _ => self,
-        }
-    }
-
     pub fn span(&self) -> Option<Span> {
         match self {
             Callback::Label(ident) => Some(ident.span()),
@@ -55,7 +42,7 @@ impl From<Option<Ident>> for Callback {
 
 impl Leaf {
     pub fn token(ident: &Ident) -> Self {
-        Leaf::Token {
+        Leaf {
             ident: ident.clone(),
             priority: 0,
             field: None,
@@ -63,41 +50,25 @@ impl Leaf {
         }
     }
 
-    pub fn callback(mut self, cb: Callback) -> Self {
-        match self {
-            Leaf::Token { ref mut callback, .. } => *callback = cb,
-            Leaf::Trivia => panic!("Oh no :("),
-        }
+    pub fn callback(mut self, callback: Callback) -> Self {
+        self.callback = callback;
         self
     }
 
-    pub fn field(mut self, ty: Option<Type>) -> Self {
-        match self {
-            Leaf::Token { ref mut field, .. } => *field = ty,
-            Leaf::Trivia => panic!("Oh no :("),
-        }
+    pub fn field(mut self, field: Option<Type>) -> Self {
+        self.field = field;
         self
     }
 
-    pub fn priority(mut self, prio: usize) -> Self {
-        match self {
-            Leaf::Token { ref mut priority, .. } => *priority = prio,
-            Leaf::Trivia => panic!("Oh no :("),
-        }
+    pub fn priority(mut self, priority: usize) -> Self {
+        self.priority = priority;
         self
     }
 }
 
 impl Disambiguate for Leaf {
     fn cmp(left: &Leaf, right: &Leaf) -> Ordering {
-        match (left, right) {
-            (Leaf::Token { priority: left, .. }, Leaf::Token { priority: right, .. }) => {
-                Ord::cmp(left, right)
-            },
-            (Leaf::Token { .. }, Leaf::Trivia) => Ordering::Greater,
-            (Leaf::Trivia, Leaf::Token { .. }) => Ordering::Less,
-            (Leaf::Trivia, Leaf::Trivia) => Ordering::Equal,
-        }
+        Ord::cmp(&left.priority, &right.priority)
     }
 }
 
@@ -109,19 +80,12 @@ impl From<Leaf> for Node<Leaf> {
 
 impl Debug for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Leaf::Trivia => f.write_str("<trivia>"),
-            Leaf::Token { ident, callback, .. } => {
-                write!(f, "::{}", ident)?;
+        write!(f, "::{}", self.ident)?;
 
-                match callback {
-                    Callback::Label(ref label) => write!(f, " ({})", label)?,
-                    Callback::Inline(..) => f.write_str(" (<inline>)")?,
-                    _ => (),
-                }
-
-                Ok(())
-            }
+        match self.callback {
+            Callback::Label(ref label) => write!(f, " ({})", label),
+            Callback::Inline(..) => f.write_str(" (<inline>)"),
+            Callback::None => Ok(()),
         }
     }
 }

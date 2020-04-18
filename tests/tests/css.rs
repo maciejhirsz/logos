@@ -2,28 +2,29 @@ use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
+    #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]
     Error,
 
-    #[regex = "em|ex|ch|rem|vw|vh|vmin|vmax"]
+    #[regex("em|ex|ch|rem|vw|vh|vmin|vmax")]
     RelativeLength,
 
-    #[regex = "cm|mm|Q|in|pc|pt|px"]
+    #[regex("cm|mm|Q|in|pc|pt|px")]
     AbsoluteLength,
 
-    #[regex = "[+-]?[0-9]*[.]?[0-9]+(?:[eE][+-]?[0-9]+)?"]
+    #[regex("[+-]?[0-9]*[.]?[0-9]+(?:[eE][+-]?[0-9]+)?")]
     Number,
 
-    #[regex = "[-a-zA-Z_][a-zA-Z0-9_-]*"]
+    #[regex("[-a-zA-Z_][a-zA-Z0-9_-]*")]
     Ident,
 
-    #[token = "{"]
+    #[token("{")]
     CurlyBracketOpen,
 
-    #[token = "}"]
+    #[token("}")]
     CurlyBracketClose,
 
-    #[token = ":"]
+    #[token(":")]
     Colon,
 }
 

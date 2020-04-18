@@ -59,7 +59,7 @@ mod debug {
 
     impl Debug for Range {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let Range(start, end) = *self;
+            let Range { start, end } = *self;
 
             if start != end || !is_ascii(start) {
                 f.write_str("[")?;
@@ -178,13 +178,19 @@ mod debug {
 
     impl From<RangeInclusive<u8>> for Range {
         fn from(range: RangeInclusive<u8>) -> Range {
-            Range(*range.start(), *range.end())
+            Range {
+                start: *range.start(),
+                end: *range.end(),
+            }
         }
     }
 
     impl From<RangeInclusive<char>> for Range {
         fn from(range: RangeInclusive<char>) -> Range {
-            Range(*range.start() as u8, *range.end() as u8)
+            Range {
+                start: *range.start() as u8,
+                end: *range.end() as u8,
+            }
         }
     }
 

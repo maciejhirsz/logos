@@ -3,16 +3,17 @@ use tests::assert_lex;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
+    #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]
     Error,
 
-    #[regex = r"[a-zA-Z]+"]
+    #[regex(r"[a-zA-Z]+")]
     Ascii,
 
-    #[regex = r"\p{Greek}+"]
+    #[regex(r"\p{Greek}+")]
     Greek,
 
-    #[regex = r"\p{Cyrillic}+"]
+    #[regex(r"\p{Cyrillic}+")]
     Cyrillic,
 }
 

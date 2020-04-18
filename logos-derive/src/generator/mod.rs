@@ -5,13 +5,16 @@ use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 
 use crate::graph::{Graph, Node, NodeId, Range, Meta};
 use crate::leaf::Leaf;
+use crate::util::ToIdent;
 
 mod fork;
 mod leaf;
 mod rope;
 mod context;
+mod table;
 
 use self::context::Context;
+use self::table::TableStack;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
@@ -36,6 +39,8 @@ pub struct Generator<'a> {
     /// Identifiers for helper functions matching a byte to a given
     /// set of ranges
     tests: Map<Vec<Range>, Ident>,
+    /// Related to above, table stack manages tables that need to be
+    tables: TableStack,
 }
 
 impl<'a> Generator<'a> {
@@ -59,14 +64,20 @@ impl<'a> Generator<'a> {
             idents: Map::default(),
             gotos: Map::default(),
             tests: Map::default(),
+            tables: TableStack::new(),
         }
     }
 
-    pub fn generate(&mut self) -> &TokenStream {
+    pub fn generate(mut self) -> TokenStream {
         let root = self.goto(self.root, Context::default()).clone();
+        let rendered = &self.rendered;
+        let tables = &self.tables;
 
-        self.rendered.append_all(root);
-        &self.rendered
+        quote! {
+            #tables
+            #rendered
+            #root
+        }
     }
 
     fn generate_fn(&mut self, id: NodeId, ctx: Context) {
@@ -137,7 +148,7 @@ impl<'a> Generator<'a> {
 
             ctx.write_suffix(&mut ident);
 
-            Ident::new(&ident, Span::call_site())
+            ident.to_ident()
         })
     }
 
@@ -147,7 +158,10 @@ impl<'a> Generator<'a> {
     fn generate_test(&mut self, ranges: Vec<Range>) -> &Ident {
         if !self.tests.contains_key(&ranges) {
             let idx = self.tests.len();
-            let ident = Ident::new(&format!("pattern{}", idx), Span::call_site());
+            let ident = format!("pattern{}", idx).to_ident();
+
+            let lo = ranges.first().unwrap().start;
+            let hi = ranges.last().unwrap().end;
 
             let body = match ranges.len() {
                 0..=2 => {
@@ -158,23 +172,48 @@ impl<'a> Generator<'a> {
                         }
                     }
                 },
-                _ => {
-                    let mut table = [false; 256];
+                _ if hi - lo < 64 => {
+                    let mut offset = hi.saturating_sub(63);
+
+                    while offset.count_ones() > 1 && lo - offset > 0 {
+                        offset += 1;
+                    }
+
+                    let mut table = 0u64;
 
                     for byte in ranges.iter().flat_map(|range| *range) {
-                        table[byte as usize] = true;
+                        if byte - offset >= 64 {
+                            panic!("{:#?} {} {} {}", ranges, hi, lo, offset);
+                        }
+                        table |= 1 << (byte - offset);
                     }
-                    let ltrue = quote!(TT);
-                    let lfalse = quote!(__);
-                    let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
+
+                    let search = match offset {
+                        0 => quote!(byte),
+                        _ => quote!(byte.wrapping_sub(#offset)),
+                    };
 
                     quote! {
-                        const #ltrue: bool = true;
-                        const #lfalse: bool = false;
+                        const LUT: u64 = #table;
 
-                        static LUT: [bool; 256] = [#( #table ),*];
+                        match 1u64.checked_shl(#search as u32) {
+                            Some(shift) => LUT & shift != 0,
+                            None => false,
+                        }
+                    }
+                },
+                _ => {
+                    let mut view = self.tables.view();
 
-                        LUT[byte as usize]
+                    for byte in ranges.iter().flat_map(|range| *range) {
+                        view.flag(byte);
+                    }
+
+                    let mask = view.mask();
+                    let lut = view.ident();
+
+                    quote! {
+                        #lut[byte as usize] & #mask > 0
                     }
                 }
             };
@@ -215,7 +254,7 @@ fn byte_to_tokens(byte: u8) -> TokenStream {
 
 impl ToTokens for Range {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Range(start, end) = self;
+        let Range { start, end } = self;
 
         tokens.append_all(byte_to_tokens(*start));
 

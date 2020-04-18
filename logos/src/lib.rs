@@ -1,17 +1,21 @@
-//! <p align="center">
-//!      <img src="https://raw.github.com/maciejhirsz/logos/master/logos.png" width="60%" alt="Logos">
-//! </p>
+//! <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 //!
-//! ## Create ridiculously fast Lexers.
+//! # Logos
 //!
-//! **Logos** works by:
+//! _Create ridiculously fast Lexers._
 //!
-//! + Resolving all logical branching of token definitions into a state machine.
-//! + Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
-//! + Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
+//! **Logos** has two goals:
 //!
-//! In practice it means that for most grammars the lexing performance is virtually unaffected by the number
-//! of tokens defined in the grammar. Or, in other words, **it is really fast**.
+//! + To make it easy to create a Lexer, so you can focus on more complex problems.
+//! + To make the generated Lexer faster than anything you'd write by hand.
+//!
+//! To achieve those, **Logos**:
+//!
+//! + Combines all token definitions into a single [deterministic state machine](https://en.wikipedia.org/wiki/Deterministic_finite_automaton).
+//! + Optimizes branches into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) or [jump tables](https://en.wikipedia.org/wiki/Branch_table).
+//! + Prevents [backtracking](https://en.wikipedia.org/wiki/ReDoS) inside token definitions.
+//! + [Unwinds loops](https://en.wikipedia.org/wiki/Loop_unrolling), and batches reads to minimize bounds checking.
+//! + Does all of that heavy lifting at compile time.
 //!
 //! ## Example
 //!
@@ -20,21 +24,24 @@
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
-//!     // Logos requires one token variant to handle errors,
-//!     // it can be named anything you wish.
-//!     #[error]
-//!     Error,
-//!
 //!     // Tokens can be literal strings, of any length.
-//!     #[token = "fast"]
+//!     #[token("fast")]
 //!     Fast,
 //!
-//!     #[token = "."]
+//!     #[token(".")]
 //!     Period,
 //!
 //!     // Or regular expressions.
-//!     #[regex = "[a-zA-Z]+"]
+//!     #[regex("[a-zA-Z]+")]
 //!     Text,
+//!
+//!     // Logos requires one token variant to handle errors,
+//!     // it can be named anything you wish.
+//!     #[error]
+//!     // We can also use this variant to define whitespace,
+//!     // or any other matches we wish to skip.
+//!     #[regex(r"[ \t\n\f]+", logos::skip)]
+//!     Error,
 //! }
 //!
 //! fn main() {
@@ -53,8 +60,8 @@
 //!     assert_eq!(lex.slice(), "fast");
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
-//!     assert_eq!(lex.span(), 25..31);
 //!     assert_eq!(lex.slice(), "Lexers");
+//!     assert_eq!(lex.span(), 25..31);
 //!
 //!     assert_eq!(lex.next(), Some(Token::Period));
 //!     assert_eq!(lex.span(), 31..32);
@@ -70,7 +77,7 @@
 //! which can be used to put data into a variant:
 //!
 //! ```rust
-//! use logos::{Logos, Lexer, Extras};
+//! use logos::{Logos, Lexer};
 //!
 //! // Note: callbacks can return `Option` or `Result`
 //! fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
@@ -87,6 +94,7 @@
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
+//!     #[regex(r"[ \t\n\f]+", logos::skip)]
 //!     #[error]
 //!     Error,
 //!
@@ -168,16 +176,15 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use crate::lexer::{Extras, Lexer, Span, SpannedIter};
+pub use crate::lexer::{Lexer, Span, SpannedIter};
 pub use crate::source::Source;
 
 /// Trait implemented for an enum representing all tokens. You should never have
 /// to implement it manually, use the `#[derive(Logos)]` attribute on your enum.
 pub trait Logos<'source>: Sized {
-    /// Associated type `Extras` for the particular lexer. Those can handle things that
-    /// aren't necessarily tokens, such as comments or Automatic Semicolon Insertion
-    /// in JavaScript.
-    type Extras: Extras;
+    /// Associated type `Extras` for the particular lexer. This can be set using
+    /// `#[logos(extras = MyExtras)]` and accessed inside callbacks.
+    type Extras: Default;
 
     /// Source type this token can be lexed from. This will default to `str`,
     /// unless one of the defined patterns explicitly uses non-unicode byte values
@@ -217,7 +224,7 @@ pub trait Logos<'source>: Sized {
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace.
 ///     // This is identical to using `logos::skip`.
-///     #[token("abc", |_| Skip)]
+///     #[regex(" |abc", |_| Skip)]
 ///     #[error]
 ///     Error,
 ///
@@ -247,6 +254,7 @@ pub struct Skip;
 ///
 /// #[derive(Logos, Debug, PartialEq)]
 /// enum Token {
+///     #[regex(r"[ \n\f\t]+", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
@@ -293,7 +301,7 @@ pub enum Filter<T> {
 /// #[derive(Logos, Debug, PartialEq)]
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace
-///     #[token("abc", logos::skip)]
+///     #[regex(" |abc", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
@@ -330,16 +338,17 @@ pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Sk
 ///
 /// #[derive(Logos, Clone, Copy, Debug, PartialEq)]
 /// enum Token {
+///     #[regex(r"[ \n\t\f]+", logos::skip)]
 ///     #[error]
 ///     Error,
 ///
-///     #[token = "Immanetize"]
+///     #[token("Immanetize")]
 ///     Immanetize,
 ///
-///     #[token = "the"]
+///     #[token("the")]
 ///     The,
 ///
-///     #[token = "Eschaton"]
+///     #[token("Eschaton")]
 ///     Eschaton,
 /// }
 ///

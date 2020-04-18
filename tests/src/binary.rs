@@ -7,7 +7,7 @@
 //!     #[error]
 //!     Error,
 //!
-//!     #[token = b"\xFF"]
+//!     #[token(b"\xFF")]
 //!     NonUtf8,
 //! }
 //!
@@ -26,7 +26,7 @@
 //!     #[error]
 //!     Error,
 //!
-//!     #[regex = b"\xFF"]
+//!     #[regex(b"\xFF")]
 //!     NonUtf8,
 //! }
 //!
@@ -40,24 +40,23 @@ pub use super::assert_lex;
 use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(trivia())]
 enum Token {
     #[error]
     Error,
 
-    #[token = "foo"]
+    #[token("foo")]
     Foo,
 
-    #[regex = b"\x42+"]
+    #[regex(b"\x42+")]
     Life,
 
-    #[regex = b"[\xA0-\xAF]+"]
+    #[regex(b"[\xA0-\xAF]+")]
     Aaaaaaa,
 
-    #[token = b"\xCA\xFE\xBE\xEF"]
+    #[token(b"\xCA\xFE\xBE\xEF")]
     CafeBeef,
 
-    #[token = b"\x00"]
+    #[token(b"\x00")]
     Zero,
 }
 

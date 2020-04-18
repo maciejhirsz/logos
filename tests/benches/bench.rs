@@ -6,64 +6,65 @@ use test::{black_box, Bencher};
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {
+    #[regex(r"[ \n\t\f]", logos::skip)]
     #[error]
     InvalidToken,
 
-    #[regex = "[a-zA-Z_$][a-zA-Z0-9_$]*"]
+    #[regex("[a-zA-Z_$][a-zA-Z0-9_$]*")]
     Identifier,
 
-    #[regex = r#""([^"\\]|\\t|\\u|\\n|\\")*""#]
+    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
     String,
 
-    #[token = "private"]
+    #[token("private")]
     Private,
 
-    #[token = "primitive"]
+    #[token("primitive")]
     Primitive,
 
-    #[token = "protected"]
+    #[token("protected")]
     Protected,
 
-    #[token = "in"]
+    #[token("in")]
     In,
 
-    #[token = "instanceof"]
+    #[token("instanceof")]
     Instanceof,
 
-    #[token = "."]
+    #[token(".")]
     Accessor,
 
-    #[token = "..."]
+    #[token("...")]
     Ellipsis,
 
-    #[token = "("]
+    #[token("(")]
     ParenOpen,
 
-    #[token = ")"]
+    #[token(")")]
     ParenClose,
 
-    #[token = "{"]
+    #[token("{")]
     BraceOpen,
 
-    #[token = "}"]
+    #[token("}")]
     BraceClose,
 
-    #[token = "+"]
+    #[token("+")]
     OpAddition,
 
-    #[token = "++"]
+    #[token("++")]
     OpIncrement,
 
-    #[token = "="]
+    #[token("=")]
     OpAssign,
 
-    #[token = "=="]
+    #[token("==")]
     OpEquality,
 
-    #[token = "==="]
+    #[token("===")]
     OpStrictEquality,
 
-    #[token = "=>"]
+    #[token("=>")]
     FatArrow,
 }
 

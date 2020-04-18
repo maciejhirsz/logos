@@ -1,21 +1,25 @@
-<p align="center">
-    <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.png" width="60%" alt="Logos">
-</p>
+<img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 
-## Create ridiculously fast Lexers.
+# Logos
 
 ![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
 
-**Logos** works by:
+_Create ridiculously fast Lexers._
 
-+ Resolving all logical branching of token definitions into a state machine.
-+ Optimizing complex patterns into [Lookup Tables](https://en.wikipedia.org/wiki/Lookup_table).
-+ Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
+**Logos** has two goals:
 
-In practice it means that for most grammars the lexing performance is virtually unaffected by the number
-of tokens defined in the grammar. Or, in other words, **it is really fast**.
++ To make it easy to create a Lexer, so you can focus on more complex problems.
++ To make the generated Lexer faster than anything you'd write by hand.
+
+To achieve those, **Logos**:
+
++ Combines all token definitions into a single [deterministic state machine](https://en.wikipedia.org/wiki/Deterministic_finite_automaton).
++ Optimizes branches into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) or [jump tables](https://en.wikipedia.org/wiki/Branch_table).
++ Prevents [backtracking](https://en.wikipedia.org/wiki/ReDoS) inside token definitions.
++ [Unwinds loops](https://en.wikipedia.org/wiki/Loop_unrolling), and batches reads to minimize bounds checking.
++ Does all of that heavy lifting at compile time.
 
 ## Example
 
@@ -24,21 +28,24 @@ use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
 enum Token {
-    // Logos requires one token variant to handle errors,
-    // it can be named anything you wish.
-    #[error]
-    Error,
-
     // Tokens can be literal strings, of any length.
-    #[token = "fast"]
+    #[token("fast")]
     Fast,
 
-    #[token = "."]
+    #[token(".")]
     Period,
 
     // Or regular expressions.
-    #[regex = "[a-zA-Z]+"]
+    #[regex("[a-zA-Z]+")]
     Text,
+
+    // Logos requires one token variant to handle errors,
+    // it can be named anything you wish.
+    #[error]
+    // We can also use this variant to define whitespace,
+    // or any other matches we wish to skip.
+    #[regex(r"[ \t\n\f]+", logos::skip)]
+    Error,
 }
 
 fn main() {
@@ -161,10 +168,14 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 Ridiculously fast!
 
 ```
-test identifiers                       ... bench:         660 ns/iter (+/- 54) = 1180 MB/s
-test keywords_operators_and_punctators ... bench:       2,033 ns/iter (+/- 69) = 1048 MB/s
-test strings                           ... bench:         557 ns/iter (+/- 28) = 1563 MB/s
+test identifiers                       ... bench:         647 ns/iter (+/- 27) = 1204 MB/s
+test keywords_operators_and_punctators ... bench:       2,054 ns/iter (+/- 78) = 1037 MB/s
+test strings                           ... bench:         553 ns/iter (+/- 34) = 1575 MB/s
 ```
+
+## Acknowledgements
+
++ [Pedrors](https://pedrors.pt/) for the **Logos** logo.
 
 ## License
 
