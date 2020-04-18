@@ -1,4 +1,4 @@
-use proc_macro2::{TokenStream, Span};
+use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
 use fnv::{FnvHashMap as Map, FnvHashSet as Set};
