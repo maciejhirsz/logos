@@ -6,7 +6,7 @@ use fnv::FnvHashMap as Map;
 
 use crate::graph::{NodeId, Fork, Range};
 use crate::generator::{Generator, Context};
-use crate::util::ident;
+use crate::util::ToIdent;
 
 type Targets = Map<NodeId, Vec<Range>>;
 
@@ -62,12 +62,12 @@ impl<'a> Generator<'a> {
         let (byte, read) = self.fork_read(this, end, &mut ctx);
 
         let mut table: [u8; 256] = [0; 256];
-        let mut jumps = vec![ident("__")];
+        let mut jumps = vec!["__".to_ident()];
 
         let branches = targets.into_iter().enumerate().map(|(idx, (id, ranges))| {
             let idx = (idx as u8) + 1;
             let next = self.goto(id, ctx.advance(1));
-            jumps.push(ident(&format!("GoTo{}", id)));
+            jumps.push(format!("J{}", id).to_ident());
 
             for byte in ranges.into_iter().flatten() {
                 table[byte as usize] = idx;

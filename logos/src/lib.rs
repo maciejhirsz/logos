@@ -2,16 +2,20 @@
 //!
 //! # Logos
 //!
-//! High performance lexer generator.
+//! _Create ridiculously fast Lexers._
 //!
-//! **Logos** works by:
+//! **Logos** has two goals:
 //!
-//! + Resolving all logical branching of token definitions into a state machine.
-//! + Optimizing complex patterns into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) and [jump tables](https://en.wikipedia.org/wiki/Branch_table).
-//! + Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
+//! + To make it easy to create a Lexer, so you can focus on more complex problems.
+//! + To make the generated Lexer faster than anything you'd write by hand.
 //!
-//! In practice it means that for most grammars the lexing performance is virtually unaffected by the number
-//! of tokens defined in the grammar. Or, in other words, **it is really fast**.
+//! To achieve those, **Logos**:
+//!
+//! + Combines all token definitions into a single [deterministic state machine](https://en.wikipedia.org/wiki/Deterministic_finite_automaton).
+//! + Optimizes branches into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) or [jump tables](https://en.wikipedia.org/wiki/Branch_table).
+//! + Prevents [backtracking](https://en.wikipedia.org/wiki/ReDoS) inside token definitions.
+//! + [Unwinds loops](https://en.wikipedia.org/wiki/Loop_unrolling), and batches reads to minimize bounds checking.
+//! + Does all of that heavy lifting at compile time.
 //!
 //! ## Example
 //!

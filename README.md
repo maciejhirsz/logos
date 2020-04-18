@@ -6,16 +6,20 @@
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
 
-High performance lexer generator.
+_Create ridiculously fast Lexers._
 
-**Logos** works by:
+**Logos** has two goals:
 
-+ Resolving all logical branching of token definitions into a state machine.
-+ Optimizing complex patterns into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) and [jump tables](https://en.wikipedia.org/wiki/Branch_table).
-+ Avoiding backtracking, unwinding loops, and batching reads to minimize bounds checking.
++ To make it easy to create a Lexer, so you can focus on more complex problems.
++ To make the generated Lexer faster than anything you'd write by hand.
 
-In practice it means that for most grammars the lexing performance is virtually unaffected by the number
-of tokens defined in the grammar. Or, in other words, **it is really fast**.
+To achieve those, **Logos**:
+
++ Combines all token definitions into a single [deterministic state machine](https://en.wikipedia.org/wiki/Deterministic_finite_automaton).
++ Optimizes branches into [lookup tables](https://en.wikipedia.org/wiki/Lookup_table) or [jump tables](https://en.wikipedia.org/wiki/Branch_table).
++ Prevents [backtracking](https://en.wikipedia.org/wiki/ReDoS) inside token definitions.
++ [Unwinds loops](https://en.wikipedia.org/wiki/Loop_unrolling), and batches reads to minimize bounds checking.
++ Does all of that heavy lifting at compile time.
 
 ## Example
 
@@ -164,9 +168,9 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 Ridiculously fast!
 
 ```
-test identifiers                       ... bench:         660 ns/iter (+/- 54) = 1180 MB/s
-test keywords_operators_and_punctators ... bench:       2,033 ns/iter (+/- 69) = 1048 MB/s
-test strings                           ... bench:         557 ns/iter (+/- 28) = 1563 MB/s
+test identifiers                       ... bench:         647 ns/iter (+/- 27) = 1204 MB/s
+test keywords_operators_and_punctators ... bench:       2,054 ns/iter (+/- 78) = 1037 MB/s
+test strings                           ... bench:         553 ns/iter (+/- 34) = 1575 MB/s
 ```
 
 ## Acknowledgements

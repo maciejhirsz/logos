@@ -64,7 +64,7 @@ impl Value for String {
 
             // TODO: Better errors
             Some(Literal::Bytes(bytes, _)) => {
-                panic!("Expected a string, got a bytes instead: {:02X?}", bytes)
+                panic!("Expected a string, got bytes instead: {:02X?}", bytes)
             }
             None => panic!("Expected a string"),
         }
@@ -73,7 +73,7 @@ impl Value for String {
 
 impl Value for Ident {
     fn value(value: Option<Literal>) -> Self {
-        ident(&String::value(value))
+        String::value(value).to_ident()
     }
 }
 
@@ -272,8 +272,14 @@ fn parse_inline_callback(tokens: &mut impl Iterator<Item = TokenTree>, span: Spa
     Ok(Callback::Inline(ident, body))
 }
 
-pub fn ident(ident: &str) -> Ident {
-    Ident::new(ident, Span::call_site())
+pub trait ToIdent {
+    fn to_ident(&self) -> Ident;
+}
+
+impl ToIdent for str {
+    fn to_ident(&self) -> Ident {
+        Ident::new(self, Span::call_site())
+    }
 }
 
 pub fn unpack_int(expr: &Expr) -> Option<usize> {

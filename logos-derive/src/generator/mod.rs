@@ -5,13 +5,16 @@ use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 
 use crate::graph::{Graph, Node, NodeId, Range, Meta};
 use crate::leaf::Leaf;
+use crate::util::ToIdent;
 
 mod fork;
 mod leaf;
 mod rope;
 mod context;
+mod table;
 
 use self::context::Context;
+use self::table::TableStack;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
@@ -36,6 +39,8 @@ pub struct Generator<'a> {
     /// Identifiers for helper functions matching a byte to a given
     /// set of ranges
     tests: Map<Vec<Range>, Ident>,
+    /// Related to above, table stack manages tables that need to be
+    tables: TableStack,
 }
 
 impl<'a> Generator<'a> {
@@ -59,14 +64,20 @@ impl<'a> Generator<'a> {
             idents: Map::default(),
             gotos: Map::default(),
             tests: Map::default(),
+            tables: TableStack::new(),
         }
     }
 
-    pub fn generate(&mut self) -> &TokenStream {
+    pub fn generate(mut self) -> TokenStream {
         let root = self.goto(self.root, Context::default()).clone();
+        let rendered = &self.rendered;
+        let tables = &self.tables;
 
-        self.rendered.append_all(root);
-        &self.rendered
+        quote! {
+            #tables
+            #rendered
+            #root
+        }
     }
 
     fn generate_fn(&mut self, id: NodeId, ctx: Context) {
@@ -137,7 +148,7 @@ impl<'a> Generator<'a> {
 
             ctx.write_suffix(&mut ident);
 
-            Ident::new(&ident, Span::call_site())
+            ident.to_ident()
         })
     }
 
@@ -147,7 +158,7 @@ impl<'a> Generator<'a> {
     fn generate_test(&mut self, ranges: Vec<Range>) -> &Ident {
         if !self.tests.contains_key(&ranges) {
             let idx = self.tests.len();
-            let ident = Ident::new(&format!("pattern{}", idx), Span::call_site());
+            let ident = format!("pattern{}", idx).to_ident();
 
             let lo = ranges.first().unwrap().start;
             let hi = ranges.last().unwrap().end;
@@ -192,22 +203,17 @@ impl<'a> Generator<'a> {
                     }
                 },
                 _ => {
-                    let mut table = [false; 256];
+                    let mut view = self.tables.view();
 
                     for byte in ranges.iter().flat_map(|range| *range) {
-                        table[byte as usize] = true;
+                        view.flag(byte);
                     }
-                    let ltrue = quote!(TT);
-                    let lfalse = quote!(__);
-                    let table = table.iter().map(|x| if *x { &ltrue } else { &lfalse });
+
+                    let mask = view.mask();
+                    let lut = view.ident();
 
                     quote! {
-                        const #ltrue: bool = true;
-                        const #lfalse: bool = false;
-
-                        static LUT: [bool; 256] = [#( #table ),*];
-
-                        LUT[byte as usize]
+                        #lut[byte as usize] & #mask > 0
                     }
                 }
             };
