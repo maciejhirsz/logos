@@ -100,9 +100,17 @@ impl<V: Value> Value for Definition<V> {
 }
 
 pub fn read_attr(name: &str, attr: &Attribute) -> Result<TokenStream> {
-    let stream = attr_fields(name, attr.tokens.clone(), attr.span())?;
+    let mut tokens = attr.tokens.clone().into_iter();
 
-    Ok(stream)
+    match tokens.next() {
+        Some(TokenTree::Group(group)) => Ok(group.stream()),
+        _ => {
+            let err = format!("Expected #[{}(...)]", name);
+            let span = attr.span();
+
+            Err(Error::new(err).span(span))
+        }
+    }
 }
 
 fn attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenStream>
