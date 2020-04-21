@@ -99,10 +99,10 @@ impl<V: Value> Value for Definition<V> {
     }
 }
 
-pub fn read_attr(name: &str, attr: &Attribute) -> Result<Option<TokenStream>> {
+pub fn read_attr(name: &str, attr: &Attribute) -> Result<TokenStream> {
     let stream = attr_fields(name, attr.tokens.clone(), attr.span())?;
 
-    Ok(Some(stream))
+    Ok(stream)
 }
 
 fn attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenStream>
@@ -140,11 +140,13 @@ where
     }
 }
 
-pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Result<Option<V>>
+pub fn value_from_attr<V>(name: &str, attr: &Attribute) -> Result<V>
 where
     V: Value,
 {
-    read_attr(name, attr)?.map(parse_value).transpose()
+    let stream = attr_fields(name, attr.tokens.clone(), attr.span())?;
+
+    parse_value(stream)
 }
 
 pub fn value_from_nested(name: &str, nested: &TokenStream) -> Result<Option<Ident>> {

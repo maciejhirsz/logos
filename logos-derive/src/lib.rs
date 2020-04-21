@@ -67,24 +67,31 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let generics = type_params.generics(&mut errors);
 
     let mut parse_attr = |attr: &Attribute| -> Result<(), error::SpannedError> {
+        let nested = util::read_attr("logos", attr)?;
+        let span = nested.span();
+
+        if let Some(ext) = util::value_from_nested("extras", &nested)? {
+            if extras.replace(ext).is_some() {
+                return Err(Error::new("Extras can be defined only once.").span(span));
+            }
+        }
+
+        if let Err(_) = util::value_from_nested("trivia", &nested) {
+            const ERR: &str = "\
+            trivia are no longer supported.\n\n\
+
+            For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
+
+            return Err(Error::new(ERR).span(span));
+        }
+
+        Ok(())
+    };
+
+    for attr in &item.attrs {
         if attr.path.is_ident("logos") {
-            if let Some(nested) = util::read_attr("logos", attr)? {
-                let span = nested.span();
-
-                if let Some(ext) = util::value_from_nested("extras", &nested)? {
-                    if extras.replace(ext).is_some() {
-                        return Err(Error::new("Extras can be defined only once.").span(span));
-                    }
-                }
-
-                if let Err(_) = util::value_from_nested("trivia", &nested) {
-                    const ERR: &str = "\
-                    trivia are no longer supported.\n\n\
-
-                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
-
-                    return Err(Error::new(ERR).span(span));
-                }
+            if let Err(err) = parse_attr(attr) {
+                errors.push(err);
             }
         }
 
@@ -94,15 +101,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
 
-            return Err(Error::new(ERR).span(attr.span()));
-        }
-
-        Ok(())
-    };
-
-    for attr in &item.attrs {
-        if let Err(err) = parse_attr(attr) {
-            errors.push(err);
+            errors.push(Error::new(ERR).span(attr.span()));
         }
     }
 
@@ -185,7 +184,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 );
             } else if attr.path.is_ident("token") {
                 match util::value_from_attr("token", attr) {
-                    Ok(Some(definition)) => {
+                    Ok(definition) => {
                         let (token, value) = with_definition(definition);
 
                         let value = value.into_bytes();
@@ -194,11 +193,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         ropes.push(Rope::new(value, then));
                     },
                     Err(err) => errors.push(err),
-                    _ => (),
                 }
             } else if attr.path.is_ident("regex") {
                 match util::value_from_attr("regex", attr) {
-                    Ok(Some(definition)) => {
+                    Ok(definition) => {
                         let (token, value) = with_definition(definition);
 
                         let then = graph.reserve();
@@ -236,7 +234,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         }
                     },
                     Err(err) => errors.push(err),
-                    _ => (),
                 }
             }
         }
