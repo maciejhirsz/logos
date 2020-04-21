@@ -12,12 +12,14 @@ mod error;
 mod graph;
 mod util;
 mod leaf;
+mod type_params;
 
 use error::Error;
 use generator::Generator;
 use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
+use type_params::TypeParams;
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -44,22 +46,25 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut error = None;
     let mut mode = Mode::Utf8;
     let mut errors = Vec::new();
+    let mut type_params = TypeParams::default();
 
-    let generics = match item.generics.params.len() {
-        0 => {
-            None
-        },
-        1 if matches!(item.generics.params.first(), Some(GenericParam::Lifetime(..))) => {
-            Some(quote!(<'s>))
-        },
-        _ => {
-            let span = item.generics.span();
+    for param in item.generics.params {
+        match param {
+            GenericParam::Lifetime(lt) => {
+                type_params.explicit_lifetime(lt, &mut errors);
+            },
+            GenericParam::Type(ty) => {
+                type_params.add_param(ty.ident);
+            },
+            GenericParam::Const(_) => {
+                let span = param.span();
 
-            errors.push(Error::new("Logos currently supports permits a single lifetime generic.").span(span));
-
-            None
+                errors.push(Error::new("Logos doesn't support const generics.").span(span));
+            }
         }
-    };
+    }
+
+    let generics = type_params.generics(&mut errors);
 
     let mut parse_attr = |attr: &Attribute| -> Result<(), error::SpannedError> {
         if attr.path.is_ident("logos") {
@@ -312,7 +317,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let tokens = impl_logos(quote! {
         use ::logos::internal::{LexerInternal, CallbackResult};
 
-        type Lexer<'s> = ::logos::Lexer<'s, #name #generics>;
+        type Lexer<'s> = ::logos::Lexer<'s, #this>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()

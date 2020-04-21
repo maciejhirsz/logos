@@ -331,3 +331,22 @@ mod colors {
         );
     }
 }
+
+mod type_params {
+    use logos::Logos;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token<S> {
+        #[error]
+        Error,
+
+        #[regex("[0-9A-F][0-9A-F]a?")]
+        Ident(S),
+    }
+
+    #[test]
+    fn maybe_at_the_end() {
+        let mut lexer = Token::lexer("foo");
+        assert_eq!(lexer.next().unwrap(), Token::Ident("foo"));
+    }
+}
