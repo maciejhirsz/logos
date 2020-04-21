@@ -285,3 +285,49 @@ mod maybe {
         assert_eq!(lexer.next().unwrap(), Token::Tok);
     }
 }
+
+mod colors {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token {
+        #[error]
+        Error,
+        #[token(" ")]
+        Whitespace,
+        #[regex("red")]
+        Red,
+        #[regex("green")]
+        Green,
+        #[regex("blue")]
+        Blue,
+        #[regex("[a-zA-Z0-9_$]+")]
+        NoHighlight,
+    }
+
+    #[test]
+    fn match_colors() {
+        assert_lex(
+            "red fred redf green fgreen greenf blue bluef fblue",
+            &[
+                (Token::Red, "red", 0..3),
+                (Token::Whitespace, " ", 3..4),
+                (Token::NoHighlight, "fred", 4..8),
+                (Token::Whitespace, " ", 8..9),
+                (Token::NoHighlight, "redf", 9..13),
+                (Token::Whitespace, " ", 13..14),
+                (Token::Green, "green", 14..19),
+                (Token::Whitespace, " ", 19..20),
+                (Token::NoHighlight, "fgreen", 20..26),
+                (Token::Whitespace, " ", 26..27),
+                (Token::NoHighlight, "greenf", 27..33),
+                (Token::Whitespace, " ", 33..34),
+                (Token::Blue, "blue", 34..38),
+                (Token::Whitespace, " ", 38..39),
+                (Token::NoHighlight, "bluef", 39..44),
+                (Token::Whitespace, " ", 44..45),
+                (Token::NoHighlight, "fblue", 45..50),
+            ],
+        );
+    }
+}
