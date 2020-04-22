@@ -4,7 +4,7 @@ use syn::{Lit, Attribute, GenericParam, Type, spanned::Spanned};
 use quote::quote;
 
 use crate::error::Errors;
-use crate::parsers::{AttributeParser, Nested, NestedValue};
+use crate::attr_parser::{AttributeParser, Nested, NestedValue};
 use crate::type_params::{TypeParams, replace_lifetimes};
 use crate::leaf::Callback;
 use crate::util::{is_punct, Definition, Literal};

@@ -13,7 +13,7 @@ mod graph;
 mod util;
 mod leaf;
 mod parser;
-mod parsers;
+mod attr_parser;
 mod type_params;
 
 use error::Error;
