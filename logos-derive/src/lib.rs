@@ -122,48 +122,57 @@ pub fn logos(input: TokenStream) -> TokenStream {
         for attr in &variant.attrs {
             let variant = &variant.ident;
 
-            let mut with_definition = |definition: Definition<Literal>| {
-                if let Literal::Bytes(..) = definition.value {
+            let mut with_definition = |definition: Definition| {
+                if let Literal::Bytes(..) = definition.literal {
                     mode = Mode::Binary;
                 }
 
                 (
-                    Leaf::token(variant).field(field.clone()).callback(definition.callback),
-                    definition.value,
+                    Leaf::token(variant)
+                        .field(field.clone())
+                        .callback(definition.callback),
+                    definition.literal,
                 )
             };
 
-            if attr.path.is_ident("error") {
-                if let Some(previous) = error.replace(variant) {
-                    parser
-                        .err("Only one #[error] variant can be declared.", span)
-                        .err("Previously declared #[error]:", previous.span());
-                }
-            } else if attr.path.is_ident("end") {
-                parser.err(
-                    "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
+            let attr_name = match attr.path.get_ident() {
+                Some(ident) => ident.to_string(),
+                None => continue,
+            };
 
-                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases",
-                    attr.span(),
-                );
-            } else if attr.path.is_ident("token") {
-                match util::value_from_attr("token", attr) {
-                    Ok(definition) => {
+            match attr_name.as_str() {
+                "error" => {
+                    if let Some(previous) = error.replace(variant) {
+                        parser
+                            .err("Only one #[error] variant can be declared.", span)
+                            .err("Previously declared #[error]:", previous.span());
+                    }
+                },
+                "end" => {
+                    // TODO: Remove in future versions
+                    parser.err(
+                        "\
+                        Since 0.11 Logos no longer requires the #[end] variant.\n\n\
+
+                        For help with migration see release notes: \
+                        https://github.com/maciejhirsz/logos/releases\
+                        ",
+                        attr.span(),
+                    );
+                },
+                "token" => {
+                    if let Some(definition) = parser.parse_definition("token", attr) {
                         let (token, value) = with_definition(definition);
 
                         let value = value.into_bytes();
                         let then = graph.push(token.priority(value.len()));
 
                         ropes.push(Rope::new(value, then));
-                    },
-                    Err(err) => parser.errors.push(err),
-                }
-            } else if attr.path.is_ident("regex") {
-                match util::value_from_attr("regex", attr) {
-                    Ok(definition) => {
+                    }
+                },
+                "regex" => {
+                    if let Some(definition) = parser.parse_definition("regex", attr) {
                         let (token, value) = with_definition(definition);
-
-                        let then = graph.reserve();
 
                         let (utf8, regex, span) = match value {
                             Literal::Utf8(string, span) => (true, string, span),
@@ -174,32 +183,20 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             }
                         };
 
-                        match graph.regex(utf8, &regex, then.get()) {
-                            Ok((len, mut id)) => {
-                                let then = graph.insert(then, token.priority(len));
-                                regex_ids.push(id);
+                        let then = graph.reserve();
 
-                                // Drain recursive miss values.
-                                // We need the root node to have straight branches.
-                                while let Some(miss) = graph[id].miss() {
-                                    if miss == then {
-                                        parser.err(
-                                            "#[regex]: expression can match empty string.\n\n\
-                                             hint: consider changing * to +",
-                                            span,
-                                        );
-                                        break;
-                                    } else {
-                                        regex_ids.push(miss);
-                                        id = miss;
-                                    }
-                                }
+                        match graph.regex(utf8, &regex, then.get()) {
+                            Ok((len, id)) => {
+                                graph.insert(then, token.priority(len));
+                                regex_ids.push(id);
                             },
-                            Err(err) => parser.errors.push(err.span(span)),
+                            Err(err) => {
+                                parser.err(err, span);
+                            },
                         }
-                    },
-                    Err(err) => parser.errors.push(err),
-                }
+                    }
+                },
+                _ => (),
             }
         }
     }

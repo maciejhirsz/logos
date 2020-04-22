@@ -1,11 +1,10 @@
 use proc_macro2::token_stream::IntoIter as TokenIter;
 use proc_macro2::{Ident, TokenTree, TokenStream};
+use quote::quote;
 
 use crate::util::is_punct;
 
 pub enum NestedValue {
-    /// `name`
-    None,
     /// `name = ...`
     Assign(TokenStream),
     /// `name(...)`
@@ -16,7 +15,7 @@ pub enum NestedValue {
 
 pub enum Nested {
     /// Unnamed nested attribute, such as a string,
-    /// callback closure, or a lone path
+    /// callback closure, or a lone ident/path
     ///
     /// Note: a lone ident will be Named with no value instead
     Unnamed(TokenStream),
@@ -45,6 +44,19 @@ impl AttributeParser {
         }
     }
 
+    pub fn parsed<T>(&mut self) -> Option<syn::Result<T>>
+    where
+        T: syn::parse::Parse,
+    {
+        let tokens = self.collect_tail(TokenStream::new());
+
+        if tokens.is_empty() {
+            return None;
+        }
+
+        Some(syn::parse2(tokens))
+    }
+
     fn next_tt(&mut self) -> Option<TokenTree> {
         match self.inner.next() {
             Some(tt) if is_punct(&tt, ',') => None,
@@ -70,7 +82,7 @@ impl AttributeParser {
 
         out.extend(self.collect_tail(next));
 
-        Nested::Unnamed(out)
+        Nested::Unnamed(out.into_iter().collect())
     }
 
     fn parse_assign(&mut self, name: Ident) -> Nested {
@@ -80,13 +92,7 @@ impl AttributeParser {
     }
 
     fn parse_group(&mut self, name: Ident, group: TokenStream) -> Nested {
-        let error = self.collect_tail(Empty);
-
-        if error.is_empty() {
-            Nested::Named(name, NestedValue::Group(group))
-        } else {
-            Nested::Unexpected(error.into())
-        }
+        Nested::Named(name, NestedValue::Group(group))
     }
 
     fn parse_keyword(&mut self, keyword: Ident, name: Ident) -> Nested {
@@ -121,7 +127,7 @@ impl Iterator for AttributeParser {
             tt => {
                 let stream = self.collect_tail(tt);
 
-                return Some(Nested::Unnamed(stream));
+                return Some(Nested::Unnamed(stream.into_iter().collect()));
             }
         };
 
@@ -130,7 +136,7 @@ impl Iterator for AttributeParser {
             Some(TokenTree::Group(group)) => Some(self.parse_group(name, group.stream())),
             Some(TokenTree::Ident(next)) => Some(self.parse_keyword(name, next)),
             Some(next) => Some(self.parse_unnamed(name, next)),
-            None => Some(Nested::Named(name, NestedValue::None)),
+            None => Some(Nested::Unnamed(quote!(#name))),
         }
     }
 }

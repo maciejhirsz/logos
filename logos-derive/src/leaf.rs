@@ -1,8 +1,8 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
-use syn::{Ident, Type, spanned::Spanned};
-use proc_macro2::{TokenStream, Span};
+use syn::{Ident, Type};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::graph::{Node, Disambiguate};
@@ -19,16 +19,6 @@ pub enum Callback {
     None,
     Label(TokenStream),
     Inline(Ident, TokenStream),
-}
-
-impl Callback {
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            Callback::Label(ident) => Some(ident.span()),
-            Callback::Inline(arg, ..) => Some(arg.span()),
-            _ => None,
-        }
-    }
 }
 
 impl From<Option<Ident>> for Callback {
