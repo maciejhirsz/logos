@@ -1,10 +1,54 @@
 use std::fmt;
 
 use beef::lean::Cow;
+use quote::quote;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub struct Errors {
+    collected: Vec<SpannedError>,
+}
+
+impl Default for Errors {
+    fn default() -> Self {
+        Errors {
+            collected: Vec::new(),
+        }
+    }
+}
+
+impl Errors {
+    pub fn push(&mut self, err: SpannedError) {
+        self.collected.push(err);
+    }
+
+    pub fn err<M>(&mut self, message: M, span: Span) -> &mut Self
+    where
+        M: Into<Cow<'static, str>>,
+    {
+        self.collected.push(SpannedError {
+            message: message.into(),
+            span,
+        });
+
+        self
+    }
+
+    pub fn render(self) -> Option<TokenStream> {
+        let errors = self.collected;
+
+        match errors.len() {
+            0 => None,
+            _ => Some(quote! {
+                fn _logos_derive_compile_errors() {
+                    #(#errors)*
+                }
+            })
+        }
+    }
+}
 
 pub struct Error(Cow<'static, str>);
 

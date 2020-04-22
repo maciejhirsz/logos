@@ -331,3 +331,38 @@ mod colors {
         );
     }
 }
+
+mod type_params {
+    use logos::Logos;
+
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(
+        type S = &str,
+        type N = u64,
+    )]
+    enum Token<S, N> {
+        #[regex(r"[ \n\t\f]+", logos::skip)]
+        #[error]
+        Error,
+
+        #[regex("[a-z]+")]
+        Ident(S),
+
+        #[regex("[0-9]+", |lex| lex.slice().parse())]
+        Number(N)
+    }
+
+    #[test]
+    fn maybe_at_the_end() {
+        let tokens: Vec<_> = Token::lexer("foo 42 bar").collect();
+
+        assert_eq!(
+            tokens,
+            &[
+                Token::Ident("foo"),
+                Token::Number(42u64),
+                Token::Ident("bar"),
+            ]
+        );
+    }
+}

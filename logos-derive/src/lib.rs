@@ -12,16 +12,20 @@ mod error;
 mod graph;
 mod util;
 mod leaf;
+mod parser;
+mod parsers;
+mod type_params;
 
 use error::Error;
 use generator::Generator;
 use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
+use parser::Parser;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Ident, Fields, ItemEnum, GenericParam, Attribute};
+use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -40,64 +44,28 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let size = item.variants.len();
     let name = &item.ident;
 
-    let mut extras: Option<Ident> = None;
     let mut error = None;
     let mut mode = Mode::Utf8;
-    let mut errors = Vec::new();
+    let mut parser = Parser::default();
 
-    let generics = match item.generics.params.len() {
-        0 => {
-            None
-        },
-        1 if matches!(item.generics.params.first(), Some(GenericParam::Lifetime(..))) => {
-            Some(quote!(<'s>))
-        },
-        _ => {
-            let span = item.generics.span();
-
-            errors.push(Error::new("Logos currently supports permits a single lifetime generic.").span(span));
-
-            None
-        }
-    };
-
-    let mut parse_attr = |attr: &Attribute| -> Result<(), error::SpannedError> {
-        if attr.path.is_ident("logos") {
-            if let Some(nested) = util::read_attr("logos", attr)? {
-                let span = nested.span();
-
-                if let Some(ext) = util::value_from_nested("extras", &nested)? {
-                    if extras.replace(ext).is_some() {
-                        return Err(Error::new("Extras can be defined only once.").span(span));
-                    }
-                }
-
-                if let Err(_) = util::value_from_nested("trivia", &nested) {
-                    const ERR: &str = "\
-                    trivia are no longer supported.\n\n\
-
-                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
-
-                    return Err(Error::new(ERR).span(span));
-                }
-            }
-        }
-
-        if attr.path.is_ident("extras") {
-            const ERR: &str = "\
-            #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n\
-
-            For help with migration see release notes: https://github.com/maciejhirsz/logos/releases";
-
-            return Err(Error::new(ERR).span(attr.span()));
-        }
-
-        Ok(())
-    };
+    for param in item.generics.params {
+        parser.parse_generic(param);
+    }
 
     for attr in &item.attrs {
-        if let Err(err) = parse_attr(attr) {
-            errors.push(err);
+        parser.try_parse_logos(attr);
+
+        // TODO: Remove in future versions
+        if attr.path.is_ident("extras") {
+            parser.err(
+                "\
+                #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n\
+
+                For help with migration see release notes: \
+                https://github.com/maciejhirsz/logos/releases\
+                ",
+                attr.span(),
+            );
         }
     }
 
@@ -116,7 +84,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let value = util::unpack_int(value).unwrap_or(usize::max_value());
 
             if value >= size {
-                errors.push(Error::new(
+                parser.errors.push(Error::new(
                     format!(
                         "Discriminant value for `{}` is invalid. Expected integer in range 0..={}.",
                         variant.ident,
@@ -130,20 +98,22 @@ pub fn logos(input: TokenStream) -> TokenStream {
             Fields::Unit => None,
             Fields::Unnamed(ref fields) => {
                 if fields.unnamed.len() != 1 {
-                    errors.push(Error::new(
+                    parser.err(
                         format!(
                             "Logos currently only supports variants with one field, found {}",
                             fields.unnamed.len(),
-                        )
-                    ).span(fields.span()))
+                        ),
+                        fields.span()
+                    );
                 }
 
-                let field = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
+                let ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
+                let ty = parser.get_type(ty);
 
-                Some(field)
+                Some(ty)
             }
             Fields::Named(_) => {
-                errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
+                parser.errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
 
                 None
             }
@@ -165,22 +135,20 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             if attr.path.is_ident("error") {
                 if let Some(previous) = error.replace(variant) {
-                    errors.extend(vec![
-                        Error::new("Only one #[error] variant can be declared.").span(span),
-                        Error::new("Previously declared #[error]:").span(previous.span()),
-                    ]);
+                    parser
+                        .err("Only one #[error] variant can be declared.", span)
+                        .err("Previously declared #[error]:", previous.span());
                 }
             } else if attr.path.is_ident("end") {
-                errors.push(
-                    Error::new(
-                        "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
+                parser.err(
+                    "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
 
-                        For help with migration see release notes: https://github.com/maciejhirsz/logos/releases"
-                    ).span(attr.span())
+                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases",
+                    attr.span(),
                 );
             } else if attr.path.is_ident("token") {
                 match util::value_from_attr("token", attr) {
-                    Ok(Some(definition)) => {
+                    Ok(definition) => {
                         let (token, value) = with_definition(definition);
 
                         let value = value.into_bytes();
@@ -188,12 +156,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                         ropes.push(Rope::new(value, then));
                     },
-                    Err(err) => errors.push(err),
-                    _ => (),
+                    Err(err) => parser.errors.push(err),
                 }
             } else if attr.path.is_ident("regex") {
                 match util::value_from_attr("regex", attr) {
-                    Ok(Some(definition)) => {
+                    Ok(definition) => {
                         let (token, value) = with_definition(definition);
 
                         let then = graph.reserve();
@@ -216,9 +183,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                                 // We need the root node to have straight branches.
                                 while let Some(miss) = graph[id].miss() {
                                     if miss == then {
-                                        errors.push(
-                                            Error::new("#[regex]: expression can match empty string.\n\n\
-                                                        hint: consider changing * to +").span(span)
+                                        parser.err(
+                                            "#[regex]: expression can match empty string.\n\n\
+                                             hint: consider changing * to +",
+                                            span,
                                         );
                                         break;
                                     } else {
@@ -227,11 +195,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                                     }
                                 }
                             },
-                            Err(err) => errors.push(err.span(span)),
+                            Err(err) => parser.errors.push(err.span(span)),
                         }
                     },
-                    Err(err) => errors.push(err),
-                    _ => (),
+                    Err(err) => parser.errors.push(err),
                 }
             }
         }
@@ -239,10 +206,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
-    let extras = match extras {
-        Some(ext) => quote!(#ext),
-        None => quote!(()),
-    };
+    let extras = parser.extras();
     let source = match mode {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
@@ -251,11 +215,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let error_def = match error {
         Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
         None => {
-            errors.push(Error::new("missing #[error] token variant.").span(super_span));
+            parser.err("missing #[error] token variant.", super_span);
             None
         },
     };
 
+    let generics = parser.generics();
     let this = quote!(#name #generics);
 
     let impl_logos = |body| {
@@ -276,12 +241,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    if errors.len() > 0 {
-        return impl_logos(quote! {
-            fn _logos_derive_compile_errors() {
-                #(#errors)*
-            }
-        }).into()
+    if let Some(errors) = parser.errors.render() {
+        return impl_logos(errors).into();
     }
 
     for id in regex_ids {
@@ -312,7 +273,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let tokens = impl_logos(quote! {
         use ::logos::internal::{LexerInternal, CallbackResult};
 
-        type Lexer<'s> = ::logos::Lexer<'s, #name #generics>;
+        type Lexer<'s> = ::logos::Lexer<'s, #this>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()

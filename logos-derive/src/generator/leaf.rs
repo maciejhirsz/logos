@@ -1,5 +1,4 @@
-use proc_macro2::{TokenStream, Span};
-use syn::{Lifetime, Type};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::leaf::{Leaf, Callback};
@@ -14,11 +13,7 @@ impl<'a> Generator<'a> {
         let this = self.this;
 
         let (ty, constructor) = match leaf.field.clone() {
-            Some(mut ty) => {
-                replace_lifetimes(&mut ty);
-
-                (quote!(#ty), quote!(#name::#ident))
-            },
+            Some(ty) => (quote!(#ty), quote!(#name::#ident)),
             None => (quote!(()), quote!(|()| #name::#ident)),
         };
 
@@ -47,50 +42,5 @@ impl<'a> Generator<'a> {
                 lex.set(token);
             },
         }
-    }
-}
-
-fn replace_lifetimes(ty: &mut Type) {
-    use syn::{PathArguments, GenericArgument};
-    use syn::spanned::Spanned;
-
-    match ty {
-        Type::Array(array) => replace_lifetimes(&mut array.elem),
-        Type::Group(group) => replace_lifetimes(&mut group.elem),
-        Type::Paren(paren) => replace_lifetimes(&mut paren.elem),
-        Type::Path(p) => {
-            p.path.segments
-                .iter_mut()
-                .filter_map(|segment| match &mut segment.arguments {
-                    PathArguments::AngleBracketed(ab) => Some(ab),
-                    _ => None,
-                })
-                .flat_map(|ab| ab.args.iter_mut())
-                .for_each(|arg| {
-                    match arg {
-                        GenericArgument::Lifetime(lt) => {
-                            *lt = Lifetime::new("'s", lt.span());
-                        },
-                        GenericArgument::Type(ty) => {
-                            replace_lifetimes(ty);
-                        },
-                        GenericArgument::Binding(bind) => {
-                            replace_lifetimes(&mut bind.ty);
-                        },
-                        _ => (),
-                    }
-                });
-        },
-        Type::Reference(r) => {
-            let span = match r.lifetime.take() {
-                Some(lt) => lt.span(),
-                None => Span::call_site(),
-            };
-
-            r.lifetime = Some(Lifetime::new("'s", span));
-        },
-        Type::Slice(slice) => replace_lifetimes(&mut slice.elem),
-        Type::Tuple(tuple) => tuple.elems.iter_mut().for_each(replace_lifetimes),
-        _ => (),
     }
 }
