@@ -11,13 +11,15 @@ pub struct Errors {
     collected: Vec<SpannedError>,
 }
 
-impl Errors {
-    pub fn new() -> Self {
+impl Default for Errors {
+    fn default() -> Self {
         Errors {
             collected: Vec::new(),
         }
     }
+}
 
+impl Errors {
     pub fn push(&mut self, err: SpannedError) {
         self.collected.push(err);
     }

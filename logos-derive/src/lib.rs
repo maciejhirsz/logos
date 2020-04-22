@@ -22,11 +22,10 @@ use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
 use util::{Literal, Definition};
 use parser::Parser;
-use type_params::TypeParams;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Fields, ItemEnum, GenericParam};
+use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
 
 enum Mode {
@@ -47,26 +46,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut error = None;
     let mut mode = Mode::Utf8;
-    let mut parser = Parser::new();
-    let mut type_params = TypeParams::default();
+    let mut parser = Parser::default();
 
     for param in item.generics.params {
-        match param {
-            GenericParam::Lifetime(lt) => {
-                type_params.explicit_lifetime(lt, &mut parser.errors);
-            },
-            GenericParam::Type(ty) => {
-                type_params.add_param(ty.ident);
-            },
-            GenericParam::Const(_) => {
-                let span = param.span();
-
-                parser.err("Logos doesn't support const generics.", span);
-            }
-        }
+        parser.parse_generic(param);
     }
-
-    let generics = type_params.generics(&mut parser.errors);
 
     for attr in &item.attrs {
         parser.try_parse_logos(attr);
@@ -114,17 +98,19 @@ pub fn logos(input: TokenStream) -> TokenStream {
             Fields::Unit => None,
             Fields::Unnamed(ref fields) => {
                 if fields.unnamed.len() != 1 {
-                    parser.errors.push(Error::new(
+                    parser.err(
                         format!(
                             "Logos currently only supports variants with one field, found {}",
                             fields.unnamed.len(),
-                        )
-                    ).span(fields.span()))
+                        ),
+                        fields.span()
+                    );
                 }
 
-                let field = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
+                let ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
+                let ty = parser.get_type(ty);
 
-                Some(field)
+                Some(ty)
             }
             Fields::Named(_) => {
                 parser.errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
@@ -234,6 +220,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         },
     };
 
+    let generics = parser.generics();
     let this = quote!(#name #generics);
 
     let impl_logos = |body| {
