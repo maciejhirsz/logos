@@ -3,7 +3,7 @@ use syn::LifetimeDef;
 use syn::spanned::Spanned;
 use quote::quote;
 
-use crate::error::{Error, SpannedError};
+use crate::error::Errors;
 
 #[derive(Default)]
 pub struct TypeParams {
@@ -12,11 +12,11 @@ pub struct TypeParams {
 }
 
 impl TypeParams {
-    pub fn explicit_lifetime(&mut self, lt: LifetimeDef, errors: &mut Vec<SpannedError>) {
+    pub fn explicit_lifetime(&mut self, lt: LifetimeDef, errors: &mut Errors) {
         if self.lifetime {
             let span = lt.span();
 
-            errors.push(Error::new("Logos types can only have one lifetime can be set").span(span));
+            errors.err("Logos types can only have one lifetime can be set", span);
         }
 
         self.lifetime = true;
@@ -26,19 +26,21 @@ impl TypeParams {
         self.type_params.push(param);
     }
 
-    pub fn generics(&self, errors: &mut Vec<SpannedError>) -> Option<TokenStream> {
+    pub fn generics(&self, errors: &mut Errors) -> Option<TokenStream> {
         if !self.lifetime && self.type_params.is_empty() {
             return None;
         }
 
         for ty in self.type_params.iter() {
-            let err = format!(
-                "Generic type parameter without a concrete type\n\n\
+            errors.err(
+                format!(
+                    "Generic type parameter without a concrete type\n\n\
 
-                Define a concrete type Logos can use: #[logos(for {} = Type)]",
-                ty
+                    Define a concrete type Logos can use: #[logos(type {} = Type)]",
+                    ty,
+                ),
+                ty.span(),
             );
-            errors.push(Error::new(err).span(ty.span()));
         }
 
         if self.lifetime {

@@ -4,7 +4,7 @@ use syn::{Attribute, Expr, Ident, Lit};
 use syn::spanned::Spanned;
 
 use crate::leaf::Callback;
-use crate::error::{Error, SpannedError};
+use crate::error::{Error, SpannedError, Errors};
 
 type Result<T> = std::result::Result<T, SpannedError>;
 
@@ -99,16 +99,15 @@ impl<V: Value> Value for Definition<V> {
     }
 }
 
-pub fn read_attr(name: &str, attr: &Attribute) -> Result<TokenStream> {
+pub fn read_attr(name: &str, attr: &Attribute, errors: &mut Errors) -> TokenStream {
     let mut tokens = attr.tokens.clone().into_iter();
 
     match tokens.next() {
-        Some(TokenTree::Group(group)) => Ok(group.stream()),
+        Some(TokenTree::Group(group)) => group.stream(),
         _ => {
-            let err = format!("Expected #[{}(...)]", name);
-            let span = attr.span();
+            errors.err(format!("Expected #[{}(...)]", name), attr.span());
 
-            Err(Error::new(err).span(span))
+            TokenStream::new()
         }
     }
 }
@@ -157,45 +156,7 @@ where
     parse_value(stream)
 }
 
-pub fn value_from_nested(name: &str, nested: &TokenStream) -> Result<Option<Ident>> {
-    let span = nested.span();
-    let mut iter = nested.clone().into_iter();
-
-    match iter.next() {
-        Some(TokenTree::Ident(ident)) if ident == name => (),
-        _ => return Ok(None),
-    };
-
-    let tt = nested_attr_fields(name, iter, span)?;
-
-    match tt {
-        TokenTree::Ident(ident) => Ok(Some(ident)),
-        _ => Err(Error::new("Expected identifier").span(tt.span())),
-    }
-}
-
-fn nested_attr_fields<Tokens>(name: &str, stream: Tokens, span: Span) -> Result<TokenTree>
-where
-    Tokens: IntoIterator<Item = TokenTree>,
-{
-    let mut tokens = stream.into_iter();
-
-    match tokens.next() {
-        Some(tt) if is_punct(&tt, '=') => {
-            match tokens.next() {
-                None => Err(Error::new("Expected value after =").span(tt.span())),
-                Some(next) => Ok(next)
-            }
-        },
-        _ => {
-            let err = format!("Expected #[logos({} = ...)]", name);
-
-            Err(Error::new(err).span(span))
-        }
-    }
-}
-
-fn is_punct(tt: &TokenTree, expect: char) -> bool {
+pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
     match tt {
         TokenTree::Punct(punct) if punct.as_char() == expect && punct.spacing() == Spacing::Alone => true,
         _ => false,

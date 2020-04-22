@@ -336,7 +336,7 @@ mod type_params {
     use logos::Logos;
 
     #[derive(Logos, Debug, PartialEq)]
-    #[logos(for S = &str)]
+    #[logos(type S = &str)]
     enum Token<S> {
         #[error]
         Error,
