@@ -14,7 +14,7 @@ impl<'a> Generator<'a> {
         let this = self.this;
         let ty = &leaf.field;
 
-        let constructor = match leaf.field.clone() {
+        let constructor = match leaf.field {
             MaybeVoid::Some(_) => quote!(#name::#ident),
             MaybeVoid::Void => quote!(|()| #name::#ident),
         };

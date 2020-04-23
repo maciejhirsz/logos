@@ -5,10 +5,14 @@ use syn::spanned::Spanned;
 use quote::quote;
 
 use crate::error::Errors;
-use crate::attr_parser::{AttributeParser, Nested, NestedValue};
-use crate::type_params::{TypeParams, replace_lifetimes};
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, bytes_to_regex_string, MaybeVoid};
+
+mod nested;
+mod type_params;
+
+use self::nested::{AttributeParser, Nested, NestedValue};
+use self::type_params::{TypeParams, replace_lifetimes};
 
 #[derive(Default)]
 pub struct Parser {
@@ -145,8 +149,8 @@ impl Parser {
         self.types.generics(&mut self.errors)
     }
 
-    fn parse_attr(&mut self, attr: &Attribute) -> Option<AttributeParser> {
-        let mut tokens = attr.tokens.clone().into_iter();
+    fn parse_attr(&mut self, attr: &mut Attribute) -> Option<AttributeParser> {
+        let mut tokens = std::mem::replace(&mut attr.tokens, TokenStream::new()).into_iter();
 
         match tokens.next() {
             Some(TokenTree::Group(group)) => {
@@ -158,7 +162,7 @@ impl Parser {
 
     /// Try to parse the main `#[logos(...)]`, does nothing if
     /// the attribute's name isn't `logos`.
-    pub fn try_parse_logos(&mut self, attr: &Attribute) {
+    pub fn try_parse_logos(&mut self, attr: &mut Attribute) {
         if !attr.path.is_ident("logos") {
             return;
         }
@@ -174,14 +178,10 @@ impl Parser {
         for nested in nested {
             let (name, value) = match nested {
                 Nested::Named(name, value) => (name, value),
-                Nested::Unexpected(unexpected) => {
-                    self.err("Unexpected tokens in attribute", unexpected.span());
+                Nested::Unexpected(tokens) | Nested::Unnamed(tokens) => {
+                    self.err("Invalid nested attribute", tokens.span());
                     continue;
-                },
-                Nested::Unnamed(unnamed) => {
-                    self.err("Expected a named nested attribute", unnamed.span());
-                    continue;
-                },
+                }
             };
 
             match (name.to_string().as_str(), value) {
@@ -228,7 +228,7 @@ impl Parser {
     ///
     /// + `#[token(literal[, callback])]`
     /// + `#[regex(literal[, callback])]`
-    pub fn parse_definition(&mut self, attr: &Attribute) -> Option<Definition> {
+    pub fn parse_definition(&mut self, attr: &mut Attribute) -> Option<Definition> {
         let mut nested = self.parse_attr(attr)?;
 
         let literal = match nested.parsed::<Lit>()? {

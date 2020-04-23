@@ -13,8 +13,6 @@ mod graph;
 mod util;
 mod leaf;
 mod parser;
-mod attr_parser;
-mod type_params;
 
 use error::Error;
 use generator::Generator;
@@ -24,6 +22,7 @@ use parser::{Parser, Mode};
 use util::MaybeVoid;
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
@@ -33,8 +32,7 @@ use syn::spanned::Spanned;
     attributes(logos, extras, error, end, token, regex)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
-    let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
-    let super_span = item.span();
+    let mut item: ItemEnum = syn::parse(input).expect("Logos can be only be derived for enums");
 
     let size = item.variants.len();
     let name = &item.ident;
@@ -46,7 +44,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         parser.parse_generic(param);
     }
 
-    for attr in &item.attrs {
+    for attr in &mut item.attrs {
         parser.try_parse_logos(attr);
 
         // TODO: Remove in future versions
@@ -68,7 +66,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut regex_ids = Vec::new();
     let mut graph = Graph::new();
 
-    for variant in &item.variants {
+    for variant in &mut item.variants {
         variants.push(&variant.ident);
 
         let span = variant.span();
@@ -88,9 +86,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
             }
         }
 
-        let field = match &variant.fields {
+        let field = match &mut variant.fields {
             Fields::Unit => MaybeVoid::Void,
-            Fields::Unnamed(ref fields) => {
+            Fields::Unnamed(fields) => {
                 if fields.unnamed.len() != 1 {
                     parser.err(
                         format!(
@@ -101,8 +99,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     );
                 }
 
-                let mut ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
-                let ty = parser.get_type(&mut ty);
+                let ty = &mut fields.unnamed.first_mut().expect("Already checked len; qed").ty;
+                let ty = parser.get_type(ty);
 
                 MaybeVoid::Some(ty)
             }
@@ -114,7 +112,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         };
         let leaf = Leaf::new(&variant.ident).field(field);
 
-        for attr in &variant.attrs {
+        for attr in &mut variant.attrs {
             let attr_name = match attr.path.get_ident() {
                 Some(ident) => ident.to_string(),
                 None => continue,
@@ -203,7 +201,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let error_def = match error {
         Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
         None => {
-            parser.err("missing #[error] token variant.", super_span);
+            parser.err("missing #[error] token variant.", Span::call_site());
             None
         },
     };
