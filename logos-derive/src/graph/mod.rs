@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap as Map;
 use std::collections::btree_map::Entry;
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use std::hash::{Hash, Hasher};
 
 use fnv::FnvHasher;
@@ -285,6 +285,10 @@ impl<Leaf> Graph<Leaf> {
     pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
         self.nodes.get(id)?.as_ref()
     }
+
+    pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<Leaf>> {
+        self.nodes.get_mut(id)?.as_mut()
+    }
 }
 
 impl<Leaf> Index<NodeId> for Graph<Leaf> {
@@ -292,6 +296,12 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
 
     fn index(&self, id: NodeId) -> &Node<Leaf> {
         self.get(id).expect("Indexing into an empty node")
+    }
+}
+
+impl<Leaf> IndexMut<NodeId> for Graph<Leaf> {
+    fn index_mut(&mut self, id: NodeId) -> &mut Node<Leaf> {
+        self.get_mut(id).expect("Indexing into an empty node")
     }
 }
 

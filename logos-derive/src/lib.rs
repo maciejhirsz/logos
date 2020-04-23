@@ -13,6 +13,7 @@ mod graph;
 mod util;
 mod leaf;
 mod parser;
+mod mir;
 
 use error::Error;
 use generator::Generator;
@@ -167,25 +168,20 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             continue;
                         },
                     };
-
-                    let utf8 = definition.literal.is_utf8();
-                    let regex = definition.literal.to_regex_string();
-                    let leaf_id = graph.reserve();
-
-                    let (computed_prio, id) = match graph.regex(utf8, &regex, leaf_id.get()) {
-                        Ok(ok) => ok,
+                    let mir = match definition.literal.to_mir() {
+                        Ok(mir) => mir,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
                             continue;
-                        }
+                        },
                     };
-
-                    graph.insert(
-                        leaf_id,
+                    let then = graph.push(
                         leaf()
-                            .priority(definition.priority.unwrap_or(computed_prio))
+                            .priority(definition.priority.unwrap_or_else(|| mir.priority()))
                             .callback(definition.callback)
                     );
+                    let id = graph.regex(mir, then);
+
                     regex_ids.push(id);
                 },
                 _ => (),

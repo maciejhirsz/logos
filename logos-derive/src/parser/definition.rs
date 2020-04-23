@@ -5,6 +5,8 @@ use crate::leaf::Callback;
 
 use crate::parser::nested::NestedValue;
 use crate::parser::Parser;
+use crate::mir::Mir;
+use crate::error::Result;
 
 pub struct Definition {
     pub literal: Literal,
@@ -71,13 +73,6 @@ impl Definition {
 }
 
 impl Literal {
-    pub fn is_utf8(&self) -> bool {
-        match self {
-            Literal::Utf8(_) => true,
-            Literal::Bytes(_) => false,
-        }
-    }
-
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             Literal::Utf8(string) => string.value().into_bytes(),
@@ -85,10 +80,14 @@ impl Literal {
         }
     }
 
-    pub fn to_regex_string(&self) -> String {
+    pub fn to_mir(&self) -> Result<Mir> {
         match self {
-            Literal::Utf8(string) => string.value(),
-            Literal::Bytes(bytes) => bytes_to_regex_string(bytes.value()),
+            Literal::Utf8(string) => Mir::utf8(&string.value()),
+            Literal::Bytes(bytes) => {
+                let source = bytes_to_regex_string(bytes.value());
+
+                Mir::binary(&source)
+            }
         }
     }
 
