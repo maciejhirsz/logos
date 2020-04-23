@@ -1,16 +1,18 @@
 use beef::lean::Cow;
-use proc_macro2::{Ident, TokenStream, TokenTree, Span};
-use syn::{Lit, LitStr, LitByteStr, Attribute, GenericParam, Type};
+use proc_macro2::{TokenStream, TokenTree, Span};
+use syn::{Lit, Attribute, GenericParam, Type};
 use syn::spanned::Spanned;
 use quote::quote;
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
-use crate::util::{expect_punct, bytes_to_regex_string, MaybeVoid};
+use crate::util::{expect_punct, MaybeVoid};
 
+mod definition;
 mod nested;
 mod type_params;
 
+pub use self::definition::{Definition, Literal};
 use self::nested::{AttributeParser, Nested, NestedValue};
 use self::type_params::{TypeParams, replace_lifetimes};
 
@@ -22,108 +24,14 @@ pub struct Parser {
     types: TypeParams,
 }
 
-pub struct Definition {
-    pub literal: Literal,
-    pub priority: Option<usize>,
-    pub callback: Option<Callback>,
-}
-
 pub enum Mode {
     Utf8,
     Binary,
 }
 
-pub enum Literal {
-    Utf8(LitStr),
-    Bytes(LitByteStr),
-}
-
-impl Definition {
-    fn new(literal: Literal) -> Self {
-        Definition {
-            literal,
-            priority: None,
-            callback: None,
-        }
-    }
-
-    fn named_attr(&mut self, name: Ident, value: NestedValue, parser: &mut Parser) {
-        match (name.to_string().as_str(), value) {
-            ("priority", _) => {
-
-            },
-            ("callback", NestedValue::Assign(tokens)) => {
-                let span = tokens.span();
-                let callback = match parser.parse_callback(tokens) {
-                    Some(callback) => callback,
-                    None => {
-                        parser.err("Not a valid callback", span);
-                        return;
-                    }
-                };
-
-                if let Some(previous) = self.callback.replace(callback) {
-                    parser
-                        .err(
-                            "Callback has been already set",
-                            span.join(name.span()).unwrap(),
-                        )
-                        .err("Previous callback set here", previous.span());
-                }
-            },
-            ("callback", _) => {
-                parser.err("Expected: callback = ...", name.span());
-            },
-            (unknown, _) => {
-                parser.err(
-                    format!(
-                        "\
-                        Unknown nested attribute: {}\n\n\
-
-                        Expected one of: priority, callback\
-                        ",
-                        unknown
-                    ),
-                    name.span(),
-                );
-            }
-        }
-    }
-}
-
 impl Default for Mode {
     fn default() -> Mode {
         Mode::Utf8
-    }
-}
-
-impl Literal {
-    pub fn is_utf8(&self) -> bool {
-        match self {
-            Literal::Utf8(_) => true,
-            Literal::Bytes(_) => false,
-        }
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        match self {
-            Literal::Utf8(string) => string.value().into_bytes(),
-            Literal::Bytes(bytes) => bytes.value(),
-        }
-    }
-
-    pub fn to_regex_string(&self) -> String {
-        match self {
-            Literal::Utf8(string) => string.value(),
-            Literal::Bytes(bytes) => bytes_to_regex_string(bytes.value()),
-        }
-    }
-
-    pub fn span(&self) -> Span {
-        match self {
-            Literal::Utf8(string) => string.span(),
-            Literal::Bytes(bytes) => bytes.span(),
-        }
     }
 }
 
