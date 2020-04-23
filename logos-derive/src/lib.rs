@@ -34,7 +34,7 @@ use syn::spanned::Spanned;
 pub fn logos(input: TokenStream) -> TokenStream {
     let mut item: ItemEnum = syn::parse(input).expect("Logos can be only be derived for enums");
 
-    let size = item.variants.len();
+    let mut size = item.variants.len();
     let name = &item.ident;
 
     let mut error = None;
@@ -71,14 +71,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
             let value = expr.to_string().parse().unwrap_or(usize::max_value());
 
             if value >= size {
-                parser.err(
-                    format!(
-                        "Discriminant value for `{}` is invalid. Expected integer in range 0..={}.",
-                        variant.ident,
-                        size,
-                    ),
-                    expr.span(),
-                );
+                // Size must always be 1 greater than highest discriminant value
+                size = value + 1;
             }
         }
 
