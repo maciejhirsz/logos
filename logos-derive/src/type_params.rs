@@ -8,7 +8,7 @@ use crate::error::Errors;
 #[derive(Default)]
 pub struct TypeParams {
     lifetime: bool,
-    type_params: Vec<(Ident, Option<Type>)>,
+    type_params: Vec<(Ident, Option<TokenStream>)>,
 }
 
 impl TypeParams {
@@ -30,7 +30,7 @@ impl TypeParams {
         let ty = match syn::parse2::<Type>(ty) {
             Ok(mut ty) => {
                 replace_lifetimes(&mut ty);
-                ty
+                quote!(#ty)
             },
             Err(err) => {
                 errors.err(err.to_string(), err.span());
@@ -58,7 +58,7 @@ impl TypeParams {
         }
     }
 
-    pub fn find(&self, path: &Path) -> Option<Type> {
+    pub fn find(&self, path: &Path) -> Option<TokenStream> {
         for (ident, ty) in &self.type_params {
             if path.is_ident(ident) {
                 return ty.clone();
@@ -68,7 +68,7 @@ impl TypeParams {
         None
     }
 
-    pub fn generics(&mut self, errors: &mut Errors) -> Option<TokenStream> {
+    pub fn generics(&self, errors: &mut Errors) -> Option<TokenStream> {
         if !self.lifetime && self.type_params.is_empty() {
             return None;
         }
@@ -79,7 +79,7 @@ impl TypeParams {
             generics.push(quote!('s));
         }
 
-        for (ty, replace) in self.type_params.drain(..) {
+        for (ty, replace) in self.type_params.iter() {
             match replace {
                 Some(ty) => generics.push(quote!(#ty)),
                 None => {

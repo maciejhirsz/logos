@@ -13,30 +13,35 @@ impl<'a> Generator<'a> {
         let this = self.this;
 
         let (ty, constructor) = match leaf.field.clone() {
-            Some(ty) => (quote!(#ty), quote!(#name::#ident)),
+            Some(ty) => (ty, quote!(#name::#ident)),
             None => (quote!(()), quote!(|()| #name::#ident)),
         };
 
         match &leaf.callback {
-            Callback::Label(callback) => quote! {
+            Some(Callback::Label(callback)) => quote! {
                 #bump
                 #callback(lex).construct(#constructor, lex);
             },
-            Callback::Inline(arg, body) => quote! {
-                #bump
+            Some(Callback::Inline(inline)) => {
+                let arg = &inline.arg;
+                let body = &inline.body;
 
-                #[inline]
-                fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
-                    #body
+                quote! {
+                    #bump
+
+                    #[inline]
+                    fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
+                        #body
+                    }
+
+                    callback(lex).construct(#constructor, lex);
                 }
-
-                callback(lex).construct(#constructor, lex);
             },
-            Callback::None if leaf.field.is_none() => quote! {
+            None if leaf.field.is_none() => quote! {
                 #bump
                 lex.set(#name::#ident);
             },
-            Callback::None => quote! {
+            None => quote! {
                 #bump
                 let token = #name::#ident(lex.slice());
                 lex.set(token);

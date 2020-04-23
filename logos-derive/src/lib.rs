@@ -20,18 +20,12 @@ use error::Error;
 use generator::Generator;
 use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
-use util::{Literal, Definition};
-use parser::Parser;
+use parser::{Parser, Mode, Literal};
 
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
-
-enum Mode {
-    Utf8,
-    Binary,
-}
 
 #[proc_macro_derive(
     Logos,
@@ -45,7 +39,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let name = &item.ident;
 
     let mut error = None;
-    let mut mode = Mode::Utf8;
     let mut parser = Parser::default();
 
     for param in item.generics.params {
@@ -107,8 +100,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     );
                 }
 
-                let ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
-                let ty = parser.get_type(ty);
+                let mut ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
+                let ty = parser.get_type(&mut ty);
 
                 Some(ty)
             }
@@ -118,22 +111,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 None
             }
         };
+        // let leaf = Leaf::token(&variant.ident).field(field);
 
         for attr in &variant.attrs {
             let variant = &variant.ident;
-
-            let mut with_definition = |definition: Definition| {
-                if let Literal::Bytes(..) = definition.literal {
-                    mode = Mode::Binary;
-                }
-
-                (
-                    Leaf::token(variant)
-                        .field(field.clone())
-                        .callback(definition.callback),
-                    definition.literal,
-                )
-            };
 
             let attr_name = match attr.path.get_ident() {
                 Some(ident) => ident.to_string(),
@@ -161,40 +142,64 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     );
                 },
                 "token" => {
-                    if let Some(definition) = parser.parse_definition("token", attr) {
-                        let (token, value) = with_definition(definition);
+                    let definition = match parser.parse_definition(attr) {
+                        Some(definition) => definition,
+                        None => {
+                            parser.err("Expected #[token(...)]", attr.span());
+                            continue;
+                        }
+                    };
 
-                        let value = value.into_bytes();
-                        let then = graph.push(token.priority(value.len()));
+                    let bytes = definition.literal.into_bytes();
+                    let then = graph.push(
+                        Leaf::new(variant)
+                            .field(field.clone())
+                            .priority(definition.priority.unwrap_or(bytes.len() * 2))
+                            .callback(definition.callback)
+                    );
 
-                        ropes.push(Rope::new(value, then));
-                    }
+                    ropes.push(Rope::new(bytes, then));
                 },
                 "regex" => {
-                    if let Some(definition) = parser.parse_definition("regex", attr) {
-                        let (token, value) = with_definition(definition);
+                    let definition = match parser.parse_definition(attr) {
+                        Some(definition) => definition,
+                        None => {
+                            parser.err("Expected #[regex(...)]", attr.span());
+                            continue;
+                        },
+                    };
 
-                        let (utf8, regex, span) = match value {
-                            Literal::Utf8(string, span) => (true, string, span),
-                            Literal::Bytes(bytes, span) => {
-                                mode = Mode::Binary;
+                    let (utf8, regex, span) = match definition.literal {
+                        Literal::Utf8(string) => (
+                            true,
+                            string.value(),
+                            string.span()
+                        ),
+                        Literal::Bytes(bytes) => (
+                            false,
+                            util::bytes_to_regex_string(&bytes.value()),
+                            bytes.span(),
+                        ),
+                    };
 
-                                (false, util::bytes_to_regex_string(&bytes), span)
-                            }
-                        };
+                    let leaf_id = graph.reserve();
 
-                        let then = graph.reserve();
-
-                        match graph.regex(utf8, &regex, then.get()) {
-                            Ok((len, id)) => {
-                                graph.insert(then, token.priority(len));
-                                regex_ids.push(id);
-                            },
-                            Err(err) => {
-                                parser.err(err, span);
-                            },
+                    let (computed_prio, id) = match graph.regex(utf8, &regex, leaf_id.get()) {
+                        Ok(ok) => ok,
+                        Err(err) => {
+                            parser.err(err, span);
+                            continue;
                         }
-                    }
+                    };
+
+                    graph.insert(
+                        leaf_id,
+                        Leaf::new(variant)
+                            .field(field.clone())
+                            .priority(definition.priority.unwrap_or(computed_prio))
+                            .callback(definition.callback)
+                    );
+                    regex_ids.push(id);
                 },
                 _ => (),
             }
@@ -204,7 +209,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut root = Fork::new();
 
     let extras = parser.extras();
-    let source = match mode {
+    let source = match parser.mode {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
     };

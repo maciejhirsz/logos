@@ -1,33 +1,16 @@
 use proc_macro2::{TokenTree, Span, Spacing};
 use syn::{Expr, Ident, Lit};
 
-use crate::leaf::Callback;
-
-pub struct Definition {
-    pub literal: Literal,
-    pub callback: Callback,
-}
-
-#[derive(Debug)]
-pub enum Literal {
-    Utf8(String, Span),
-    Bytes(Vec<u8>, Span),
-}
-
-impl Literal {
-    pub fn into_bytes(self) -> Vec<u8> {
-        match self {
-            Literal::Utf8(string, _) => string.into_bytes(),
-            Literal::Bytes(bytes, _) => bytes,
-        }
-    }
-}
-
 pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
     match tt {
         TokenTree::Punct(punct) if punct.as_char() == expect && punct.spacing() == Spacing::Alone => true,
         _ => false,
     }
+}
+
+/// If supplied `tt` is a punct matching a char, returns `None`, else returns `tt`
+pub fn expect_punct(tt: Option<TokenTree>, expect: char) -> Option<TokenTree> {
+    tt.filter(|tt| !is_punct(&tt, expect))
 }
 
 pub trait ToIdent {

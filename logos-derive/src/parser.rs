@@ -1,19 +1,105 @@
 use beef::lean::Cow;
-use proc_macro2::{Span, TokenStream, TokenTree};
-use syn::{Lit, Attribute, GenericParam, Type, spanned::Spanned};
+use proc_macro2::{Ident, TokenStream, TokenTree, Span};
+use syn::{Lit, LitStr, LitByteStr, Attribute, GenericParam, Type};
+use syn::spanned::Spanned;
 use quote::quote;
 
 use crate::error::Errors;
 use crate::attr_parser::{AttributeParser, Nested, NestedValue};
 use crate::type_params::{TypeParams, replace_lifetimes};
-use crate::leaf::Callback;
-use crate::util::{is_punct, Definition, Literal};
+use crate::leaf::{Callback, InlineCallback};
+use crate::util::expect_punct;
 
 #[derive(Default)]
 pub struct Parser {
     pub errors: Errors,
+    pub mode: Mode,
     types: TypeParams,
     extras: Option<TokenStream>,
+}
+
+pub struct Definition {
+    pub literal: Literal,
+    pub priority: Option<usize>,
+    pub callback: Option<Callback>,
+}
+
+pub enum Mode {
+    Utf8,
+    Binary,
+}
+
+pub enum Literal {
+    Utf8(LitStr),
+    Bytes(LitByteStr),
+}
+
+impl Definition {
+    fn new(literal: Literal) -> Self {
+        Definition {
+            literal,
+            priority: None,
+            callback: None,
+        }
+    }
+
+    fn named_attr(&mut self, name: Ident, value: NestedValue, parser: &mut Parser) {
+        match (name.to_string().as_str(), value) {
+            ("priority", _) => {
+
+            },
+            ("callback", NestedValue::Assign(tokens)) => {
+                let span = tokens.span();
+                let callback = match parser.parse_callback(tokens) {
+                    Some(callback) => callback,
+                    None => {
+                        parser.err("Not a valid callback", span);
+                        return;
+                    }
+                };
+
+                if let Some(previous) = self.callback.replace(callback) {
+                    parser
+                        .err(
+                            "Callback has been already set",
+                            span.join(name.span()).unwrap(),
+                        )
+                        .err("Previous callback set here", previous.span());
+                }
+            },
+            ("callback", _) => {
+                parser.err("Expected: callback = ...", name.span());
+            },
+            (unknown, _) => {
+                parser.err(
+                    format!(
+                        "\
+                        Unknown nested attribute: {}\n\n\
+
+                        Expected one of: priority, callback\
+                        ",
+                        unknown
+                    ),
+                    name.span(),
+                );
+            }
+        }
+    }
+}
+
+impl Default for Mode {
+    fn default() -> Mode {
+        Mode::Utf8
+    }
+}
+
+impl Literal {
+    pub fn into_bytes(self) -> Vec<u8> {
+        match self {
+            Literal::Utf8(string) => string.value().into_bytes(),
+            Literal::Bytes(bytes) => bytes.value(),
+        }
+    }
 }
 
 impl Parser {
@@ -42,27 +128,33 @@ impl Parser {
         self.types.generics(&mut self.errors)
     }
 
-    pub fn parse_attr(&mut self, name: &str, attr: &Attribute) -> TokenStream {
+    fn parse_attr(&mut self, attr: &Attribute) -> Option<AttributeParser> {
         let mut tokens = attr.tokens.clone().into_iter();
 
         match tokens.next() {
-            Some(TokenTree::Group(group)) => group.stream(),
-            _ => {
-                self.err(format!("Expected #[{}(...)]", name), attr.span());
-
-                TokenStream::new()
-            }
+            Some(TokenTree::Group(group)) => {
+                Some(AttributeParser::new(group.stream()))
+            },
+            _ => None
         }
     }
 
+    /// Try to parse the main `#[logos(...)]`, does nothing if
+    /// the attribute's name isn't `logos`.
     pub fn try_parse_logos(&mut self, attr: &Attribute) {
         if !attr.path.is_ident("logos") {
             return;
         }
 
-        let nested = self.parse_attr("logos", attr);
+        let nested = match self.parse_attr(attr) {
+            Some(tokens) => tokens,
+            None => {
+                self.err("Expected #[logos(...)]", attr.span());
+                return;
+            }
+        };
 
-        for nested in AttributeParser::new(nested) {
+        for nested in nested {
             let (name, value) = match nested {
                 Nested::Named(name, value) => (name, value),
                 Nested::Unexpected(unexpected) => {
@@ -115,16 +207,21 @@ impl Parser {
         }
     }
 
-
-    pub fn parse_definition(&mut self, name: &str, attr: &Attribute) -> Option<Definition> {
-        let nested = self.parse_attr(name, attr);
-
-        let mut nested = AttributeParser::new(nested);
+    /// Parse attribute definition of a token:
+    ///
+    /// + `#[token(literal[, callback])]`
+    /// + `#[regex(literal[, callback])]`
+    pub fn parse_definition(&mut self, attr: &Attribute) -> Option<Definition> {
+        let mut nested = self.parse_attr(attr)?;
 
         let literal = match nested.parsed::<Lit>()? {
             Ok(lit) => match lit {
-                Lit::Str(ref v) => Literal::Utf8(v.value(), v.span()),
-                Lit::ByteStr(ref v) => Literal::Bytes(v.value(), v.span()),
+                Lit::Str(string) => Literal::Utf8(string),
+                Lit::ByteStr(bytes) => {
+                    self.mode = Mode::Binary;
+
+                    Literal::Bytes(bytes)
+                },
                 _ => {
                     self.err("Expected a &str or &[u8] slice", lit.span());
 
@@ -138,69 +235,57 @@ impl Parser {
             },
         };
 
-        let mut callback = Callback::None;
+        let mut def = Definition::new(literal);
 
-        if let Some(next) = nested.next() {
+        for (position, next) in nested.enumerate() {
             match next {
-                Nested::Unnamed(tokens) => {
-                    callback = self.parse_callback(tokens);
-                },
-                Nested::Named(name, value) => {
-                    match (name.to_string().as_str(), value) {
-                        // ("priority", _) => {
-
-                        // },
-                        (unknown, _) => {
-                            self.err(
-                                format!("Unknown nested attribute: {}", unknown),
-                                name.span(),
-                            );
-                        }
-                    }
-                },
                 Nested::Unexpected(tokens) => {
                     self.err("Unexpected token in attribute", tokens.span());
-                }
-            };
+                },
+                Nested::Unnamed(tokens) => match position {
+                    0 => def.callback = self.parse_callback(tokens),
+                    _ => {
+                        self.err(
+                            "\
+                            Expected a named argument at this position\n\n\
+
+                            Hint: If you are trying to define a callback here use: callback = ...\
+                            ",
+                            tokens.span()
+                        );
+                    }
+                },
+                Nested::Named(name, value) => {
+                    def.named_attr(name, value, self);
+                },
+            }
         }
 
-        Some(Definition {
-            literal,
-            callback,
-        })
+        Some(def)
     }
 
-    fn parse_callback(&mut self, tokens: TokenStream) -> Callback {
+    fn parse_callback(&mut self, tokens: TokenStream) -> Option<Callback> {
+        let span = tokens.span();
         let mut tokens = tokens.into_iter();
 
-        let mut span = match tokens.next().unwrap() {
-            tt if is_punct(&tt, '|') => tt.span(),
-            tt => {
-                let mut label = TokenStream::from(tt);
+        if let Some(tt) = expect_punct(tokens.next(), '|') {
+            let mut label = TokenStream::from(tt);
 
-                label.extend(tokens);
+            label.extend(tokens);
 
-                return Callback::Label(label);
-            }
-        };
-
-        let ident = match tokens.next() {
-            Some(TokenTree::Ident(ident)) => ident,
-            _ => {
-                self.err("Expected identifier following this token", span);
-                return Callback::None;
-            }
-        };
-
-        match tokens.next() {
-            Some(tt) if is_punct(&tt, '|') => {
-                span = span.join(tt.span()).unwrap();
-            }
-            _ => {
-                self.err("Expected | following this token", ident.span());
-                return Callback::None;
-            }
+            return Some(Callback::Label(label));
         }
+
+        let first = tokens.next();
+        let error = expect_punct(tokens.next(), '|');
+
+        let arg = match (error, first) {
+            (None, Some(TokenTree::Ident(arg))) => arg,
+            _ => {
+                self.err("Inline callbacks must use closure syntax with exactly one parameter", span);
+                return None;
+            }
+        };
 
         let body = match tokens.next() {
             Some(TokenTree::Group(group)) => group.stream(),
@@ -212,11 +297,17 @@ impl Parser {
             },
             None => {
                 self.err("Callback missing a body", span);
-                return Callback::None;
+                return None;
             }
         };
 
-        Callback::Inline(ident, body)
+        let inline = InlineCallback {
+            arg,
+            body,
+            span,
+        };
+
+        Some(inline.into())
     }
 
     /// Checks if `ty` is a declared generic param, if so replaces it
@@ -224,19 +315,21 @@ impl Parser {
     ///
     /// If no matching generic param is found, all lifetimes are fixed
     /// to the source lifetime
-    pub fn get_type(&self, mut ty: Type) -> Type {
-        if let Type::Path(tp) = &ty {
-            if tp.qself.is_some() {
-                return ty;
-            }
-
-            if let Some(substitue) = self.types.find(&tp.path) {
-                return substitue;
+    pub fn get_type(&self, ty: &mut Type) -> TokenStream {
+        if let Type::Path(tp) = ty {
+            // Skip types that begin with `self::`
+            if tp.qself.is_none() {
+                // If `ty` is a generic type parameter, try to find
+                // its concrete type defined with #[logos(type T = Type)]
+                if let Some(substitue) = self.types.find(&tp.path) {
+                    return substitue;
+                }
             }
         }
 
-        replace_lifetimes(&mut ty);
-        ty
+        // If `ty` is a concrete type, fix its lifetimes to 'source
+        replace_lifetimes(ty);
+        quote!(#ty)
     }
 
     pub fn err<M>(&mut self, message: M, span: Span) -> &mut Errors

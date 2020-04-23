@@ -2,7 +2,7 @@ use proc_macro2::token_stream::IntoIter as TokenIter;
 use proc_macro2::{Ident, TokenTree, TokenStream};
 use quote::quote;
 
-use crate::util::is_punct;
+use crate::util::{is_punct, expect_punct};
 
 pub enum NestedValue {
     /// `name = ...`
@@ -58,10 +58,7 @@ impl AttributeParser {
     }
 
     fn next_tt(&mut self) -> Option<TokenTree> {
-        match self.inner.next() {
-            Some(tt) if is_punct(&tt, ',') => None,
-            next => next,
-        }
+        expect_punct(self.inner.next(), ',')
     }
 
     fn collect_tail<T>(&mut self, first: T) -> TokenStream
@@ -96,10 +93,7 @@ impl AttributeParser {
     }
 
     fn parse_keyword(&mut self, keyword: Ident, name: Ident) -> Nested {
-        let error = match self.next_tt() {
-            Some(tt) if is_punct(&tt, '=') => None,
-            next => next,
-        };
+        let error = expect_punct(self.next_tt(), '=');
 
         match error {
             Some(error) => {

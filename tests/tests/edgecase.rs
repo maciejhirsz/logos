@@ -348,7 +348,7 @@ mod type_params {
         #[regex("[a-z]+")]
         Ident(S),
 
-        #[regex("[0-9]+", |lex| lex.slice().parse())]
+        #[regex("[0-9]+", priority = 10, callback = |lex| lex.slice().parse())]
         Number(N)
     }
 
