@@ -8,7 +8,7 @@ use crate::error::Errors;
 #[derive(Default)]
 pub struct TypeParams {
     lifetime: bool,
-    type_params: Vec<(Ident, Option<TokenStream>)>,
+    type_params: Vec<(Ident, Option<Type>)>,
 }
 
 impl TypeParams {
@@ -30,7 +30,7 @@ impl TypeParams {
         let ty = match syn::parse2::<Type>(ty) {
             Ok(mut ty) => {
                 replace_lifetimes(&mut ty);
-                quote!(#ty)
+                ty
             },
             Err(err) => {
                 errors.err(err.to_string(), err.span());
@@ -58,7 +58,7 @@ impl TypeParams {
         }
     }
 
-    pub fn find(&self, path: &Path) -> Option<TokenStream> {
+    pub fn find(&self, path: &Path) -> Option<Type> {
         for (ident, ty) in &self.type_params {
             if path.is_ident(ident) {
                 return ty.clone();
@@ -105,12 +105,13 @@ impl TypeParams {
 }
 
 pub fn replace_lifetimes(ty: &mut Type) {
+    traverse_type(ty, &mut replace_lifetime)
+}
+
+pub fn replace_lifetime(ty: &mut Type) {
     use syn::{PathArguments, GenericArgument};
 
     match ty {
-        Type::Array(array) => replace_lifetimes(&mut array.elem),
-        Type::Group(group) => replace_lifetimes(&mut group.elem),
-        Type::Paren(paren) => replace_lifetimes(&mut paren.elem),
         Type::Path(p) => {
             p.path.segments
                 .iter_mut()
@@ -124,12 +125,6 @@ pub fn replace_lifetimes(ty: &mut Type) {
                         GenericArgument::Lifetime(lt) => {
                             *lt = Lifetime::new("'s", lt.span());
                         },
-                        GenericArgument::Type(ty) => {
-                            replace_lifetimes(ty);
-                        },
-                        GenericArgument::Binding(bind) => {
-                            replace_lifetimes(&mut bind.ty);
-                        },
                         _ => (),
                     }
                 });
@@ -142,8 +137,65 @@ pub fn replace_lifetimes(ty: &mut Type) {
 
             r.lifetime = Some(Lifetime::new("'s", span));
         },
-        Type::Slice(slice) => replace_lifetimes(&mut slice.elem),
-        Type::Tuple(tuple) => tuple.elems.iter_mut().for_each(replace_lifetimes),
         _ => (),
+    }
+}
+
+pub fn traverse_type(ty: &mut Type, f: &mut impl FnMut(&mut Type)) {
+    f(ty);
+    match ty {
+        Type::Array(array) => traverse_type(&mut array.elem, f),
+        Type::BareFn(bare_fn) => {
+            for input in &mut bare_fn.inputs {
+                traverse_type(&mut input.ty, f);
+            }
+            if let syn::ReturnType::Type(_, ty) = &mut bare_fn.output {
+                traverse_type(ty, f);
+            }
+        }
+        Type::Group(group) => traverse_type(&mut group.elem, f),
+        Type::Paren(paren) => traverse_type(&mut paren.elem, f),
+        Type::Path(path) => traverse_path(&mut path.path, f),
+        Type::Ptr(p) => {
+            traverse_type(&mut p.elem, f)
+        },
+        Type::Reference(r) => {
+            traverse_type(&mut r.elem, f)
+        },
+        Type::Slice(slice) => traverse_type(&mut slice.elem, f),
+        Type::TraitObject(object) => object.bounds.iter_mut().for_each(|bound| {
+            if let syn::TypeParamBound::Trait(trait_bound) = bound {
+                traverse_path(&mut trait_bound.path, f);
+            }
+        }),
+        Type::Tuple(tuple) => tuple.elems.iter_mut().for_each(|elem| traverse_type(elem, f)),
+        _ => (),
+    }
+}
+
+fn traverse_path(path: &mut Path, f: &mut impl FnMut(&mut Type)) {
+    for segment in &mut path.segments {
+        match &mut segment.arguments {
+            syn::PathArguments::None => (),
+            syn::PathArguments::AngleBracketed(args) => for arg in &mut args.args {
+                match arg {
+                    syn::GenericArgument::Type(ty) => {
+                        traverse_type(ty, f);
+                    },
+                    syn::GenericArgument::Binding(bind) => {
+                        traverse_type(&mut bind.ty, f);
+                    },
+                    _ => (),
+                }
+            },
+            syn::PathArguments::Parenthesized(args) => {
+                for arg in &mut args.inputs {
+                    traverse_type(arg, f);
+                }
+                if let syn::ReturnType::Type(_, ty) = &mut args.output {
+                    traverse_type(ty, f);
+                }
+            }
+        }
     }
 }
