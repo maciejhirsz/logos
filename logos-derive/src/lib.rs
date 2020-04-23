@@ -252,7 +252,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     b.ident,
                     disambiguate,
                 ),
-                b.span
+                a.span
             );
         };
 
