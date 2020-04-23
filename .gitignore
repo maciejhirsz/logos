@@ -1,3 +1,4 @@
 /target
+/book/book
 **/*.rs.bk
 Cargo.lock
