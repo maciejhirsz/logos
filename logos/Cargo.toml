@@ -1,6 +1,6 @@
 [package]
 name = "logos"
-version = "0.11.1"
+version = "0.11.2"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT OR Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -12,7 +12,7 @@ readme = "../README.md"
 edition = "2018"
 
 [dependencies]
-logos-derive = { version = "0.11.1", optional = true }
+logos-derive = { version = "0.11.2", optional = true }
 
 [features]
 default = ["export_derive", "std"]
