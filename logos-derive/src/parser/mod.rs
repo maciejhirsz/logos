@@ -14,7 +14,7 @@ mod type_params;
 
 pub use self::definition::{Definition, Literal};
 use self::nested::{AttributeParser, Nested, NestedValue};
-use self::type_params::{TypeParams, replace_types, replace_lifetime};
+use self::type_params::{TypeParams, traverse_type, replace_lifetime};
 
 #[derive(Default)]
 pub struct Parser {
@@ -241,7 +241,7 @@ impl Parser {
     /// If no matching generic param is found, all lifetimes are fixed
     /// to the source lifetime
     pub fn get_type(&self, ty: &mut Type) -> TokenStream {
-        replace_types(ty, &mut |ty| {
+        traverse_type(ty, &mut |ty| {
             if let Type::Path(tp) = ty {
                 // Skip types that begin with `self::`
                 if tp.qself.is_none() {

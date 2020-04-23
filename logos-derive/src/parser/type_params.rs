@@ -105,7 +105,7 @@ impl TypeParams {
 }
 
 pub fn replace_lifetimes(ty: &mut Type) {
-    replace_types(ty, &mut replace_lifetime)
+    traverse_type(ty, &mut replace_lifetime)
 }
 
 pub fn replace_lifetime(ty: &mut Type) {
@@ -141,59 +141,59 @@ pub fn replace_lifetime(ty: &mut Type) {
     }
 }
 
-pub fn replace_types(ty: &mut Type, f: &mut impl FnMut(&mut Type)) {
+pub fn traverse_type(ty: &mut Type, f: &mut impl FnMut(&mut Type)) {
     f(ty);
     match ty {
-        Type::Array(array) => replace_types(&mut array.elem, f),
+        Type::Array(array) => traverse_type(&mut array.elem, f),
         Type::BareFn(bare_fn) => {
             for input in &mut bare_fn.inputs {
-                replace_types(&mut input.ty, f);
+                traverse_type(&mut input.ty, f);
             }
             if let syn::ReturnType::Type(_, ty) = &mut bare_fn.output {
-                replace_types(ty, f);
+                traverse_type(ty, f);
             }
         }
-        Type::Group(group) => replace_types(&mut group.elem, f),
-        Type::Paren(paren) => replace_types(&mut paren.elem, f),
-        Type::Path(path) => replace_path(&mut path.path, f),
+        Type::Group(group) => traverse_type(&mut group.elem, f),
+        Type::Paren(paren) => traverse_type(&mut paren.elem, f),
+        Type::Path(path) => traverse_path(&mut path.path, f),
         Type::Ptr(p) => {
-            replace_types(&mut p.elem, f)
+            traverse_type(&mut p.elem, f)
         },
         Type::Reference(r) => {
-            replace_types(&mut r.elem, f)
+            traverse_type(&mut r.elem, f)
         },
-        Type::Slice(slice) => replace_types(&mut slice.elem, f),
+        Type::Slice(slice) => traverse_type(&mut slice.elem, f),
         Type::TraitObject(object) => object.bounds.iter_mut().for_each(|bound| {
             if let syn::TypeParamBound::Trait(trait_bound) = bound {
-                replace_path(&mut trait_bound.path, f);
+                traverse_path(&mut trait_bound.path, f);
             }
         }),
-        Type::Tuple(tuple) => tuple.elems.iter_mut().for_each(|elem| replace_types(elem, f)),
+        Type::Tuple(tuple) => tuple.elems.iter_mut().for_each(|elem| traverse_type(elem, f)),
         _ => (),
     }
 }
 
-fn replace_path(path: &mut Path, f: &mut impl FnMut(&mut Type)) {
+fn traverse_path(path: &mut Path, f: &mut impl FnMut(&mut Type)) {
     for segment in &mut path.segments {
         match &mut segment.arguments {
             syn::PathArguments::None => (),
             syn::PathArguments::AngleBracketed(args) => for arg in &mut args.args {
                 match arg {
                     syn::GenericArgument::Type(ty) => {
-                        replace_types(ty, f);
+                        traverse_type(ty, f);
                     },
                     syn::GenericArgument::Binding(bind) => {
-                        replace_types(&mut bind.ty, f);
+                        traverse_type(&mut bind.ty, f);
                     },
                     _ => (),
                 }
             },
             syn::PathArguments::Parenthesized(args) => {
                 for arg in &mut args.inputs {
-                    replace_types(arg, f);
+                    traverse_type(arg, f);
                 }
                 if let syn::ReturnType::Type(_, ty) = &mut args.output {
-                    replace_types(ty, f);
+                    traverse_type(ty, f);
                 }
             }
         }
