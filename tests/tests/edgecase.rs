@@ -6,7 +6,7 @@ mod crunch {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
-        #[regex(r"[ \t\n]+", logos::skip)]
+        #[regex(r"[ \t\n\f]+", logos::skip)]
         #[error]
         Error,
 
@@ -16,7 +16,7 @@ mod crunch {
         #[token("exposed")]
         Exposed,
 
-        #[regex("[^ \t\n\r\"\'!@#$%\\^&*()-+=,.<>/?;:\\[\\]{}\\\\|`~]+")]
+        #[regex(r#"[^ \t\n\r\f"'!@#$%\^&*()-+=,.<>/?;:\[\]{}\\|`~]+"#)]
         Ident,
     }
 
