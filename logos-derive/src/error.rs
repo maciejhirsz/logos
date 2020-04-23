@@ -20,10 +20,6 @@ impl Default for Errors {
 }
 
 impl Errors {
-    pub fn push(&mut self, err: SpannedError) {
-        self.collected.push(err);
-    }
-
     pub fn err<M>(&mut self, message: M, span: Span) -> &mut Self
     where
         M: Into<Cow<'static, str>>,

@@ -1,6 +1,6 @@
 use proc_macro2::{TokenTree, TokenStream, Span, Spacing};
 use quote::{quote, ToTokens};
-use syn::{Expr, Ident, Lit};
+use syn::Ident;
 
 /// Analog to Option<TokenStream>, except when put into the quote!
 /// macro, `MaybeVoid::Void` will produce `()`
@@ -69,13 +69,4 @@ impl ToIdent for str {
     fn to_ident(&self) -> Ident {
         Ident::new(self, Span::call_site())
     }
-}
-
-pub fn unpack_int(expr: &Expr) -> Option<usize> {
-    if let Expr::Lit(expr_lit) = expr {
-        if let Lit::Int(int) = &expr_lit.lit {
-            return int.base10_parse().ok();
-        }
-    }
-    None
 }

@@ -15,7 +15,6 @@ mod leaf;
 mod parser;
 mod mir;
 
-use error::Error;
 use generator::Generator;
 use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
@@ -24,7 +23,7 @@ use util::MaybeVoid;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
 
@@ -62,28 +61,24 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    let mut variants = Vec::new();
     let mut ropes = Vec::new();
     let mut regex_ids = Vec::new();
     let mut graph = Graph::new();
 
     for variant in &mut item.variants {
-        variants.push(&variant.ident);
-
-        let span = variant.span();
-
-        if let Some((_, value)) = &variant.discriminant {
-            let span = value.span();
-            let value = util::unpack_int(value).unwrap_or(usize::max_value());
+        if let Some((_, expr)) = variant.discriminant.take() {
+            let expr = expr.into_token_stream();
+            let value = expr.to_string().parse().unwrap_or(usize::max_value());
 
             if value >= size {
-                parser.errors.push(Error::new(
+                parser.err(
                     format!(
                         "Discriminant value for `{}` is invalid. Expected integer in range 0..={}.",
                         variant.ident,
                         size,
                     ),
-                ).span(span));
+                    expr.span(),
+                );
             }
         }
 
@@ -105,8 +100,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                 MaybeVoid::Some(ty)
             }
-            Fields::Named(_) => {
-                parser.errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
+            Fields::Named(fields) => {
+                parser.err("Logos doesn't support named fields yet.", fields.span());
 
                 MaybeVoid::Void
             }
@@ -124,6 +119,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             match attr_name.as_str() {
                 "error" => {
+                    let span = variant.ident.span();
                     if let Some(previous) = error.replace(&variant.ident) {
                         parser
                             .err("Only one #[error] variant can be declared.", span)

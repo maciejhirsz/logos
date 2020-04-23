@@ -2,7 +2,6 @@ use proc_macro2::{Ident, Span};
 use syn::{LitStr, LitByteStr, spanned::Spanned};
 
 use crate::leaf::Callback;
-
 use crate::parser::nested::NestedValue;
 use crate::parser::Parser;
 use crate::mir::Mir;
@@ -30,8 +29,21 @@ impl Definition {
 
     pub fn named_attr(&mut self, name: Ident, value: NestedValue, parser: &mut Parser) {
         match (name.to_string().as_str(), value) {
-            ("priority", _) => {
+            ("priority", NestedValue::Assign(tokens)) => {
+                let prio = match tokens.to_string().parse() {
+                    Ok(prio) => prio,
+                    Err(_) => {
+                        parser.err("Expected an unsigned integer", tokens.span());
+                        return;
+                    }
+                };
 
+                if self.priority.replace(prio).is_some() {
+                    parser.err("Resetting previously set priority", tokens.span());
+                }
+            },
+            ("priority", _) => {
+                parser.err("Expected: priority = <integer>", name.span());
             },
             ("callback", NestedValue::Assign(tokens)) => {
                 let span = tokens.span();
