@@ -24,7 +24,7 @@ pub struct Generator<'a> {
     /// Id to the root node
     root: NodeId,
     /// Reference to the graph with all of the nodes
-    graph: &'a Graph<Leaf>,
+    graph: &'a Graph<Leaf<'a>>,
     /// Meta data collected for the nodes
     meta: Meta,
     /// Buffer with functions growing during generation

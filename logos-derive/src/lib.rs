@@ -13,46 +13,38 @@ mod graph;
 mod util;
 mod leaf;
 mod parser;
-mod parsers;
-mod type_params;
+mod mir;
 
-use error::Error;
 use generator::Generator;
-use graph::{Graph, Fork, Rope};
+use graph::{Graph, Fork, Rope, DisambiguationError};
 use leaf::Leaf;
-use util::{Literal, Definition};
-use parser::Parser;
+use parser::{Parser, Mode};
+use util::MaybeVoid;
 
 use proc_macro::TokenStream;
-use quote::quote;
+use proc_macro2::Span;
+use quote::{quote, ToTokens};
 use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
 
-enum Mode {
-    Utf8,
-    Binary,
-}
-
 #[proc_macro_derive(
     Logos,
-    attributes(logos, extras, error, end, token, regex, extras)
+    attributes(logos, extras, error, end, token, regex)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
-    let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
-    let super_span = item.span();
+    let mut item: ItemEnum = syn::parse(input).expect("Logos can be only be derived for enums");
 
-    let size = item.variants.len();
+    let mut size = item.variants.len();
     let name = &item.ident;
 
     let mut error = None;
-    let mut mode = Mode::Utf8;
     let mut parser = Parser::default();
 
     for param in item.generics.params {
         parser.parse_generic(param);
     }
 
-    for attr in &item.attrs {
+    for attr in &mut item.attrs {
         parser.try_parse_logos(attr);
 
         // TODO: Remove in future versions
@@ -69,34 +61,24 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     }
 
-    let mut variants = Vec::new();
     let mut ropes = Vec::new();
     let mut regex_ids = Vec::new();
     let mut graph = Graph::new();
 
-    for variant in &item.variants {
-        variants.push(&variant.ident);
-
-        let span = variant.span();
-
-        if let Some((_, value)) = &variant.discriminant {
-            let span = value.span();
-            let value = util::unpack_int(value).unwrap_or(usize::max_value());
+    for variant in &mut item.variants {
+        if let Some((_, expr)) = variant.discriminant.take() {
+            let expr = expr.into_token_stream();
+            let value = expr.to_string().parse().unwrap_or(usize::max_value());
 
             if value >= size {
-                parser.errors.push(Error::new(
-                    format!(
-                        "Discriminant value for `{}` is invalid. Expected integer in range 0..={}.",
-                        variant.ident,
-                        size,
-                    ),
-                ).span(span));
+                // Size must always be 1 greater than highest discriminant value
+                size = value + 1;
             }
         }
 
-        let field = match &variant.fields {
-            Fields::Unit => None,
-            Fields::Unnamed(ref fields) => {
+        let field = match &mut variant.fields {
+            Fields::Unit => MaybeVoid::Void,
+            Fields::Unnamed(fields) => {
                 if fields.unnamed.len() != 1 {
                     parser.err(
                         format!(
@@ -107,107 +89,100 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     );
                 }
 
-                let ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
+                let ty = &mut fields.unnamed.first_mut().expect("Already checked len; qed").ty;
                 let ty = parser.get_type(ty);
 
-                Some(ty)
+                MaybeVoid::Some(ty)
             }
-            Fields::Named(_) => {
-                parser.errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
+            Fields::Named(fields) => {
+                parser.err("Logos doesn't support named fields yet.", fields.span());
 
-                None
+                MaybeVoid::Void
             }
         };
 
-        for attr in &variant.attrs {
-            let variant = &variant.ident;
+        // Lazy leaf constructor to avoid cloning
+        let var_ident = &variant.ident;
+        let leaf = move |span| Leaf::new(var_ident, span).field(field.clone());
 
-            let mut with_definition = |definition: Definition<Literal>| {
-                if let Literal::Bytes(..) = definition.value {
-                    mode = Mode::Binary;
-                }
-
-                (
-                    Leaf::token(variant).field(field.clone()).callback(definition.callback),
-                    definition.value,
-                )
+        for attr in &mut variant.attrs {
+            let attr_name = match attr.path.get_ident() {
+                Some(ident) => ident.to_string(),
+                None => continue,
             };
 
-            if attr.path.is_ident("error") {
-                if let Some(previous) = error.replace(variant) {
-                    parser
-                        .err("Only one #[error] variant can be declared.", span)
-                        .err("Previously declared #[error]:", previous.span());
-                }
-            } else if attr.path.is_ident("end") {
-                parser.err(
-                    "Since 0.11 Logos no longer requires the #[end] variant.\n\n\
+            match attr_name.as_str() {
+                "error" => {
+                    let span = variant.ident.span();
+                    if let Some(previous) = error.replace(&variant.ident) {
+                        parser
+                            .err("Only one #[error] variant can be declared.", span)
+                            .err("Previously declared #[error]:", previous.span());
+                    }
+                },
+                "end" => {
+                    // TODO: Remove in future versions
+                    parser.err(
+                        "\
+                        Since 0.11 Logos no longer requires the #[end] variant.\n\n\
 
-                    For help with migration see release notes: https://github.com/maciejhirsz/logos/releases",
-                    attr.span(),
-                );
-            } else if attr.path.is_ident("token") {
-                match util::value_from_attr("token", attr) {
-                    Ok(definition) => {
-                        let (token, value) = with_definition(definition);
-
-                        let value = value.into_bytes();
-                        let then = graph.push(token.priority(value.len()));
-
-                        ropes.push(Rope::new(value, then));
-                    },
-                    Err(err) => parser.errors.push(err),
-                }
-            } else if attr.path.is_ident("regex") {
-                match util::value_from_attr("regex", attr) {
-                    Ok(definition) => {
-                        let (token, value) = with_definition(definition);
-
-                        let then = graph.reserve();
-
-                        let (utf8, regex, span) = match value {
-                            Literal::Utf8(string, span) => (true, string, span),
-                            Literal::Bytes(bytes, span) => {
-                                mode = Mode::Binary;
-
-                                (false, util::bytes_to_regex_string(&bytes), span)
-                            }
-                        };
-
-                        match graph.regex(utf8, &regex, then.get()) {
-                            Ok((len, mut id)) => {
-                                let then = graph.insert(then, token.priority(len));
-                                regex_ids.push(id);
-
-                                // Drain recursive miss values.
-                                // We need the root node to have straight branches.
-                                while let Some(miss) = graph[id].miss() {
-                                    if miss == then {
-                                        parser.err(
-                                            "#[regex]: expression can match empty string.\n\n\
-                                             hint: consider changing * to +",
-                                            span,
-                                        );
-                                        break;
-                                    } else {
-                                        regex_ids.push(miss);
-                                        id = miss;
-                                    }
-                                }
-                            },
-                            Err(err) => parser.errors.push(err.span(span)),
+                        For help with migration see release notes: \
+                        https://github.com/maciejhirsz/logos/releases\
+                        ",
+                        attr.span(),
+                    );
+                },
+                "token" => {
+                    let definition = match parser.parse_definition(attr) {
+                        Some(definition) => definition,
+                        None => {
+                            parser.err("Expected #[token(...)]", attr.span());
+                            continue;
                         }
-                    },
-                    Err(err) => parser.errors.push(err),
-                }
+                    };
+
+                    let bytes = definition.literal.to_bytes();
+                    let then = graph.push(
+                        leaf(definition.literal.span())
+                            .priority(definition.priority.unwrap_or(bytes.len() * 2))
+                            .callback(definition.callback)
+                    );
+
+                    ropes.push(Rope::new(bytes, then));
+                },
+                "regex" => {
+                    let definition = match parser.parse_definition(attr) {
+                        Some(definition) => definition,
+                        None => {
+                            parser.err("Expected #[regex(...)]", attr.span());
+                            continue;
+                        },
+                    };
+                    let mir = match definition.literal.to_mir() {
+                        Ok(mir) => mir,
+                        Err(err) => {
+                            parser.err(err, definition.literal.span());
+                            continue;
+                        },
+                    };
+                    let then = graph.push(
+                        leaf(definition.literal.span())
+                            .priority(definition.priority.unwrap_or_else(|| mir.priority()))
+                            .callback(definition.callback)
+                    );
+                    let id = graph.regex(mir, then);
+
+                    regex_ids.push(id);
+                },
+                _ => (),
             }
         }
     }
 
     let mut root = Fork::new();
 
-    let extras = parser.extras();
-    let source = match mode {
+    let extras = parser.extras.take();
+    let source = match parser.mode {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
     };
@@ -215,7 +190,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let error_def = match error {
         Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
         None => {
-            parser.err("missing #[error] token variant.", super_span);
+            parser.err("missing #[error] token variant.", Span::call_site());
             None
         },
     };
@@ -241,16 +216,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    if let Some(errors) = parser.errors.render() {
-        return impl_logos(errors).into();
-    }
-
     for id in regex_ids {
         let fork = graph.fork_off(id);
+
         root.merge(fork, &mut graph);
     }
     for rope in ropes {
-        root.merge(rope.into_fork(&mut graph), &mut graph)
+        root.merge(rope.into_fork(&mut graph), &mut graph);
     }
     while let Some(id) = root.miss.take() {
         let fork = graph.fork_off(id);
@@ -261,6 +233,37 @@ pub fn logos(input: TokenStream) -> TokenStream {
             break;
         }
     }
+
+    for &DisambiguationError(a, b) in graph.errors() {
+        let a = graph[a].unwrap_leaf();
+        let b = graph[b].unwrap_leaf();
+        let disambiguate = a.priority + 1;
+
+        let mut err = |a: &Leaf, b: &Leaf| {
+            parser.err(
+                format!(
+                    "\
+                    A definition of variant `{0}` can match the same input as another definition of variant `{1}`.\n\n\
+
+                    hint: Consider giving one definition a higher priority: \
+                    #[regex(..., priority = {2})]\
+                    ",
+                    a.ident,
+                    b.ident,
+                    disambiguate,
+                ),
+                a.span
+            );
+        };
+
+        err(a, b);
+        err(b, a);
+    }
+
+    if let Some(errors) = parser.errors.render() {
+        return impl_logos(errors).into();
+    }
+
     let root = graph.push(root);
 
     graph.shake(root);

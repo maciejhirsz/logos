@@ -18,7 +18,7 @@ proc-macro = true
 [dependencies]
 beef = "0.4.1"
 fnv = "1.0.6"
-syn = { version = "1.0.17", features = ["extra-traits", "full"] }
+syn = "1.0.17"
 quote = "1.0.3"
 proc-macro2 = "1.0.9"
 regex-syntax = "0.6"

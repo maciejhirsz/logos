@@ -1,61 +1,66 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
-use syn::{Ident, Type, spanned::Spanned};
+use syn::{Ident, spanned::Spanned};
 use proc_macro2::{TokenStream, Span};
-use quote::quote;
 
 use crate::graph::{Node, Disambiguate};
+use crate::util::MaybeVoid;
 
-pub struct Leaf {
-    pub ident: Ident,
+#[derive(Clone)]
+pub struct Leaf<'t> {
+    pub ident: &'t Ident,
+    pub span: Span,
     pub priority: usize,
-    pub field: Option<Type>,
-    pub callback: Callback,
+    pub field: MaybeVoid,
+    pub callback: Option<Callback>,
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub enum Callback {
-    None,
     Label(TokenStream),
-    Inline(Ident, TokenStream),
+    Inline(Box<InlineCallback>),
+}
+
+#[derive(Clone)]
+pub struct InlineCallback {
+    pub arg: Ident,
+    pub body: TokenStream,
+    pub span: Span,
+}
+
+impl From<InlineCallback> for Callback {
+    fn from(inline: InlineCallback) -> Callback {
+        Callback::Inline(Box::new(inline))
+    }
 }
 
 impl Callback {
-    pub fn span(&self) -> Option<Span> {
+    pub fn span(&self) -> Span {
         match self {
-            Callback::Label(ident) => Some(ident.span()),
-            Callback::Inline(arg, ..) => Some(arg.span()),
-            _ => None,
+            Callback::Label(tokens) => tokens.span(),
+            Callback::Inline(inline) => inline.span,
         }
     }
 }
 
-impl From<Option<Ident>> for Callback {
-    fn from(label: Option<Ident>) -> Self {
-        match label {
-            Some(ident) => Callback::Label(quote!(#ident)),
-            None => Callback::None,
-        }
-    }
-}
-
-impl Leaf {
-    pub fn token(ident: &Ident) -> Self {
+impl<'t> Leaf<'t> {
+    pub fn new(ident: &'t Ident, span: Span) -> Self {
         Leaf {
-            ident: ident.clone(),
+            ident,
+            span,
             priority: 0,
-            field: None,
-            callback: Callback::None,
+            field: MaybeVoid::Void,
+            callback: None,
         }
     }
 
-    pub fn callback(mut self, callback: Callback) -> Self {
+    pub fn callback(mut self, callback: Option<Callback>) -> Self {
         self.callback = callback;
         self
     }
 
-    pub fn field(mut self, field: Option<Type>) -> Self {
+    pub fn field(mut self, field: MaybeVoid) -> Self {
         self.field = field;
         self
     }
@@ -66,26 +71,26 @@ impl Leaf {
     }
 }
 
-impl Disambiguate for Leaf {
+impl Disambiguate for Leaf<'_> {
     fn cmp(left: &Leaf, right: &Leaf) -> Ordering {
         Ord::cmp(&left.priority, &right.priority)
     }
 }
 
-impl From<Leaf> for Node<Leaf> {
-    fn from(leaf: Leaf) -> Self {
+impl<'t> From<Leaf<'t>> for Node<Leaf<'t>> {
+    fn from(leaf: Leaf<'t>) -> Self {
         Node::Leaf(leaf)
     }
 }
 
-impl Debug for Leaf {
+impl Debug for Leaf<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "::{}", self.ident)?;
 
         match self.callback {
-            Callback::Label(ref label) => write!(f, " ({})", label),
-            Callback::Inline(..) => f.write_str(" (<inline>)"),
-            Callback::None => Ok(()),
+            Some(Callback::Label(ref label)) => write!(f, " ({})", label),
+            Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
+            None => Ok(()),
         }
     }
 }

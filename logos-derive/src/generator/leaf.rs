@@ -3,6 +3,7 @@ use quote::quote;
 
 use crate::leaf::{Leaf, Callback};
 use crate::generator::{Generator, Context};
+use crate::util::MaybeVoid;
 
 impl<'a> Generator<'a> {
     pub fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
@@ -11,32 +12,38 @@ impl<'a> Generator<'a> {
         let ident = &leaf.ident;
         let name = self.name;
         let this = self.this;
+        let ty = &leaf.field;
 
-        let (ty, constructor) = match leaf.field.clone() {
-            Some(ty) => (quote!(#ty), quote!(#name::#ident)),
-            None => (quote!(()), quote!(|()| #name::#ident)),
+        let constructor = match leaf.field {
+            MaybeVoid::Some(_) => quote!(#name::#ident),
+            MaybeVoid::Void => quote!(|()| #name::#ident),
         };
 
         match &leaf.callback {
-            Callback::Label(callback) => quote! {
+            Some(Callback::Label(callback)) => quote! {
                 #bump
                 #callback(lex).construct(#constructor, lex);
             },
-            Callback::Inline(arg, body) => quote! {
-                #bump
+            Some(Callback::Inline(inline)) => {
+                let arg = &inline.arg;
+                let body = &inline.body;
 
-                #[inline]
-                fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
-                    #body
+                quote! {
+                    #bump
+
+                    #[inline]
+                    fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
+                        #body
+                    }
+
+                    callback(lex).construct(#constructor, lex);
                 }
-
-                callback(lex).construct(#constructor, lex);
             },
-            Callback::None if leaf.field.is_none() => quote! {
+            None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
                 lex.set(#name::#ident);
             },
-            Callback::None => quote! {
+            None => quote! {
                 #bump
                 let token = #name::#ident(lex.slice());
                 lex.set(token);

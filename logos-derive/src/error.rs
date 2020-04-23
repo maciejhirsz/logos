@@ -20,10 +20,6 @@ impl Default for Errors {
 }
 
 impl Errors {
-    pub fn push(&mut self, err: SpannedError) {
-        self.collected.push(err);
-    }
-
     pub fn err<M>(&mut self, message: M, span: Span) -> &mut Self
     where
         M: Into<Cow<'static, str>>,
@@ -101,6 +97,12 @@ impl From<&'static str> for Error {
 impl From<String> for Error {
     fn from(err: String) -> Error {
         Error(err.into())
+    }
+}
+
+impl From<Error> for Cow<'static, str> {
+    fn from(err: Error) -> Self {
+        err.0
     }
 }
 

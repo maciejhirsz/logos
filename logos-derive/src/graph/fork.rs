@@ -102,15 +102,15 @@ impl Fork {
 
     pub fn shake<T>(&self, graph: &Graph<T>, filter: &mut [bool]) {
         if let Some(id) = self.miss {
-            if !filter[id] {
-                filter[id] = true;
+            if !filter[id.get()] {
+                filter[id.get()] = true;
                 graph[id].shake(graph, filter);
             }
         }
 
         for (_, id) in self.branches() {
-            if !filter[id] {
-                filter[id] = true;
+            if !filter[id.get()] {
+                filter[id.get()] = true;
                 graph[id].shake(graph, filter);
             }
         }
@@ -162,10 +162,10 @@ mod tests {
         let mut buf = [None; 256];
 
         for byte in b'4'..=b'7' {
-            buf[byte as usize] = Some(1);
+            buf[byte as usize] = Some(NodeId::new(1));
         }
         for byte in b'a'..=b'd' {
-            buf[byte as usize] = Some(2);
+            buf[byte as usize] = Some(NodeId::new(2));
         }
 
         let iter = ForkIter {
@@ -175,8 +175,8 @@ mod tests {
 
         assert_eq!(
             &[
-                (Range { start: b'4', end: b'7' }, 1),
-                (Range { start: b'a', end: b'd' }, 2),
+                (Range { start: b'4', end: b'7' }, NodeId::new(1)),
+                (Range { start: b'a', end: b'd' }, NodeId::new(2)),
             ],
             &*iter.collect::<Vec<_>>(),
         );
@@ -250,30 +250,30 @@ mod tests {
 
     #[test]
     fn contains_byte() {
-        let fork = Fork::new().branch('a'..='z', 42);
+        let fork = Fork::new().branch('a'..='z', NodeId::new(42));
 
-        assert_eq!(fork.contains(b't'), Some(42));
+        assert_eq!(fork.contains(b't'), Some(NodeId::new(42)));
     }
 
     #[test]
     fn contains_range() {
         let fork = Fork::new()
-            .branch('a'..='m', 42)
-            .branch('n'..='z', 42);
+            .branch('a'..='m', NodeId::new(42))
+            .branch('n'..='z', NodeId::new(42));
 
-        assert_eq!(fork.contains('i'..='r'), Some(42));
-        assert_eq!(fork.contains('a'..='z'), Some(42));
+        assert_eq!(fork.contains('i'..='r'), Some(NodeId::new(42)));
+        assert_eq!(fork.contains('a'..='z'), Some(NodeId::new(42)));
     }
 
     #[test]
     fn contains_different_ranges() {
         let fork = Fork::new()
-            .branch('a'..='m', 42)
-            .branch('n'..='z', 47);
+            .branch('a'..='m', NodeId::new(42))
+            .branch('n'..='z', NodeId::new(47));
 
         assert_eq!(fork.contains('i'..='r'), None);
         assert_eq!(fork.contains('a'..='z'), None);
-        assert_eq!(fork.contains('d'..='f'), Some(42));
-        assert_eq!(fork.contains('n'..='p'), Some(47));
+        assert_eq!(fork.contains('d'..='f'), Some(NodeId::new(42)));
+        assert_eq!(fork.contains('n'..='p'), Some(NodeId::new(47)));
     }
 }

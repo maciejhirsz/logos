@@ -125,20 +125,6 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         }
     }
 
-    // /// Advance the `Lexer` and attempt to produce the next `Token` of a new token type.
-    // ///
-    // /// This function takes self by value as a lint. If you're working with a `&mut Lexer`,
-    // /// clone the old lexer to call this method, then don't forget to update the old lexer!
-    // pub fn advance_as<Token2>(self) -> Lexer<'source, Token2>
-    // where
-    //     Token2: Logos<'source, Source = Token::Source>,
-    //     Token::Extras: Into<Token2::Extras>,
-    // {
-    //     let mut lex = self.morph();
-    //     lex.advance();
-    //     lex
-    // }
-
     /// Bumps the end of currently lexed token by `n` bytes.
     ///
     /// # Panics

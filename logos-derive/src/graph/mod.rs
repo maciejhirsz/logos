@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::num::NonZeroU32;
 use std::collections::BTreeMap as Map;
 use std::collections::btree_map::Entry;
 use std::ops::Index;
@@ -18,6 +19,11 @@ pub use self::fork::Fork;
 pub use self::rope::Rope;
 pub use self::range::Range;
 
+/// Disambiguation error during the attempt to merge two leaf
+/// nodes with the same priority
+#[derive(Debug)]
+pub struct DisambiguationError(pub NodeId, pub NodeId);
+
 pub struct Graph<Leaf> {
     /// Internal storage of all allocated nodes. Once a node is
     /// put here, it should never be mutated.
@@ -34,10 +40,26 @@ pub struct Graph<Leaf> {
     /// onto the graph (inserts are exempt), we hash it and find if
     /// an identical(!) node has been created before.
     hashes: Map<u64, NodeId>,
+    /// Instead of handling errors over return types, opt to collect
+    /// them internally.
+    errors: Vec<DisambiguationError>,
 }
 
 pub trait Disambiguate {
     fn cmp(left: &Self, right: &Self) -> Ordering;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NodeId(NonZeroU32);
+
+impl NodeId {
+    fn get(self) -> usize {
+        self.0.get() as usize
+    }
+
+    fn new(n: usize) -> NodeId {
+        NodeId(NonZeroU32::new(n as u32).expect("Invalid NodeId"))
+    }
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
@@ -52,17 +74,29 @@ impl ReservedId {
 impl<Leaf> Graph<Leaf> {
     pub fn new() -> Self {
         Graph {
-            nodes: Vec::new(),
+            // Start with an empty slot so we can start
+            // counting NodeIds from 1 and use NonZero
+            // optimizations
+            nodes: vec![None],
             merges: Vec::new(),
             hashes: Map::new(),
+            errors: Vec::new(),
         }
+    }
+
+    pub fn errors(&self) -> &[DisambiguationError] {
+        &self.errors
+    }
+
+    fn next_id(&self) -> NodeId {
+        NodeId::new(self.nodes.len())
     }
 
     /// Reserve an empty slot for a node on the graph and return an
     /// id for it. `ReservedId` cannot be cloned, and must be consumed
     /// by calling `insert` on the graph.
     pub fn reserve(&mut self) -> ReservedId {
-        let id = self.nodes.len();
+        let id = self.next_id();
 
         self.nodes.push(None);
 
@@ -75,7 +109,7 @@ impl<Leaf> Graph<Leaf> {
     where
         N: Into<Node<Leaf>>,
     {
-        self.nodes[id.0] = Some(node.into());
+        self.nodes[id.0.get()] = Some(node.into());
 
         id.0
     }
@@ -96,6 +130,8 @@ impl<Leaf> Graph<Leaf> {
         let mut hasher = FnvHasher::default();
         node.hash(&mut hasher);
 
+        let next_id = self.next_id();
+
         match self.hashes.entry(hasher.finish()) {
             Entry::Occupied(occupied) => {
                 let id = *occupied.get();
@@ -105,7 +141,7 @@ impl<Leaf> Graph<Leaf> {
                 }
             },
             Entry::Vacant(vacant) => {
-                vacant.insert(self.nodes.len());
+                vacant.insert(next_id);
             },
         }
 
@@ -113,7 +149,7 @@ impl<Leaf> Graph<Leaf> {
     }
 
     fn push_unchecked(&mut self, node: Node<Leaf>) -> NodeId {
-        let id = self.nodes.len();
+        let id = self.next_id();
 
         self.nodes.push(Some(node));
 
@@ -140,7 +176,12 @@ impl<Leaf> Graph<Leaf> {
             (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
                 return match Disambiguate::cmp(left, right) {
                     Ordering::Less => b,
-                    Ordering::Equal | Ordering::Greater => a,
+                    Ordering::Greater => a,
+                    Ordering::Equal => {
+                        self.errors.push(DisambiguationError(a, b));
+
+                        a
+                    },
                 };
             },
             _ => (),
@@ -271,7 +312,7 @@ impl<Leaf> Graph<Leaf> {
     pub fn shake(&mut self, root: NodeId) {
         let mut filter = vec![false; self.nodes.len()];
 
-        filter[root] = true;
+        filter[root.get()] = true;
 
         self[root].shake(self, &mut filter);
 
@@ -283,7 +324,7 @@ impl<Leaf> Graph<Leaf> {
     }
 
     pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
-        self.nodes.get(id)?.as_ref()
+        self.nodes.get(id.get())?.as_ref()
     }
 }
 
@@ -295,7 +336,11 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
     }
 }
 
-pub type NodeId = usize;
+impl std::fmt::Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
 
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Node<Leaf> {
@@ -331,12 +376,31 @@ impl<Leaf> Node<Leaf> {
             Node::Leaf(_) => (),
         }
     }
+
+    pub fn unwrap_leaf(&self) -> &Leaf {
+        match self {
+            Node::Fork(_) => panic!("Internal Error: called unwrap_leaf on a fork"),
+            Node::Rope(_) => panic!("Internal Error: called unwrap_leaf on a rope"),
+            Node::Leaf(leaf) => leaf,
+        }
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn leaf_stack_size() {
+        use std::mem::size_of;
+
+        const WORD: usize = size_of::<usize>();
+        const NODE: usize = size_of::<Node<()>>();
+
+        assert!(NODE <= 6 * WORD, "Size of Node<()> is {} bytes!", NODE);
+    }
 
     #[test]
     fn create_a_loop() {
@@ -363,7 +427,7 @@ mod tests {
         let fork = graph.push(Fork::new().branch(b'!', leaf));
 
         assert_eq!(graph.fork_off(leaf), Fork::new().miss(leaf));
-        assert_eq!(graph.fork_off(rope), Fork::new().branch(b'r', graph.nodes.len() - 1));
+        assert_eq!(graph.fork_off(rope), Fork::new().branch(b'r', NodeId::new(graph.nodes.len() - 1)));
         assert_eq!(graph.fork_off(fork), Fork::new().branch(b'!', leaf));
     }
 }

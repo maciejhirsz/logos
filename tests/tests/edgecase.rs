@@ -16,7 +16,7 @@ mod crunch {
         #[token("exposed")]
         Exposed,
 
-        #[regex("[^ \t\n\r\"\'!@#$%\\^&*()-+=,.<>/?;:\\[\\]{}\\\\|`~]+")]
+        #[regex(r#"[^ \t\n\r\f"'!@#$%\^&*()-+=,.<>/?;:\[\]{}\\|`~]+"#)]
         Ident,
     }
 
@@ -348,12 +348,12 @@ mod type_params {
         #[regex("[a-z]+")]
         Ident(S),
 
-        #[regex("[0-9]+", |lex| lex.slice().parse())]
+        #[regex("[0-9]+", priority = 10, callback = |lex| lex.slice().parse())]
         Number(N)
     }
 
     #[test]
-    fn maybe_at_the_end() {
+    fn substitute_type_params() {
         let tokens: Vec<_> = Token::lexer("foo 42 bar").collect();
 
         assert_eq!(
@@ -362,6 +362,68 @@ mod type_params {
                 Token::Ident("foo"),
                 Token::Number(42u64),
                 Token::Ident("bar"),
+            ]
+        );
+    }
+}
+
+mod priority_disambiguate_1 {
+    use logos::Logos;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token {
+        #[regex(r"[ \n\t\f]+", logos::skip)]
+        #[error]
+        Error,
+
+        #[regex("[abc]+", priority = 2)]
+        Abc,
+
+        #[regex("[cde]+")]
+        Cde,
+    }
+
+    #[test]
+    fn priority_abc() {
+        let tokens: Vec<_> = Token::lexer("abc ccc cde").collect();
+
+        assert_eq!(
+            tokens,
+            &[
+                Token::Abc,
+                Token::Abc,
+                Token::Cde,
+            ]
+        );
+    }
+}
+
+mod priority_disambiguate_2 {
+    use logos::Logos;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token {
+        #[regex(r"[ \n\t\f]+", logos::skip)]
+        #[error]
+        Error,
+
+        #[regex("[abc]+")]
+        Abc,
+
+        #[regex("[cde]+", priority = 2)]
+        Cde,
+    }
+
+    #[test]
+    fn priority_cbd() {
+        let tokens: Vec<_> = Token::lexer("abc ccc cde").collect();
+
+        assert_eq!(
+            tokens,
+            &[
+                Token::Abc,
+                Token::Cde,
+                Token::Cde,
             ]
         );
     }
