@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::cmp::min;
 
 use utf8_ranges::Utf8Sequences;
 
@@ -8,9 +7,7 @@ use crate::mir::{Mir, Literal, Class, ClassUnicode};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
-        let (_ ,id) = self.parse_mir(mir, then, None, None);
-
-        id
+        self.parse_mir(mir, then, None, None)
     }
 
     fn parse_mir(
@@ -19,42 +16,37 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         then: NodeId,
         miss: Option<NodeId>,
         reserved: Option<ReservedId>,
-    ) -> (usize, NodeId) {
+    ) -> NodeId {
         match mir {
-            Mir::Empty => (0, then),
+            Mir::Empty => then,
             Mir::Loop(mir) => {
                 let miss = match miss {
                     Some(id) => self.merge(id, then),
                     None => then,
                 };
                 let this = self.reserve();
-                let (_, id) = self.parse_mir(*mir, this.get(), Some(miss), Some(this));
 
-                (0, id)
+                self.parse_mir(*mir, this.get(), Some(miss), Some(this))
             }
             Mir::Maybe(mir) => {
                 let miss = match miss {
                     Some(id) => self.merge(id, then),
                     None => then,
                 };
-                let (_, id) = self.parse_mir(*mir, then, Some(miss), reserved);
 
-                (0, id)
+                self.parse_mir(*mir, then, Some(miss), reserved)
             },
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
-                let mut shortest = if alternation.len() > 0 { usize::max_value() } else { 0 };
 
                 for mir in alternation {
-                    let (len, id) = self.parse_mir(mir, then, None, None);
+                    let id = self.parse_mir(mir, then, None, None);
                     let alt = self.fork_off(id);
-
-                    shortest = min(shortest, len);
 
                     fork.merge(alt, self);
                 }
 
-                (shortest, self.insert_or_push(reserved, fork))
+                self.insert_or_push(reserved, fork)
             }
             Mir::Literal(literal) => {
                 let pattern = match literal {
@@ -65,10 +57,8 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         [byte].to_vec()
                     },
                 };
-                (
-                    pattern.len() * 2,
-                    self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
-                )
+
+                self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
             },
             Mir::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
@@ -78,7 +68,6 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut cur = ropebuf.len();
                 let mut end = ropebuf.len();
                 let mut then = then;
-                let mut total_len = 0;
 
                 let mut handle_bytes = |graph: &mut Self, mir, then: &mut NodeId| {
                     match mir {
@@ -107,26 +96,19 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         mir => {
                             if end > cur {
                                 let rope = Rope::new(&ropebuf[cur..end], *then);
-                                let len = rope.priority();
 
                                 *then = graph.push(rope);
                                 end = cur;
-
-                                Some((len, mir))
-                            } else {
-                                Some((0, mir))
                             }
+
+                            Some(mir)
                         },
                     }
                 };
 
                 for mir in concat.drain(1..).rev() {
-                    if let Some((len, mir)) = handle_bytes(self, mir, &mut then) {
-                        let (nlen, next) = self.parse_mir(mir, then, None, None);
-
-                        total_len += len + nlen;
-
-                        then = next
+                    if let Some(mir) = handle_bytes(self, mir, &mut then) {
+                        then = self.parse_mir(mir, then, None, None);
                     }
                 }
 
@@ -134,16 +116,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => {
                         let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
 
-                        total_len += rope.priority();
-
-                        (total_len, self.insert_or_push(reserved, rope))
+                        self.insert_or_push(reserved, rope)
                     },
-                    Some((len, mir)) => {
-                        let (nlen, id) = self.parse_mir(mir, then, miss, reserved);
-
-                        total_len += len + nlen;
-
-                        (total_len, id)
+                    Some(mir) => {
+                        self.parse_mir(mir, then, miss, reserved)
                     },
                 }
             },
@@ -157,27 +133,20 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 if ropes.len() == 1 {
                     let rope = ropes.remove(0);
 
-                    return (
-                        rope.pattern.len(),
-                        self.insert_or_push(reserved, rope.miss(miss)),
-                    );
+                    return self.insert_or_push(reserved, rope.miss(miss));
                 }
 
                 let mut root = Fork::new().miss(miss);
-                let mut shortest = usize::max_value();
 
                 for rope in ropes {
-                    shortest = min(shortest, rope.priority());
-
                     let fork = rope.into_fork(self);
                     root.merge(fork, self);
                 }
 
-                (shortest, self.insert_or_push(reserved, root))
+                self.insert_or_push(reserved, root)
             },
             Mir::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
-                let mut len = 2;
 
                 let class: Vec<Range> = match class {
                     Class::Unicode(u) => {
@@ -189,13 +158,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 };
 
                 for range in class {
-                    if range.as_byte().is_none() {
-                        len = 1;
-                    }
                     fork.add_branch(range, then, self);
                 }
 
-                (len, self.insert_or_push(reserved, fork))
+                self.insert_or_push(reserved, fork)
             },
         }
     }
