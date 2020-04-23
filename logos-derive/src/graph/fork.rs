@@ -1,4 +1,4 @@
-use crate::graph::{Graph, Disambiguate, NodeId, Range, Result};
+use crate::graph::{Graph, Disambiguate, NodeId, Range};
 
 #[derive(Clone)]
 pub struct Fork {
@@ -24,7 +24,7 @@ impl Fork {
         self
     }
 
-    pub fn add_branch<R, T>(&mut self, range: R, then: NodeId, graph: &mut Graph<T>) -> Result<()>
+    pub fn add_branch<R, T>(&mut self, range: R, then: NodeId, graph: &mut Graph<T>)
     where
         R: Into<Range>,
         T: Disambiguate,
@@ -32,35 +32,31 @@ impl Fork {
         for byte in range.into() {
             match &mut self.lut[byte as usize] {
                 Some(other) if *other != then => {
-                    *other = graph.merge(*other, then)?;
+                    *other = graph.merge(*other, then);
                 },
                 opt => *opt = Some(then),
             }
         }
-
-        Ok(())
     }
 
     // TODO: Add result with a printable error
-    pub fn merge<T>(&mut self, other: Fork, graph: &mut Graph<T>) -> Result<()>
+    pub fn merge<T>(&mut self, other: Fork, graph: &mut Graph<T>)
     where
         T: Disambiguate,
     {
         self.miss = match (self.miss, other.miss) {
             (None, None) => None,
             (Some(id), None) | (None, Some(id)) => Some(id),
-            (Some(a), Some(b)) => Some(graph.merge(a, b)?),
+            (Some(a), Some(b)) => Some(graph.merge(a, b)),
         };
 
         for (left, right) in self.lut.iter_mut().zip(other.lut.iter()) {
             *left = match (*left, *right) {
                 (None, None) => continue,
                 (Some(id), None) | (None, Some(id)) => Some(id),
-                (Some(a), Some(b)) => Some(graph.merge(a, b)?),
+                (Some(a), Some(b)) => Some(graph.merge(a, b)),
             }
         }
-
-        Ok(())
     }
 
     pub fn branches(&self) -> ForkIter<'_> {
@@ -198,7 +194,7 @@ mod tests {
         fork.merge(
             Fork::new().branch(b'2', leaf2),
             &mut graph,
-        ).unwrap();
+        );
 
         assert_eq!(
             fork,
@@ -220,7 +216,7 @@ mod tests {
         fork.merge(
             Fork::new().miss(leaf2),
             &mut graph,
-        ).unwrap();
+        );
 
         assert_eq!(
             fork,
@@ -242,7 +238,7 @@ mod tests {
         fork.merge(
             Fork::new().branch(b'2', leaf2),
             &mut graph,
-        ).unwrap();
+        );
 
         assert_eq!(
             fork,

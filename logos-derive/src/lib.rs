@@ -216,36 +216,25 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    let mut ambiguities = Vec::new();
     for id in regex_ids {
-        let err = id
-            .map(|id| graph.fork_off(id))
-            .and_then(|fork| root.merge(fork, &mut graph))
-            .err();
+        let fork = graph.fork_off(id);
 
-        if let Some(err) = err {
-            ambiguities.push(err)
-        }
+        root.merge(fork, &mut graph);
     }
     for rope in ropes {
-        if let Err(err) = root.merge(rope.into_fork(&mut graph), &mut graph) {
-            ambiguities.push(err);
-        }
+        root.merge(rope.into_fork(&mut graph), &mut graph);
     }
     while let Some(id) = root.miss.take() {
         let fork = graph.fork_off(id);
 
         if fork.branches().next().is_some() {
-            if let Err(err) = root.merge(fork, &mut graph) {
-                ambiguities.push(err);
-                break;
-            }
+            root.merge(fork, &mut graph);
         } else {
             break;
         }
     }
 
-    for DisambiguationError(a, b) in ambiguities {
+    for &DisambiguationError(a, b) in graph.errors() {
         let a = graph[a].unwrap_leaf();
         let b = graph[b].unwrap_leaf();
         let disambiguate = a.priority + 1;

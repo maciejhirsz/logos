@@ -2,11 +2,11 @@ use std::fmt::Debug;
 
 use utf8_ranges::Utf8Sequences;
 
-use crate::graph::{Graph, Disambiguate, Node, NodeId, ReservedId, Range, Rope, Fork, Result};
+use crate::graph::{Graph, Disambiguate, Node, NodeId, ReservedId, Range, Rope, Fork};
 use crate::mir::{Mir, Literal, Class, ClassUnicode};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
-    pub fn regex(&mut self, mir: Mir, then: NodeId) -> Result<NodeId> {
+    pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
         self.parse_mir(mir, then, None, None)
     }
 
@@ -16,12 +16,12 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         then: NodeId,
         miss: Option<NodeId>,
         reserved: Option<ReservedId>,
-    ) -> Result<NodeId> {
+    ) -> NodeId {
         match mir {
-            Mir::Empty => Ok(then),
+            Mir::Empty => then,
             Mir::Loop(mir) => {
                 let miss = match miss {
-                    Some(id) => self.merge(id, then)?,
+                    Some(id) => self.merge(id, then),
                     None => then,
                 };
                 let this = self.reserve();
@@ -30,7 +30,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
             },
             Mir::Maybe(mir) => {
                 let miss = match miss {
-                    Some(id) => self.merge(id, then)?,
+                    Some(id) => self.merge(id, then),
                     None => then,
                 };
 
@@ -40,13 +40,13 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut fork = Fork::new().miss(miss);
 
                 for mir in alternation {
-                    let id = self.parse_mir(mir, then, None, None)?;
+                    let id = self.parse_mir(mir, then, None, None);
                     let alt = self.fork_off(id);
 
-                    fork.merge(alt, self)?;
+                    fork.merge(alt, self);
                 }
 
-                Ok(self.insert_or_push(reserved, fork))
+                self.insert_or_push(reserved, fork)
             }
             Mir::Literal(literal) => {
                 let pattern = match literal {
@@ -58,7 +58,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     },
                 };
 
-                Ok(self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss)))
+                self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
             },
             Mir::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
@@ -108,7 +108,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 for mir in concat.drain(1..).rev() {
                     if let Some(mir) = handle_bytes(self, mir, &mut then) {
-                        then = self.parse_mir(mir, then, None, None)?;
+                        then = self.parse_mir(mir, then, None, None);
                     }
                 }
 
@@ -116,7 +116,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => {
                         let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
 
-                        Ok(self.insert_or_push(reserved, rope))
+                        self.insert_or_push(reserved, rope)
                     },
                     Some(mir) => {
                         self.parse_mir(mir, then, miss, reserved)
@@ -133,17 +133,17 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 if ropes.len() == 1 {
                     let rope = ropes.remove(0);
 
-                    return Ok(self.insert_or_push(reserved, rope.miss(miss)));
+                    return self.insert_or_push(reserved, rope.miss(miss));
                 }
 
                 let mut root = Fork::new().miss(miss);
 
                 for rope in ropes {
                     let fork = rope.into_fork(self);
-                    root.merge(fork, self)?;
+                    root.merge(fork, self);
                 }
 
-                Ok(self.insert_or_push(reserved, root))
+                self.insert_or_push(reserved, root)
             },
             Mir::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
@@ -158,10 +158,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 };
 
                 for range in class {
-                    fork.add_branch(range, then, self)?;
+                    fork.add_branch(range, then, self);
                 }
 
-                Ok(self.insert_or_push(reserved, fork))
+                self.insert_or_push(reserved, fork)
             },
         }
     }
@@ -213,7 +213,7 @@ mod tests {
         assert_eq!(mir.priority(), 12);
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let id = graph.regex(mir, leaf).unwrap();
+        let id = graph.regex(mir, leaf);
 
         assert_eq!(
             graph[id],
@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(mir.priority(), 2);
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let id = graph.regex(mir, leaf).unwrap();
+        let id = graph.regex(mir, leaf);
 
         assert_eq!(
             graph[id],
@@ -251,7 +251,7 @@ mod tests {
         assert_eq!(mir.priority(), 0);
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let id = graph.regex(mir, leaf).unwrap();
+        let id = graph.regex(mir, leaf);
 
         assert_eq!(
             graph[id],
@@ -272,7 +272,7 @@ mod tests {
         assert_eq!(mir.priority(), 0);
 
         let leaf = graph.push(Node::Leaf("LEAF"));
-        let id = graph.regex(mir, leaf).unwrap();
+        let id = graph.regex(mir, leaf);
 
         assert_eq!(
             graph[id],
