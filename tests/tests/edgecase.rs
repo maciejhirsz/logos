@@ -335,6 +335,9 @@ mod colors {
 mod type_params {
     use logos::Logos;
 
+    #[derive(Debug, PartialEq)]
+    struct Nested<S>(S);
+
     #[derive(Logos, Debug, PartialEq)]
     #[logos(
         type S = &str,
@@ -349,7 +352,10 @@ mod type_params {
         Ident(S),
 
         #[regex("[0-9]+", priority = 10, callback = |lex| lex.slice().parse())]
-        Number(N)
+        Number(N),
+
+        #[regex("nested", |lex| Nested(lex.slice()))]
+        Nested(Nested<S>),
     }
 
     #[test]

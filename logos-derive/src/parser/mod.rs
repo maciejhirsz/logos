@@ -14,7 +14,7 @@ mod type_params;
 
 pub use self::definition::{Definition, Literal};
 use self::nested::{AttributeParser, Nested, NestedValue};
-use self::type_params::{TypeParams, replace_lifetimes};
+use self::type_params::{TypeParams, replace_types, replace_lifetime};
 
 #[derive(Default)]
 pub struct Parser {
@@ -241,19 +241,21 @@ impl Parser {
     /// If no matching generic param is found, all lifetimes are fixed
     /// to the source lifetime
     pub fn get_type(&self, ty: &mut Type) -> TokenStream {
-        if let Type::Path(tp) = ty {
-            // Skip types that begin with `self::`
-            if tp.qself.is_none() {
-                // If `ty` is a generic type parameter, try to find
-                // its concrete type defined with #[logos(type T = Type)]
-                if let Some(substitue) = self.types.find(&tp.path) {
-                    return substitue;
+        replace_types(ty, &mut |ty| {
+            if let Type::Path(tp) = ty {
+                // Skip types that begin with `self::`
+                if tp.qself.is_none() {
+                    // If `ty` is a generic type parameter, try to find
+                    // its concrete type defined with #[logos(type T = Type)]
+                    if let Some(substitue) = self.types.find(&tp.path) {
+                        *ty = substitue;
+                    }
                 }
             }
-        }
+            // If `ty` is a concrete type, fix its lifetimes to 'source
+            replace_lifetime(ty);
+        });
 
-        // If `ty` is a concrete type, fix its lifetimes to 'source
-        replace_lifetimes(ty);
         quote!(#ty)
     }
 
