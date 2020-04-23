@@ -376,7 +376,7 @@ mod priority_disambiguate_1 {
         #[error]
         Error,
 
-        #[regex("[abc]+", priority = 10)]
+        #[regex("[abc]+", priority = 2)]
         Abc,
 
         #[regex("[cde]+")]
@@ -410,7 +410,7 @@ mod priority_disambiguate_2 {
         #[regex("[abc]+")]
         Abc,
 
-        #[regex("[cde]+", priority = 10)]
+        #[regex("[cde]+", priority = 2)]
         Cde,
     }
 

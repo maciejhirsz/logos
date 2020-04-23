@@ -218,15 +218,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut ambiguities = Vec::new();
     for id in regex_ids {
-        let fork = match id {
-            Ok(id) => graph.fork_off(id),
-            Err(err) => {
-                ambiguities.push(err);
-                continue;
-            }
-        };
-        if let Err(err) = root.merge(fork, &mut graph) {
-            ambiguities.push(err);
+        let err = id
+            .map(|id| graph.fork_off(id))
+            .and_then(|fork| root.merge(fork, &mut graph))
+            .err();
+
+        if let Some(err) = err {
+            ambiguities.push(err)
         }
     }
     for rope in ropes {
@@ -240,6 +238,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         if fork.branches().next().is_some() {
             if let Err(err) = root.merge(fork, &mut graph) {
                 ambiguities.push(err);
+                break;
             }
         } else {
             break;
