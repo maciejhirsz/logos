@@ -164,6 +164,14 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 + `foobar` has a priority of 12.
 + `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
 
+If two definitions compute to the same priority and can match the same input **Logos** will
+fail to compile, point out the problematic definitions, and ask you to specify a manual
+priority for either of them.
+
+For example: `[abc]+` and `[cde]+` both can match sequences of `c`, and both have priority of 1.
+Turning the first definition to `#[regex("[abc]+", priority = 2)]` will allow for tokens
+to be disambiguated again, in this case all sequences of `c` will match `[abc]+`.
+
 ## How fast?
 
 Ridiculously fast!
@@ -177,6 +185,11 @@ test strings                           ... bench:         553 ns/iter (+/- 34) =
 ## Acknowledgements
 
 + [Pedrors](https://pedrors.pt/) for the **Logos** logo.
+
+## Thank you
+
+**Logos** is very much a labor of love. If you find it useful, consider
+[getting me some coffee](https://github.com/sponsors/maciejhirsz). ☕
 
 ## License
 
