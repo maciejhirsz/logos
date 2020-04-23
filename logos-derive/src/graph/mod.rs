@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::num::NonZeroU32;
 use std::collections::BTreeMap as Map;
 use std::collections::btree_map::Entry;
 use std::ops::{Index, IndexMut};
@@ -17,6 +18,13 @@ pub use self::meta::Meta;
 pub use self::fork::Fork;
 pub use self::rope::Rope;
 pub use self::range::Range;
+
+/// Disambiguation error during the attempt to merge two leaf
+/// nodes with the same priority
+#[derive(Debug)]
+pub struct DisambiguationError(pub NodeId, pub NodeId);
+
+pub type Result<T> = std::result::Result<T, DisambiguationError>;
 
 pub struct Graph<Leaf> {
     /// Internal storage of all allocated nodes. Once a node is
@@ -40,6 +48,19 @@ pub trait Disambiguate {
     fn cmp(left: &Self, right: &Self) -> Ordering;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NodeId(NonZeroU32);
+
+impl NodeId {
+    fn get(self) -> usize {
+        self.0.get() as usize
+    }
+
+    fn new(n: usize) -> NodeId {
+        NodeId(NonZeroU32::new(n as u32).expect("Invalid NodeId"))
+    }
+}
+
 /// Unique reserved NodeId. This mustn't implement Clone.
 pub struct ReservedId(NodeId);
 
@@ -52,17 +73,24 @@ impl ReservedId {
 impl<Leaf> Graph<Leaf> {
     pub fn new() -> Self {
         Graph {
-            nodes: Vec::new(),
+            // Start with an empty slot so we can start
+            // counting NodeIds from 1 and use NonZero
+            // optimizations
+            nodes: vec![None],
             merges: Vec::new(),
             hashes: Map::new(),
         }
+    }
+
+    fn next_id(&self) -> NodeId {
+        NodeId::new(self.nodes.len())
     }
 
     /// Reserve an empty slot for a node on the graph and return an
     /// id for it. `ReservedId` cannot be cloned, and must be consumed
     /// by calling `insert` on the graph.
     pub fn reserve(&mut self) -> ReservedId {
-        let id = self.nodes.len();
+        let id = self.next_id();
 
         self.nodes.push(None);
 
@@ -75,7 +103,7 @@ impl<Leaf> Graph<Leaf> {
     where
         N: Into<Node<Leaf>>,
     {
-        self.nodes[id.0] = Some(node.into());
+        self.nodes[id.0.get()] = Some(node.into());
 
         id.0
     }
@@ -96,6 +124,8 @@ impl<Leaf> Graph<Leaf> {
         let mut hasher = FnvHasher::default();
         node.hash(&mut hasher);
 
+        let next_id = self.next_id();
+
         match self.hashes.entry(hasher.finish()) {
             Entry::Occupied(occupied) => {
                 let id = *occupied.get();
@@ -105,7 +135,7 @@ impl<Leaf> Graph<Leaf> {
                 }
             },
             Entry::Vacant(vacant) => {
-                vacant.insert(self.nodes.len());
+                vacant.insert(next_id);
             },
         }
 
@@ -113,7 +143,7 @@ impl<Leaf> Graph<Leaf> {
     }
 
     fn push_unchecked(&mut self, node: Node<Leaf>) -> NodeId {
-        let id = self.nodes.len();
+        let id = self.next_id();
 
         self.nodes.push(Some(node));
 
@@ -121,12 +151,12 @@ impl<Leaf> Graph<Leaf> {
     }
 
     /// Merge the nodes at id `a` and `b`, returning a new id.
-    pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId
+    pub fn merge(&mut self, a: NodeId, b: NodeId) -> Result<NodeId>
     where
         Leaf: Disambiguate,
     {
         if a == b {
-            return a;
+            return Ok(a);
         }
 
         match (self.get(a), self.get(b)) {
@@ -135,12 +165,13 @@ impl<Leaf> Graph<Leaf> {
             },
             // Merging a leaf with an empty slot would produce
             // an empty self-referencing fork.
-            (Some(Node::Leaf(_)), None) => return a,
-            (None, Some(Node::Leaf(_))) => return b,
+            (Some(Node::Leaf(_)), None) => return Ok(a),
+            (None, Some(Node::Leaf(_))) => return Ok(b),
             (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
                 return match Disambiguate::cmp(left, right) {
-                    Ordering::Less => b,
-                    Ordering::Equal | Ordering::Greater => a,
+                    Ordering::Less => Ok(b),
+                    Ordering::Greater => Ok(a),
+                    Ordering::Equal => Err(DisambiguationError(a, b)),
                 };
             },
             _ => (),
@@ -150,7 +181,7 @@ impl<Leaf> Graph<Leaf> {
 
         // If the id pair is already merged (or is being merged), just return the id
         if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
-            return *merged;
+            return Ok(*merged);
         }
 
         // Reserve the id for the merge and save it. Since the graph can contain loops,
@@ -165,22 +196,22 @@ impl<Leaf> Graph<Leaf> {
             (Some(Node::Rope(rope)), _) => {
                 let rope = rope.clone();
 
-                self.merge_rope(rope, b)
+                self.merge_rope(rope, b)?
             },
             (_, Some(Node::Rope(rope))) => {
                 let rope = rope.clone();
 
-                self.merge_rope(rope, a)
+                self.merge_rope(rope, a)?
             },
             _ => None,
         };
 
         if let Some(rope) = merged_rope {
-            return self.insert(id, rope);
+            return Ok(self.insert(id, rope));
         }
 
         let mut fork = self.fork_off(a);
-        fork.merge(self.fork_off(b), self);
+        fork.merge(self.fork_off(b), self)?;
 
         let mut stack = vec![id.get()];
 
@@ -201,14 +232,14 @@ impl<Leaf> Graph<Leaf> {
                 _ => (),
             }
             fork.miss = None;
-            fork.merge(other, self);
+            fork.merge(other, self)?;
 
         }
 
-        self.insert(id, fork)
+        Ok(self.insert(id, fork))
     }
 
-    fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope>
+    fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Result<Option<Rope>>
     where
         Leaf: Disambiguate,
     {
@@ -223,32 +254,38 @@ impl<Leaf> Graph<Leaf> {
                     .take_while(|range| fork.contains(**range) == Some(other))
                     .count();
 
-                let mut rope = rope.split_at(count, self)?.miss_any(other);
+                let mut rope = match rope.split_at(count, self) {
+                    Some(rope) => rope.miss_any(other),
+                    None => return Ok(None),
+                };
 
-                rope.then = self.merge(rope.then, other);
+                rope.then = self.merge(rope.then, other)?;
 
-                Some(rope)
+                Ok(Some(rope))
             },
             Some(Node::Rope(other)) => {
-                let (prefix, miss) = rope.prefix(other)?;
+                let (prefix, miss) = match rope.prefix(other) {
+                    Some(pm) => pm,
+                    None => return Ok(None),
+                };
 
                 let (a, b) = (rope, other.clone());
 
                 let a = a.remainder(prefix.len(), self);
                 let b = b.remainder(prefix.len(), self);
 
-                let rope = Rope::new(prefix, self.merge(a, b)).miss(miss);
+                let rope = Rope::new(prefix, self.merge(a, b)?).miss(miss);
 
-                Some(rope)
+                Ok(Some(rope))
             },
             Some(Node::Leaf(_)) | None => {
                 if rope.miss.is_none() {
-                    Some(rope.miss(other))
+                    Ok(Some(rope.miss(other)))
                 } else {
-                    None
+                    Ok(None)
                 }
             },
-            _ => None,
+            _ => Ok(None),
         }
     }
 
@@ -271,7 +308,7 @@ impl<Leaf> Graph<Leaf> {
     pub fn shake(&mut self, root: NodeId) {
         let mut filter = vec![false; self.nodes.len()];
 
-        filter[root] = true;
+        filter[root.get()] = true;
 
         self[root].shake(self, &mut filter);
 
@@ -283,11 +320,11 @@ impl<Leaf> Graph<Leaf> {
     }
 
     pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
-        self.nodes.get(id)?.as_ref()
+        self.nodes.get(id.get())?.as_ref()
     }
 
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<Leaf>> {
-        self.nodes.get_mut(id)?.as_mut()
+        self.nodes.get_mut(id.get())?.as_mut()
     }
 }
 
@@ -305,7 +342,11 @@ impl<Leaf> IndexMut<NodeId> for Graph<Leaf> {
     }
 }
 
-pub type NodeId = usize;
+impl std::fmt::Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
 
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Node<Leaf> {
@@ -341,12 +382,31 @@ impl<Leaf> Node<Leaf> {
             Node::Leaf(_) => (),
         }
     }
+
+    pub fn unwrap_leaf(&self) -> &Leaf {
+        match self {
+            Node::Fork(_) => panic!("Internal Error: called unwrap_leaf on a fork"),
+            Node::Rope(_) => panic!("Internal Error: called unwrap_leaf on a rope"),
+            Node::Leaf(leaf) => leaf,
+        }
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn leaf_stack_size() {
+        use std::mem::size_of;
+
+        const WORD: usize = size_of::<usize>();
+        const NODE: usize = size_of::<Node<()>>();
+
+        assert!(NODE <= 6 * WORD, "Size of Node<()> is {} bytes!", NODE);
+    }
 
     #[test]
     fn create_a_loop() {
@@ -373,7 +433,7 @@ mod tests {
         let fork = graph.push(Fork::new().branch(b'!', leaf));
 
         assert_eq!(graph.fork_off(leaf), Fork::new().miss(leaf));
-        assert_eq!(graph.fork_off(rope), Fork::new().branch(b'r', graph.nodes.len() - 1));
+        assert_eq!(graph.fork_off(rope), Fork::new().branch(b'r', NodeId::new(graph.nodes.len() - 1)));
         assert_eq!(graph.fork_off(fork), Fork::new().branch(b'!', leaf));
     }
 }

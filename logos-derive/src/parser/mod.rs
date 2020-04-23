@@ -174,7 +174,7 @@ impl Parser {
                             "\
                             Expected a named argument at this position\n\n\
 
-                            Hint: If you are trying to define a callback here use: callback = ...\
+                            hint: If you are trying to define a callback here use: callback = ...\
                             ",
                             tokens.span()
                         );

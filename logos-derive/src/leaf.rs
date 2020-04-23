@@ -10,6 +10,7 @@ use crate::util::MaybeVoid;
 #[derive(Clone)]
 pub struct Leaf<'t> {
     pub ident: &'t Ident,
+    pub span: Span,
     pub priority: usize,
     pub field: MaybeVoid,
     pub callback: Option<Callback>,
@@ -44,9 +45,10 @@ impl Callback {
 }
 
 impl<'t> Leaf<'t> {
-    pub fn new(ident: &'t Ident) -> Self {
+    pub fn new(ident: &'t Ident, span: Span) -> Self {
         Leaf {
-            ident: ident,
+            ident,
+            span,
             priority: 0,
             field: MaybeVoid::Void,
             callback: None,

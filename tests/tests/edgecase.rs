@@ -6,7 +6,7 @@ mod crunch {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
+        #[regex(r"[ \t\n]+", logos::skip)]
         #[error]
         Error,
 

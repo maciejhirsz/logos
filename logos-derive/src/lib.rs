@@ -16,7 +16,7 @@ mod parser;
 mod mir;
 
 use generator::Generator;
-use graph::{Graph, Fork, Rope};
+use graph::{Graph, Fork, Rope, DisambiguationError};
 use leaf::Leaf;
 use parser::{Parser, Mode};
 use util::MaybeVoid;
@@ -103,7 +103,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
         // Lazy leaf constructor to avoid cloning
         let var_ident = &variant.ident;
-        let leaf = move || Leaf::new(var_ident).field(field.clone());
+        let leaf = move |span| Leaf::new(var_ident, span).field(field.clone());
 
         for attr in &mut variant.attrs {
             let attr_name = match attr.path.get_ident() {
@@ -143,7 +143,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                     let bytes = definition.literal.to_bytes();
                     let then = graph.push(
-                        leaf()
+                        leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or(bytes.len() * 2))
                             .callback(definition.callback)
                     );
@@ -166,7 +166,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         },
                     };
                     let then = graph.push(
-                        leaf()
+                        leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or_else(|| mir.priority()))
                             .callback(definition.callback)
                     );
@@ -216,26 +216,66 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
     };
 
-    if let Some(errors) = parser.errors.render() {
-        return impl_logos(errors).into();
-    }
-
+    let mut ambiguities = Vec::new();
     for id in regex_ids {
-        let fork = graph.fork_off(id);
-        root.merge(fork, &mut graph);
+        let fork = match id {
+            Ok(id) => graph.fork_off(id),
+            Err(err) => {
+                ambiguities.push(err);
+                continue;
+            }
+        };
+        if let Err(err) = root.merge(fork, &mut graph) {
+            ambiguities.push(err);
+        }
     }
     for rope in ropes {
-        root.merge(rope.into_fork(&mut graph), &mut graph)
+        if let Err(err) = root.merge(rope.into_fork(&mut graph), &mut graph) {
+            ambiguities.push(err);
+        }
     }
     while let Some(id) = root.miss.take() {
         let fork = graph.fork_off(id);
 
         if fork.branches().next().is_some() {
-            root.merge(fork, &mut graph);
+            if let Err(err) = root.merge(fork, &mut graph) {
+                ambiguities.push(err);
+            }
         } else {
             break;
         }
     }
+
+    for DisambiguationError(a, b) in ambiguities {
+        let a = graph[a].unwrap_leaf();
+        let b = graph[b].unwrap_leaf();
+        let disambiguate = a.priority + 1;
+
+        let mut err = |a: &Leaf, b: &Leaf| {
+            parser.err(
+                format!(
+                    "\
+                    A definition of variant `{0}` can match the same input as another definition of variant `{1}`.\n\n\
+
+                    hint: Consider giving one definition a higher priority: \
+                    #[regex(..., priority = {2})]\
+                    ",
+                    a.ident,
+                    b.ident,
+                    disambiguate,
+                ),
+                b.span
+            );
+        };
+
+        err(a, b);
+        err(b, a);
+    }
+
+    if let Some(errors) = parser.errors.render() {
+        return impl_logos(errors).into();
+    }
+
     let root = graph.push(root);
 
     graph.shake(root);
