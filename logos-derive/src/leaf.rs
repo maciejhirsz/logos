@@ -5,12 +5,13 @@ use syn::{Ident, spanned::Spanned};
 use proc_macro2::{TokenStream, Span};
 
 use crate::graph::{Node, Disambiguate};
+use crate::util::MaybeVoid;
 
 #[derive(Clone)]
 pub struct Leaf<'t> {
     pub ident: &'t Ident,
     pub priority: usize,
-    pub field: Option<TokenStream>,
+    pub field: MaybeVoid,
     pub callback: Option<Callback>,
 }
 
@@ -47,7 +48,7 @@ impl<'t> Leaf<'t> {
         Leaf {
             ident: ident,
             priority: 0,
-            field: None,
+            field: MaybeVoid::Void,
             callback: None,
         }
     }
@@ -57,7 +58,7 @@ impl<'t> Leaf<'t> {
         self
     }
 
-    pub fn field(mut self, field: Option<TokenStream>) -> Self {
+    pub fn field(mut self, field: MaybeVoid) -> Self {
         self.field = field;
         self
     }

@@ -1,5 +1,53 @@
-use proc_macro2::{TokenTree, Span, Spacing};
+use proc_macro2::{TokenTree, TokenStream, Span, Spacing};
+use quote::{quote, ToTokens};
 use syn::{Expr, Ident, Lit};
+
+/// Analog to Option<TokenStream>, except when put into the quote!
+/// macro, `MaybeVoid::Void` will produce `()`
+#[derive(Clone)]
+pub enum MaybeVoid {
+    Some(TokenStream),
+    Void
+}
+
+impl Default for MaybeVoid {
+    fn default() -> MaybeVoid {
+        MaybeVoid::Void
+    }
+}
+
+impl MaybeVoid {
+    pub fn replace(&mut self, stream: TokenStream) -> MaybeVoid {
+        std::mem::replace(self, MaybeVoid::Some(stream))
+    }
+
+    pub fn take(&mut self) -> MaybeVoid {
+        std::mem::replace(self, MaybeVoid::Void)
+    }
+}
+
+impl ToTokens for MaybeVoid {
+    fn to_tokens(&self, out: &mut TokenStream) {
+        match self {
+            MaybeVoid::Some(stream) => out.extend(stream.clone()),
+            MaybeVoid::Void => out.extend(quote!(())),
+        }
+    }
+
+    fn to_token_stream(&self) -> TokenStream {
+        match self {
+            MaybeVoid::Some(stream) => stream.clone(),
+            MaybeVoid::Void => quote!(()),
+        }
+    }
+
+    fn into_token_stream(self) -> TokenStream {
+        match self {
+            MaybeVoid::Some(stream) => stream,
+            MaybeVoid::Void => quote!(()),
+        }
+    }
+}
 
 pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
     match tt {
@@ -32,14 +80,28 @@ pub fn unpack_int(expr: &Expr) -> Option<usize> {
     None
 }
 
-pub fn bytes_to_regex_string(bytes: &[u8]) -> String {
-    let mut string = String::with_capacity(bytes.len());
+pub fn bytes_to_regex_string(bytes: Vec<u8>) -> String {
+    if bytes.is_ascii() {
+        unsafe {
+            // Unicode values are prohibited, so we can't use
+            // safe version of String::from_utf8
+            //
+            // We can, however, construct a safe ASCII string
+            return String::from_utf8_unchecked(bytes);
+        }
+    }
 
-    for &byte in bytes {
-        if byte < 0x7F {
+    let mut string = String::with_capacity(bytes.len() * 2);
+
+    for byte in bytes {
+        if byte < 0x80 {
             string.push(byte as char);
         } else {
-            string.push_str(&format!("\\x{:02x}", byte));
+            static DIGITS: [u8; 16] = *b"0123456789abcdef";
+
+            string.push_str(r"\x");
+            string.push(DIGITS[(byte / 16) as usize] as char);
+            string.push(DIGITS[(byte % 16) as usize] as char);
         }
     }
 

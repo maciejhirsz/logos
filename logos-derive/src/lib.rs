@@ -20,7 +20,8 @@ use error::Error;
 use generator::Generator;
 use graph::{Graph, Fork, Rope};
 use leaf::Leaf;
-use parser::{Parser, Mode, Literal};
+use parser::{Parser, Mode};
+use util::MaybeVoid;
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -29,7 +30,7 @@ use syn::spanned::Spanned;
 
 #[proc_macro_derive(
     Logos,
-    attributes(logos, extras, error, end, token, regex, extras)
+    attributes(logos, extras, error, end, token, regex)
 )]
 pub fn logos(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input).expect("#[token] can be only applied to enums");
@@ -88,7 +89,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         }
 
         let field = match &variant.fields {
-            Fields::Unit => None,
+            Fields::Unit => MaybeVoid::Void,
             Fields::Unnamed(ref fields) => {
                 if fields.unnamed.len() != 1 {
                     parser.err(
@@ -103,19 +104,17 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 let mut ty = fields.unnamed.first().expect("Already checked len; qed").ty.clone();
                 let ty = parser.get_type(&mut ty);
 
-                Some(ty)
+                MaybeVoid::Some(ty)
             }
             Fields::Named(_) => {
                 parser.errors.push(Error::new("Logos doesn't support named fields yet.").span(span));
 
-                None
+                MaybeVoid::Void
             }
         };
-        // let leaf = Leaf::token(&variant.ident).field(field);
+        let leaf = Leaf::new(&variant.ident).field(field);
 
         for attr in &variant.attrs {
-            let variant = &variant.ident;
-
             let attr_name = match attr.path.get_ident() {
                 Some(ident) => ident.to_string(),
                 None => continue,
@@ -123,7 +122,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
             match attr_name.as_str() {
                 "error" => {
-                    if let Some(previous) = error.replace(variant) {
+                    if let Some(previous) = error.replace(&variant.ident) {
                         parser
                             .err("Only one #[error] variant can be declared.", span)
                             .err("Previously declared #[error]:", previous.span());
@@ -150,10 +149,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    let bytes = definition.literal.into_bytes();
+                    let bytes = definition.literal.to_bytes();
                     let then = graph.push(
-                        Leaf::new(variant)
-                            .field(field.clone())
+                        leaf.clone()
                             .priority(definition.priority.unwrap_or(bytes.len() * 2))
                             .callback(definition.callback)
                     );
@@ -169,33 +167,21 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         },
                     };
 
-                    let (utf8, regex, span) = match definition.literal {
-                        Literal::Utf8(string) => (
-                            true,
-                            string.value(),
-                            string.span()
-                        ),
-                        Literal::Bytes(bytes) => (
-                            false,
-                            util::bytes_to_regex_string(&bytes.value()),
-                            bytes.span(),
-                        ),
-                    };
-
+                    let utf8 = definition.literal.is_utf8();
+                    let regex = definition.literal.to_regex_string();
                     let leaf_id = graph.reserve();
 
                     let (computed_prio, id) = match graph.regex(utf8, &regex, leaf_id.get()) {
                         Ok(ok) => ok,
                         Err(err) => {
-                            parser.err(err, span);
+                            parser.err(err, definition.literal.span());
                             continue;
                         }
                     };
 
                     graph.insert(
                         leaf_id,
-                        Leaf::new(variant)
-                            .field(field.clone())
+                        leaf.clone()
                             .priority(definition.priority.unwrap_or(computed_prio))
                             .callback(definition.callback)
                     );
@@ -208,7 +194,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
-    let extras = parser.extras();
+    let extras = parser.extras.take();
     let source = match parser.mode {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),

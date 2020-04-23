@@ -8,14 +8,14 @@ use crate::error::Errors;
 use crate::attr_parser::{AttributeParser, Nested, NestedValue};
 use crate::type_params::{TypeParams, replace_lifetimes};
 use crate::leaf::{Callback, InlineCallback};
-use crate::util::expect_punct;
+use crate::util::{expect_punct, bytes_to_regex_string, MaybeVoid};
 
 #[derive(Default)]
 pub struct Parser {
     pub errors: Errors,
     pub mode: Mode,
+    pub extras: MaybeVoid,
     types: TypeParams,
-    extras: Option<TokenStream>,
 }
 
 pub struct Definition {
@@ -94,19 +94,36 @@ impl Default for Mode {
 }
 
 impl Literal {
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn is_utf8(&self) -> bool {
+        match self {
+            Literal::Utf8(_) => true,
+            Literal::Bytes(_) => false,
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             Literal::Utf8(string) => string.value().into_bytes(),
             Literal::Bytes(bytes) => bytes.value(),
         }
     }
+
+    pub fn to_regex_string(&self) -> String {
+        match self {
+            Literal::Utf8(string) => string.value(),
+            Literal::Bytes(bytes) => bytes_to_regex_string(bytes.value()),
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            Literal::Utf8(string) => string.span(),
+            Literal::Bytes(bytes) => bytes.span(),
+        }
+    }
 }
 
 impl Parser {
-    pub fn extras(&mut self) -> TokenStream {
-        self.extras.take().unwrap_or_else(|| quote!(()))
-    }
-
     pub fn parse_generic(&mut self, param: GenericParam) {
         match param {
             GenericParam::Lifetime(lt) => {
@@ -171,7 +188,7 @@ impl Parser {
                 ("extras", NestedValue::Assign(value)) => {
                     let span = value.span();
 
-                    if let Some(previous) = self.extras.replace(value) {
+                    if let MaybeVoid::Some(previous) = self.extras.replace(value) {
                         self.err("Extras can be defined only once", span)
                             .err("Previous definition here", previous.span());
                     }

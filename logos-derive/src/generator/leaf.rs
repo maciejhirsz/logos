@@ -3,6 +3,7 @@ use quote::quote;
 
 use crate::leaf::{Leaf, Callback};
 use crate::generator::{Generator, Context};
+use crate::util::MaybeVoid;
 
 impl<'a> Generator<'a> {
     pub fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
@@ -11,10 +12,11 @@ impl<'a> Generator<'a> {
         let ident = &leaf.ident;
         let name = self.name;
         let this = self.this;
+        let ty = &leaf.field;
 
-        let (ty, constructor) = match leaf.field.clone() {
-            Some(ty) => (ty, quote!(#name::#ident)),
-            None => (quote!(()), quote!(|()| #name::#ident)),
+        let constructor = match leaf.field.clone() {
+            MaybeVoid::Some(_) => quote!(#name::#ident),
+            MaybeVoid::Void => quote!(|()| #name::#ident),
         };
 
         match &leaf.callback {
@@ -37,7 +39,7 @@ impl<'a> Generator<'a> {
                     callback(lex).construct(#constructor, lex);
                 }
             },
-            None if leaf.field.is_none() => quote! {
+            None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
                 lex.set(#name::#ident);
             },
