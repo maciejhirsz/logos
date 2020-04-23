@@ -110,7 +110,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 MaybeVoid::Void
             }
         };
-        let leaf = Leaf::new(&variant.ident).field(field);
+
+        // Lazy leaf constructor to avoid cloning
+        let var_ident = &variant.ident;
+        let leaf = move || Leaf::new(var_ident).field(field.clone());
 
         for attr in &mut variant.attrs {
             let attr_name = match attr.path.get_ident() {
@@ -149,7 +152,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                     let bytes = definition.literal.to_bytes();
                     let then = graph.push(
-                        leaf.clone()
+                        leaf()
                             .priority(definition.priority.unwrap_or(bytes.len() * 2))
                             .callback(definition.callback)
                     );
@@ -179,7 +182,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                     graph.insert(
                         leaf_id,
-                        leaf.clone()
+                        leaf()
                             .priority(definition.priority.unwrap_or(computed_prio))
                             .callback(definition.callback)
                     );
