@@ -1,8 +1,10 @@
+use std::collections::btree_map::{BTreeMap, Entry};
+
 use beef::lean::Cow;
-use proc_macro2::{TokenStream, TokenTree, Span};
-use syn::{Lit, Attribute, GenericParam, Type};
-use syn::spanned::Spanned;
+use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
+use syn::spanned::Spanned;
+use syn::{Attribute, GenericParam, Ident, Lit, LitStr, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -10,17 +12,20 @@ use crate::util::{expect_punct, MaybeVoid};
 
 mod definition;
 mod nested;
+mod subpattern;
 mod type_params;
 
 pub use self::definition::{Definition, Literal};
 use self::nested::{AttributeParser, Nested, NestedValue};
-use self::type_params::{TypeParams, traverse_type, replace_lifetime};
+use self::subpattern::SubpatternInput;
+use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
 #[derive(Default)]
 pub struct Parser {
     pub errors: Errors,
     pub mode: Mode,
     pub extras: MaybeVoid,
+    pub subpatterns: BTreeMap<Ident, LitStr>,
     types: TypeParams,
 }
 
@@ -40,16 +45,13 @@ impl Parser {
         match param {
             GenericParam::Lifetime(lt) => {
                 self.types.explicit_lifetime(lt, &mut self.errors);
-            },
+            }
             GenericParam::Type(ty) => {
                 self.types.add(ty.ident);
-            },
+            }
             GenericParam::Const(c) => {
-                self.err(
-                    "Logos doesn't support const generics.",
-                    c.span(),
-                );
-            },
+                self.err("Logos doesn't support const generics.", c.span());
+            }
         }
     }
 
@@ -61,10 +63,8 @@ impl Parser {
         let mut tokens = std::mem::replace(&mut attr.tokens, TokenStream::new()).into_iter();
 
         match tokens.next() {
-            Some(TokenTree::Group(group)) => {
-                Some(AttributeParser::new(group.stream()))
-            },
-            _ => None
+            Some(TokenTree::Group(group)) => Some(AttributeParser::new(group.stream())),
+            _ => None,
         }
     }
 
@@ -100,16 +100,16 @@ impl Parser {
                         self.err("Extras can be defined only once", span)
                             .err("Previous definition here", previous.span());
                     }
-                },
+                }
                 ("extras", _) => {
                     self.err("Expected: extras = SomeType", name.span());
                 }
                 ("type", NestedValue::KeywordAssign(generic, ty)) => {
                     self.types.set(generic, ty, &mut self.errors);
-                },
+                }
                 ("type", _) => {
                     self.err("Expected: type T = SomeType", name.span());
-                },
+                }
                 ("trivia", _) => {
                     // TODO: Remove in future versions
                     self.err(
@@ -121,7 +121,47 @@ impl Parser {
                         ",
                         name.span(),
                     );
-                },
+                }
+                ("subpattern", NestedValue::Group(value)) => {
+                    let value_span = value.span();
+                    match syn::parse2::<SubpatternInput>(value) {
+                        Ok(values) => {
+                            for input in values.into_iter() {
+                                let input_span = input.span();
+                                let name = match input.path.get_ident() {
+                                    Some(ident) => ident.clone(),
+                                    None => {
+                                        self.err(r#"Expected: single ident"#, input.path.span());
+                                        continue;
+                                    }
+                                };
+                                let value = match input.lit {
+                                    Lit::Str(value) => value,
+                                    lit => {
+                                        self.err(r#"Expected: regex string"#, lit.span());
+                                        continue;
+                                    }
+                                };
+                                match self.subpatterns.entry(name) {
+                                    Entry::Vacant(entry) => {
+                                        entry.insert(value);
+                                    }
+                                    Entry::Occupied(entry) => {
+                                        let key_span = entry.key().span();
+                                        self.err(
+                                            "Subpatterns can be defined only once",
+                                            input_span,
+                                        )
+                                        .err("Previous definition here", key_span);
+                                    }
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            self.err(r#"Expected: name = r"regex""#, value_span);
+                        }
+                    }
+                }
                 (unknown, _) => {
                     self.err(
                         format!("Unknown nested attribute: {}", unknown),
@@ -146,7 +186,7 @@ impl Parser {
                     self.mode = Mode::Binary;
 
                     Literal::Bytes(bytes)
-                },
+                }
                 _ => {
                     self.err("Expected a &str or &[u8] slice", lit.span());
 
@@ -157,7 +197,7 @@ impl Parser {
                 self.err(err.to_string(), err.span());
 
                 return None;
-            },
+            }
         };
 
         let mut def = Definition::new(literal);
@@ -166,7 +206,7 @@ impl Parser {
             match next {
                 Nested::Unexpected(tokens) => {
                     self.err("Unexpected token in attribute", tokens.span());
-                },
+                }
                 Nested::Unnamed(tokens) => match position {
                     0 => def.callback = self.parse_callback(tokens),
                     _ => {
@@ -176,13 +216,13 @@ impl Parser {
 
                             hint: If you are trying to define a callback here use: callback = ...\
                             ",
-                            tokens.span()
+                            tokens.span(),
                         );
                     }
                 },
                 Nested::Named(name, value) => {
                     def.named_attr(name, value, self);
-                },
+                }
             }
         }
 
@@ -207,7 +247,10 @@ impl Parser {
         let arg = match (error, first) {
             (None, Some(TokenTree::Ident(arg))) => arg,
             _ => {
-                self.err("Inline callbacks must use closure syntax with exactly one parameter", span);
+                self.err(
+                    "Inline callbacks must use closure syntax with exactly one parameter",
+                    span,
+                );
                 return None;
             }
         };
@@ -219,18 +262,14 @@ impl Parser {
 
                 body.extend(tokens);
                 body
-            },
+            }
             None => {
                 self.err("Callback missing a body", span);
                 return None;
             }
         };
 
-        let inline = InlineCallback {
-            arg,
-            body,
-            span,
-        };
+        let inline = InlineCallback { arg, body, span };
 
         Some(inline.into())
     }
