@@ -17,6 +17,7 @@ mod type_params;
 
 pub use self::definition::{Definition, Literal};
 use self::nested::{AttributeParser, Nested, NestedValue};
+pub use self::subpattern::Subpattern;
 use self::subpattern::SubpatternInput;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 

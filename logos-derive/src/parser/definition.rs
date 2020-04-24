@@ -1,11 +1,12 @@
 use proc_macro2::{Ident, Span};
-use syn::{LitStr, LitByteStr, spanned::Spanned};
+use syn::{spanned::Spanned, LitByteStr, LitStr};
 
+use super::Subpattern;
+use crate::error::Result;
 use crate::leaf::Callback;
+use crate::mir::Mir;
 use crate::parser::nested::NestedValue;
 use crate::parser::Parser;
-use crate::mir::Mir;
-use crate::error::Result;
 
 pub struct Definition {
     pub literal: Literal,
@@ -41,10 +42,10 @@ impl Definition {
                 if self.priority.replace(prio).is_some() {
                     parser.err("Resetting previously set priority", tokens.span());
                 }
-            },
+            }
             ("priority", _) => {
                 parser.err("Expected: priority = <integer>", name.span());
-            },
+            }
             ("callback", NestedValue::Assign(tokens)) => {
                 let span = tokens.span();
                 let callback = match parser.parse_callback(tokens) {
@@ -63,10 +64,10 @@ impl Definition {
                         )
                         .err("Previous callback set here", previous.span());
                 }
-            },
+            }
             ("callback", _) => {
                 parser.err("Expected: callback = ...", name.span());
-            },
+            }
             (unknown, _) => {
                 parser.err(
                     format!(
@@ -92,13 +93,19 @@ impl Literal {
         }
     }
 
-    pub fn to_mir(&self) -> Result<Mir> {
+    pub fn to_mir(&self, subpatterns: &[Subpattern]) -> Result<Mir> {
         match self {
-            Literal::Utf8(string) => Mir::utf8(&string.value()),
+            Literal::Utf8(string) => {
+                let value = subpatterns
+                    .iter()
+                    .fold(string.value(), |acc, el| el.fix(acc));
+                Mir::utf8(&value)
+            }
             Literal::Bytes(bytes) => {
                 let source = bytes_to_regex_string(bytes.value());
+                let value = subpatterns.iter().fold(source, |acc, el| el.fix(acc));
 
-                Mir::binary(&source)
+                Mir::binary(&value)
             }
         }
     }
