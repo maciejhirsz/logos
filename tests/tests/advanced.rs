@@ -2,6 +2,7 @@ use logos::lookup;
 use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+#[logos(subpattern xdigit = r"[0-9a-fA-F]")]
 enum Token {
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]
@@ -10,7 +11,7 @@ enum Token {
     #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
     LiteralString,
 
-    #[regex("0[xX][0-9a-fA-F]+")]
+    #[regex("0[xX](?&xdigit)+")]
     LiteralHex,
 
     #[regex("-?[0-9]+")]

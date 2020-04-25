@@ -1,11 +1,11 @@
 use proc_macro2::{Ident, Span};
-use syn::{LitStr, LitByteStr, spanned::Spanned};
+use syn::{spanned::Spanned, LitByteStr, LitStr};
 
+use crate::error::{Errors, Result};
 use crate::leaf::Callback;
-use crate::parser::nested::NestedValue;
-use crate::parser::Parser;
 use crate::mir::Mir;
-use crate::error::Result;
+use crate::parser::nested::NestedValue;
+use crate::parser::{Parser, Subpatterns};
 
 pub struct Definition {
     pub literal: Literal,
@@ -41,10 +41,10 @@ impl Definition {
                 if self.priority.replace(prio).is_some() {
                     parser.err("Resetting previously set priority", tokens.span());
                 }
-            },
+            }
             ("priority", _) => {
                 parser.err("Expected: priority = <integer>", name.span());
-            },
+            }
             ("callback", NestedValue::Assign(tokens)) => {
                 let span = tokens.span();
                 let callback = match parser.parse_callback(tokens) {
@@ -63,10 +63,10 @@ impl Definition {
                         )
                         .err("Previous callback set here", previous.span());
                 }
-            },
+            }
             ("callback", _) => {
                 parser.err("Expected: callback = ...", name.span());
-            },
+            }
             (unknown, _) => {
                 parser.err(
                     format!(
@@ -92,14 +92,11 @@ impl Literal {
         }
     }
 
-    pub fn to_mir(&self) -> Result<Mir> {
+    pub fn to_mir(&self, subpatterns: &Subpatterns, errors: &mut Errors) -> Result<Mir> {
+        let value = subpatterns.fix(self, errors);
         match self {
-            Literal::Utf8(string) => Mir::utf8(&string.value()),
-            Literal::Bytes(bytes) => {
-                let source = bytes_to_regex_string(bytes.value());
-
-                Mir::binary(&source)
-            }
+            Literal::Utf8(_) => Mir::utf8(&value),
+            Literal::Bytes(_) => Mir::binary(&value),
         }
     }
 
@@ -107,6 +104,19 @@ impl Literal {
         match self {
             Literal::Utf8(string) => string.span(),
             Literal::Bytes(bytes) => bytes.span(),
+        }
+    }
+}
+
+impl syn::parse::Parse for Literal {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let la = input.lookahead1();
+        if la.peek(LitStr) {
+            Ok(Literal::Utf8(input.parse()?))
+        } else if la.peek(LitByteStr) {
+            Ok(Literal::Bytes(input.parse()?))
+        } else {
+            Err(la.error())
         }
     }
 }
