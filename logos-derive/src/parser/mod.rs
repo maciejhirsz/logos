@@ -1,10 +1,8 @@
-use std::collections::btree_map::{BTreeMap, Entry};
-
 use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Ident, Lit, LitStr, Type};
+use syn::{Attribute, GenericParam, Lit, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -17,8 +15,7 @@ mod type_params;
 
 pub use self::definition::{Definition, Literal};
 use self::nested::{AttributeParser, Nested, NestedValue};
-pub use self::subpattern::Subpattern;
-use self::subpattern::SubpatternInput;
+pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
 #[derive(Default)]
@@ -26,7 +23,7 @@ pub struct Parser {
     pub errors: Errors,
     pub mode: Mode,
     pub extras: MaybeVoid,
-    pub subpatterns: BTreeMap<Ident, LitStr>,
+    pub subpatterns: Subpatterns,
     types: TypeParams,
 }
 
@@ -123,45 +120,11 @@ impl Parser {
                         name.span(),
                     );
                 }
-                ("subpattern", NestedValue::Group(value)) => {
-                    let value_span = value.span();
-                    match syn::parse2::<SubpatternInput>(value) {
-                        Ok(values) => {
-                            for input in values.into_iter() {
-                                let input_span = input.span();
-                                let name = match input.path.get_ident() {
-                                    Some(ident) => ident.clone(),
-                                    None => {
-                                        self.err(r#"Expected: single ident"#, input.path.span());
-                                        continue;
-                                    }
-                                };
-                                let value = match input.lit {
-                                    Lit::Str(value) => value,
-                                    lit => {
-                                        self.err(r#"Expected: regex string"#, lit.span());
-                                        continue;
-                                    }
-                                };
-                                match self.subpatterns.entry(name) {
-                                    Entry::Vacant(entry) => {
-                                        entry.insert(value);
-                                    }
-                                    Entry::Occupied(entry) => {
-                                        let key_span = entry.key().span();
-                                        self.err(
-                                            "Subpatterns can be defined only once",
-                                            input_span,
-                                        )
-                                        .err("Previous definition here", key_span);
-                                    }
-                                }
-                            }
-                        }
-                        Err(_) => {
-                            self.err(r#"Expected: name = r"regex""#, value_span);
-                        }
-                    }
+                ("subpattern", NestedValue::KeywordAssign(name, value)) => {
+                    self.subpatterns.add(name, value, &mut self.errors);
+                }
+                ("subpattern", _) => {
+                    self.err(r#"Expected: subpattern name = r"regex""#, name.span());
                 }
                 (unknown, _) => {
                     self.err(

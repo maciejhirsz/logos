@@ -2,7 +2,7 @@ use logos::lookup;
 use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(subpattern(xdigit = r"[0-9a-fA-F]"))]
+#[logos(subpattern xdigit = r"[0-9a-fA-F]")]
 enum Token {
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]

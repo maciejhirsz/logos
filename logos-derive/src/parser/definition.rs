@@ -1,12 +1,11 @@
 use proc_macro2::{Ident, Span};
 use syn::{spanned::Spanned, LitByteStr, LitStr};
 
-use super::Subpattern;
-use crate::error::Result;
+use crate::error::{Errors, Result};
 use crate::leaf::Callback;
 use crate::mir::Mir;
 use crate::parser::nested::NestedValue;
-use crate::parser::Parser;
+use crate::parser::{Parser, Subpatterns};
 
 pub struct Definition {
     pub literal: Literal,
@@ -93,20 +92,11 @@ impl Literal {
         }
     }
 
-    pub fn to_mir(&self, subpatterns: &[Subpattern]) -> Result<Mir> {
+    pub fn to_mir(&self, subpatterns: &Subpatterns, errors: &mut Errors) -> Result<Mir> {
+        let value = subpatterns.fix(self, errors);
         match self {
-            Literal::Utf8(string) => {
-                let value = subpatterns
-                    .iter()
-                    .fold(string.value(), |acc, el| el.fix(acc));
-                Mir::utf8(&value)
-            }
-            Literal::Bytes(bytes) => {
-                let source = bytes_to_regex_string(bytes.value());
-                let value = subpatterns.iter().fold(source, |acc, el| el.fix(acc));
-
-                Mir::binary(&value)
-            }
+            Literal::Utf8(_) => Mir::utf8(&value),
+            Literal::Bytes(_) => Mir::binary(&value),
         }
     }
 
@@ -114,6 +104,19 @@ impl Literal {
         match self {
             Literal::Utf8(string) => string.span(),
             Literal::Bytes(bytes) => bytes.span(),
+        }
+    }
+}
+
+impl syn::parse::Parse for Literal {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let la = input.lookahead1();
+        if la.peek(LitStr) {
+            Ok(Literal::Utf8(input.parse()?))
+        } else if la.peek(LitByteStr) {
+            Ok(Literal::Bytes(input.parse()?))
+        } else {
+            Err(la.error())
         }
     }
 }

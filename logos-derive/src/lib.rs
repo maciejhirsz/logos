@@ -18,7 +18,6 @@ mod util;
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
-use parser::Subpattern;
 use parser::{Mode, Parser};
 use util::MaybeVoid;
 
@@ -56,21 +55,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 ",
                 attr.span(),
             );
-        }
-    }
-
-    let mut subpatterns = vec![];
-    for (ident, lit) in std::mem::replace(&mut parser.subpatterns, Default::default()) {
-        match match parser.mode {
-            Mode::Utf8 => Subpattern::utf8(&ident, &lit.value()),
-            Mode::Binary => Subpattern::binary(&ident, &lit.value()),
-        } {
-            Ok(pat) => {
-                subpatterns.push(pat);
-            }
-            Err(err) => {
-                parser.err(err, lit.span());
-            }
         }
     }
 
@@ -175,7 +159,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             continue;
                         }
                     };
-                    let mir = match definition.literal.to_mir(&subpatterns) {
+                    let mir = match definition
+                        .literal
+                        .to_mir(&parser.subpatterns, &mut parser.errors)
+                    {
                         Ok(mir) => mir,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
