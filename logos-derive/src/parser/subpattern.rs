@@ -58,14 +58,10 @@ impl Subpatterns {
             Literal::Bytes(b) => bytes_to_regex_string(b.value()),
         };
 
-        while i < pattern.len() {
-            if let Some(f) = pattern[i..].find("(?&") {
-                i += f;
-                pattern.replace_range(i..i + 3, "(?:");
-                i += 3;
-            } else {
-                break; // done!
-            }
+        while let Some(f) = pattern[i..].find("(?&") {
+            i += f;
+            pattern.replace_range(i..i + 3, "(?:");
+            i += 3;
 
             let subref_end = if let Some(f) = pattern[i..].find(')') {
                 i + f
