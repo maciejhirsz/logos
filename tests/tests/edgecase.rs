@@ -434,3 +434,76 @@ mod priority_disambiguate_2 {
         );
     }
 }
+
+mod loop_in_loop {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    pub enum Token {
+        #[error]
+        #[regex(r"[ \t\n\f]+", logos::skip)]
+        Error,
+
+        #[regex("f(f*oo)*")]
+        Foo,
+    }
+
+    #[test]
+    fn test_a_loop_in_a_loop() {
+        assert_lex(
+            "foo ffoo ffffooffoooo foooo foofffffoo",
+            &[
+                (Token::Foo, "foo", 0..3),
+                (Token::Foo, "ffoo", 4..8),
+                (Token::Foo, "ffffooffoooo", 9..21),
+                (Token::Foo, "foooo", 22..27),
+                (Token::Foo, "foofffffoo", 28..38),
+            ],
+        );
+    }
+}
+
+mod maybe_in_loop {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    pub enum Token {
+        #[error]
+        #[regex(r"[ \t\n\f]+", logos::skip)]
+        Error,
+
+        #[regex("f(f?oo)*")]
+        Foo,
+    }
+
+    #[test]
+    fn test_maybe_in_a_loop() {
+        assert_lex(
+            "foo ff ffoo foofoo foooofoo foooo",
+            &[
+                (Token::Foo, "foo", 0..3),
+                (Token::Foo, "f", 4..5),
+                (Token::Foo, "f", 5..6),
+                (Token::Foo, "ffoo", 7..11),
+                (Token::Foo, "foofoo", 12..18),
+                (Token::Foo, "foooofoo", 19..27),
+                (Token::Foo, "foooo", 28..33),
+            ],
+        );
+    }
+}
+
+// TODO: Fix compilation error on this
+// mod loops_in_loops2 {
+//     use logos::Logos;
+
+//     #[derive(Logos)]
+//     pub enum Token2 {
+//         #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
+//         Operator,
+
+//         #[error]
+//         #[regex(r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/", logos::skip)]
+//         Error,
+//     }
+// }
