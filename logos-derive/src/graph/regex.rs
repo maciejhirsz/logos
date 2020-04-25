@@ -24,7 +24,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     Some(id) => self.merge(id, then),
                     None => then,
                 };
-                let this = self.reserve();
+                let this = match reserved {
+                    Some(rid) => rid,
+                    None => self.reserve(),
+                };
 
                 self.parse_mir(*mir, this.get(), Some(miss), Some(this))
             },
