@@ -493,17 +493,46 @@ mod maybe_in_loop {
     }
 }
 
-// TODO: Fix compilation error on this
-// mod loops_in_loops2 {
-//     use logos::Logos;
+mod unicode_error_split {
+    use super::*;
 
-//     #[derive(Logos)]
-//     pub enum Token2 {
-//         #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
-//         Operator,
+    #[test]
+    fn test() {
+        use logos::Logos;
 
-//         #[error]
-//         #[regex(r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/", logos::skip)]
-//         Error,
-//     }
-// }
+        #[derive(Logos, Debug, PartialEq)]
+        enum Test {
+            #[token("a")]
+            A,
+
+            #[error]
+            Error,
+        }
+
+        let mut lex = Test::lexer("💩");
+        let _ = lex.next();
+        let bytes = lex.slice().as_bytes();
+        println!("bytes: {:?}", bytes);
+
+        let s = std::str::from_utf8(bytes).unwrap();
+        assert_eq!(s, "💩");
+        assert_eq!(lex.span(), 0..4);
+    }
+}
+
+mod merging_asymmetric_loops {
+    use logos::Logos;
+
+    #[test]
+    fn must_compile() {
+        #[derive(Logos)]
+        pub enum Token2 {
+            #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
+            Operator,
+
+            #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
+            #[error]
+            Error,
+        }
+    }
+}

@@ -6,6 +6,7 @@
 
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
+#![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
 mod error;
 mod generator;
@@ -289,7 +290,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         fn _error<'s>(lex: &mut Lexer<'s>) {
             lex.bump_unchecked(1);
 
-            lex.set(#name::#error);
+            lex.error();
         }
 
         #body
