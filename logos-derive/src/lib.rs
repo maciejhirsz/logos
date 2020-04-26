@@ -6,6 +6,7 @@
 
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
+#![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
 mod error;
 mod generator;

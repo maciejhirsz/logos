@@ -163,6 +163,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
+#![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
 #[cfg(not(feature = "std"))]
 extern crate core as std;
