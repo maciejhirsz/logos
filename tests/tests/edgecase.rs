@@ -493,6 +493,34 @@ mod maybe_in_loop {
     }
 }
 
+mod unicode_error_split {
+    use super::*;
+
+    #[test]
+    fn test() {
+        use logos::Logos;
+
+        #[derive(Logos, Debug, PartialEq)]
+        enum Test {
+            #[token("a")]
+            A,
+
+            #[error]
+            Error,
+        }
+
+        let mut lex = Test::lexer("💩");
+        let _ = lex.next();
+        let bytes = lex.slice().as_bytes();
+        println!("bytes: {:?}", bytes);
+
+        // all lines bellow here throws
+        let s = std::str::from_utf8(bytes).unwrap();
+        assert_eq!(s, "💩");
+        assert_eq!(lex.span(), 0..4);
+    }
+}
+
 mod merging_asymmetric_loops {
     use logos::Logos;
 

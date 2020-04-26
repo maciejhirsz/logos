@@ -290,7 +290,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         fn _error<'s>(lex: &mut Lexer<'s>) {
             lex.bump_unchecked(1);
 
-            lex.set(#name::#error);
+            lex.error();
         }
 
         #body
