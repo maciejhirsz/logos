@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
+use std::fmt::{self, Debug, Display};
 
-use crate::graph::{Graph, Rope, Fork, Node, Range};
+use crate::graph::{Graph, Rope, Fork, NodeId, Node, Range};
 
 impl<T> From<Fork> for Node<T> {
     fn from(fork: Fork) -> Self {
@@ -42,6 +43,12 @@ impl<T> Hash for Node<T> {
     }
 }
 
+impl Debug for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
+}
+
 /// We don't need debug impls in release builds
 // #[cfg(test)]
 mod debug {
@@ -49,7 +56,6 @@ mod debug {
     use crate::graph::rope::Miss;
     use crate::graph::Disambiguate;
     use std::cmp::{Ord, Ordering};
-    use std::fmt::{self, Debug, Display};
 
     impl Disambiguate for &str {
         fn cmp(left: &&str, right: &&str) -> Ordering {

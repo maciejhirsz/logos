@@ -493,17 +493,19 @@ mod maybe_in_loop {
     }
 }
 
-// TODO: Fix compilation error on this
+// // TODO: Fix compilation error on this
 // mod loops_in_loops2 {
 //     use logos::Logos;
 
 //     #[derive(Logos)]
 //     pub enum Token2 {
-//         #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
-//         Operator,
+//         #[regex(r#"[ab]+"#)]
+//         #[regex(r"a(a*b|a)*")]
+//         Overlapping,
 
+//         // #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
+//         // #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
 //         #[error]
-//         #[regex(r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/", logos::skip)]
 //         Error,
 //     }
 // }

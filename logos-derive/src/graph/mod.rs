@@ -43,13 +43,15 @@ pub struct Graph<Leaf> {
     /// Instead of handling errors over return types, opt to collect
     /// them internally.
     errors: Vec<DisambiguationError>,
+
+    deferred: Vec<Option<DeferredMerge>>,
 }
 
-pub trait Disambiguate {
+pub trait Disambiguate: std::fmt::Debug {
     fn cmp(left: &Self, right: &Self) -> Ordering;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NodeId(NonZeroU32);
 
 impl NodeId {
@@ -63,12 +65,23 @@ impl NodeId {
 }
 
 /// Unique reserved NodeId. This mustn't implement Clone.
+#[derive(Debug)]
 pub struct ReservedId(NodeId);
 
 impl ReservedId {
     pub fn get(&self) -> NodeId {
         self.0
     }
+}
+
+/// When attempting to merge two nodes, one of which was not yet created,
+/// we can record such attempt, and execute the merge later on when the
+/// `awaiting` has been `insert`ed into the graph.
+#[derive(Debug)]
+pub struct DeferredMerge {
+    awaiting: NodeId,
+    with: NodeId,
+    into: ReservedId,
 }
 
 impl<Leaf> Graph<Leaf> {
@@ -81,6 +94,7 @@ impl<Leaf> Graph<Leaf> {
             merges: Vec::new(),
             hashes: Map::new(),
             errors: Vec::new(),
+            deferred: Vec::new(),
         }
     }
 
@@ -105,13 +119,34 @@ impl<Leaf> Graph<Leaf> {
 
     /// Insert a node at a given, previously reserved id. Returns the
     /// inserted `NodeId`.
-    pub fn insert<N>(&mut self, id: ReservedId, node: N) -> NodeId
+    pub fn insert<N>(&mut self, reserved: ReservedId, node: N) -> NodeId
     where
         N: Into<Node<Leaf>>,
+        Leaf: Disambiguate,
     {
-        self.nodes[id.0.get()] = Some(node.into());
+        let id = reserved.get();
 
-        id.0
+        self.nodes[id.get()] = Some(node.into());
+
+        let mut deferred = Vec::new();
+
+        for defer in self.deferred.iter_mut() {
+            *defer = match defer.take() {
+                Some(d) if d.awaiting == id => {
+                    deferred.push(d);
+                    None
+                },
+                defer => defer,
+            }
+        }
+
+        for DeferredMerge { awaiting, with, into } in deferred {
+            // panic!("{:#?}\n\n{:#?}\n\n{} + {} -> {:?}", self, self.merges, awaiting, with, into);
+
+            self.merge_unchecked(awaiting, with, into);
+        }
+
+        id
     }
 
     /// Push a node onto the graph and get an id to it. If an identical
@@ -161,18 +196,51 @@ impl<Leaf> Graph<Leaf> {
     where
         Leaf: Disambiguate,
     {
+        if self.merges.len() > 1024 {
+            panic!("merges stack blowout {:#?}", &self.merges[..50]);
+        }
+
         if a == b {
             return a;
+        }
+
+        let key = if a > b { [b, a] } else { [a, b] };
+
+        // If the id pair is already merged (or is being merged), just return the id
+        if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
+            return *merged;
         }
 
         match (self.get(a), self.get(b)) {
             (None, None) => {
                 panic!("Merging two reserved nodes!");
             },
-            // Merging a leaf with an empty slot would produce
-            // an empty self-referencing fork.
-            (Some(Node::Leaf(_)), None) => return a,
-            (None, Some(Node::Leaf(_))) => return b,
+            // // Merging a leaf with an empty slot would produce
+            // // an empty self-referencing fork.
+            // (Some(Node::Leaf(_)), None) => return a,
+            // (None, Some(Node::Leaf(_))) => return b,
+            (None, Some(_)) => {
+                let reserved = self.reserve();
+                let id = reserved.get();
+                self.deferred.push(Some(DeferredMerge {
+                    awaiting: a,
+                    with: b,
+                    into: reserved,
+                }));
+                self.merges.push((key, id));
+                return id;
+            }
+            (Some(_), None) => {
+                let reserved = self.reserve();
+                let id = reserved.get();
+                self.deferred.push(Some(DeferredMerge {
+                    awaiting: b,
+                    with: a,
+                    into: reserved,
+                }));
+                self.merges.push((key, id));
+                return id;
+            }
             (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
                 return match Disambiguate::cmp(left, right) {
                     Ordering::Less => b,
@@ -187,21 +255,21 @@ impl<Leaf> Graph<Leaf> {
             _ => (),
         }
 
-        let key = if a > b { [b, a] } else { [a, b] };
-
-        // If the id pair is already merged (or is being merged), just return the id
-        if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
-            return *merged;
-        }
-
         // Reserve the id for the merge and save it. Since the graph can contain loops,
         // this prevents us from trying to merge the same id pair in a loop, blowing up
         // the stack.
-        let id = self.reserve();
-        self.merges.push((key, id.get()));
+        let reserved = self.reserve();
+        self.merges.push((key, reserved.get()));
 
         let [a, b] = key;
 
+        self.merge_unchecked(a, b, reserved)
+    }
+
+    fn merge_unchecked(&mut self, a: NodeId, b: NodeId, reserved: ReservedId) -> NodeId
+    where
+        Leaf: Disambiguate,
+    {
         let merged_rope = match (self.get(a), self.get(b)) {
             (Some(Node::Rope(rope)), _) => {
                 let rope = rope.clone();
@@ -217,13 +285,13 @@ impl<Leaf> Graph<Leaf> {
         };
 
         if let Some(rope) = merged_rope {
-            return self.insert(id, rope);
+            return self.insert(reserved, rope);
         }
 
         let mut fork = self.fork_off(a);
         fork.merge(self.fork_off(b), self);
 
-        let mut stack = vec![id.get()];
+        let mut stack = vec![reserved.get()];
 
         // Flatten the fork
         while let Some(miss) = fork.miss {
@@ -246,7 +314,7 @@ impl<Leaf> Graph<Leaf> {
 
         }
 
-        self.insert(id, fork)
+        self.insert(reserved, fork)
     }
 
     fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope>
