@@ -514,7 +514,6 @@ mod unicode_error_split {
         let bytes = lex.slice().as_bytes();
         println!("bytes: {:?}", bytes);
 
-        // all lines bellow here throws
         let s = std::str::from_utf8(bytes).unwrap();
         assert_eq!(s, "💩");
         assert_eq!(lex.span(), 0..4);
