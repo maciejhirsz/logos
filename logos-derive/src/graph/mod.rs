@@ -35,7 +35,7 @@ pub struct Graph<Leaf> {
     /// Most of the time the entry we want to find will be the last
     /// one that has been inserted, so we can use a vec with reverse
     /// order search to get O(1) searches much faster than any *Map.
-    merges: Vec<([NodeId; 2], NodeId)>,
+    merges: Map<Merge, NodeId>,
     /// Another map used for accounting. Before `.push`ing a new node
     /// onto the graph (inserts are exempt), we hash it and find if
     /// an identical(!) node has been created before.
@@ -43,14 +43,21 @@ pub struct Graph<Leaf> {
     /// Instead of handling errors over return types, opt to collect
     /// them internally.
     errors: Vec<DisambiguationError>,
-
-    deferred: Vec<Option<DeferredMerge>>,
+    /// Deferred merges. When when attempting to merge a node with an
+    /// empty reserved slot, the merging operation is deferred until
+    /// the reserved slot is populated. This is a stack that keeps track
+    /// of all such deferred merges
+    deferred: Vec<DeferredMerge>,
 }
 
-pub trait Disambiguate: std::fmt::Debug {
+/// Trait to be implemented on `Leaf` nodes in order to disambiguate
+/// between them.
+pub trait Disambiguate {
     fn cmp(left: &Self, right: &Self) -> Ordering;
 }
 
+/// Id of a Node in the graph. `NodeId` can be referencing an empty
+/// slot that is going to be populated later in time.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NodeId(NonZeroU32);
 
@@ -64,13 +71,37 @@ impl NodeId {
     }
 }
 
-/// Unique reserved NodeId. This mustn't implement Clone.
+/// Unique reserved `NodeId` that is guaranteed to point to an
+/// empty allocated slot in the graph. It's safe to create multiple
+/// `NodeId` copies of `ReservedId`, however API users should never
+/// be able to clone a `ReservedId`, or create a new one from `NodeId`.
+///
+/// `ReservedId` is consumed once passed into `Graph::insert`.
 #[derive(Debug)]
 pub struct ReservedId(NodeId);
 
 impl ReservedId {
     pub fn get(&self) -> NodeId {
         self.0
+    }
+}
+
+/// Merge key used to lookup whether two nodes have been previously
+/// mered, so we can avoid duplicating merges, potentially running into
+/// loops that blow out the stack.
+///
+/// `Merge::new(a, b)` should always equal to `Merge::new(b, a)` to ensure
+/// that node merges are symmetric.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+struct Merge(NodeId, NodeId);
+
+impl Merge {
+    fn new(a: NodeId, b: NodeId) -> Self {
+        if a < b {
+            Merge(a, b)
+        } else {
+            Merge(b, a)
+        }
     }
 }
 
@@ -91,7 +122,7 @@ impl<Leaf> Graph<Leaf> {
             // counting NodeIds from 1 and use NonZero
             // optimizations
             nodes: vec![None],
-            merges: Vec::new(),
+            merges: Map::new(),
             hashes: Map::new(),
             errors: Vec::new(),
             deferred: Vec::new(),
@@ -128,21 +159,20 @@ impl<Leaf> Graph<Leaf> {
 
         self.nodes[id.get()] = Some(node.into());
 
-        let mut deferred = Vec::new();
+        let mut awaiting = Vec::new();
 
-        for defer in self.deferred.iter_mut() {
-            *defer = match defer.take() {
-                Some(d) if d.awaiting == id => {
-                    deferred.push(d);
-                    None
-                },
-                defer => defer,
+        // Partition out all `DeferredMerge`s that can be completed
+        // now that this `ReservedId` has a `Node` inserted into it.
+        for idx in (0..self.deferred.len()).rev() {
+            if self.deferred[idx].awaiting == id {
+                awaiting.push(self.deferred.remove(idx));
             }
         }
 
-        for DeferredMerge { awaiting, with, into } in deferred {
-            // panic!("{:#?}\n\n{:#?}\n\n{} + {} -> {:?}", self, self.merges, awaiting, with, into);
-
+        // Complete deferred merges. We've collected them from the back,
+        // so we must iterate through them from the back as well to restore
+        // proper order of merges in case there is some cascading going on.
+        for DeferredMerge { awaiting, with, into } in awaiting.into_iter().rev() {
             self.merge_unchecked(awaiting, with, into);
         }
 
@@ -191,54 +221,71 @@ impl<Leaf> Graph<Leaf> {
         id
     }
 
+    /// If nodes `a` and `b` have been already merged, return the
+    /// `NodeId` of the node they have been merged into.
+    fn find_merged(&self, a: NodeId, b: NodeId) -> Option<NodeId> {
+        let probe = Merge::new(a, b);
+
+        self.merges.get(&probe).copied()
+    }
+
+    /// Mark that nodes `a` and `b` have been merged into `product`.
+    ///
+    /// This will also mark merging `a` and `product`, as well as
+    /// `b` and `product` into `product`, since those are symmetric
+    /// operations.
+    ///
+    /// This is necessary to break out asymmetric merge loops.
+    fn set_merged(&mut self, a: NodeId, b: NodeId, product: NodeId) {
+        self.merges.insert(Merge::new(a, b), product);
+        self.merges.insert(Merge::new(a, product), product);
+        self.merges.insert(Merge::new(b, product), product);
+    }
+
     /// Merge the nodes at id `a` and `b`, returning a new id.
     pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId
     where
         Leaf: Disambiguate,
     {
-        if self.merges.len() > 1024 {
-            panic!("merges stack blowout {:#?}", &self.merges[..50]);
-        }
-
         if a == b {
             return a;
         }
 
-        let key = if a > b { [b, a] } else { [a, b] };
-
         // If the id pair is already merged (or is being merged), just return the id
-        if let Some((_, merged)) = self.merges.iter().rev().find(|(k, _)| *k == key) {
-            return *merged;
+        if let Some(id) = self.find_merged(a, b) {
+            return id;
         }
 
         match (self.get(a), self.get(b)) {
             (None, None) => {
-                panic!("Merging two reserved nodes!");
+                panic!(
+                    "Merging two reserved nodes! This is a bug, please report it:\
+
+                    https://github.com/maciejhirsz/logos/issues"
+                );
             },
-            // // Merging a leaf with an empty slot would produce
-            // // an empty self-referencing fork.
-            // (Some(Node::Leaf(_)), None) => return a,
-            // (None, Some(Node::Leaf(_))) => return b,
             (None, Some(_)) => {
                 let reserved = self.reserve();
                 let id = reserved.get();
-                self.deferred.push(Some(DeferredMerge {
+                self.deferred.push(DeferredMerge {
                     awaiting: a,
                     with: b,
                     into: reserved,
-                }));
-                self.merges.push((key, id));
+                });
+                self.set_merged(a, b, id);
+
                 return id;
             }
             (Some(_), None) => {
                 let reserved = self.reserve();
                 let id = reserved.get();
-                self.deferred.push(Some(DeferredMerge {
+                self.deferred.push(DeferredMerge {
                     awaiting: b,
                     with: a,
                     into: reserved,
-                }));
-                self.merges.push((key, id));
+                });
+                self.set_merged(a, b, id);
+
                 return id;
             }
             (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
@@ -259,13 +306,13 @@ impl<Leaf> Graph<Leaf> {
         // this prevents us from trying to merge the same id pair in a loop, blowing up
         // the stack.
         let reserved = self.reserve();
-        self.merges.push((key, reserved.get()));
-
-        let [a, b] = key;
+        self.set_merged(a, b, reserved.get());
 
         self.merge_unchecked(a, b, reserved)
     }
 
+    /// Unchecked merge of `a` and `b`. This fn assumes that `a` and `b` are
+    /// not pointing to empty slots.
     fn merge_unchecked(&mut self, a: NodeId, b: NodeId, reserved: ReservedId) -> NodeId
     where
         Leaf: Disambiguate,
@@ -400,7 +447,11 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
     type Output = Node<Leaf>;
 
     fn index(&self, id: NodeId) -> &Node<Leaf> {
-        self.get(id).expect("Indexing into an empty node")
+        self.get(id).expect(
+            "Indexing into an empty node. This is a bug, please report it at:\n\n\
+
+            https://github.com/maciejhirsz/logos/issues"
+        )
     }
 }
 

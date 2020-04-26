@@ -493,19 +493,19 @@ mod maybe_in_loop {
     }
 }
 
-// // TODO: Fix compilation error on this
-// mod loops_in_loops2 {
-//     use logos::Logos;
+mod merging_asymmetric_loops {
+    use logos::Logos;
 
-//     #[derive(Logos)]
-//     pub enum Token2 {
-//         #[regex(r#"[ab]+"#)]
-//         #[regex(r"a(a*b|a)*")]
-//         Overlapping,
+    #[test]
+    fn must_compile() {
+        #[derive(Logos)]
+        pub enum Token2 {
+            #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
+            Operator,
 
-//         // #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
-//         // #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
-//         #[error]
-//         Error,
-//     }
-// }
+            #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
+            #[error]
+            Error,
+        }
+    }
+}
