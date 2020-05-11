@@ -40,6 +40,54 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         self.source
     }
 
+    /// Wrap the `Lexer` in a peekable
+    /// [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) that provides a
+    /// [`peek`](./struct.PeekableIter.html#method.peek) method,
+    /// which allows the next token to be inspected without it being consumed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use logos::Logos;
+    ///
+    /// #[derive(Logos, Debug, PartialEq)]
+    /// enum Example {
+    ///     #[regex(r"[ \n\t\f]+", logos::skip)]
+    ///     #[error]
+    ///     Error,
+    ///
+    ///     #[regex("-?[0-9]+", |lex| lex.slice().parse())]
+    ///     Integer(i64),
+    ///
+    ///     #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse())]
+    ///     Float(f64),
+    /// }
+    ///
+    /// let mut peekable_iter = Example::lexer("42 3.14 -5 f").peekable();
+    ///
+    /// assert_eq!(Some(&Example::Integer(42)), peekable_iter.peek());
+    /// assert_eq!(Some(Example::Integer(42)), peekable_iter.next());
+    ///
+    /// assert_eq!(Some(&Example::Float(3.14)), peekable_iter.peek());
+    /// assert_eq!(Some(&Example::Float(3.14)), peekable_iter.peek());
+    /// assert_eq!(Some(Example::Float(3.14)), peekable_iter.next());
+    ///
+    /// assert_eq!(Some(Example::Integer(-5)), peekable_iter.next());
+    ///
+    /// assert_eq!(Some(&Example::Error), peekable_iter.peek());
+    /// assert_eq!(Some(Example::Error), peekable_iter.next());
+    ///
+    /// assert_eq!(None, peekable_iter.peek());
+    /// assert_eq!(None, peekable_iter.next());
+    /// ```
+    #[inline]
+    pub fn peekable(self) -> PeekableIter<'source, Token> {
+        PeekableIter {
+            lexer: self,
+            peeked: None,
+        }
+    }
+
     /// Wrap the `Lexer` in an [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
     /// that produces tuples of `(Token, `[`Span`](./type.Span.html)`)`.
     ///
@@ -189,10 +237,107 @@ where
     type Item = (Token, Span);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.lexer.next().map(|token| (
-            token,
-            self.lexer.span(),
-        ))
+        self.lexer.next().map(|token| (token, self.lexer.span()))
+    }
+}
+
+/// Iterator that allows the next token to be inspected without consuming it.
+///
+/// Look at [`Lexer::peekable`](./struct.Lexer.html#method.peekable) for documentation.
+pub struct PeekableIter<'source, Token: Logos<'source>> {
+    lexer: Lexer<'source, Token>,
+    peeked: Option<Option<Token>>,
+}
+
+impl<'source, Token> PeekableIter<'source, Token>
+where
+    Token: Logos<'source>,
+{
+    /// Returns a reference to the next() token without advancing the iterator.
+    ///
+    /// Look at [`Lexer::peekable`](./struct.Lexer.html#method.peekable) for documentation.
+    #[inline]
+    pub fn peek(&mut self) -> Option<&Token> {
+        let lexer = &mut self.lexer;
+        self.peeked.get_or_insert_with(|| lexer.next()).as_ref()
+    }
+
+    /// Provides access to the Lexer's [`extras`](./struct.Lexer.html#structfield.extras) field.
+    #[inline]
+    pub fn extras(&mut self) -> &mut Token::Extras {
+        &mut self.lexer.extras
+    }
+
+    /// Get the range for the current token in `Source`.
+    #[inline]
+    pub fn span(&self) -> Span {
+        self.lexer.token_start..self.lexer.token_end
+    }
+
+    /// Get a string slice of the current token.
+    #[inline]
+    pub fn slice(&self) -> &'source <Token::Source as Source>::Slice {
+        unsafe { self.lexer.source.slice_unchecked(self.lexer.span()) }
+    }
+}
+
+impl<'source, Token> Iterator for PeekableIter<'source, Token>
+where
+    Token: Logos<'source>,
+{
+    type Item = Token;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.peeked.take() {
+            Some(token) => token,
+            None => self.lexer.next(),
+        }
+    }
+
+    #[inline]
+    fn count(mut self) -> usize {
+        match self.peeked.take() {
+            Some(None) => 0,
+            Some(Some(_)) => 1 + self.lexer.count(),
+            None => self.lexer.count(),
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self.peeked.take() {
+            Some(None) => None,
+            Some(v @ Some(_)) if n == 0 => v,
+            Some(Some(_)) => self.lexer.nth(n - 1),
+            None => self.lexer.nth(n),
+        }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        let peek_opt = match self.peeked.take() {
+            Some(None) => return None,
+            Some(v) => v,
+            None => None,
+        };
+        self.lexer.last().or(peek_opt)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let peek_len = match self.peeked {
+            Some(None) => return (0, Some(0)),
+            Some(Some(_)) => 1,
+            None => 0,
+        };
+        let (lo, hi) = self.lexer.size_hint();
+        let lo = lo.saturating_add(peek_len);
+        let hi = match hi {
+            Some(x) => x.checked_add(peek_len),
+            None => None,
+        };
+        (lo, hi)
     }
 }
 

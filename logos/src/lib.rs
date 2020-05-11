@@ -177,7 +177,7 @@ pub mod source;
 #[doc(hidden)]
 pub mod internal;
 
-pub use crate::lexer::{Lexer, Span, SpannedIter};
+pub use crate::lexer::{Lexer, PeekableIter, Span, SpannedIter};
 pub use crate::source::Source;
 
 /// Trait implemented for an enum representing all tokens. You should never have

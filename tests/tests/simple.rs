@@ -236,6 +236,22 @@ fn spanned_iterator() {
 }
 
 #[test]
+fn peekable_iterator() {
+    let mut iter = Token::lexer("pri priv priva private").peekable();
+
+    assert_eq!(Some(&Token::Identifier), iter.peek());
+    assert_eq!(Some(Token::Identifier), iter.next());
+    assert_eq!(Some(&Token::Priv), iter.peek());
+    assert_eq!(Some(&Token::Priv), iter.peek());
+    assert_eq!(Some(Token::Priv), iter.next());
+    assert_eq!(Some(Token::Identifier), iter.next());
+    assert_eq!(Some(Token::Private), iter.next());
+    assert_eq!(None, iter.peek());
+    assert_eq!(None, iter.next());
+    assert_eq!(None, iter.peek());
+}
+
+#[test]
 fn numbers() {
     assert_lex(
         "0 1 2 3 4 10 42 1337",
