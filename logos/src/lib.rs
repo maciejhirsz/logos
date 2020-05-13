@@ -185,7 +185,7 @@ pub use crate::source::Source;
 pub trait Logos<'source>: Sized {
     /// Associated type `Extras` for the particular lexer. This can be set using
     /// `#[logos(extras = MyExtras)]` and accessed inside callbacks.
-    type Extras: Default;
+    type Extras;
 
     /// Source type this token can be lexed from. This will default to `str`,
     /// unless one of the defined patterns explicitly uses non-unicode byte values
@@ -208,8 +208,15 @@ pub trait Logos<'source>: Sized {
 
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
-    fn lexer(source: &'source Self::Source) -> Lexer<'source, Self> {
+    fn lexer(source: &'source Self::Source) -> Lexer<'source, Self>
+    where Self::Extras: Default {
         Lexer::new(source)
+    }
+
+    /// Create a new instance of a `Lexer` with the provided `Extras` that will
+    /// produce tokens implementing this `Logos`.
+    fn lexer_with_extras(source: &'source Self::Source, extras: Self::Extras) -> Lexer<'source, Self> {
+        Lexer::with_extras(source, extras)
     }
 }
 
