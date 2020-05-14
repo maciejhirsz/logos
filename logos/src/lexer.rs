@@ -24,11 +24,19 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling [`Token::lexer`](./trait.Logos.html#method.lexer) on any `Token` with derived `Logos`.
-    pub fn new(source: &'source Token::Source) -> Self {
+    pub fn new(source: &'source Token::Source) -> Self where Token::Extras: Default {
+        Self::with_extras(source, Default::default())
+    }
+
+    /// Create a new `Lexer` with the provided `Extras`.
+    ///
+    /// Due to type inference, it might be more ergonomic to construct
+    /// it by calling [`Token::lexer_with_extras`](./trait.Logos.html#method.lexer_with_extras) on any `Token` with derived `Logos`.
+    pub fn with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
         Lexer {
             source,
             token: ManuallyDrop::new(None),
-            extras: Default::default(),
+            extras,
             token_start: 0,
             token_end: 0,
         }
