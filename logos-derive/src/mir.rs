@@ -100,7 +100,7 @@ impl TryFrom<Hir> for Mir {
             },
             HirKind::Repetition(repetition) => {
                 if !repetition.greedy {
-                    Err("#[regex]: non-greedy parsing is currently unsupported.")?;
+                    return Err("#[regex]: non-greedy parsing is currently unsupported.".into());
                 }
 
                 let kind = repetition.kind;
@@ -120,7 +120,7 @@ impl TryFrom<Hir> for Mir {
                         ]))
                     },
                     RepetitionKind::Range(..) => {
-                        Err("#[regex]: {n,m} repetition range is currently unsupported.")?
+                        Err("#[regex]: {n,m} repetition range is currently unsupported.".into())
                     },
                 }
             },
@@ -128,10 +128,10 @@ impl TryFrom<Hir> for Mir {
                 Mir::try_from(*group.hir)
             },
             HirKind::WordBoundary(_) => {
-                Err("#[regex]: word boundaries are currently unsupported.")?
+                Err("#[regex]: word boundaries are currently unsupported.".into())
             },
             HirKind::Anchor(_) => {
-                Err("#[regex]: anchors in #[regex] are currently unsupported.")?
+                Err("#[regex]: anchors in #[regex] are currently unsupported.".into())
             },
         }
     }

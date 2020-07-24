@@ -28,15 +28,13 @@ pub trait Source {
     /// ```rust
     /// use logos::Source;
     ///
-    /// fn main() {
-    ///     let foo = "foo";
+    /// let foo = "foo";
     ///
-    ///     assert_eq!(foo.read(0), Some(b"foo"));     // Option<&[u8; 3]>
-    ///     assert_eq!(foo.read(0), Some(b"fo"));      // Option<&[u8; 2]>
-    ///     assert_eq!(foo.read(2), Some(b'o'));       // Option<u8>
-    ///     assert_eq!(foo.read::<&[u8; 4]>(0), None); // Out of bounds
-    ///     assert_eq!(foo.read::<&[u8; 2]>(2), None); // Out of bounds
-    /// }
+    /// assert_eq!(foo.read(0), Some(b"foo"));     // Option<&[u8; 3]>
+    /// assert_eq!(foo.read(0), Some(b"fo"));      // Option<&[u8; 2]>
+    /// assert_eq!(foo.read(2), Some(b'o'));       // Option<u8>
+    /// assert_eq!(foo.read::<&[u8; 4]>(0), None); // Out of bounds
+    /// assert_eq!(foo.read::<&[u8; 2]>(2), None); // Out of bounds
     /// ```
     fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
     where
@@ -53,11 +51,8 @@ pub trait Source {
     /// ```rust
     /// use logos::Source;
     ///
-    /// fn main() {
-    ///     let foo = "It was the year when they finally immanentized the Eschaton.";
-    ///
-    ///     assert_eq!(<str as Source>::slice(&foo, 51..59), Some("Eschaton"));
-    /// }
+    /// let foo = "It was the year when they finally immanentized the Eschaton.";
+    /// assert_eq!(<str as Source>::slice(&foo, 51..59), Some("Eschaton"));
     /// ```
     fn slice(&self, range: Range<usize>) -> Option<&Self::Slice>;
 
@@ -69,12 +64,10 @@ pub trait Source {
     /// ```rust
     /// use logos::Source;
     ///
-    /// fn main() {
-    ///     let foo = "It was the year when they finally immanentized the Eschaton.";
+    /// let foo = "It was the year when they finally immanentized the Eschaton.";
     ///
-    ///     unsafe {
-    ///         assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
-    ///     }
+    /// unsafe {
+    ///     assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     /// }
     /// ```
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self::Slice;

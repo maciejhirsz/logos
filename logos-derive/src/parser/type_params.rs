@@ -121,11 +121,8 @@ pub fn replace_lifetime(ty: &mut Type) {
                 })
                 .flat_map(|ab| ab.args.iter_mut())
                 .for_each(|arg| {
-                    match arg {
-                        GenericArgument::Lifetime(lt) => {
-                            *lt = Lifetime::new("'s", lt.span());
-                        },
-                        _ => (),
+                    if let GenericArgument::Lifetime(lt) = arg {
+                        *lt = Lifetime::new("'s", lt.span());
                     }
                 });
         },

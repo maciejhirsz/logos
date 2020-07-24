@@ -107,7 +107,7 @@ impl<'a> Generator<'a> {
 
         if !self.gotos.contains_key(&key) {
             let meta = &self.meta[id];
-            let enters_loop = meta.loop_entry_from.len() > 0;
+            let enters_loop = !meta.loop_entry_from.is_empty();
 
 
             let bump = if enters_loop || !ctx.can_backtrack() {
