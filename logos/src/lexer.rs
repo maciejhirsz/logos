@@ -9,6 +9,7 @@ pub type Span = core::ops::Range<usize>;
 
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
+#[derive(Debug)]
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
     token: ManuallyDrop<Option<Token>>,
