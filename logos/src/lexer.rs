@@ -117,8 +117,6 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// The new lexer continues to point at the same span as the current lexer,
     /// and the current token becomes the error token of the new token type.
-    /// If you want to start reading from the new lexer immediately,
-    /// consider using `Lexer::advance_as` instead.
     pub fn morph<Token2>(self) -> Lexer<'source, Token2>
     where
         Token2: Logos<'source, Source = Token::Source>,
