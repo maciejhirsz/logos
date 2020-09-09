@@ -43,21 +43,23 @@ impl Iterator for Range {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
-        if self.start < self.end {
-            let res = self.start;
-            self.start += 1;
+        match self.start.cmp(&self.end) {
+            std::cmp::Ordering::Less => {
+                let res = self.start;
+                self.start += 1;
 
-            Some(res)
-        } else if self.start == self.end {
-            let res = self.start;
+                Some(res)
+            }
+            std::cmp::Ordering::Equal => {
+                let res = self.start;
 
-            // Necessary so that range 0xFF-0xFF doesn't loop forever
-            self.start = 0xFF;
-            self.end = 0x00;
+                // Necessary so that range 0xFF-0xFF doesn't loop forever
+                self.start = 0xFF;
+                self.end = 0x00;
 
-            Some(res)
-        } else {
-            None
+                Some(res)
+            }
+            std::cmp::Ordering::Greater => None,
         }
     }
 }
@@ -109,7 +111,7 @@ mod tests {
     #[test]
     fn range_iter_one() {
         let byte = Range::from(b'!');
-        let collected = byte.into_iter().take(1000).collect::<Vec<_>>();
+        let collected = byte.take(1000).collect::<Vec<_>>();
 
         assert_eq!(b"!", &collected[..]);
     }
@@ -117,7 +119,7 @@ mod tests {
     #[test]
     fn range_iter_few() {
         let byte = Range { start: b'a', end: b'd' };
-        let collected = byte.into_iter().take(1000).collect::<Vec<_>>();
+        let collected = byte.take(1000).collect::<Vec<_>>();
 
         assert_eq!(b"abcd", &collected[..]);
     }
@@ -126,7 +128,7 @@ mod tests {
     fn range_iter_bunds() {
         let byte = Range::from(0xFA..=0xFF);
 
-        let collected = byte.into_iter().take(1000).collect::<Vec<_>>();
+        let collected = byte.take(1000).collect::<Vec<_>>();
 
         assert_eq!(b"\xFA\xFB\xFC\xFD\xFE\xFF", &collected[..]);
     }
