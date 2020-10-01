@@ -35,7 +35,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut size = item.variants.len();
     let name = &item.ident;
 
-    let mut error = None;
+    // let mut error = None;
     let mut parser = Parser::default();
 
     for param in item.generics.params {
@@ -114,14 +114,14 @@ pub fn logos(input: TokenStream) -> TokenStream {
             };
 
             match attr_name.as_str() {
-                "error" => {
-                    let span = variant.ident.span();
-                    if let Some(previous) = error.replace(&variant.ident) {
-                        parser
-                            .err("Only one #[error] variant can be declared.", span)
-                            .err("Previously declared #[error]:", previous.span());
-                    }
-                }
+                // "error" => {
+                //     let span = variant.ident.span();
+                //     if let Some(previous) = error.replace(&variant.ident) {
+                //         parser
+                //             .err("Only one #[error] variant can be declared.", span)
+                //             .err("Previously declared #[error]:", previous.span());
+                //     }
+                // }
                 "end" => {
                     // TODO: Remove in future versions
                     parser.err(
@@ -192,13 +192,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
         Mode::Binary => quote!([u8]),
     };
 
-    let error_def = match error {
-        Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
-        None => {
-            parser.err("missing #[error] token variant.", Span::call_site());
-            None
-        }
-    };
+    // let error_def = match error {
+    //     Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
+    //     None => {
+    //         parser.err("missing #[error] token variant.", Span::call_site());
+    //         None
+    //     }
+    // };
 
     let generics = parser.generics();
     let this = quote!(#name #generics);
@@ -210,9 +210,11 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
                 type Source = #source;
 
+                type Error = ::logos::LexerError;
+
                 const SIZE: usize = #size;
 
-                #error_def
+                const ERROR: Self::Error = ::logos::LexerError;
 
                 fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
                     #body

@@ -9,6 +9,7 @@ use crate::{Logos, Lexer, Skip, Filter};
 /// code produced by `#[derive(Logos)]` macro.**
 pub trait LexerInternal<'source> {
     type Token;
+    type Error;
 
     /// Read a chunk at current position.
     fn read<T: Chunk<'source>>(&self) -> Option<T>;
@@ -37,7 +38,7 @@ pub trait LexerInternal<'source> {
 
     fn end(&mut self);
 
-    fn set(&mut self, token: Self::Token);
+    fn set(&mut self, token: Result<Self::Token, Self::Error>);
 }
 
 pub trait CallbackResult<'s, P, T: Logos<'s>> {
@@ -52,7 +53,7 @@ impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for P {
     where
         Constructor: Fn(P) -> T,
     {
-        lex.set(c(self))
+        lex.set(Ok(c(self)))
     }
 }
 
@@ -63,8 +64,8 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for bool {
         Constructor: Fn(()) -> T,
     {
         match self {
-            true => lex.set(c(())),
-            false => lex.set(T::ERROR),
+            true => lex.set(Ok(c(()))),
+            false => lex.set(Err(T::ERROR)),
         }
     }
 }
@@ -76,8 +77,8 @@ impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Option<P> {
         Constructor: Fn(P) -> T,
     {
         match self {
-            Some(product) => lex.set(c(product)),
-            None => lex.set(T::ERROR),
+            Some(product) => lex.set(Ok(c(product))),
+            None => lex.set(Err(T::ERROR)),
         }
     }
 }
@@ -89,8 +90,8 @@ impl<'s, P, E, T: Logos<'s>> CallbackResult<'s, P, T> for Result<P, E> {
         Constructor: Fn(P) -> T,
     {
         match self {
-            Ok(product) => lex.set(c(product)),
-            Err(_) => lex.set(T::ERROR),
+            Ok(product) => lex.set(Ok(c(product))),
+            Err(_) => lex.set(Err(T::ERROR)),
         }
     }
 }
@@ -113,7 +114,7 @@ impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Filter<P> {
         Constructor: Fn(P) -> T,
     {
         match self {
-            Filter::Emit(product) => lex.set(c(product)),
+            Filter::Emit(product) => lex.set(Ok(c(product))),
             Filter::Skip => {
                 lex.trivia();
                 T::lex(lex);

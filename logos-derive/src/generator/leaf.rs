@@ -15,8 +15,8 @@ impl<'a> Generator<'a> {
         let ty = &leaf.field;
 
         let constructor = match leaf.field {
-            MaybeVoid::Some(_) => quote!(#name::#ident),
-            MaybeVoid::Void => quote!(|()| #name::#ident),
+            MaybeVoid::Some(_) => quote!(Ok(#name::#ident)),
+            MaybeVoid::Void => quote!(|()| Ok(#name::#ident)),
         };
 
         match &leaf.callback {
@@ -41,11 +41,11 @@ impl<'a> Generator<'a> {
             },
             None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
-                lex.set(#name::#ident);
+                lex.set(Ok(#name::#ident));
             },
             None => quote! {
                 #bump
-                let token = #name::#ident(lex.slice());
+                let token = Ok(#name::#ident(lex.slice()));
                 lex.set(token);
             },
         }

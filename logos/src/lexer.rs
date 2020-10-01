@@ -11,7 +11,7 @@ pub type Span = core::ops::Range<usize>;
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
-    token: ManuallyDrop<Option<Token>>,
+    token: ManuallyDrop<Option<Result<Token, Token::Error>>>,
     token_start: usize,
     token_end: usize,
 
@@ -151,6 +151,7 @@ impl<'source, Token> Clone for Lexer<'source, Token>
 where
     Token: Logos<'source> + Clone,
     Token::Extras: Clone,
+    Token::Error: Clone,
 {
     fn clone(&self) -> Self {
         Lexer {
@@ -165,10 +166,10 @@ impl<'source, Token> Iterator for Lexer<'source, Token>
 where
     Token: Logos<'source>,
 {
-    type Item = Token;
+    type Item = Result<Token, Token::Error>;
 
     #[inline]
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<Result<Token, Token::Error>> {
         self.token_start = self.token_end;
 
         Token::lex(self);
@@ -192,7 +193,7 @@ impl<'source, Token> Iterator for SpannedIter<'source, Token>
 where
     Token: Logos<'source>,
 {
-    type Item = (Token, Span);
+    type Item = (Result<Token, Token::Error>, Span);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer.next().map(|token| (
@@ -212,6 +213,7 @@ where
     Token: Logos<'source>,
 {
     type Token = Token;
+    type Error = Token::Error;
 
     /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
@@ -288,7 +290,7 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        self.token = ManuallyDrop::new(Some(Token::ERROR));
+        self.token = ManuallyDrop::new(Some(Err(Token::ERROR)));
     }
 
     #[inline]
@@ -297,7 +299,7 @@ where
     }
 
     #[inline]
-    fn set(&mut self, token: Token) {
+    fn set(&mut self, token: Result<Token, Self::Error>) {
         self.token = ManuallyDrop::new(Some(token));
     }
 }

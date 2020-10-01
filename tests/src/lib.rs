@@ -8,9 +8,10 @@ mod binary;
 
 pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,
-    tokens: &[(Token, &'a <Token::Source as Source>::Slice, Range<usize>)],
+    tokens: &[(Result<Token, Token::Error>, &'a <Token::Source as Source>::Slice, Range<usize>)],
 ) where
     Token: Logos<'a> + fmt::Debug + PartialEq,
+    Token::Error: fmt::Debug + PartialEq,
     Token::Extras: Default,
 {
     let mut lex = Token::lexer(source);
