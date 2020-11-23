@@ -82,7 +82,7 @@ fn main() {
 which can be used to put data into a variant:
 
 ```rust
-use logos::{Logos, Lexer, Extras};
+use logos::{Logos, Lexer};
 
 // Note: callbacks can return `Option` or `Result`
 fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
@@ -100,6 +100,7 @@ fn mega(lex: &mut Lexer<Token>) -> Option<u64> {
 #[derive(Logos, Debug, PartialEq)]
 enum Token {
     #[error]
+    #[regex(r"[ \t\n\f]+", logos::skip)]
     Error,
 
     // Callbacks can use closure syntax, or refer
@@ -176,7 +177,7 @@ to be disambiguated again, in this case all sequences of `c` will match `[abc]+`
 
 Ridiculously fast!
 
-```
+```norust
 test identifiers                       ... bench:         647 ns/iter (+/- 27) = 1204 MB/s
 test keywords_operators_and_punctators ... bench:       2,054 ns/iter (+/- 78) = 1037 MB/s
 test strings                           ... bench:         553 ns/iter (+/- 34) = 1575 MB/s
