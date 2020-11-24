@@ -1,23 +1,23 @@
 use std::cmp::Ordering;
-use std::num::NonZeroU32;
-use std::collections::BTreeMap as Map;
 use std::collections::btree_map::Entry;
-use std::ops::Index;
+use std::collections::BTreeMap as Map;
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroU32;
+use std::ops::Index;
 
 use fnv::FnvHasher;
 
+mod fork;
 mod impls;
 mod meta;
-mod fork;
-mod rope;
 mod range;
 mod regex;
+mod rope;
 
-pub use self::meta::Meta;
 pub use self::fork::Fork;
-pub use self::rope::Rope;
+pub use self::meta::Meta;
 pub use self::range::Range;
+pub use self::rope::Rope;
 
 /// Disambiguation error during the attempt to merge two leaf
 /// nodes with the same priority
@@ -172,7 +172,12 @@ impl<Leaf> Graph<Leaf> {
         // Complete deferred merges. We've collected them from the back,
         // so we must iterate through them from the back as well to restore
         // proper order of merges in case there is some cascading going on.
-        for DeferredMerge { awaiting, with, into } in awaiting.into_iter().rev() {
+        for DeferredMerge {
+            awaiting,
+            with,
+            into,
+        } in awaiting.into_iter().rev()
+        {
             self.merge_unchecked(awaiting, with, into);
         }
 
@@ -204,10 +209,10 @@ impl<Leaf> Graph<Leaf> {
                 if self[id].eq(&node) {
                     return id;
                 }
-            },
+            }
             Entry::Vacant(vacant) => {
                 vacant.insert(next_id);
-            },
+            }
         }
 
         self.push_unchecked(node)
@@ -263,7 +268,7 @@ impl<Leaf> Graph<Leaf> {
 
                     https://github.com/maciejhirsz/logos/issues"
                 );
-            },
+            }
             (None, Some(_)) => {
                 let reserved = self.reserve();
                 let id = reserved.get();
@@ -296,9 +301,9 @@ impl<Leaf> Graph<Leaf> {
                         self.errors.push(DisambiguationError(a, b));
 
                         a
-                    },
+                    }
                 };
-            },
+            }
             _ => (),
         }
 
@@ -322,12 +327,12 @@ impl<Leaf> Graph<Leaf> {
                 let rope = rope.clone();
 
                 self.merge_rope(rope, b)
-            },
+            }
             (_, Some(Node::Rope(rope))) => {
                 let rope = rope.clone();
 
                 self.merge_rope(rope, a)
-            },
+            }
             _ => None,
         };
 
@@ -358,7 +363,6 @@ impl<Leaf> Graph<Leaf> {
             }
             fork.miss = None;
             fork.merge(other, self);
-
         }
 
         self.insert(reserved, fork)
@@ -374,7 +378,8 @@ impl<Leaf> Graph<Leaf> {
                 // branch into the fork that results in a loop.
                 //
                 // e.g.: for rope "foobar" and a looping fork [a-z]: 6
-                let count = rope.pattern
+                let count = rope
+                    .pattern
                     .iter()
                     .take_while(|range| fork.contains(**range) == Some(other))
                     .count();
@@ -384,7 +389,7 @@ impl<Leaf> Graph<Leaf> {
                 rope.then = self.merge(rope.then, other);
 
                 Some(rope)
-            },
+            }
             Some(Node::Rope(other)) => {
                 let (prefix, miss) = rope.prefix(other)?;
 
@@ -396,14 +401,14 @@ impl<Leaf> Graph<Leaf> {
                 let rope = Rope::new(prefix, self.merge(a, b)).miss(miss);
 
                 Some(rope)
-            },
+            }
             Some(Node::Leaf(_)) | None => {
                 if rope.miss.is_none() {
                     Some(rope.miss(other))
                 } else {
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
@@ -450,7 +455,7 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
         self.get(id).expect(
             "Indexing into an empty node. This is a bug, please report it at:\n\n\
 
-            https://github.com/maciejhirsz/logos/issues"
+            https://github.com/maciejhirsz/logos/issues",
         )
     }
 }
@@ -505,7 +510,6 @@ impl<Leaf> Node<Leaf> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -531,10 +535,7 @@ mod tests {
         let root = graph.insert(id, fork);
 
         assert_eq!(graph[token], Node::Leaf("IDENT"));
-        assert_eq!(
-            graph[root],
-            Fork::new().branch('a'..='z', root).miss(token),
-        );
+        assert_eq!(graph[root], Fork::new().branch('a'..='z', root).miss(token),);
     }
 
     #[test]
@@ -546,7 +547,10 @@ mod tests {
         let fork = graph.push(Fork::new().branch(b'!', leaf));
 
         assert_eq!(graph.fork_off(leaf), Fork::new().miss(leaf));
-        assert_eq!(graph.fork_off(rope), Fork::new().branch(b'r', NodeId::new(graph.nodes.len() - 1)));
+        assert_eq!(
+            graph.fork_off(rope),
+            Fork::new().branch(b'r', NodeId::new(graph.nodes.len() - 1))
+        );
         assert_eq!(graph.fork_off(fork), Fork::new().branch(b'!', leaf));
     }
 }

@@ -1,16 +1,16 @@
+use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
-use fnv::{FnvHashMap as Map, FnvHashSet as Set};
 
-use crate::graph::{Graph, Node, NodeId, Range, Meta};
+use crate::graph::{Graph, Meta, Node, NodeId, Range};
 use crate::leaf::Leaf;
 use crate::util::ToIdent;
 
+mod context;
 mod fork;
 mod leaf;
 mod rope;
-mod context;
 mod tables;
 
 use self::context::Context;
@@ -47,8 +47,8 @@ impl<'a> Generator<'a> {
     pub fn new(
         name: &'a Ident,
         this: &'a TokenStream,
-        root: NodeId, graph:
-        &'a Graph<Leaf>,
+        root: NodeId,
+        graph: &'a Graph<Leaf>,
     ) -> Self {
         let rendered = Self::fast_loop_macro();
         let meta = Meta::analyze(root, graph);
@@ -109,7 +109,6 @@ impl<'a> Generator<'a> {
             let meta = &self.meta[id];
             let enters_loop = !meta.loop_entry_from.is_empty();
 
-
             let bump = if enters_loop || !ctx.can_backtrack() {
                 ctx.switch(self.graph[id].miss())
             } else {
@@ -123,7 +122,7 @@ impl<'a> Generator<'a> {
                 (None, false, _) => None,
             };
 
-            if meta.min_read == 0 || ctx.remainder() < meta.min_read  {
+            if meta.min_read == 0 || ctx.remainder() < meta.min_read {
                 ctx.wipe();
             }
 
@@ -171,7 +170,7 @@ impl<'a> Generator<'a> {
                             _ => false,
                         }
                     }
-                },
+                }
                 _ if hi - lo < 64 => {
                     let mut offset = hi.saturating_sub(63);
 
@@ -201,7 +200,7 @@ impl<'a> Generator<'a> {
                             None => false,
                         }
                     }
-                },
+                }
                 _ => {
                     let mut view = self.tables.view();
 

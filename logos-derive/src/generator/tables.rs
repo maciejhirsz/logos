@@ -1,7 +1,7 @@
-use syn::Ident;
-use quote::{quote, ToTokens};
-use proc_macro2::{TokenStream, Literal};
 use crate::util::ToIdent;
+use proc_macro2::{Literal, TokenStream};
+use quote::{quote, ToTokens};
+use syn::Ident;
 
 pub struct TableStack {
     tables: Vec<(Ident, [u8; 256])>,
@@ -42,11 +42,7 @@ impl TableStack {
 
         let (ref ident, ref mut table) = self.tables.last_mut().unwrap();
 
-        TableView {
-            ident,
-            table,
-            mask,
-        }
+        TableView { ident, table, mask }
     }
 }
 

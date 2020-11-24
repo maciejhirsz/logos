@@ -209,13 +209,18 @@ pub trait Logos<'source>: Sized {
     /// Create a new instance of a `Lexer` that will produce tokens implementing
     /// this `Logos`.
     fn lexer(source: &'source Self::Source) -> Lexer<'source, Self>
-    where Self::Extras: Default {
+    where
+        Self::Extras: Default,
+    {
         Lexer::new(source)
     }
 
     /// Create a new instance of a `Lexer` with the provided `Extras` that will
     /// produce tokens implementing this `Logos`.
-    fn lexer_with_extras(source: &'source Self::Source, extras: Self::Extras) -> Lexer<'source, Self> {
+    fn lexer_with_extras(
+        source: &'source Self::Source,
+        extras: Self::Extras,
+    ) -> Lexer<'source, Self> {
         Lexer::with_extras(source, extras)
     }
 }
@@ -400,12 +405,12 @@ macro_rules! lookup {
 
 #[cfg(doctest)]
 mod test_readme {
-  macro_rules! external_doc_test {
+    macro_rules! external_doc_test {
     ($x:expr) => {
         #[doc = $x]
         extern {}
     };
   }
 
-  external_doc_test!(include_str!("../../README.md"));
+    external_doc_test!(include_str!("../../README.md"));
 }

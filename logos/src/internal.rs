@@ -1,5 +1,5 @@
 use crate::source::Chunk;
-use crate::{Logos, Lexer, Skip, Filter};
+use crate::{Filter, Lexer, Logos, Skip};
 
 /// Trait used by the functions contained in the `Lexicon`.
 ///
@@ -23,7 +23,7 @@ pub trait LexerInternal<'source> {
     fn test<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, test: F) -> bool;
 
     /// Test a chunk at current position offset by `n` with a closure.
-    fn test_at<T:Chunk<'source>, F: FnOnce(T) -> bool>(&self, n: usize, test: F) -> bool;
+    fn test_at<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, n: usize, test: F) -> bool;
 
     /// Bump the position by `size`.
     fn bump_unchecked(&mut self, size: usize);

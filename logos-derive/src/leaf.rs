@@ -1,10 +1,10 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug};
 
-use syn::{Ident, spanned::Spanned};
-use proc_macro2::{TokenStream, Span};
+use proc_macro2::{Span, TokenStream};
+use syn::{spanned::Spanned, Ident};
 
-use crate::graph::{Node, Disambiguate};
+use crate::graph::{Disambiguate, Node};
 use crate::util::MaybeVoid;
 
 #[derive(Clone)]

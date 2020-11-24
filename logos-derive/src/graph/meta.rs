@@ -1,6 +1,6 @@
+use std::cmp::min;
 use std::collections::BTreeMap;
 use std::ops::{Index, IndexMut};
-use std::cmp::min;
 
 use crate::graph::{Graph, Node, NodeId};
 
@@ -104,7 +104,7 @@ impl Meta {
                 if min_read == usize::max_value() {
                     min_read = 0;
                 }
-            },
+            }
             Node::Rope(rope) => {
                 min_read = rope.pattern.len();
                 let meta = self.first_pass(rope.then, this, graph, stack);
@@ -122,7 +122,7 @@ impl Meta {
                         min_read = min(min_read, meta.min_read);
                     }
                 }
-            },
+            }
             Node::Leaf(_) => min_read = 0,
         }
 
@@ -157,7 +157,7 @@ impl Meta {
                 if min_read == usize::max_value() {
                     min_read = 0;
                 }
-            },
+            }
             Node::Rope(rope) => {
                 min_read = rope.pattern.len();
                 let meta = &self[rope.then];
@@ -165,7 +165,7 @@ impl Meta {
                 if !meta.is_loop_init {
                     min_read += meta.min_read;
                 }
-            },
+            }
             Node::Leaf(_) => unreachable!(),
         }
 

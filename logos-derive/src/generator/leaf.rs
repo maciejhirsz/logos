@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::leaf::{Leaf, Callback};
-use crate::generator::{Generator, Context};
+use crate::generator::{Context, Generator};
+use crate::leaf::{Callback, Leaf};
 use crate::util::MaybeVoid;
 
 impl<'a> Generator<'a> {
@@ -38,7 +38,7 @@ impl<'a> Generator<'a> {
 
                     callback(lex).construct(#constructor, lex);
                 }
-            },
+            }
             None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
                 lex.set(#name::#ident);

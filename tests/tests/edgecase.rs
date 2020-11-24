@@ -24,9 +24,7 @@ mod crunch {
     fn crunch() {
         assert_lex(
             "exposed_function",
-            &[
-                (Token::Ident, "exposed_function", 0..16),
-            ],
+            &[(Token::Ident, "exposed_function", 0..16)],
         );
     }
 }
@@ -70,7 +68,7 @@ mod numbers {
                 (Token::LiteralRealNumberExp, "90e+8", 17..22),
                 (Token::LiteralRealNumberDotScaleChar, "42.42m", 23..29),
                 (Token::LiteralRealNumberDotExp, "77.77e-29", 30..39),
-            ]
+            ],
         )
     }
 }
@@ -159,13 +157,14 @@ mod benches {
                 (Token::Identifier, "immanentized", 34..46),
                 (Token::Identifier, "the", 47..50),
                 (Token::Identifier, "Eschaton", 51..59),
-            ]
+            ],
         )
     }
 
     #[test]
     fn keywords_and_punctators() {
-        static SOURCE: &str = "foobar(protected primitive private instanceof in) { + ++ = == === => }";
+        static SOURCE: &str =
+            "foobar(protected primitive private instanceof in) { + ++ = == === => }";
 
         assert_lex(
             SOURCE,
@@ -186,7 +185,7 @@ mod benches {
                 (Token::OpStrictEquality, "===", 62..65),
                 (Token::FatArrow, "=>", 66..68),
                 (Token::BraceClose, "}", 69..70),
-            ]
+            ],
         )
     }
 
@@ -203,13 +202,21 @@ mod benches {
                 (Token::String, r#""graph""#, 16..23),
                 (Token::String, r#""that can""#, 24..34),
                 (Token::String, r#""more adequately represent""#, 35..62),
-                (Token::String, r#""loops and arbitrary state jumps""#, 63..96),
+                (
+                    Token::String,
+                    r#""loops and arbitrary state jumps""#,
+                    63..96,
+                ),
                 (Token::String, r#""with\"\"\"out""#, 97..112),
                 (Token::String, r#""the\n\n\n\n\n""#, 113..128),
                 (Token::String, r#""expl\"\"\"osive""#, 129..146),
                 (Token::String, r#""nature\"""#, 147..157),
-                (Token::String, r#""of trying to build up all possible permutations in a tree.""#, 157..217),
-            ]
+                (
+                    Token::String,
+                    r#""of trying to build up all possible permutations in a tree.""#,
+                    157..217,
+                ),
+            ],
         )
     }
 }
@@ -393,14 +400,7 @@ mod priority_disambiguate_1 {
     fn priority_abc() {
         let tokens: Vec<_> = Token::lexer("abc ccc cde").collect();
 
-        assert_eq!(
-            tokens,
-            &[
-                Token::Abc,
-                Token::Abc,
-                Token::Cde,
-            ]
-        );
+        assert_eq!(tokens, &[Token::Abc, Token::Abc, Token::Cde,]);
     }
 }
 
@@ -424,14 +424,7 @@ mod priority_disambiguate_2 {
     fn priority_cbd() {
         let tokens: Vec<_> = Token::lexer("abc ccc cde").collect();
 
-        assert_eq!(
-            tokens,
-            &[
-                Token::Abc,
-                Token::Cde,
-                Token::Cde,
-            ]
-        );
+        assert_eq!(tokens, &[Token::Abc, Token::Cde, Token::Cde,]);
     }
 }
 

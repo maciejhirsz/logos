@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::graph::NodeId;
 use crate::generator::Generator;
+use crate::graph::NodeId;
 
 /// This struct keeps track of bytes available to be read without
 /// bounds checking across the tree.
@@ -51,7 +51,7 @@ impl Context {
                 self.available = 0;
                 self.bumped = true;
                 Some(tokens)
-            },
+            }
         }
     }
 
@@ -67,12 +67,12 @@ impl Context {
                 self.advance(1);
 
                 quote!(lex.read_unchecked::<u8>(#at))
-            },
+            }
             l => {
                 self.advance(l);
 
                 quote!(lex.read_unchecked::<&[u8; #l]>(#at))
-            },
+            }
         }
     }
 

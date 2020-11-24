@@ -1,8 +1,8 @@
 use proc_macro2::token_stream::IntoIter as TokenIter;
-use proc_macro2::{Ident, TokenTree, TokenStream};
+use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::quote;
 
-use crate::util::{is_punct, expect_punct};
+use crate::util::{expect_punct, is_punct};
 
 pub enum NestedValue {
     /// `name = ...`
@@ -40,7 +40,7 @@ impl From<Empty> for TokenStream {
 impl AttributeParser {
     pub fn new(stream: TokenStream) -> Self {
         AttributeParser {
-            inner: stream.into_iter()
+            inner: stream.into_iter(),
         }
     }
 
@@ -100,12 +100,12 @@ impl AttributeParser {
                 let error = self.collect_tail(error);
 
                 Nested::Unexpected(error)
-            },
+            }
             None => {
                 let value = self.collect_tail(Empty);
 
                 Nested::Named(keyword, NestedValue::KeywordAssign(name, value))
-            },
+            }
         }
     }
 }

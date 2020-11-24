@@ -24,7 +24,10 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling [`Token::lexer`](./trait.Logos.html#method.lexer) on any `Token` with derived `Logos`.
-    pub fn new(source: &'source Token::Source) -> Self where Token::Extras: Default {
+    pub fn new(source: &'source Token::Source) -> Self
+    where
+        Token::Extras: Default,
+    {
         Self::with_extras(source, Default::default())
     }
 
@@ -83,14 +86,12 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// ```
     #[inline]
     pub fn spanned(self) -> SpannedIter<'source, Token> {
-        SpannedIter {
-            lexer: self,
-        }
+        SpannedIter { lexer: self }
     }
 
     #[inline]
     #[doc(hidden)]
-    #[deprecated(since="0.11.0", note="please use `span` instead")]
+    #[deprecated(since = "0.11.0", note = "please use `span` instead")]
     pub fn range(&self) -> Span {
         self.span()
     }
@@ -110,7 +111,10 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Get a slice of remaining source, starting at the end of current token.
     #[inline]
     pub fn remainder(&self) -> &'source <Token::Source as Source>::Slice {
-        unsafe { self.source.slice_unchecked(self.token_end..self.source.len()) }
+        unsafe {
+            self.source
+                .slice_unchecked(self.token_end..self.source.len())
+        }
     }
 
     /// Turn this lexer into a lexer for a new token type.
@@ -195,10 +199,7 @@ where
     type Item = (Token, Span);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.lexer.next().map(|token| (
-            token,
-            self.lexer.span(),
-        ))
+        self.lexer.next().map(|token| (token, self.lexer.span()))
     }
 }
 
