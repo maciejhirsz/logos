@@ -1,4 +1,4 @@
-use crate::graph::{Graph, Disambiguate, NodeId, Range};
+use crate::graph::{Disambiguate, Graph, NodeId, Range};
 
 #[derive(Clone)]
 pub struct Fork {
@@ -33,7 +33,7 @@ impl Fork {
             match &mut self.lut[byte as usize] {
                 Some(other) if *other != then => {
                     *other = graph.merge(*other, then);
-                },
+                }
                 opt => *opt = Some(then),
             }
         }
@@ -93,7 +93,7 @@ impl Fork {
             match &mut self.lut[byte as usize] {
                 Some(other) if *other != then => {
                     panic!("Overlapping branches");
-                },
+                }
                 opt => *opt = Some(then),
             }
         }
@@ -175,8 +175,20 @@ mod tests {
 
         assert_eq!(
             &[
-                (Range { start: b'4', end: b'7' }, NodeId::new(1)),
-                (Range { start: b'a', end: b'd' }, NodeId::new(2)),
+                (
+                    Range {
+                        start: b'4',
+                        end: b'7'
+                    },
+                    NodeId::new(1)
+                ),
+                (
+                    Range {
+                        start: b'a',
+                        end: b'd'
+                    },
+                    NodeId::new(2)
+                ),
             ],
             &*iter.collect::<Vec<_>>(),
         );
@@ -191,17 +203,9 @@ mod tests {
 
         let mut fork = Fork::new().branch(b'1', leaf1);
 
-        fork.merge(
-            Fork::new().branch(b'2', leaf2),
-            &mut graph,
-        );
+        fork.merge(Fork::new().branch(b'2', leaf2), &mut graph);
 
-        assert_eq!(
-            fork,
-            Fork::new()
-                .branch(b'1', leaf1)
-                .branch(b'2', leaf2)
-        );
+        assert_eq!(fork, Fork::new().branch(b'1', leaf1).branch(b'2', leaf2));
     }
 
     #[test]
@@ -213,17 +217,9 @@ mod tests {
 
         let mut fork = Fork::new().branch(b'1', leaf1);
 
-        fork.merge(
-            Fork::new().miss(leaf2),
-            &mut graph,
-        );
+        fork.merge(Fork::new().miss(leaf2), &mut graph);
 
-        assert_eq!(
-            fork,
-            Fork::new()
-                .branch(b'1', leaf1)
-                .miss(leaf2)
-        );
+        assert_eq!(fork, Fork::new().branch(b'1', leaf1).miss(leaf2));
     }
 
     #[test]
@@ -235,17 +231,9 @@ mod tests {
 
         let mut fork = Fork::new().miss(leaf1);
 
-        fork.merge(
-            Fork::new().branch(b'2', leaf2),
-            &mut graph,
-        );
+        fork.merge(Fork::new().branch(b'2', leaf2), &mut graph);
 
-        assert_eq!(
-            fork,
-            Fork::new()
-                .branch(b'2', leaf2)
-                .miss(leaf1)
-        );
+        assert_eq!(fork, Fork::new().branch(b'2', leaf2).miss(leaf1));
     }
 
     #[test]

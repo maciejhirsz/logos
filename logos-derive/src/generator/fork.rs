@@ -1,11 +1,11 @@
 use std::cmp::max;
 
+use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
 use quote::quote;
-use fnv::FnvHashMap as Map;
 
-use crate::graph::{NodeId, Fork, Range};
-use crate::generator::{Generator, Context};
+use crate::generator::{Context, Generator};
+use crate::graph::{Fork, NodeId, Range};
 use crate::util::ToIdent;
 
 type Targets = Map<NodeId, Vec<Range>>;
@@ -33,16 +33,16 @@ impl<'a> Generator<'a> {
             match *ranges {
                 [range] => {
                     quote!(#range => #next,)
-                },
+                }
                 [a, b] if a.is_byte() && b.is_byte() => {
                     quote!(#a | #b => #next,)
-                },
+                }
                 _ => {
                     let test = self.generate_test(ranges).clone();
                     let next = self.goto(id, ctx.advance(1));
 
                     quote!(byte if #test(byte) => #next,)
-                },
+                }
             }
         });
 
@@ -56,7 +56,13 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate_fork_jump_table(&mut self, this: NodeId, fork: &Fork, targets: Targets, mut ctx: Context) -> TokenStream {
+    fn generate_fork_jump_table(
+        &mut self,
+        this: NodeId,
+        fork: &Fork,
+        targets: Targets,
+        mut ctx: Context,
+    ) -> TokenStream {
         let miss = ctx.miss(fork.miss, self);
         let end = self.fork_end(this, &miss);
         let (byte, read) = self.fork_read(this, end, &mut ctx);
@@ -64,18 +70,22 @@ impl<'a> Generator<'a> {
         let mut table: [u8; 256] = [0; 256];
         let mut jumps = vec!["__".to_ident()];
 
-        let branches = targets.into_iter().enumerate().map(|(idx, (id, ranges))| {
-            let idx = (idx as u8) + 1;
-            let next = self.goto(id, ctx.advance(1));
-            jumps.push(format!("J{}", id).to_ident());
+        let branches = targets
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (id, ranges))| {
+                let idx = (idx as u8) + 1;
+                let next = self.goto(id, ctx.advance(1));
+                jumps.push(format!("J{}", id).to_ident());
 
-            for byte in ranges.into_iter().flatten() {
-                table[byte as usize] = idx;
-            }
-            let jump = jumps.last().unwrap();
+                for byte in ranges.into_iter().flatten() {
+                    table[byte as usize] = idx;
+                }
+                let jump = jumps.last().unwrap();
 
-            quote!(Jump::#jump => #next,)
-        }).collect::<TokenStream>();
+                quote!(Jump::#jump => #next,)
+            })
+            .collect::<TokenStream>();
 
         let jumps = &jumps;
         let table = table.iter().copied().map(|idx| &jumps[idx as usize]);
@@ -108,16 +118,18 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn fork_read(&self, this: NodeId, end: TokenStream, ctx: &mut Context) -> (TokenStream, TokenStream) {
+    fn fork_read(
+        &self,
+        this: NodeId,
+        end: TokenStream,
+        ctx: &mut Context,
+    ) -> (TokenStream, TokenStream) {
         let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= max(min_read, 1) {
             let read = ctx.read_unchecked(0);
 
-            return (
-                quote!(byte),
-                quote!(let byte = unsafe { #read };),
-            );
+            return (quote!(byte), quote!(let byte = unsafe { #read };));
         }
 
         match min_read {
@@ -133,7 +145,7 @@ impl<'a> Generator<'a> {
                         };
                     },
                 )
-            },
+            }
             len => {
                 let read = ctx.read(len);
 
@@ -146,7 +158,7 @@ impl<'a> Generator<'a> {
                         };
                     },
                 )
-            },
+            }
         }
     }
 

@@ -1,7 +1,7 @@
-use proc_macro2::{Ident, TokenStream, Span};
-use syn::{Type, Path, Lifetime, LifetimeDef};
-use syn::spanned::Spanned;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use syn::spanned::Spanned;
+use syn::{Lifetime, LifetimeDef, Path, Type};
 
 use crate::error::Errors;
 
@@ -31,11 +31,11 @@ impl TypeParams {
             Ok(mut ty) => {
                 replace_lifetimes(&mut ty);
                 ty
-            },
+            }
             Err(err) => {
                 errors.err(err.to_string(), err.span());
                 return;
-            },
+            }
         };
 
         match self.type_params.iter_mut().find(|(name, _)| *name == param) {
@@ -48,7 +48,7 @@ impl TypeParams {
                         )
                         .err("Previously assigned here", previous.span());
                 }
-            },
+            }
             None => {
                 errors.err(
                     format!("{} is not a declared type parameter", param),
@@ -109,11 +109,12 @@ pub fn replace_lifetimes(ty: &mut Type) {
 }
 
 pub fn replace_lifetime(ty: &mut Type) {
-    use syn::{PathArguments, GenericArgument};
+    use syn::{GenericArgument, PathArguments};
 
     match ty {
         Type::Path(p) => {
-            p.path.segments
+            p.path
+                .segments
                 .iter_mut()
                 .filter_map(|segment| match &mut segment.arguments {
                     PathArguments::AngleBracketed(ab) => Some(ab),
@@ -125,7 +126,7 @@ pub fn replace_lifetime(ty: &mut Type) {
                         *lt = Lifetime::new("'s", lt.span());
                     }
                 });
-        },
+        }
         Type::Reference(r) => {
             let span = match r.lifetime.take() {
                 Some(lt) => lt.span(),
@@ -133,7 +134,7 @@ pub fn replace_lifetime(ty: &mut Type) {
             };
 
             r.lifetime = Some(Lifetime::new("'s", span));
-        },
+        }
         _ => (),
     }
 }
@@ -153,19 +154,18 @@ pub fn traverse_type(ty: &mut Type, f: &mut impl FnMut(&mut Type)) {
         Type::Group(group) => traverse_type(&mut group.elem, f),
         Type::Paren(paren) => traverse_type(&mut paren.elem, f),
         Type::Path(path) => traverse_path(&mut path.path, f),
-        Type::Ptr(p) => {
-            traverse_type(&mut p.elem, f)
-        },
-        Type::Reference(r) => {
-            traverse_type(&mut r.elem, f)
-        },
+        Type::Ptr(p) => traverse_type(&mut p.elem, f),
+        Type::Reference(r) => traverse_type(&mut r.elem, f),
         Type::Slice(slice) => traverse_type(&mut slice.elem, f),
         Type::TraitObject(object) => object.bounds.iter_mut().for_each(|bound| {
             if let syn::TypeParamBound::Trait(trait_bound) = bound {
                 traverse_path(&mut trait_bound.path, f);
             }
         }),
-        Type::Tuple(tuple) => tuple.elems.iter_mut().for_each(|elem| traverse_type(elem, f)),
+        Type::Tuple(tuple) => tuple
+            .elems
+            .iter_mut()
+            .for_each(|elem| traverse_type(elem, f)),
         _ => (),
     }
 }
@@ -174,17 +174,19 @@ fn traverse_path(path: &mut Path, f: &mut impl FnMut(&mut Type)) {
     for segment in &mut path.segments {
         match &mut segment.arguments {
             syn::PathArguments::None => (),
-            syn::PathArguments::AngleBracketed(args) => for arg in &mut args.args {
-                match arg {
-                    syn::GenericArgument::Type(ty) => {
-                        traverse_type(ty, f);
-                    },
-                    syn::GenericArgument::Binding(bind) => {
-                        traverse_type(&mut bind.ty, f);
-                    },
-                    _ => (),
+            syn::PathArguments::AngleBracketed(args) => {
+                for arg in &mut args.args {
+                    match arg {
+                        syn::GenericArgument::Type(ty) => {
+                            traverse_type(ty, f);
+                        }
+                        syn::GenericArgument::Binding(bind) => {
+                            traverse_type(&mut bind.ty, f);
+                        }
+                        _ => (),
+                    }
                 }
-            },
+            }
             syn::PathArguments::Parenthesized(args) => {
                 for arg in &mut args.inputs {
                     traverse_type(arg, f);

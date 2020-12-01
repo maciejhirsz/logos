@@ -1,4 +1,4 @@
-use proc_macro2::{TokenTree, TokenStream, Span, Spacing};
+use proc_macro2::{Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
 use syn::Ident;
 
@@ -7,7 +7,7 @@ use syn::Ident;
 #[derive(Clone)]
 pub enum MaybeVoid {
     Some(TokenStream),
-    Void
+    Void,
 }
 
 impl Default for MaybeVoid {
@@ -51,7 +51,11 @@ impl ToTokens for MaybeVoid {
 
 pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
     match tt {
-        TokenTree::Punct(punct) if punct.as_char() == expect && punct.spacing() == Spacing::Alone => true,
+        TokenTree::Punct(punct)
+            if punct.as_char() == expect && punct.spacing() == Spacing::Alone =>
+        {
+            true
+        }
         _ => false,
     }
 }

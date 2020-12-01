@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::graph::{Graph, Disambiguate, Range, Fork, NodeId};
+use crate::graph::{Disambiguate, Fork, Graph, NodeId, Range};
 
 #[derive(PartialEq, Clone, Hash)]
 pub struct Rope {
@@ -50,7 +50,7 @@ impl Miss {
                 *self = Miss::None;
 
                 Some(id)
-            },
+            }
             Miss::Any(id) => Some(id),
             Miss::None => None,
         }
@@ -115,7 +115,8 @@ impl Rope {
     }
 
     pub fn prefix(&self, other: &Self) -> Option<(Pattern, Miss)> {
-        let count = self.pattern
+        let count = self
+            .pattern
             .iter()
             .zip(other.pattern.iter())
             .take_while(|(a, b)| a == b)
@@ -269,8 +270,16 @@ mod tests {
         let fork = rope.into_fork(&mut graph);
 
         assert_eq!(leaf, NodeId::new(1));
-        assert_eq!(fork, Fork::new().branch(b'4', NodeId::new(2)).miss(NodeId::new(42)));
-        assert_eq!(graph[NodeId::new(2)], Rope::new("2", leaf).miss_any(NodeId::new(42)));
+        assert_eq!(
+            fork,
+            Fork::new()
+                .branch(b'4', NodeId::new(2))
+                .miss(NodeId::new(42))
+        );
+        assert_eq!(
+            graph[NodeId::new(2)],
+            Rope::new("2", leaf).miss_any(NodeId::new(42))
+        );
     }
 
     #[test]
@@ -283,7 +292,12 @@ mod tests {
         let fork = rope.into_fork(&mut graph);
 
         assert_eq!(leaf, NodeId::new(1));
-        assert_eq!(fork, Fork::new().branch(b'4', NodeId::new(2)).miss(NodeId::new(42)));
+        assert_eq!(
+            fork,
+            Fork::new()
+                .branch(b'4', NodeId::new(2))
+                .miss(NodeId::new(42))
+        );
         assert_eq!(graph[NodeId::new(2)], Rope::new("2", leaf));
     }
 

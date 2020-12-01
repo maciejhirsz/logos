@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
+use crate::generator::{Context, Generator};
 use crate::graph::Rope;
-use crate::generator::{Generator, Context};
 
 impl<'a> Generator<'a> {
     pub fn generate_rope(&mut self, rope: &Rope, mut ctx: Context) -> TokenStream {
@@ -16,7 +16,7 @@ impl<'a> Generator<'a> {
                 let ranges = rope.pattern.iter();
 
                 quote!([#(#ranges),*])
-            },
+            }
         };
 
         return quote! {

@@ -1,8 +1,8 @@
 use std::fmt;
 
 use beef::lean::Cow;
-use quote::quote;
 use proc_macro2::{Span, TokenStream};
+use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -41,7 +41,7 @@ impl Errors {
                 fn _logos_derive_compile_errors() {
                     #(#errors)*
                 }
-            })
+            }),
         }
     }
 }
@@ -110,10 +110,8 @@ impl ToTokens for SpannedError {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let message = &*self.message;
 
-        tokens.append_all(
-            quote_spanned!(self.span => {
-                compile_error!(#message)
-            })
-        )
+        tokens.append_all(quote_spanned!(self.span => {
+            compile_error!(#message)
+        }))
     }
 }

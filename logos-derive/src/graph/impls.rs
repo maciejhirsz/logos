@@ -1,7 +1,7 @@
-use std::hash::{Hash, Hasher};
 use std::fmt::{self, Debug, Display};
+use std::hash::{Hash, Hasher};
 
-use crate::graph::{Graph, Rope, Fork, NodeId, Node, Range};
+use crate::graph::{Fork, Graph, Node, NodeId, Range, Rope};
 
 impl<T> From<Fork> for Node<T> {
     fn from(fork: Fork) -> Self {
@@ -33,11 +33,11 @@ impl<T> Hash for Node<T> {
             Node::Rope(rope) => {
                 b"ROPE".hash(state);
                 rope.hash(state);
-            },
+            }
             Node::Fork(fork) => {
                 b"FORK".hash(state);
                 fork.hash(state);
-            },
+            }
             Node::Leaf(_) => b"LEAF".hash(state),
         }
     }
@@ -158,7 +158,7 @@ mod debug {
                     list.entry(&Arm('_', self.miss));
 
                     list.finish()
-                },
+                }
                 true => Arm(rope, self.then).fmt(f),
             }
         }
@@ -204,7 +204,7 @@ mod debug {
         fn eq(&self, other: &Rope) -> bool {
             match self {
                 Node::Rope(rope) => rope == other,
-                _ => false
+                _ => false,
             }
         }
     }
@@ -213,7 +213,7 @@ mod debug {
         fn eq(&self, other: &Fork) -> bool {
             match self {
                 Node::Fork(fork) => fork == other,
-                _ => false
+                _ => false,
             }
         }
     }

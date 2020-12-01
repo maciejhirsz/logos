@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use utf8_ranges::Utf8Sequences;
 
-use crate::graph::{Graph, Disambiguate, Node, NodeId, ReservedId, Range, Rope, Fork};
-use crate::mir::{Mir, Literal, Class, ClassUnicode};
+use crate::graph::{Disambiguate, Fork, Graph, Node, NodeId, Range, ReservedId, Rope};
+use crate::mir::{Class, ClassUnicode, Literal, Mir};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
@@ -30,7 +30,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 };
 
                 self.parse_mir(*mir, this.get(), Some(miss), Some(this))
-            },
+            }
             Mir::Maybe(mir) => {
                 let miss = match miss {
                     Some(id) => self.merge(id, then),
@@ -38,7 +38,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 };
 
                 self.parse_mir(*mir, then, Some(miss), reserved)
-            },
+            }
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
 
@@ -55,14 +55,12 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let pattern = match literal {
                     Literal::Unicode(unicode) => {
                         unicode.encode_utf8(&mut [0; 4]).as_bytes().to_vec()
-                    },
-                    Literal::Byte(byte) => {
-                        [byte].to_vec()
-                    },
+                    }
+                    Literal::Byte(byte) => [byte].to_vec(),
                 };
 
                 self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
-            },
+            }
             Mir::Concat(mut concat) => {
                 // We'll be writing from the back, so need to allocate enough
                 // space here. Worst case scenario is all unicode codepoints
@@ -72,40 +70,38 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut end = ropebuf.len();
                 let mut then = then;
 
-                let mut handle_bytes = |graph: &mut Self, mir, then: &mut NodeId| {
-                    match mir {
-                        Mir::Literal(Literal::Unicode(u)) => {
-                            cur -= u.len_utf8();
-                            for (i, byte) in u.encode_utf8(&mut [0; 4]).bytes().enumerate() {
-                                ropebuf[cur + i] = byte.into();
-                            }
-                            None
-                        },
-                        Mir::Literal(Literal::Byte(byte)) => {
-                            cur -= 1;
-                            ropebuf[cur] = byte.into();
-                            None
-                        },
-                        Mir::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
-                            cur -= 1;
-                            ropebuf[cur] = class.ranges()[0].into();
-                            None
-                        },
-                        Mir::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
-                            cur -= 1;
-                            ropebuf[cur] = class.ranges()[0].into();
-                            None
-                        },
-                        mir => {
-                            if end > cur {
-                                let rope = Rope::new(&ropebuf[cur..end], *then);
+                let mut handle_bytes = |graph: &mut Self, mir, then: &mut NodeId| match mir {
+                    Mir::Literal(Literal::Unicode(u)) => {
+                        cur -= u.len_utf8();
+                        for (i, byte) in u.encode_utf8(&mut [0; 4]).bytes().enumerate() {
+                            ropebuf[cur + i] = byte.into();
+                        }
+                        None
+                    }
+                    Mir::Literal(Literal::Byte(byte)) => {
+                        cur -= 1;
+                        ropebuf[cur] = byte.into();
+                        None
+                    }
+                    Mir::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
+                        cur -= 1;
+                        ropebuf[cur] = class.ranges()[0].into();
+                        None
+                    }
+                    Mir::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
+                        cur -= 1;
+                        ropebuf[cur] = class.ranges()[0].into();
+                        None
+                    }
+                    mir => {
+                        if end > cur {
+                            let rope = Rope::new(&ropebuf[cur..end], *then);
 
-                                *then = graph.push(rope);
-                                end = cur;
-                            }
+                            *then = graph.push(rope);
+                            end = cur;
+                        }
 
-                            Some(mir)
-                        },
+                        Some(mir)
                     }
                 };
 
@@ -120,12 +116,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
 
                         self.insert_or_push(reserved, rope)
-                    },
-                    Some(mir) => {
-                        self.parse_mir(mir, then, miss, reserved)
-                    },
+                    }
+                    Some(mir) => self.parse_mir(mir, then, miss, reserved),
                 }
-            },
+            }
             Mir::Class(Class::Unicode(class)) if !is_ascii(&class) => {
                 let mut ropes = class
                     .iter()
@@ -147,17 +141,13 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 }
 
                 self.insert_or_push(reserved, root)
-            },
+            }
             Mir::Class(class) => {
                 let mut fork = Fork::new().miss(miss);
 
                 let class: Vec<Range> = match class {
-                    Class::Unicode(u) => {
-                        u.iter().copied().map(Into::into).collect()
-                    }
-                    Class::Bytes(b) => {
-                        b.iter().copied().map(Into::into).collect()
-                    }
+                    Class::Unicode(u) => u.iter().copied().map(Into::into).collect(),
+                    Class::Bytes(b) => b.iter().copied().map(Into::into).collect(),
                 };
 
                 for range in class {
@@ -165,7 +155,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 }
 
                 self.insert_or_push(reserved, fork)
-            },
+            }
         }
     }
 
@@ -218,10 +208,7 @@ mod tests {
         let leaf = graph.push(Node::Leaf("LEAF"));
         let id = graph.regex(mir, leaf);
 
-        assert_eq!(
-            graph[id],
-            Node::Rope(Rope::new("foobar", leaf)),
-        )
+        assert_eq!(graph[id], Node::Rope(Rope::new("foobar", leaf)),)
     }
 
     #[test]
@@ -237,11 +224,7 @@ mod tests {
 
         assert_eq!(
             graph[id],
-            Node::Fork(
-                Fork::new()
-                    .branch(b'a', leaf)
-                    .branch(b'b', leaf)
-            ),
+            Node::Fork(Fork::new().branch(b'a', leaf).branch(b'b', leaf)),
         );
     }
 
@@ -279,11 +262,7 @@ mod tests {
 
         assert_eq!(
             graph[id],
-            Node::Fork(
-                Fork::new()
-                    .branch('a'..='z', leaf)
-                    .miss(leaf)
-            ),
+            Node::Fork(Fork::new().branch('a'..='z', leaf).miss(leaf)),
         );
     }
 }

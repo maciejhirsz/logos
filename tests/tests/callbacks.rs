@@ -25,15 +25,18 @@ mod data {
     fn numbers() {
         let tokens: Vec<_> = Token::lexer("Hello 1 42 -100 pi 3.14 -77.77").collect();
 
-        assert_eq!(tokens, &[
-            Token::Text("Hello"),
-            Token::Integer(1),
-            Token::Integer(42),
-            Token::Integer(-100),
-            Token::Text("pi"),
-            Token::Float(3.14),
-            Token::Float(-77.77),
-        ]);
+        assert_eq!(
+            tokens,
+            &[
+                Token::Text("Hello"),
+                Token::Integer(1),
+                Token::Integer(42),
+                Token::Integer(-100),
+                Token::Text("pi"),
+                Token::Float(3.14),
+                Token::Float(-77.77),
+            ]
+        );
     }
 }
 
@@ -57,7 +60,7 @@ mod nested_lifetime {
         Integer((&'a str, u64)),
 
         #[regex(r"[a-z]+", |lex| Cow::Borrowed(lex.slice()))]
-        Text(Cow<'a, str>)
+        Text(Cow<'a, str>),
     }
 
     #[test]
@@ -85,7 +88,11 @@ mod rust {
         let q_hashes = concat!('"', "######", "######", "######", "######", "######");
         let closing = &q_hashes[..lexer.slice().len() - 1]; // skip initial 'r'
 
-        lexer.remainder().find(closing).map(|i| lexer.bump(i + closing.len())).is_some()
+        lexer
+            .remainder()
+            .find(closing)
+            .map(|i| lexer.bump(i + closing.len()))
+            .is_some()
     }
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]

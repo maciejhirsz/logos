@@ -1,5 +1,5 @@
-use regex_syntax::hir::ClassUnicodeRange;
 use regex_syntax::hir::ClassBytesRange;
+use regex_syntax::hir::ClassUnicodeRange;
 use utf8_ranges::Utf8Range;
 
 use std::cmp::{Ord, Ordering};
@@ -118,7 +118,10 @@ mod tests {
 
     #[test]
     fn range_iter_few() {
-        let byte = Range { start: b'a', end: b'd' };
+        let byte = Range {
+            start: b'a',
+            end: b'd',
+        };
         let collected = byte.take(1000).collect::<Vec<_>>();
 
         assert_eq!(b"abcd", &collected[..]);
