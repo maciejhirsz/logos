@@ -23,5 +23,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           override: true
-      - name: Run tests
-        run: cargo test --verbose
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
