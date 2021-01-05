@@ -192,13 +192,6 @@ pub trait Logos<'source>: Sized {
     /// or byte slices, in which case that implementation will use `[u8]`.
     type Source: Source + ?Sized + 'source;
 
-    /// `SIZE` is simply a number of possible variants of the `Logos` enum. The
-    /// `derive` macro will make sure that all variants don't hold values larger
-    /// or equal to `SIZE`.
-    ///
-    /// This can be extremely useful for creating `Logos` Lookup Tables.
-    const SIZE: usize;
-
     /// Helper `const` of the variant marked as `#[error]`.
     const ERROR: Self;
 
@@ -335,72 +328,6 @@ pub enum Filter<T> {
 #[inline]
 pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Skip {
     Skip
-}
-
-/// Macro for creating lookup tables where index matches the token variant
-/// as `usize`.
-///
-/// This can be especially useful for creating Jump Tables using the static `fn()`
-/// function pointers, enabling an O(1) branching at the cost of introducing some
-/// indirection.
-///
-/// # Example
-///
-/// ```rust
-/// use logos::{Logos, lookup};
-///
-/// #[derive(Logos, Clone, Copy, Debug, PartialEq)]
-/// enum Token {
-///     #[regex(r"[ \n\t\f]+", logos::skip)]
-///     #[error]
-///     Error,
-///
-///     #[token("Immanetize")]
-///     Immanetize,
-///
-///     #[token("the")]
-///     The,
-///
-///     #[token("Eschaton")]
-///     Eschaton,
-/// }
-///
-/// static LUT: [fn(u32) -> u32; Token::SIZE] = lookup! {
-///     // Rust is smart enough to convert closure syntax to `fn()`
-///     // pointers here, as long as we don't capture any values.
-///     Token::Eschaton => |n| n + 40,
-///     Token::Immanetize => |n| n + 8999,
-///     _ => (|_| 0) as fn(u32) -> u32, // Might have to hint the type
-/// };
-///
-/// fn main() {
-///     let mut lexer = Token::lexer("Immanetize the Eschaton");
-///
-///     let mut token = lexer.next().unwrap();
-///     assert_eq!(token, Token::Immanetize);
-///     assert_eq!(LUT[token as usize](2), 9001); // 2 + 8999
-///
-///     token = lexer.next().unwrap();
-///     assert_eq!(token, Token::The);
-///     assert_eq!(LUT[token as usize](2), 0); // always 0
-///
-///     token = lexer.next().unwrap();
-///     assert_eq!(token, Token::Eschaton);
-///     assert_eq!(LUT[token as usize](2), 42); // 2 + 40
-/// }
-/// ```
-#[macro_export]
-macro_rules! lookup {
-    ( $enum:ident::$variant:ident => $value:expr, $( $e:ident::$var:ident => $val:expr ,)* _ => $def:expr $(,)? ) => ({
-        let mut table = [$def; $enum::SIZE];
-
-        table[$enum::$variant as usize] = $value;
-        $(
-            table[$e::$var as usize] = $val;
-        )*
-
-        table
-    })
 }
 
 #[cfg(doctest)]

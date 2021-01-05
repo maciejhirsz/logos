@@ -1,4 +1,3 @@
-use logos::lookup;
 use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
@@ -175,19 +174,6 @@ mod advanced {
                 (Token::Cyrillic, "свидания", 5..21),
             ],
         );
-    }
-
-    #[test]
-    fn lookup() {
-        static LUT: [Option<&'static str>; Token::SIZE] = lookup! {
-            Token::Polish => Some("Polish"),
-            Token::Rustaceans => Some("🦀"),
-            _ => None,
-        };
-
-        assert_eq!(LUT[Token::Polish as usize], Some("Polish"));
-        assert_eq!(LUT[Token::Rustaceans as usize], Some("🦀"));
-        assert_eq!(LUT[Token::Cyrillic as usize], None);
     }
 
     #[test]
