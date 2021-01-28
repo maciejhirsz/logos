@@ -197,3 +197,324 @@ impl BitAnd for IgnoreFlags {
     }
 }
 
+pub trait ApplieIgnoreFlags {
+    /// Applies the `IgnoreFlags` on the given instance `self`, creating
+    /// an equivalent regular expression.
+    ///
+    /// Calling this function when `ignore_flags` is empty will probably
+    /// just add unnecessary complexity.
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir;
+}
+
+impl ApplieIgnoreFlags for u8 {
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
+        const OFFSET: u8 = b'a' - b'A';
+
+        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase | IgnoreFlags::IgnoreCase) {
+            if b'a' <= self && self <= b'z' {
+                Mir::Alternation(vec![
+                    Mir::Literal(hir::Literal::Byte(self - OFFSET)),
+                    Mir::Literal(hir::Literal::Byte(self)),
+                ])
+            } else if b'A' <= self && self <= b'Z' {
+                Mir::Alternation(vec![
+                    Mir::Literal(hir::Literal::Byte(self)),
+                    Mir::Literal(hir::Literal::Byte(self + OFFSET)),
+                ])
+            } else {
+                Mir::Literal(hir::Literal::Byte(self))
+            }
+        } else {
+            Mir::Literal(hir::Literal::Byte(self))
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for char {
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
+        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase) {
+            if self.is_ascii() {
+                (self as u8).applie_ignore_flags(ignore_flags)
+            } else {
+                Mir::Literal(hir::Literal::Unicode(self))
+            }
+        } else if ignore_flags.contains(IgnoreFlags::IgnoreCase) {
+            let lw: Vec<Mir> = self
+                .to_lowercase()
+                .map(|c| Mir::Literal(hir::Literal::Unicode(c)))
+                .collect();
+            let up: Vec<Mir> = self
+                .to_uppercase()
+                .map(|c| Mir::Literal(hir::Literal::Unicode(c)))
+                .collect();
+
+            Mir::Alternation(vec![Mir::Concat(lw), Mir::Concat(up)])
+        } else {
+            Mir::Literal(hir::Literal::Unicode(self))
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for hir::Literal {
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
+        match self {
+            hir::Literal::Byte(b) => b.applie_ignore_flags(ignore_flags),
+            hir::Literal::Unicode(c) => c.applie_ignore_flags(ignore_flags),
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for hir::ClassBytes {
+    fn applie_ignore_flags(mut self, ignore_flags: IgnoreFlags) -> Mir {
+        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase | IgnoreFlags::IgnoreCase) {
+            self.case_fold_simple();
+            Mir::Class(hir::Class::Bytes(self))
+        } else {
+            Mir::Class(hir::Class::Bytes(self))
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for hir::ClassUnicode {
+    fn applie_ignore_flags(mut self, ignore_flags: IgnoreFlags) -> Mir {
+        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase) {
+            // Manuall implementation to only perform the case folding on ascii characters.
+
+            let mut ranges = Vec::new();
+
+            for range in self.ranges() {
+                #[inline]
+                fn overlaps(st1: u8, end1: u8, st2: u8, end2: u8) -> bool {
+                    (st2 <= st1 && st1 <= end2) || (st1 <= st2 && st2 <= end1)
+                }
+
+                #[inline]
+                fn make_ascii(c: char) -> Option<u8> {
+                    if c.is_ascii() {
+                        return Some(c as u8);
+                    } else {
+                        None
+                    }
+                }
+
+                match (make_ascii(range.start()), make_ascii(range.end())) {
+                    (Some(start), Some(end)) => {
+                        if overlaps(b'a', b'z', start, end) {
+                            let lower = cmp::max(start, b'a');
+                            let upper = cmp::min(end, b'z');
+                            ranges.push(hir::ClassUnicodeRange::new(
+                                (lower - 32) as char,
+                                (upper - 32) as char,
+                            ))
+                        }
+
+                        if overlaps(b'A', b'Z', start, end) {
+                            let lower = cmp::max(start, b'A');
+                            let upper = cmp::min(end, b'Z');
+                            ranges.push(hir::ClassUnicodeRange::new(
+                                (lower + 32) as char,
+                                (upper + 32) as char,
+                            ))
+                        }
+                    }
+                    (Some(start), None) => {
+                        if overlaps(b'a', b'z', start, b'z') {
+                            let lower = cmp::max(start, b'a');
+                            ranges.push(hir::ClassUnicodeRange::new((lower - 32) as char, 'Z'))
+                        }
+
+                        if overlaps(b'A', b'Z', start, b'Z') {
+                            let lower = cmp::max(start, b'A');
+                            ranges.push(hir::ClassUnicodeRange::new((lower + 32) as char, 'Z'))
+                        }
+                    }
+                    _ => (),
+                }
+            }
+
+            self.union(&hir::ClassUnicode::new(ranges));
+
+            Mir::Class(hir::Class::Unicode(self))
+        } else if ignore_flags.contains(IgnoreFlags::IgnoreCase) {
+            self.case_fold_simple();
+            Mir::Class(hir::Class::Unicode(self))
+        } else {
+            Mir::Class(hir::Class::Unicode(self))
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for hir::Class {
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
+        match self {
+            hir::Class::Bytes(b) => b.applie_ignore_flags(ignore_flags),
+            hir::Class::Unicode(u) => u.applie_ignore_flags(ignore_flags),
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for &Literal {
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
+        match self {
+            Literal::Bytes(bytes) => Mir::Concat(
+                bytes
+                    .value()
+                    .into_iter()
+                    .map(|b| b.applie_ignore_flags(ignore_flags))
+                    .collect(),
+            ),
+            Literal::Utf8(s) => Mir::Concat(
+                s.value()
+                    .chars()
+                    .map(|b| b.applie_ignore_flags(ignore_flags))
+                    .collect(),
+            ),
+        }
+    }
+}
+
+impl ApplieIgnoreFlags for Mir {
+    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
+        match self {
+            Mir::Empty => Mir::Empty,
+            Mir::Loop(l) => Mir::Loop(Box::new(l.applie_ignore_flags(ignore_flags))),
+            Mir::Maybe(m) => Mir::Maybe(Box::new(m.applie_ignore_flags(ignore_flags))),
+            Mir::Concat(c) => Mir::Concat(
+                c.into_iter()
+                    .map(|m| m.applie_ignore_flags(ignore_flags))
+                    .collect(),
+            ),
+            Mir::Alternation(a) => Mir::Alternation(
+                a.into_iter()
+                    .map(|m| m.applie_ignore_flags(ignore_flags))
+                    .collect(),
+            ),
+            Mir::Class(c) => c.applie_ignore_flags(ignore_flags),
+            Mir::Literal(l) => l.applie_ignore_flags(ignore_flags),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ApplieIgnoreFlags, IgnoreFlags};
+    use crate::mir::{Class, Mir};
+    use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
+
+    fn assert_range(in_s: char, in_e: char, expected: &[(char, char)]) {
+        let range = ClassUnicodeRange::new(in_s, in_e);
+        let class = ClassUnicode::new(vec![range]);
+
+        let expected =
+            ClassUnicode::new(expected.iter().map(|&(a, b)| ClassUnicodeRange::new(a, b)));
+
+        if let Mir::Class(Class::Unicode(result)) =
+            class.applie_ignore_flags(IgnoreFlags::IgnoreAsciiCase)
+        {
+            assert_eq!(result, expected);
+        } else {
+            panic!("Not a unicode class");
+        };
+    }
+
+    mod unicode_ignore_ascii_case {
+        use super::assert_range;
+
+        // I had to do the implementation myself for unicode ascii case folding.
+
+        #[test]
+        fn no_letters_left() {
+            assert_range(' ', '+', &[(' ', '+')]);
+        }
+
+        #[test]
+        fn no_letters_right() {
+            assert_range('{', '~', &[('{', '~')]);
+        }
+
+        #[test]
+        fn no_letters_middle() {
+            assert_range('[', '`', &[('[', '`')]);
+        }
+
+        #[test]
+        fn lowercase_left_edge() {
+            assert_range('a', 'd', &[('a', 'd'), ('A', 'D')]);
+        }
+
+        #[test]
+        fn lowercase_right_edge() {
+            assert_range('r', 'z', &[('r', 'z'), ('R', 'Z')]);
+        }
+
+        #[test]
+        fn lowercase_total() {
+            assert_range('a', 'z', &[('a', 'z'), ('A', 'Z')]);
+        }
+
+        #[test]
+        fn uppercase_left_edge() {
+            assert_range('A', 'D', &[('a', 'd'), ('A', 'D')]);
+        }
+
+        #[test]
+        fn uppercase_right_edge() {
+            assert_range('R', 'Z', &[('r', 'z'), ('R', 'Z')]);
+        }
+
+        #[test]
+        fn uppercase_total() {
+            assert_range('A', 'Z', &[('a', 'z'), ('A', 'Z')]);
+        }
+
+        #[test]
+        fn lowercase_cross_left() {
+            assert_range('[', 'h', &[('[', 'h'), ('A', 'H')]);
+        }
+
+        #[test]
+        fn lowercase_cross_right() {
+            assert_range('d', '}', &[('d', '}'), ('D', 'Z')]);
+        }
+
+        #[test]
+        fn uppercase_cross_left() {
+            assert_range(';', 'H', &[(';', 'H'), ('a', 'h')]);
+        }
+
+        #[test]
+        fn uppercase_cross_right() {
+            assert_range('T', ']', &[('t', 'z'), ('T', ']')]);
+        }
+
+        #[test]
+        fn cross_both() {
+            assert_range('X', 'c', &[('X', 'c'), ('x', 'z'), ('A', 'C')]);
+        }
+
+        #[test]
+        fn all_letters() {
+            assert_range('+', '|', &[('+', '|')]);
+        }
+
+        #[test]
+        fn oob_all_letters() {
+            assert_range('#', 'é', &[('#', 'é')]);
+        }
+
+        #[test]
+        fn oob_from_uppercase() {
+            assert_range('Q', 'é', &[('A', 'é')]);
+        }
+
+        #[test]
+        fn oob_from_lowercase() {
+            assert_range('q', 'é', &[('q', 'é'), ('Q', 'Z')]);
+        }
+
+        #[test]
+        fn oob_no_letters() {
+            assert_range('|', 'é', &[('|', 'é')]);
+        }
+    }
+}

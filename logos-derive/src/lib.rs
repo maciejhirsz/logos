@@ -19,7 +19,7 @@ mod util;
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
-use parser::{Mode, Parser};
+use parser::{ApplieIgnoreFlags, Mode, Parser};
 use util::MaybeVoid;
 
 use proc_macro::TokenStream;
@@ -132,14 +132,29 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    let bytes = definition.literal.to_bytes();
-                    let then = graph.push(
-                        leaf(definition.literal.span())
-                            .priority(definition.priority.unwrap_or(bytes.len() * 2))
-                            .callback(definition.callback),
-                    );
+                    if definition.ignore_flags.is_empty() {
+                        let bytes = definition.literal.to_bytes();
+                        let then = graph.push(
+                            leaf(definition.literal.span())
+                                .priority(definition.priority.unwrap_or(bytes.len() * 2))
+                                .callback(definition.callback),
+                        );
 
-                    ropes.push(Rope::new(bytes, then));
+                        ropes.push(Rope::new(bytes, then));
+                    } else {
+                        let mir = definition
+                            .literal
+                            .applie_ignore_flags(definition.ignore_flags);
+
+                        let then = graph.push(
+                            leaf(definition.literal.span())
+                                .priority(definition.priority.unwrap_or_else(|| mir.priority()))
+                                .callback(definition.callback),
+                        );
+                        let id = graph.regex(mir, then);
+
+                        regex_ids.push(id);
+                    }
                 }
                 "regex" => {
                     let definition = match parser.parse_definition(attr) {
@@ -153,7 +168,9 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         .literal
                         .to_mir(&parser.subpatterns, &mut parser.errors)
                     {
-                        Ok(mir) => mir,
+                        // Calling `applie_ignore_flags` on a `Mir` when no flags are
+                        // set just returns the mir without changing it.
+                        Ok(mir) => mir.applie_ignore_flags(definition.ignore_flags),
                         Err(err) => {
                             parser.err(err, definition.literal.span());
                             continue;
