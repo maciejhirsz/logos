@@ -9,11 +9,13 @@ use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, MaybeVoid};
 
 mod definition;
+mod ignore_flags;
 mod nested;
 mod subpattern;
 mod type_params;
 
 pub use self::definition::{Definition, Literal};
+pub use self::ignore_flags::{ApplieIgnoreFlags, IgnoreFlags};
 use self::nested::{AttributeParser, Nested, NestedValue};
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};

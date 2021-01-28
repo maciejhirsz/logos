@@ -5,12 +5,13 @@ use crate::error::{Errors, Result};
 use crate::leaf::Callback;
 use crate::mir::Mir;
 use crate::parser::nested::NestedValue;
-use crate::parser::{Parser, Subpatterns};
+use crate::parser::{IgnoreFlags, Parser, Subpatterns};
 
 pub struct Definition {
     pub literal: Literal,
     pub priority: Option<usize>,
     pub callback: Option<Callback>,
+    pub ignore_flags: IgnoreFlags,
 }
 
 pub enum Literal {
@@ -24,6 +25,7 @@ impl Definition {
             literal,
             priority: None,
             callback: None,
+            ignore_flags: IgnoreFlags::Empty,
         }
     }
 
@@ -66,6 +68,12 @@ impl Definition {
             }
             ("callback", _) => {
                 parser.err("Expected: callback = ...", name.span());
+            }
+            ("ignore", NestedValue::Group(tokens)) => {
+                self.ignore_flags.parse_group(name, tokens, parser);
+            }
+            ("ignore", _) => {
+                parser.err("Expected: ignore(<flag>, ...)", name.span());
             }
             (unknown, _) => {
                 parser.err(
