@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "beef"
-version = "0.4.3"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d04e2453cb1899e58b953a66c45b13d74bf2e1f2ef6d46cf904628d27a2406fa"
+checksum = "6736e2428df2ca2848d846c43e88745121a6654696e349ce0054a420815a7409"
 
 [[package]]
 name = "ctor"
