@@ -16,7 +16,7 @@ name = "logos_derive"
 proc-macro = true
 
 [dependencies]
-beef = "0.4.1"
+beef = "0.5.0"
 fnv = "1.0.6"
 syn = { version = "1.0.17", features = ["full"] }
 quote = "1.0.3"
