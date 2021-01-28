@@ -24,7 +24,7 @@ use util::MaybeVoid;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
 
@@ -32,7 +32,6 @@ use syn::{Fields, ItemEnum};
 pub fn logos(input: TokenStream) -> TokenStream {
     let mut item: ItemEnum = syn::parse(input).expect("Logos can be only be derived for enums");
 
-    let mut size = item.variants.len();
     let name = &item.ident;
 
     let mut error = None;
@@ -64,16 +63,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut graph = Graph::new();
 
     for variant in &mut item.variants {
-        if let Some((_, expr)) = variant.discriminant.take() {
-            let expr = expr.into_token_stream();
-            let value = expr.to_string().parse().unwrap_or(usize::max_value());
-
-            if value >= size {
-                // Size must always be 1 greater than highest discriminant value
-                size = value + 1;
-            }
-        }
-
         let field = match &mut variant.fields {
             Fields::Unit => MaybeVoid::Void,
             Fields::Unnamed(fields) => {
@@ -209,8 +198,6 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 type Extras = #extras;
 
                 type Source = #source;
-
-                const SIZE: usize = #size;
 
                 #error_def
 
