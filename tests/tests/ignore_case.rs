@@ -166,6 +166,9 @@ mod ignore_case {
         Eleve,
         #[token("à", ignore(case))]
         A,
+
+        #[token("[abc]+", ignore(case))]
+        Abc,
     }
 
     #[test]
@@ -179,6 +182,22 @@ mod ignore_case {
                 (Words::A, "à", 30..32),
                 (Words::A, "À", 33..35),
                 (Words::Error, "a", 36..37),
+            ],
+        )
+    }
+
+    #[test]
+    fn tokens_regex_escaped() {
+        assert_lex(
+            "[abc]+ abccBA",
+            &[
+                (Words::Abc, "[abc]+", 0..6),
+                (Words::Error, "a", 7..8),
+                (Words::Error, "b", 8..9),
+                (Words::Error, "c", 9..10),
+                (Words::Error, "c", 10..11),
+                (Words::Error, "B", 11..12),
+                (Words::Error, "A", 12..13),
             ],
         )
     }
