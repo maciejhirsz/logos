@@ -144,7 +144,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     } else {
                         let mir = definition
                             .literal
-                            .applie_ignore_flags(definition.ignore_flags);
+                            .escape_regex()
+                            .to_mir(
+                                &Default::default(),
+                                definition.ignore_flags,
+                                &mut parser.errors,
+                            )
+                            .expect("The literal should be perfectly valid regex");
 
                         let then = graph.push(
                             leaf(definition.literal.span())
@@ -164,18 +170,18 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             continue;
                         }
                     };
-                    let mir = match definition
-                        .literal
-                        .to_mir(&parser.subpatterns, &mut parser.errors)
-                    {
-                        // Calling `applie_ignore_flags` on a `Mir` when no flags are
-                        // set just returns the mir without changing it.
-                        Ok(mir) => mir.applie_ignore_flags(definition.ignore_flags),
+                    let mir = match definition.literal.to_mir(
+                        &parser.subpatterns,
+                        definition.ignore_flags,
+                        &mut parser.errors,
+                    ) {
+                        Ok(mir) => mir,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
                             continue;
                         }
                     };
+
                     let then = graph.push(
                         leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or_else(|| mir.priority()))
