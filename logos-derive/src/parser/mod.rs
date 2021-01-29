@@ -15,7 +15,7 @@ mod subpattern;
 mod type_params;
 
 pub use self::definition::{Definition, Literal};
-pub use self::ignore_flags::{ApplieIgnoreFlags, IgnoreFlags};
+pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};

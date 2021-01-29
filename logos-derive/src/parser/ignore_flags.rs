@@ -1,11 +1,8 @@
-use std::cmp;
 use std::ops::{BitAnd, BitOr};
 
 use proc_macro2::{Ident, TokenStream, TokenTree};
-use regex_syntax::hir;
 
-use crate::mir::Mir;
-use crate::parser::{Literal, Parser};
+use crate::parser::Parser;
 use crate::util::is_punct;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -197,87 +194,66 @@ impl BitAnd for IgnoreFlags {
     }
 }
 
-pub trait ApplieIgnoreFlags {
-    /// Applies the `IgnoreFlags` on the given instance `self`, creating
-    /// an equivalent regular expression.
-    ///
-    /// Calling this function when `ignore_flags` is empty will probably
-    /// just add unnecessary complexity.
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir;
-}
+pub mod ascii_case {
+    use regex_syntax::hir;
 
-impl ApplieIgnoreFlags for u8 {
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
-        const OFFSET: u8 = b'a' - b'A';
+    use crate::mir::Mir;
+    use crate::parser::Literal;
 
-        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase | IgnoreFlags::IgnoreCase) {
+    pub trait MakeAsciiCaseInsensitive {
+        /// Creates a equivalent regular expression which ignore the letter casing
+        /// of ascii characters.
+        fn make_ascii_case_insensitive(self) -> Mir;
+    }
+
+    impl MakeAsciiCaseInsensitive for u8 {
+        fn make_ascii_case_insensitive(self) -> Mir {
             if b'a' <= self && self <= b'z' {
                 Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self - OFFSET)),
+                    Mir::Literal(hir::Literal::Byte(self - 32)),
                     Mir::Literal(hir::Literal::Byte(self)),
                 ])
             } else if b'A' <= self && self <= b'Z' {
                 Mir::Alternation(vec![
                     Mir::Literal(hir::Literal::Byte(self)),
-                    Mir::Literal(hir::Literal::Byte(self + OFFSET)),
+                    Mir::Literal(hir::Literal::Byte(self + 32)),
                 ])
             } else {
                 Mir::Literal(hir::Literal::Byte(self))
             }
-        } else {
-            Mir::Literal(hir::Literal::Byte(self))
         }
     }
-}
 
-impl ApplieIgnoreFlags for char {
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
-        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase) {
+    impl MakeAsciiCaseInsensitive for char {
+        fn make_ascii_case_insensitive(self) -> Mir {
             if self.is_ascii() {
-                (self as u8).applie_ignore_flags(ignore_flags)
+                (self as u8).make_ascii_case_insensitive()
             } else {
                 Mir::Literal(hir::Literal::Unicode(self))
             }
-        } else if ignore_flags.contains(IgnoreFlags::IgnoreCase) {
-            let lw: Vec<Mir> = self
-                .to_lowercase()
-                .map(|c| Mir::Literal(hir::Literal::Unicode(c)))
-                .collect();
-            let up: Vec<Mir> = self
-                .to_uppercase()
-                .map(|c| Mir::Literal(hir::Literal::Unicode(c)))
-                .collect();
-
-            Mir::Alternation(vec![Mir::Concat(lw), Mir::Concat(up)])
-        } else {
-            Mir::Literal(hir::Literal::Unicode(self))
         }
     }
-}
 
-impl ApplieIgnoreFlags for hir::Literal {
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
-        match self {
-            hir::Literal::Byte(b) => b.applie_ignore_flags(ignore_flags),
-            hir::Literal::Unicode(c) => c.applie_ignore_flags(ignore_flags),
+    impl MakeAsciiCaseInsensitive for hir::Literal {
+        fn make_ascii_case_insensitive(self) -> Mir {
+            match self {
+                hir::Literal::Byte(b) => b.make_ascii_case_insensitive(),
+                hir::Literal::Unicode(c) => c.make_ascii_case_insensitive(),
+            }
         }
     }
-}
 
-impl ApplieIgnoreFlags for hir::ClassBytes {
-    fn applie_ignore_flags(mut self, ignore_flags: IgnoreFlags) -> Mir {
-        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase | IgnoreFlags::IgnoreCase) {
+    impl MakeAsciiCaseInsensitive for hir::ClassBytes {
+        fn make_ascii_case_insensitive(mut self) -> Mir {
             self.case_fold_simple();
             Mir::Class(hir::Class::Bytes(self))
-        } else {
-            Mir::Class(hir::Class::Bytes(self))
         }
     }
-}
 
-impl ApplieIgnoreFlags for hir::ClassUnicode {
-    fn applie_ignore_flags(mut self, ignore_flags: IgnoreFlags) -> Mir {
-        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase) {
+    impl MakeAsciiCaseInsensitive for hir::ClassUnicode {
+        fn make_ascii_case_insensitive(mut self) -> Mir {
+            use std::cmp;
+
             // Manuall implementation to only perform the case folding on ascii characters.
 
             let mut ranges = Vec::new();
@@ -335,92 +311,79 @@ impl ApplieIgnoreFlags for hir::ClassUnicode {
             self.union(&hir::ClassUnicode::new(ranges));
 
             Mir::Class(hir::Class::Unicode(self))
-        } else if ignore_flags.contains(IgnoreFlags::IgnoreCase) {
-            self.case_fold_simple();
-            Mir::Class(hir::Class::Unicode(self))
-        } else {
-            Mir::Class(hir::Class::Unicode(self))
         }
     }
-}
 
-impl ApplieIgnoreFlags for hir::Class {
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
-        match self {
-            hir::Class::Bytes(b) => b.applie_ignore_flags(ignore_flags),
-            hir::Class::Unicode(u) => u.applie_ignore_flags(ignore_flags),
+    impl MakeAsciiCaseInsensitive for hir::Class {
+        fn make_ascii_case_insensitive(self) -> Mir {
+            match self {
+                hir::Class::Bytes(b) => b.make_ascii_case_insensitive(),
+                hir::Class::Unicode(u) => u.make_ascii_case_insensitive(),
+            }
         }
     }
-}
 
-impl ApplieIgnoreFlags for &Literal {
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
-        match self {
-            Literal::Bytes(bytes) => Mir::Concat(
-                bytes
-                    .value()
-                    .into_iter()
-                    .map(|b| b.applie_ignore_flags(ignore_flags))
-                    .collect(),
-            ),
-            Literal::Utf8(s) => Mir::Concat(
-                s.value()
-                    .chars()
-                    .map(|b| b.applie_ignore_flags(ignore_flags))
-                    .collect(),
-            ),
+    impl MakeAsciiCaseInsensitive for &Literal {
+        fn make_ascii_case_insensitive(self) -> Mir {
+            match self {
+                Literal::Bytes(bytes) => Mir::Concat(
+                    bytes
+                        .value()
+                        .into_iter()
+                        .map(|b| b.make_ascii_case_insensitive())
+                        .collect(),
+                ),
+                Literal::Utf8(s) => Mir::Concat(
+                    s.value()
+                        .chars()
+                        .map(|b| b.make_ascii_case_insensitive())
+                        .collect(),
+                ),
+            }
         }
     }
-}
 
-impl ApplieIgnoreFlags for Mir {
-    fn applie_ignore_flags(self, ignore_flags: IgnoreFlags) -> Mir {
-        match self {
-            Mir::Empty => Mir::Empty,
-            Mir::Loop(l) => Mir::Loop(Box::new(l.applie_ignore_flags(ignore_flags))),
-            Mir::Maybe(m) => Mir::Maybe(Box::new(m.applie_ignore_flags(ignore_flags))),
-            Mir::Concat(c) => Mir::Concat(
-                c.into_iter()
-                    .map(|m| m.applie_ignore_flags(ignore_flags))
-                    .collect(),
-            ),
-            Mir::Alternation(a) => Mir::Alternation(
-                a.into_iter()
-                    .map(|m| m.applie_ignore_flags(ignore_flags))
-                    .collect(),
-            ),
-            Mir::Class(c) => c.applie_ignore_flags(ignore_flags),
-            Mir::Literal(l) => l.applie_ignore_flags(ignore_flags),
+    impl MakeAsciiCaseInsensitive for Mir {
+        fn make_ascii_case_insensitive(self) -> Mir {
+            match self {
+                Mir::Empty => Mir::Empty,
+                Mir::Loop(l) => Mir::Loop(Box::new(l.make_ascii_case_insensitive())),
+                Mir::Maybe(m) => Mir::Maybe(Box::new(m.make_ascii_case_insensitive())),
+                Mir::Concat(c) => Mir::Concat(
+                    c.into_iter()
+                        .map(|m| m.make_ascii_case_insensitive())
+                        .collect(),
+                ),
+                Mir::Alternation(a) => Mir::Alternation(
+                    a.into_iter()
+                        .map(|m| m.make_ascii_case_insensitive())
+                        .collect(),
+                ),
+                Mir::Class(c) => c.make_ascii_case_insensitive(),
+                Mir::Literal(l) => l.make_ascii_case_insensitive(),
+            }
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::{ApplieIgnoreFlags, IgnoreFlags};
-    use crate::mir::{Class, Mir};
-    use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
+    #[cfg(test)]
+    mod tests {
+        use super::MakeAsciiCaseInsensitive;
+        use crate::mir::{Class, Mir};
+        use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
 
-    fn assert_range(in_s: char, in_e: char, expected: &[(char, char)]) {
-        let range = ClassUnicodeRange::new(in_s, in_e);
-        let class = ClassUnicode::new(vec![range]);
+        fn assert_range(in_s: char, in_e: char, expected: &[(char, char)]) {
+            let range = ClassUnicodeRange::new(in_s, in_e);
+            let class = ClassUnicode::new(vec![range]);
 
-        let expected =
-            ClassUnicode::new(expected.iter().map(|&(a, b)| ClassUnicodeRange::new(a, b)));
+            let expected =
+                ClassUnicode::new(expected.iter().map(|&(a, b)| ClassUnicodeRange::new(a, b)));
 
-        if let Mir::Class(Class::Unicode(result)) =
-            class.applie_ignore_flags(IgnoreFlags::IgnoreAsciiCase)
-        {
-            assert_eq!(result, expected);
-        } else {
-            panic!("Not a unicode class");
-        };
-    }
-
-    mod unicode_ignore_ascii_case {
-        use super::assert_range;
-
-        // I had to do the implementation myself for unicode ascii case folding.
+            if let Mir::Class(Class::Unicode(result)) = class.make_ascii_case_insensitive() {
+                assert_eq!(result, expected);
+            } else {
+                panic!("Not a unicode class");
+            };
+        }
 
         #[test]
         fn no_letters_left() {

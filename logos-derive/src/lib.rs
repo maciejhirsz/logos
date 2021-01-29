@@ -19,7 +19,7 @@ mod util;
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
-use parser::{ApplieIgnoreFlags, Mode, Parser};
+use parser::{Mode, Parser};
 use util::MaybeVoid;
 
 use proc_macro::TokenStream;
