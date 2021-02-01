@@ -65,7 +65,6 @@ enum Token {
 
 mod advanced {
     use super::*;
-    use logos::Logos;
     use tests::assert_lex;
 
     #[test]
