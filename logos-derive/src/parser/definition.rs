@@ -5,12 +5,15 @@ use crate::error::{Errors, Result};
 use crate::leaf::Callback;
 use crate::mir::Mir;
 use crate::parser::nested::NestedValue;
-use crate::parser::{Parser, Subpatterns};
+use crate::parser::{IgnoreFlags, Parser, Subpatterns};
+
+use super::ignore_flags::ascii_case::MakeAsciiCaseInsensitive;
 
 pub struct Definition {
     pub literal: Literal,
     pub priority: Option<usize>,
     pub callback: Option<Callback>,
+    pub ignore_flags: IgnoreFlags,
 }
 
 pub enum Literal {
@@ -24,6 +27,7 @@ impl Definition {
             literal,
             priority: None,
             callback: None,
+            ignore_flags: IgnoreFlags::Empty,
         }
     }
 
@@ -67,6 +71,12 @@ impl Definition {
             ("callback", _) => {
                 parser.err("Expected: callback = ...", name.span());
             }
+            ("ignore", NestedValue::Group(tokens)) => {
+                self.ignore_flags.parse_group(name, tokens, parser);
+            }
+            ("ignore", _) => {
+                parser.err("Expected: ignore(<flag>, ...)", name.span());
+            }
             (unknown, _) => {
                 parser.err(
                     format!(
@@ -92,11 +102,44 @@ impl Literal {
         }
     }
 
-    pub fn to_mir(&self, subpatterns: &Subpatterns, errors: &mut Errors) -> Result<Mir> {
-        let value = subpatterns.fix(self, errors);
+    pub fn escape_regex(&self) -> Literal {
         match self {
-            Literal::Utf8(_) => Mir::utf8(&value),
-            Literal::Bytes(_) => Mir::binary(&value),
+            Literal::Utf8(string) => Literal::Utf8(LitStr::new(
+                regex_syntax::escape(&string.value()).as_str(),
+                self.span(),
+            )),
+            Literal::Bytes(bytes) => Literal::Bytes(LitByteStr::new(
+                regex_syntax::escape(&bytes_to_regex_string(bytes.value())).as_bytes(),
+                self.span(),
+            )),
+        }
+    }
+
+    pub fn to_mir(
+        &self,
+        subpatterns: &Subpatterns,
+        ignore_flags: IgnoreFlags,
+        errors: &mut Errors,
+    ) -> Result<Mir> {
+        let value = subpatterns.fix(self, errors);
+
+        if ignore_flags.contains(IgnoreFlags::IgnoreAsciiCase) {
+            match self {
+                Literal::Utf8(_) => {
+                    Mir::utf8(&value).map(MakeAsciiCaseInsensitive::make_ascii_case_insensitive)
+                }
+                Literal::Bytes(_) => Mir::binary_ignore_case(&value),
+            }
+        } else if ignore_flags.contains(IgnoreFlags::IgnoreCase) {
+            match self {
+                Literal::Utf8(_) => Mir::utf8_ignore_case(&value),
+                Literal::Bytes(_) => Mir::binary_ignore_case(&value),
+            }
+        } else {
+            match self {
+                Literal::Utf8(_) => Mir::utf8(&value),
+                Literal::Bytes(_) => Mir::binary(&value),
+            }
         }
     }
 

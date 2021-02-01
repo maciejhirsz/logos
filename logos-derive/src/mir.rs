@@ -27,11 +27,31 @@ impl Mir {
         Mir::try_from(ParserBuilder::new().build().parse(source)?)
     }
 
+    pub fn utf8_ignore_case(source: &str) -> Result<Mir> {
+        Mir::try_from(
+            ParserBuilder::new()
+                .case_insensitive(true)
+                .build()
+                .parse(source)?,
+        )
+    }
+
     pub fn binary(source: &str) -> Result<Mir> {
         Mir::try_from(
             ParserBuilder::new()
                 .allow_invalid_utf8(true)
                 .unicode(false)
+                .build()
+                .parse(source)?,
+        )
+    }
+
+    pub fn binary_ignore_case(source: &str) -> Result<Mir> {
+        Mir::try_from(
+            ParserBuilder::new()
+                .allow_invalid_utf8(true)
+                .unicode(false)
+                .case_insensitive(true)
                 .build()
                 .parse(source)?,
         )

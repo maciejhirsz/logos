@@ -132,14 +132,35 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    let bytes = definition.literal.to_bytes();
-                    let then = graph.push(
-                        leaf(definition.literal.span())
-                            .priority(definition.priority.unwrap_or(bytes.len() * 2))
-                            .callback(definition.callback),
-                    );
+                    if definition.ignore_flags.is_empty() {
+                        let bytes = definition.literal.to_bytes();
+                        let then = graph.push(
+                            leaf(definition.literal.span())
+                                .priority(definition.priority.unwrap_or(bytes.len() * 2))
+                                .callback(definition.callback),
+                        );
 
-                    ropes.push(Rope::new(bytes, then));
+                        ropes.push(Rope::new(bytes, then));
+                    } else {
+                        let mir = definition
+                            .literal
+                            .escape_regex()
+                            .to_mir(
+                                &Default::default(),
+                                definition.ignore_flags,
+                                &mut parser.errors,
+                            )
+                            .expect("The literal should be perfectly valid regex");
+
+                        let then = graph.push(
+                            leaf(definition.literal.span())
+                                .priority(definition.priority.unwrap_or_else(|| mir.priority()))
+                                .callback(definition.callback),
+                        );
+                        let id = graph.regex(mir, then);
+
+                        regex_ids.push(id);
+                    }
                 }
                 "regex" => {
                     let definition = match parser.parse_definition(attr) {
@@ -149,16 +170,18 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             continue;
                         }
                     };
-                    let mir = match definition
-                        .literal
-                        .to_mir(&parser.subpatterns, &mut parser.errors)
-                    {
+                    let mir = match definition.literal.to_mir(
+                        &parser.subpatterns,
+                        definition.ignore_flags,
+                        &mut parser.errors,
+                    ) {
                         Ok(mir) => mir,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
                             continue;
                         }
                     };
+
                     let then = graph.push(
                         leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or_else(|| mir.priority()))
