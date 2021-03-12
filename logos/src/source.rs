@@ -201,7 +201,7 @@ impl Source for [u8] {
 
 /// A fixed, statically sized chunk of data that can be read from the `Source`.
 ///
-/// This is implemented for `u8`, as well as byte arrays `&[u8; 1]` to `&[u8; 16]`.
+/// This is implemented for `u8`, as well as byte arrays `&[u8; 1]` to `&[u8; 32]`.
 pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     /// Size of the chunk being accessed in bytes.
     const SIZE: usize;
