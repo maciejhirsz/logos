@@ -22,7 +22,6 @@ syn = { version = "1.0.17", features = ["full"] }
 quote = "1.0.3"
 proc-macro2 = "1.0.9"
 regex-syntax = "0.6"
-utf8-ranges = "1.0"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
