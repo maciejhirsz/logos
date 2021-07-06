@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use utf8_ranges::Utf8Sequences;
+use regex_syntax::utf8::Utf8Sequences;
 
 use crate::graph::{Disambiguate, Fork, Graph, Node, NodeId, Range, ReservedId, Rope};
 use crate::mir::{Class, ClassUnicode, Literal, Mir};

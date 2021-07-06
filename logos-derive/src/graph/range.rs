@@ -1,6 +1,6 @@
 use regex_syntax::hir::ClassBytesRange;
 use regex_syntax::hir::ClassUnicodeRange;
-use utf8_ranges::Utf8Range;
+use regex_syntax::utf8::Utf8Range;
 
 use std::cmp::{Ord, Ordering};
 
