@@ -2,6 +2,7 @@ use super::internal::LexerInternal;
 use super::Logos;
 use crate::source::{self, Source};
 
+use core::fmt::{self, Debug};
 use core::mem::ManuallyDrop;
 
 /// Byte range in the source.
@@ -17,6 +18,20 @@ pub struct Lexer<'source, Token: Logos<'source>> {
 
     /// Extras associated with the `Token`.
     pub extras: Token::Extras,
+}
+
+impl<'source, Token> Debug for Lexer<'source, Token>
+where
+    Token: Logos<'source>,
+    Token::Source: Debug,
+    Token::Extras: Debug,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_map()
+            .entry(&"source", &self.source)
+            .entry(&"extras", &self.extras)
+            .finish()
+    }
 }
 
 impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
