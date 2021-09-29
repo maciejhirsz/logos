@@ -199,9 +199,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
     let mut root = Fork::new();
 
     let extras = parser.extras.take();
-    let source = match parser.mode {
-        Mode::Utf8 => quote!(str),
-        Mode::Binary => quote!([u8]),
+    let source = if let Some(tokens) = parser.source.take(){
+        tokens
+    } else {
+        match parser.mode {
+            Mode::Utf8 => quote!(str),
+            Mode::Binary => quote!([u8]),
+        }
     };
 
     let error_def = match error {

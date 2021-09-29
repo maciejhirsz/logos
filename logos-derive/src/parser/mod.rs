@@ -24,6 +24,7 @@ use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 pub struct Parser {
     pub errors: Errors,
     pub mode: Mode,
+    pub source: Option<TokenStream>,
     pub extras: MaybeVoid,
     pub subpatterns: Subpatterns,
     types: TypeParams,
@@ -93,6 +94,13 @@ impl Parser {
             };
 
             match (name.to_string().as_str(), value) {
+                ("source", NestedValue::Assign(value)) => {
+                    let span = value.span();
+                    if let Some(previous) = self.source.replace(value) {
+                        self.err("Source can be defined only once", span)
+                            .err("Previous definition here", previous.span());
+                    }
+                }
                 ("extras", NestedValue::Assign(value)) => {
                     let span = value.span();
 
