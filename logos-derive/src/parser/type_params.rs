@@ -86,7 +86,7 @@ impl TypeParams {
                     errors.err(
                         format!(
                             "Generic type parameter without a concrete type\n\n\
-
+                            \
                             Define a concrete type Logos can use: #[logos(type {} = Type)]",
                             ty,
                         ),

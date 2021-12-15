@@ -115,7 +115,7 @@ impl Parser {
                     self.err(
                         "\
                         trivia are no longer supported.\n\n\
-
+                        \
                         For help with migration see release notes: \
                         https://github.com/maciejhirsz/logos/releases\
                         ",
@@ -179,7 +179,7 @@ impl Parser {
                         self.err(
                             "\
                             Expected a named argument at this position\n\n\
-
+                            \
                             hint: If you are trying to define a callback here use: callback = ...\
                             ",
                             tokens.span(),

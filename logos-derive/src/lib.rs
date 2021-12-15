@@ -47,9 +47,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
         // TODO: Remove in future versions
         if attr.path.is_ident("extras") {
             parser.err(
-                "\
-                #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n\
-
+                "#[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\n
+                \
                 For help with migration see release notes: \
                 https://github.com/maciejhirsz/logos/releases\
                 ",
@@ -116,7 +115,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     parser.err(
                         "\
                         Since 0.11 Logos no longer requires the #[end] variant.\n\n\
-
+                        \
                         For help with migration see release notes: \
                         https://github.com/maciejhirsz/logos/releases\
                         ",
@@ -259,7 +258,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                 format!(
                     "\
                     A definition of variant `{0}` can match the same input as another definition of variant `{1}`.\n\n\
-
+                    \
                     hint: Consider giving one definition a higher priority: \
                     #[regex(..., priority = {2})]\
                     ",
