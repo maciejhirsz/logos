@@ -218,6 +218,20 @@ where
     }
 }
 
+impl<'source, Token: Logos<'source>> SpannedIter<'source, Token> {
+    /// Get the underlying Lexer
+    #[inline]
+    pub fn as_lexer(&self) -> &Lexer<'source, Token> {
+        &self.lexer
+    }
+
+    /// Get the underlying Lexer
+    #[inline]
+    pub fn as_lexer_mut(&mut self) -> &mut Lexer<'source, Token> {
+        &mut self.lexer
+    }
+}
+
 #[doc(hidden)]
 /// # WARNING!
 ///
