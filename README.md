@@ -109,12 +109,12 @@ enum Token {
     // Each pattern can have it's own callback.
     #[regex("[0-9]+", |lex| lex.slice().parse())]
     #[regex("[0-9]+k", kilo)]
-    #[regex("[0-9]+m", mega)]
+    #[regex("[0-9]+M", mega)]
     Number(u64),
 }
 
 fn main() {
-    let mut lex = Token::lexer("5 42k 75m");
+    let mut lex = Token::lexer("5 42k 75M");
 
     assert_eq!(lex.next(), Some(Token::Number(5)));
     assert_eq!(lex.slice(), "5");
@@ -123,7 +123,7 @@ fn main() {
     assert_eq!(lex.slice(), "42k");
 
     assert_eq!(lex.next(), Some(Token::Number(75_000_000)));
-    assert_eq!(lex.slice(), "75m");
+    assert_eq!(lex.slice(), "75M");
 
     assert_eq!(lex.next(), None);
 }
