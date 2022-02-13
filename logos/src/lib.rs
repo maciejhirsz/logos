@@ -297,6 +297,62 @@ pub enum Filter<T> {
     Skip,
 }
 
+/// Type that can be returned from a callback, either producing a field
+/// for a token, skipping it, or emitting an error.
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use logos::{Logos, FilterResult};
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// enum Token {
+///     #[regex(r"[ \n\f\t]+", logos::skip)]
+///     #[error]
+///     Error,
+///
+///     #[regex("[0-9]+", |lex| {
+///         let n: u64 = lex.slice().parse().unwrap();
+///
+///         // Only emit a token if `n` is an even number.
+///         if n % 2 == 0 {
+///             // Emit an error if `n` is 10.
+///             if n == 10 {
+///                 FilterResult::Error
+///             } else {
+///                 FilterResult::Emit(n)
+///             }
+///         } else {
+///             FilterResult::Skip
+///         }
+///     })]
+///     NiceEvenNumber(u64)
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("20 11 42 23 100 10").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Token::NiceEvenNumber(20),
+///         // skipping 11
+///         Token::NiceEvenNumber(42),
+///         // skipping 23
+///         Token::NiceEvenNumber(100),
+///         // error at 10
+///         Token::Error,
+///     ]
+/// );
+/// ```
+pub enum FilterResult<T> {
+    /// Emit a token with a given value `T`. Use `()` for unit variants without fields.
+    Emit(T),
+    /// Skip current match, analog to [`Skip`](./struct.Skip.html).
+    Skip,
+    /// Emit a `<Token as Logos>::ERROR` token.
+    Error,
+}
+
 /// Predefined callback that will inform the `Lexer` to skip a definition.
 ///
 /// # Example
