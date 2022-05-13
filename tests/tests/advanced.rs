@@ -2,6 +2,8 @@ use logos_derive::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 #[logos(subpattern xdigit = r"[0-9a-fA-F]")]
+#[logos(subpattern a = r"A")]
+#[logos(subpattern b = r"(?&a)BB(?&a)")]
 enum Token {
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[error]
@@ -12,6 +14,9 @@ enum Token {
 
     #[regex("0[xX](?&xdigit)+")]
     LiteralHex,
+
+    #[regex("~?(?&b)~?")]
+    Abba,
 
     #[regex("-?[0-9]+")]
     LiteralInteger,
@@ -225,6 +230,19 @@ mod advanced {
                 (Token::WhatTheHeck, "!#@?", 0..4),
                 (Token::WhatTheHeck, "#!!!?!@?", 5..13),
                 (Token::WhatTheHeck, "????####@@@@!!!!", 14..30),
+            ],
+        );
+    }
+
+    #[test]
+    fn subpatterns() {
+        assert_lex(
+            "ABBA~ ~ABBA ~ABBA~ ABBA",
+            &[
+                (Token::Abba, "ABBA~", 0..5),
+                (Token::Abba, "~ABBA", 6..11),
+                (Token::Abba, "~ABBA~", 12..18),
+                (Token::Abba, "ABBA", 19..23),
             ],
         );
     }
