@@ -4,6 +4,7 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Attribute, GenericParam, Lit, Type};
 
+use crate::LOGOS_ATTR;
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, MaybeVoid};
@@ -71,7 +72,7 @@ impl Parser {
     /// Try to parse the main `#[logos(...)]`, does nothing if
     /// the attribute's name isn't `logos`.
     pub fn try_parse_logos(&mut self, attr: &mut Attribute) {
-        if !attr.path.is_ident("logos") {
+        if !attr.path.is_ident(LOGOS_ATTR) {
             return;
         }
 

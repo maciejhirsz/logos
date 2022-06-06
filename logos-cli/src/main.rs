@@ -1,4 +1,5 @@
 use std::{
+    fmt::Write,
     io::{self, Read},
     path::PathBuf,
     process::{Command, Stdio},
@@ -66,8 +67,15 @@ fn codegen(input: String) -> Result<String> {
         .parse()
         .map_err(|err: LexError| anyhow::Error::msg(err.to_string()))
         .context("failed to parse input as rust code")?;
-    let output = logos_codegen::generate(input_tokens);
-    Ok(output.to_string())
+
+    let mut output = String::new();
+    write!(
+        output,
+        "{}",
+        logos_codegen::strip_attributes(input_tokens.clone())
+    )?;
+    write!(output, "{}", logos_codegen::generate(input_tokens))?;
+    Ok(output)
 }
 
 fn rustfmt(input: String) -> Result<String> {

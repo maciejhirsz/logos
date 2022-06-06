@@ -20,6 +20,7 @@ use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
 use parser::{Mode, Parser};
+use quote::ToTokens;
 use util::MaybeVoid;
 
 use proc_macro2::Span;
@@ -27,6 +28,13 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
+
+const LOGOS_ATTR: &str = "logos";
+const EXTRAS_ATTR: &str = "extras";
+const ERROR_ATTR: &str = "error";
+const END_ATTR: &str = "end";
+const TOKEN_ATTR: &str = "token";
+const REGEX_ATTR: &str = "regex";
 
 /// Generate a `Logos` implementation for the given struct, provided as a stream of rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
@@ -45,7 +53,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         parser.try_parse_logos(attr);
 
         // TODO: Remove in future versions
-        if attr.path.is_ident("extras") {
+        if attr.path.is_ident(EXTRAS_ATTR) {
             parser.err(
                 "\
                 #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\
@@ -103,7 +111,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
             };
 
             match attr_name.as_str() {
-                "error" => {
+                ERROR_ATTR => {
                     let span = variant.ident.span();
                     if let Some(previous) = error.replace(&variant.ident) {
                         parser
@@ -111,7 +119,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                             .err("Previously declared #[error]:", previous.span());
                     }
                 }
-                "end" => {
+                END_ATTR => {
                     // TODO: Remove in future versions
                     parser.err(
                         "\
@@ -123,7 +131,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         attr.span(),
                     );
                 }
-                "token" => {
+                TOKEN_ATTR => {
                     let definition = match parser.parse_definition(attr) {
                         Some(definition) => definition,
                         None => {
@@ -162,7 +170,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         regex_ids.push(id);
                     }
                 }
-                "regex" => {
+                REGEX_ATTR => {
                     let definition = match parser.parse_definition(attr) {
                         Some(definition) => definition,
                         None => {
@@ -309,4 +317,41 @@ pub fn generate(input: TokenStream) -> TokenStream {
     // panic!("{}", tokens);
 
     tokens
+}
+
+/// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.
+pub fn strip_attributes(input: TokenStream) -> TokenStream {
+    let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
+
+    strip_attrs_from_vec(&mut item.attrs);
+
+    for attr in &mut item.attrs {
+        if attr.path.is_ident("derive") {
+            if let Ok(syn::Meta::List(mut meta)) = attr.parse_meta() {
+                meta.nested = meta.nested.into_iter().filter(|nested| !matches!(nested, syn::NestedMeta::Meta(nested) if nested.path().is_ident("Logos"))).collect();
+
+                attr.tokens = TokenStream::new();
+                meta.paren_token.surround(&mut attr.tokens, |tokens| {
+                    meta.nested.to_tokens(tokens);
+                });
+            }
+        }
+    }
+
+    for variant in &mut item.variants {
+        strip_attrs_from_vec(&mut variant.attrs);
+        for field in &mut variant.fields {
+            strip_attrs_from_vec(&mut field.attrs);
+        }
+    }
+
+    item.to_token_stream()
+}
+
+fn strip_attrs_from_vec(attrs: &mut Vec<syn::Attribute>) {
+    attrs.retain(|attr| !is_logos_attr(attr))
+}
+
+fn is_logos_attr(attr: &syn::Attribute) -> bool {
+    attr.path.is_ident(LOGOS_ATTR) || attr.path.is_ident(EXTRAS_ATTR) || attr.path.is_ident(ERROR_ATTR) || attr.path.is_ident(END_ATTR) || attr.path.is_ident(TOKEN_ATTR) || attr.path.is_ident(REGEX_ATTR)
 }
