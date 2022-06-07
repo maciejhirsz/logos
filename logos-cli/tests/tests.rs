@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use assert_fs::{NamedTempFile, assert::PathAssert, fixture::FileWriteStr};
+use assert_fs::{assert::PathAssert, fixture::FileWriteStr, NamedTempFile};
 
 const INPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/input.rs");
 const OUTPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/output.rs");
@@ -10,29 +10,34 @@ fn test_codegen() {
     let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
 
     let mut cmd = Command::cargo_bin("logos-cli").unwrap();
-    cmd
-        .arg(INPUT_FILE)
+    cmd.arg(INPUT_FILE)
         .arg("--output")
         .arg(tempfile.path())
         .assert()
         .success();
 
-    tempfile.assert(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/output.rs")));
+    tempfile.assert(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/data/output.rs"
+    )));
 }
 
 #[test]
 fn test_codegen_check() {
-
     let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
 
-    Command::cargo_bin("logos-cli").unwrap()
+    Command::cargo_bin("logos-cli")
+        .unwrap()
         .arg(INPUT_FILE)
         .arg("--output")
         .arg(tempfile.path())
         .assert()
         .success();
 
-    tempfile.assert(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/output.rs")));
+    tempfile.assert(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/data/output.rs"
+    )));
 }
 
 #[test]
@@ -41,7 +46,8 @@ fn test_codegen_fail_check() {
 
     tempfile.write_str("some random data");
 
-    Command::cargo_bin("logos-cli").unwrap()
+    Command::cargo_bin("logos-cli")
+        .unwrap()
         .arg(INPUT_FILE)
         .arg("--check")
         .arg("--output")
@@ -55,13 +61,15 @@ fn test_codegen_rustfmt() {
     let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
 
     let mut cmd = Command::cargo_bin("logos-cli").unwrap();
-    cmd
-        .arg(INPUT_FILE)
+    cmd.arg(INPUT_FILE)
         .arg("--format")
         .arg("--output")
         .arg(tempfile.path())
         .assert()
         .success();
 
-    tempfile.assert(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/fmt_output.rs")));
+    tempfile.assert(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/data/fmt_output.rs"
+    )));
 }

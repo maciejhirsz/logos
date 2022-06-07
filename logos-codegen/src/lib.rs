@@ -353,5 +353,10 @@ fn strip_attrs_from_vec(attrs: &mut Vec<syn::Attribute>) {
 }
 
 fn is_logos_attr(attr: &syn::Attribute) -> bool {
-    attr.path.is_ident(LOGOS_ATTR) || attr.path.is_ident(EXTRAS_ATTR) || attr.path.is_ident(ERROR_ATTR) || attr.path.is_ident(END_ATTR) || attr.path.is_ident(TOKEN_ATTR) || attr.path.is_ident(REGEX_ATTR)
+    attr.path.is_ident(LOGOS_ATTR)
+        || attr.path.is_ident(EXTRAS_ATTR)
+        || attr.path.is_ident(ERROR_ATTR)
+        || attr.path.is_ident(END_ATTR)
+        || attr.path.is_ident(TOKEN_ATTR)
+        || attr.path.is_ident(REGEX_ATTR)
 }

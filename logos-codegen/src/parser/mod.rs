@@ -4,10 +4,10 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Attribute, GenericParam, Lit, Type};
 
-use crate::LOGOS_ATTR;
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, MaybeVoid};
+use crate::LOGOS_ATTR;
 
 mod definition;
 mod ignore_flags;
