@@ -264,8 +264,8 @@ impl<Leaf> Graph<Leaf> {
         match (self.get(a), self.get(b)) {
             (None, None) => {
                 panic!(
-                    "Merging two reserved nodes! This is a bug, please report it:\
-
+                    "Merging two reserved nodes! This is a bug, please report it:\n\
+                    \n\
                     https://github.com/maciejhirsz/logos/issues"
                 );
             }
@@ -453,8 +453,8 @@ impl<Leaf> Index<NodeId> for Graph<Leaf> {
 
     fn index(&self, id: NodeId) -> &Node<Leaf> {
         self.get(id).expect(
-            "Indexing into an empty node. This is a bug, please report it at:\n\n\
-
+            "Indexing into an empty node. This is a bug, please report it at:\n\
+            \n\
             https://github.com/maciejhirsz/logos/issues",
         )
     }

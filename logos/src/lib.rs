@@ -299,9 +299,9 @@ pub enum Filter<T> {
 
 /// Type that can be returned from a callback, either producing a field
 /// for a token, skipping it, or emitting an error.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// use logos::{Logos, FilterResult};
 ///
