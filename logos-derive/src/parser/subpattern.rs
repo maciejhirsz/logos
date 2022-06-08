@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use syn::{Ident, LitByteStr, LitStr};
+use syn::Ident;
 
 use crate::error::Errors;
 use crate::mir::Mir;
