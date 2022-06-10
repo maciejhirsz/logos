@@ -1,5 +1,8 @@
+use std::path::Path;
+
 use assert_cmd::Command;
 use assert_fs::{assert::PathAssert, fixture::FileWriteStr, NamedTempFile};
+use predicates::prelude::*;
 
 const INPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/input.rs");
 const OUTPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/output.rs");
@@ -16,10 +19,7 @@ fn test_codegen() {
         .assert()
         .success();
 
-    tempfile.assert(include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/data/output.rs"
-    )).replace("\r\n", "\n"));
+    tempfile.assert(normalize_newlines(OUTPUT_FILE));
 }
 
 #[test]
@@ -75,8 +75,9 @@ fn test_codegen_format() {
         .assert()
         .success();
 
-    tempfile.assert(include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/data/fmt_output.rs"
-    )).replace("\r\n", "\n"));
+    tempfile.assert(normalize_newlines(FMT_OUTPUT_FILE));
+}
+
+fn normalize_newlines(s: impl AsRef<Path>) -> impl Predicate<str> {
+    predicates::str::diff(fs_err::read_to_string(s).unwrap().replace("\r\n", "\n")).normalize()
 }
