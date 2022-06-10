@@ -40,7 +40,7 @@ pub fn main() -> Result<()> {
 
     if let Some(output_path) = args.output {
         let changed = match fs::read_to_string(&output_path) {
-            Ok(existing_output) => existing_output != output,
+            Ok(existing_output) => !eq_ignore_newlines(&existing_output, &output),
             Err(err) if err.kind() == io::ErrorKind::NotFound => true,
             Err(err) => return Err(err.into()),
         };
@@ -89,4 +89,8 @@ fn rustfmt(input: String) -> Result<String> {
     let mut output = String::new();
     command.stdout.unwrap().read_to_string(&mut output)?;
     Ok(output)
+}
+
+fn eq_ignore_newlines(lhs: &str, rhs: &str) -> bool {
+    lhs.lines().eq(rhs.lines())
 }

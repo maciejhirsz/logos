@@ -19,32 +19,39 @@ fn test_codegen() {
     tempfile.assert(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/tests/data/output.rs"
-    )));
+    )).replace("\r\n", "\n"));
 }
 
 #[test]
 fn test_codegen_check() {
-    let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
-
     Command::cargo_bin("logos-cli")
         .unwrap()
         .arg(INPUT_FILE)
+        .arg("--check")
         .arg("--output")
-        .arg(tempfile.path())
+        .arg(OUTPUT_FILE)
         .assert()
         .success();
+}
 
-    tempfile.assert(include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/data/output.rs"
-    )));
+#[test]
+fn test_codegen_check_format() {
+    Command::cargo_bin("logos-cli")
+        .unwrap()
+        .arg(INPUT_FILE)
+        .arg("--format")
+        .arg("--check")
+        .arg("--output")
+        .arg(FMT_OUTPUT_FILE)
+        .assert()
+        .success();
 }
 
 #[test]
 fn test_codegen_fail_check() {
     let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
 
-    tempfile.write_str("some random data");
+    tempfile.write_str("some random data").unwrap();
 
     Command::cargo_bin("logos-cli")
         .unwrap()
@@ -57,7 +64,7 @@ fn test_codegen_fail_check() {
 }
 
 #[test]
-fn test_codegen_rustfmt() {
+fn test_codegen_format() {
     let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
 
     let mut cmd = Command::cargo_bin("logos-cli").unwrap();
@@ -71,5 +78,5 @@ fn test_codegen_rustfmt() {
     tempfile.assert(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/tests/data/fmt_output.rs"
-    )));
+    )).replace("\r\n", "\n"));
 }
