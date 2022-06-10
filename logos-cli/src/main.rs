@@ -1,6 +1,6 @@
 use std::{
     fmt::Write,
-    io::{self, Read},
+    io,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -79,16 +79,18 @@ fn codegen(input: String) -> Result<String> {
 }
 
 fn rustfmt(input: String) -> Result<String> {
-    let command = Command::new("rustfmt")
+    let mut command = Command::new("rustfmt")
         .stdin(Stdio::piped())
         .stderr(Stdio::inherit())
         .stdout(Stdio::piped())
         .spawn()?;
-    io::Write::write_all(&mut command.stdin.unwrap(), input.as_bytes())?;
+    io::Write::write_all(&mut command.stdin.take().unwrap(), input.as_bytes())?;
+    let output = command.wait_with_output()?;
+    if !output.status.success() {
+        anyhow::bail!("rustfmt returned unsuccessful exit code");
+    }
 
-    let mut output = String::new();
-    command.stdout.unwrap().read_to_string(&mut output)?;
-    Ok(output)
+    String::from_utf8(output.stdout).context("failed to parse rustfmt output as utf-8")
 }
 
 fn eq_ignore_newlines(lhs: &str, rhs: &str) -> bool {
