@@ -95,7 +95,7 @@ impl<'s, P, E, T: Logos<'s>> CallbackResult<'s, P, T> for Result<P, E> {
     }
 }
 
-impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Skip {
+impl<'s, T: Logos<'s>, U> CallbackResult<'s, U, T> for Skip {
     #[inline]
     fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
     where
