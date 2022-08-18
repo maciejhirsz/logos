@@ -19,8 +19,22 @@
 //!
 //! ## Example
 //!
+//! To use this crate you should derive the [`Logos`] trait on an `enum` that
+//! outlines all of the possible tokens in your source.
+//!
+//! * One of the `enum` variants must be marked as the `#[error]` variant.
+//!   This is the token that is returned when lexing fails.
+//! * Mark a variant as a `#[regex("string")]` to match via a regular expression.
+//! * Mark a variant as a `#[token("string")]` to match any literal string
+//!   without having to worry about escaping special regex characters such as `+` and `*`.
+//! * If the token variant holds data (eg, `Punctuation(char)`) you assign the data using a callback.
+//!   Put a `,` after your token or regex string,
+//!   and then either name a callback function (eg: `logos::skip`),
+//!   or write a callback expression inline (`eg: `|lex| lex.slice().chars().next().unwrap()`).
+//!   There's more about callbacks below.
+//!
 //! ```rust
-//! use logos::Logos;
+//! use logos::{Logos, Lexer};
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
@@ -45,7 +59,7 @@
 //! }
 //!
 //! fn main() {
-//!     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
+//!     let mut lex: Lexer<_> = Token::lexer("Create ridiculously fast Lexers.");
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
 //!     assert_eq!(lex.span(), 0..6);
