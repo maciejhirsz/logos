@@ -30,7 +30,7 @@
 //! * If the token variant holds data (eg, `Punctuation(char)`) you assign the data using a callback.
 //!   Put a `,` after your token or regex string,
 //!   and then either name a callback function (eg: `logos::skip`),
-//!   or write a callback expression inline (`eg: `|lex| lex.slice().chars().next().unwrap()`).
+//!   or write a callback expression inline (eg: `|lex| lex.slice().chars().next().unwrap()`).
 //!   There's more about callbacks below.
 //!
 //! ```rust
