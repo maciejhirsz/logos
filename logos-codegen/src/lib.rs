@@ -26,6 +26,7 @@ use util::MaybeVoid;
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::parse_quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
 
@@ -211,6 +212,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
     };
+    let logos_path = parser
+        .logos_path
+        .take()
+        .unwrap_or_else(|| parse_quote!(::logos));
 
     let error_def = match error {
         Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
@@ -225,14 +230,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let impl_logos = |body| {
         quote! {
-            impl<'s> ::logos::Logos<'s> for #this {
+            impl<'s> #logos_path::Logos<'s> for #this {
                 type Extras = #extras;
 
                 type Source = #source;
 
                 #error_def
 
-                fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
+                fn lex(lex: &mut #logos_path::Lexer<'s, Self>) {
                     #body
                 }
             }
@@ -297,9 +302,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let body = generator.generate();
     let tokens = impl_logos(quote! {
-        use ::logos::internal::{LexerInternal, CallbackResult};
+        use #logos_path::internal::{LexerInternal, CallbackResult};
 
-        type Lexer<'s> = ::logos::Lexer<'s, #this>;
+        type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()
