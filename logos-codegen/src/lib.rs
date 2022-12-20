@@ -23,7 +23,6 @@ use parser::{Mode, Parser};
 use quote::ToTokens;
 use util::MaybeVoid;
 
-use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
@@ -42,7 +41,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let name = &item.ident;
 
-    let mut error = None;
     let mut parser = Parser::default();
 
     for param in item.generics.params {
@@ -112,12 +110,16 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
             match attr_name.as_str() {
                 ERROR_ATTR => {
-                    let span = variant.ident.span();
-                    if let Some(previous) = error.replace(&variant.ident) {
-                        parser
-                            .err("Only one #[error] variant can be declared.", span)
-                            .err("Previously declared #[error]:", previous.span());
-                    }
+                    // TODO: Remove in future versions
+                    parser.err(
+                        "\
+                        Since 0.13 Logos no longer requires the #[error] variant.\n\
+                        \n\
+                        For help with migration see release notes: \
+                        https://github.com/maciejhirsz/logos/releases\
+                        ",
+                        attr.span(),
+                    );
                 }
                 END_ATTR => {
                     // TODO: Remove in future versions
@@ -206,18 +208,11 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
+    let error_type = parser.error_type.take();
     let extras = parser.extras.take();
     let source = match parser.mode {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
-    };
-
-    let error_def = match error {
-        Some(error) => Some(quote!(const ERROR: Self = #name::#error;)),
-        None => {
-            parser.err("missing #[error] token variant.", Span::call_site());
-            None
-        }
     };
 
     let generics = parser.generics();
@@ -226,11 +221,11 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let impl_logos = |body| {
         quote! {
             impl<'s> ::logos::Logos<'s> for #this {
+                type Error = #error_type;
+
                 type Extras = #extras;
 
                 type Source = #source;
-
-                #error_def
 
                 fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
                     #body
@@ -355,7 +350,6 @@ fn strip_attrs_from_vec(attrs: &mut Vec<syn::Attribute>) {
 fn is_logos_attr(attr: &syn::Attribute) -> bool {
     attr.path.is_ident(LOGOS_ATTR)
         || attr.path.is_ident(EXTRAS_ATTR)
-        || attr.path.is_ident(ERROR_ATTR)
         || attr.path.is_ident(END_ATTR)
         || attr.path.is_ident(TOKEN_ATTR)
         || attr.path.is_ident(REGEX_ATTR)

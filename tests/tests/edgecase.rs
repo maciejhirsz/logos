@@ -1,3 +1,4 @@
+use logos::Logos as _;
 use logos_derive::Logos;
 use tests::assert_lex;
 
@@ -7,8 +8,7 @@ mod crunch {
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
         #[regex(r"[ \t\n\f]+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[token("else")]
         Else,
@@ -24,7 +24,7 @@ mod crunch {
     fn crunch() {
         assert_lex(
             "exposed_function",
-            &[(Token::Ident, "exposed_function", 0..16)],
+            &[(Ok(Token::Ident), "exposed_function", 0..16)],
         );
     }
 }
@@ -35,8 +35,7 @@ mod numbers {
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
         #[regex(r"[ \t\n\f]+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[regex(r"[0-9][0-9_]*")]
         LiteralUnsignedNumber,
@@ -62,12 +61,12 @@ mod numbers {
         assert_lex(
             "42.42 42 777777K 90e+8 42.42m 77.77e-29",
             &[
-                (Token::LiteralRealNumberDot, "42.42", 0..5),
-                (Token::LiteralUnsignedNumber, "42", 6..8),
-                (Token::LiteralRealNumberScaleChar, "777777K", 9..16),
-                (Token::LiteralRealNumberExp, "90e+8", 17..22),
-                (Token::LiteralRealNumberDotScaleChar, "42.42m", 23..29),
-                (Token::LiteralRealNumberDotExp, "77.77e-29", 30..39),
+                (Ok(Token::LiteralRealNumberDot), "42.42", 0..5),
+                (Ok(Token::LiteralUnsignedNumber), "42", 6..8),
+                (Ok(Token::LiteralRealNumberScaleChar), "777777K", 9..16),
+                (Ok(Token::LiteralRealNumberExp), "90e+8", 17..22),
+                (Ok(Token::LiteralRealNumberDotScaleChar), "42.42m", 23..29),
+                (Ok(Token::LiteralRealNumberDotExp), "77.77e-29", 30..39),
             ],
         )
     }
@@ -79,7 +78,6 @@ mod benches {
     #[derive(Debug, Clone, Copy, PartialEq, Logos)]
     pub enum Token {
         #[regex(r"[ \t\n\f]+", logos::skip)]
-        #[error]
         InvalidToken,
 
         #[regex("[a-zA-Z_$][a-zA-Z0-9_$]*")]
@@ -147,16 +145,16 @@ mod benches {
         assert_lex(
             IDENTIFIERS,
             &[
-                (Token::Identifier, "It", 0..2),
-                (Token::Identifier, "was", 3..6),
-                (Token::Identifier, "the", 7..10),
-                (Token::Identifier, "year", 11..15),
-                (Token::Identifier, "when", 16..20),
-                (Token::Identifier, "they", 21..25),
-                (Token::Identifier, "finally", 26..33),
-                (Token::Identifier, "immanentized", 34..46),
-                (Token::Identifier, "the", 47..50),
-                (Token::Identifier, "Eschaton", 51..59),
+                (Ok(Token::Identifier), "It", 0..2),
+                (Ok(Token::Identifier), "was", 3..6),
+                (Ok(Token::Identifier), "the", 7..10),
+                (Ok(Token::Identifier), "year", 11..15),
+                (Ok(Token::Identifier), "when", 16..20),
+                (Ok(Token::Identifier), "they", 21..25),
+                (Ok(Token::Identifier), "finally", 26..33),
+                (Ok(Token::Identifier), "immanentized", 34..46),
+                (Ok(Token::Identifier), "the", 47..50),
+                (Ok(Token::Identifier), "Eschaton", 51..59),
             ],
         )
     }
@@ -169,22 +167,22 @@ mod benches {
         assert_lex(
             SOURCE,
             &[
-                (Token::Identifier, "foobar", 0..6),
-                (Token::ParenOpen, "(", 6..7),
-                (Token::Protected, "protected", 7..16),
-                (Token::Primitive, "primitive", 17..26),
-                (Token::Private, "private", 27..34),
-                (Token::Instanceof, "instanceof", 35..45),
-                (Token::In, "in", 46..48),
-                (Token::ParenClose, ")", 48..49),
-                (Token::BraceOpen, "{", 50..51),
-                (Token::OpAddition, "+", 52..53),
-                (Token::OpIncrement, "++", 54..56),
-                (Token::OpAssign, "=", 57..58),
-                (Token::OpEquality, "==", 59..61),
-                (Token::OpStrictEquality, "===", 62..65),
-                (Token::FatArrow, "=>", 66..68),
-                (Token::BraceClose, "}", 69..70),
+                (Ok(Token::Identifier), "foobar", 0..6),
+                (Ok(Token::ParenOpen), "(", 6..7),
+                (Ok(Token::Protected), "protected", 7..16),
+                (Ok(Token::Primitive), "primitive", 17..26),
+                (Ok(Token::Private), "private", 27..34),
+                (Ok(Token::Instanceof), "instanceof", 35..45),
+                (Ok(Token::In), "in", 46..48),
+                (Ok(Token::ParenClose), ")", 48..49),
+                (Ok(Token::BraceOpen), "{", 50..51),
+                (Ok(Token::OpAddition), "+", 52..53),
+                (Ok(Token::OpIncrement), "++", 54..56),
+                (Ok(Token::OpAssign), "=", 57..58),
+                (Ok(Token::OpEquality), "==", 59..61),
+                (Ok(Token::OpStrictEquality), "===", 62..65),
+                (Ok(Token::FatArrow), "=>", 66..68),
+                (Ok(Token::BraceClose), "}", 69..70),
             ],
         )
     }
@@ -196,23 +194,23 @@ mod benches {
         assert_lex(
             STRINGS,
             &[
-                (Token::String, r#""tree""#, 0..6),
-                (Token::String, r#""to""#, 7..11),
-                (Token::String, r#""a""#, 12..15),
-                (Token::String, r#""graph""#, 16..23),
-                (Token::String, r#""that can""#, 24..34),
-                (Token::String, r#""more adequately represent""#, 35..62),
+                (Ok(Token::String), r#""tree""#, 0..6),
+                (Ok(Token::String), r#""to""#, 7..11),
+                (Ok(Token::String), r#""a""#, 12..15),
+                (Ok(Token::String), r#""graph""#, 16..23),
+                (Ok(Token::String), r#""that can""#, 24..34),
+                (Ok(Token::String), r#""more adequately represent""#, 35..62),
                 (
-                    Token::String,
+                    Ok(Token::String),
                     r#""loops and arbitrary state jumps""#,
                     63..96,
                 ),
-                (Token::String, r#""with\"\"\"out""#, 97..112),
-                (Token::String, r#""the\n\n\n\n\n""#, 113..128),
-                (Token::String, r#""expl\"\"\"osive""#, 129..146),
-                (Token::String, r#""nature\"""#, 147..157),
+                (Ok(Token::String), r#""with\"\"\"out""#, 97..112),
+                (Ok(Token::String), r#""the\n\n\n\n\n""#, 113..128),
+                (Ok(Token::String), r#""expl\"\"\"osive""#, 129..146),
+                (Ok(Token::String), r#""nature\"""#, 147..157),
                 (
-                    Token::String,
+                    Ok(Token::String),
                     r#""of trying to build up all possible permutations in a tree.""#,
                     157..217,
                 ),
@@ -227,8 +225,7 @@ mod unicode_whitespace {
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
         #[regex(r"\p{Whitespace}+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[regex("[0-9]+")]
         Number,
@@ -239,9 +236,9 @@ mod unicode_whitespace {
         assert_lex(
             "   12345\u{2029}67890\t  x ",
             &[
-                (Token::Number, "12345", 3..8),
-                (Token::Number, "67890", 11..16),
-                (Token::Error, "x", 19..20),
+                (Ok(Token::Number), "12345", 3..8),
+                (Ok(Token::Number), "67890", 11..16),
+                (Err(()), "x", 19..20),
             ],
         );
     }
@@ -253,8 +250,7 @@ mod trivia {
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     enum Token {
         #[regex("[a-f]+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[regex("[0-9]+")]
         Number,
@@ -265,23 +261,20 @@ mod trivia {
         assert_lex(
             "abc12345def67890 afx",
             &[
-                (Token::Number, "12345", 3..8),
-                (Token::Number, "67890", 11..16),
-                (Token::Error, " ", 16..17),
-                (Token::Error, "x", 19..20),
+                (Ok(Token::Number), "12345", 3..8),
+                (Ok(Token::Number), "67890", 11..16),
+                (Err(()), " ", 16..17),
+                (Err(()), "x", 19..20),
             ],
         );
     }
 }
 
 mod maybe {
-    use logos::Logos;
+    use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
     enum Token {
-        #[error]
-        Error,
-
         #[regex("[0-9A-F][0-9A-F]a?")]
         Tok,
     }
@@ -289,7 +282,7 @@ mod maybe {
     #[test]
     fn maybe_at_the_end() {
         let mut lexer = Token::lexer("F0");
-        assert_eq!(lexer.next().unwrap(), Token::Tok);
+        assert_eq!(lexer.next().unwrap().unwrap(), Token::Tok);
     }
 }
 
@@ -298,8 +291,6 @@ mod colors {
 
     #[derive(Logos, Debug, PartialEq)]
     enum Token {
-        #[error]
-        Error,
         #[token(" ")]
         Whitespace,
         #[regex("red")]
@@ -317,30 +308,40 @@ mod colors {
         assert_lex(
             "red fred redf green fgreen greenf blue bluef fblue",
             &[
-                (Token::Red, "red", 0..3),
-                (Token::Whitespace, " ", 3..4),
-                (Token::NoHighlight, "fred", 4..8),
-                (Token::Whitespace, " ", 8..9),
-                (Token::NoHighlight, "redf", 9..13),
-                (Token::Whitespace, " ", 13..14),
-                (Token::Green, "green", 14..19),
-                (Token::Whitespace, " ", 19..20),
-                (Token::NoHighlight, "fgreen", 20..26),
-                (Token::Whitespace, " ", 26..27),
-                (Token::NoHighlight, "greenf", 27..33),
-                (Token::Whitespace, " ", 33..34),
-                (Token::Blue, "blue", 34..38),
-                (Token::Whitespace, " ", 38..39),
-                (Token::NoHighlight, "bluef", 39..44),
-                (Token::Whitespace, " ", 44..45),
-                (Token::NoHighlight, "fblue", 45..50),
+                (Ok(Token::Red), "red", 0..3),
+                (Ok(Token::Whitespace), " ", 3..4),
+                (Ok(Token::NoHighlight), "fred", 4..8),
+                (Ok(Token::Whitespace), " ", 8..9),
+                (Ok(Token::NoHighlight), "redf", 9..13),
+                (Ok(Token::Whitespace), " ", 13..14),
+                (Ok(Token::Green), "green", 14..19),
+                (Ok(Token::Whitespace), " ", 19..20),
+                (Ok(Token::NoHighlight), "fgreen", 20..26),
+                (Ok(Token::Whitespace), " ", 26..27),
+                (Ok(Token::NoHighlight), "greenf", 27..33),
+                (Ok(Token::Whitespace), " ", 33..34),
+                (Ok(Token::Blue), "blue", 34..38),
+                (Ok(Token::Whitespace), " ", 38..39),
+                (Ok(Token::NoHighlight), "bluef", 39..44),
+                (Ok(Token::Whitespace), " ", 44..45),
+                (Ok(Token::NoHighlight), "fblue", 45..50),
             ],
         );
     }
 }
 
 mod type_params {
-    use logos::Logos;
+    use super::*;
+    use std::num::ParseIntError;
+
+    #[derive(Debug, Clone, PartialEq, Default)]
+    struct LexingError;
+
+    impl From<ParseIntError> for LexingError {
+        fn from(_: ParseIntError) -> Self {
+            LexingError
+        }
+    }
 
     #[derive(Debug, PartialEq)]
     struct Nested<S>(S);
@@ -349,11 +350,11 @@ mod type_params {
     #[logos(
         type S = &str,
         type N = u64,
+        error = LexingError,
     )]
     enum Token<S, N> {
         #[regex(r"[ \n\t\f]+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[regex("[a-z]+")]
         Ident(S),
@@ -372,22 +373,21 @@ mod type_params {
         assert_eq!(
             tokens,
             &[
-                Token::Ident("foo"),
-                Token::Number(42u64),
-                Token::Ident("bar"),
+                Ok(Token::Ident("foo")),
+                Ok(Token::Number(42u64)),
+                Ok(Token::Ident("bar")),
             ]
         );
     }
 }
 
 mod priority_disambiguate_1 {
-    use logos::Logos;
+    use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
     enum Token {
         #[regex(r"[ \n\t\f]+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[regex("[abc]+", priority = 2)]
         Abc,
@@ -400,18 +400,17 @@ mod priority_disambiguate_1 {
     fn priority_abc() {
         let tokens: Vec<_> = Token::lexer("abc ccc cde").collect();
 
-        assert_eq!(tokens, &[Token::Abc, Token::Abc, Token::Cde,]);
+        assert_eq!(tokens, &[Ok(Token::Abc), Ok(Token::Abc), Ok(Token::Cde),]);
     }
 }
 
 mod priority_disambiguate_2 {
-    use logos::Logos;
+    use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
     enum Token {
         #[regex(r"[ \n\t\f]+", logos::skip)]
-        #[error]
-        Error,
+        Ignored,
 
         #[regex("[abc]+")]
         Abc,
@@ -424,7 +423,7 @@ mod priority_disambiguate_2 {
     fn priority_cbd() {
         let tokens: Vec<_> = Token::lexer("abc ccc cde").collect();
 
-        assert_eq!(tokens, &[Token::Abc, Token::Cde, Token::Cde,]);
+        assert_eq!(tokens, &[Ok(Token::Abc), Ok(Token::Cde), Ok(Token::Cde),]);
     }
 }
 
@@ -433,9 +432,8 @@ mod loop_in_loop {
 
     #[derive(Logos, Debug, PartialEq)]
     pub enum Token {
-        #[error]
         #[regex(r"[ \t\n\f]+", logos::skip)]
-        Error,
+        Ignored,
 
         #[regex("f(f*oo)*")]
         Foo,
@@ -446,11 +444,11 @@ mod loop_in_loop {
         assert_lex(
             "foo ffoo ffffooffoooo foooo foofffffoo",
             &[
-                (Token::Foo, "foo", 0..3),
-                (Token::Foo, "ffoo", 4..8),
-                (Token::Foo, "ffffooffoooo", 9..21),
-                (Token::Foo, "foooo", 22..27),
-                (Token::Foo, "foofffffoo", 28..38),
+                (Ok(Token::Foo), "foo", 0..3),
+                (Ok(Token::Foo), "ffoo", 4..8),
+                (Ok(Token::Foo), "ffffooffoooo", 9..21),
+                (Ok(Token::Foo), "foooo", 22..27),
+                (Ok(Token::Foo), "foofffffoo", 28..38),
             ],
         );
     }
@@ -461,7 +459,6 @@ mod maybe_in_loop {
 
     #[derive(Logos, Debug, PartialEq)]
     pub enum Token {
-        #[error]
         #[regex(r"[ \t\n\f]+", logos::skip)]
         Error,
 
@@ -474,13 +471,13 @@ mod maybe_in_loop {
         assert_lex(
             "foo ff ffoo foofoo foooofoo foooo",
             &[
-                (Token::Foo, "foo", 0..3),
-                (Token::Foo, "f", 4..5),
-                (Token::Foo, "f", 5..6),
-                (Token::Foo, "ffoo", 7..11),
-                (Token::Foo, "foofoo", 12..18),
-                (Token::Foo, "foooofoo", 19..27),
-                (Token::Foo, "foooo", 28..33),
+                (Ok(Token::Foo), "foo", 0..3),
+                (Ok(Token::Foo), "f", 4..5),
+                (Ok(Token::Foo), "f", 5..6),
+                (Ok(Token::Foo), "ffoo", 7..11),
+                (Ok(Token::Foo), "foofoo", 12..18),
+                (Ok(Token::Foo), "foooofoo", 19..27),
+                (Ok(Token::Foo), "foooo", 28..33),
             ],
         );
     }
@@ -497,9 +494,6 @@ mod unicode_error_split {
         enum Test {
             #[token("a")]
             A,
-
-            #[error]
-            Error,
         }
 
         let mut lex = Test::lexer("💩");
@@ -514,7 +508,7 @@ mod unicode_error_split {
 }
 
 mod merging_asymmetric_loops {
-    use logos::Logos;
+    use super::*;
 
     #[test]
     fn must_compile() {
@@ -524,8 +518,7 @@ mod merging_asymmetric_loops {
             Operator,
 
             #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
-            #[error]
-            Error,
+            Ignored,
         }
     }
 }

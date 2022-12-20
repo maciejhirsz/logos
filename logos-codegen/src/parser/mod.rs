@@ -26,6 +26,7 @@ pub struct Parser {
     pub errors: Errors,
     pub mode: Mode,
     pub extras: MaybeVoid,
+    pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
     types: TypeParams,
 }
@@ -94,6 +95,17 @@ impl Parser {
             };
 
             match (name.to_string().as_str(), value) {
+                ("error", NestedValue::Assign(value)) => {
+                    let span = value.span();
+
+                    if let MaybeVoid::Some(previous) = self.error_type.replace(value) {
+                        self.err("Error type can be defined only once", span)
+                            .err("Previous definition here", previous.span());
+                    }
+                }
+                ("error", _) => {
+                    self.err("Expected: error = SomeType", name.span());
+                }
                 ("extras", NestedValue::Assign(value)) => {
                     let span = value.span();
 

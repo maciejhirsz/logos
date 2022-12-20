@@ -31,8 +31,7 @@ enum Token {
 
         logos::Skip
     })]
-    #[error]
-    Error,
+    Ignored,
 
     #[regex("[a-zA-Z$_][a-zA-Z0-9$_]*")]
     Identifier,
@@ -133,12 +132,12 @@ fn operators() {
     assert_lex(
         "=== == = => + ++",
         &[
-            (Token::OpStrictEquality, "===", 0..3),
-            (Token::OpEquality, "==", 4..6),
-            (Token::OpAssign, "=", 7..8),
-            (Token::FatArrow, "=>", 9..11),
-            (Token::OpAddition, "+", 12..13),
-            (Token::OpIncrement, "++", 14..16),
+            (Ok(Token::OpStrictEquality), "===", 0..3),
+            (Ok(Token::OpEquality), "==", 4..6),
+            (Ok(Token::OpAssign), "=", 7..8),
+            (Ok(Token::FatArrow), "=>", 9..11),
+            (Ok(Token::OpAddition), "+", 12..13),
+            (Ok(Token::OpIncrement), "++", 14..16),
         ],
     );
 }
@@ -148,12 +147,12 @@ fn punctation() {
     assert_lex(
         "{ . .. ... }",
         &[
-            (Token::BraceOpen, "{", 0..1),
-            (Token::Accessor, ".", 2..3),
-            (Token::Accessor, ".", 4..5),
-            (Token::Accessor, ".", 5..6),
-            (Token::Ellipsis, "...", 7..10),
-            (Token::BraceClose, "}", 11..12),
+            (Ok(Token::BraceOpen), "{", 0..1),
+            (Ok(Token::Accessor), ".", 2..3),
+            (Ok(Token::Accessor), ".", 4..5),
+            (Ok(Token::Accessor), ".", 5..6),
+            (Ok(Token::Ellipsis), "...", 7..10),
+            (Ok(Token::BraceClose), "}", 11..12),
         ],
     );
 }
@@ -163,17 +162,17 @@ fn identifiers() {
     assert_lex(
         "It was the year when they finally immanentized the Eschaton.",
         &[
-            (Token::Identifier, "It", 0..2),
-            (Token::Identifier, "was", 3..6),
-            (Token::Identifier, "the", 7..10),
-            (Token::Identifier, "year", 11..15),
-            (Token::Identifier, "when", 16..20),
-            (Token::Identifier, "they", 21..25),
-            (Token::Identifier, "finally", 26..33),
-            (Token::Identifier, "immanentized", 34..46),
-            (Token::Identifier, "the", 47..50),
-            (Token::Identifier, "Eschaton", 51..59),
-            (Token::Accessor, ".", 59..60),
+            (Ok(Token::Identifier), "It", 0..2),
+            (Ok(Token::Identifier), "was", 3..6),
+            (Ok(Token::Identifier), "the", 7..10),
+            (Ok(Token::Identifier), "year", 11..15),
+            (Ok(Token::Identifier), "when", 16..20),
+            (Ok(Token::Identifier), "they", 21..25),
+            (Ok(Token::Identifier), "finally", 26..33),
+            (Ok(Token::Identifier), "immanentized", 34..46),
+            (Ok(Token::Identifier), "the", 47..50),
+            (Ok(Token::Identifier), "Eschaton", 51..59),
+            (Ok(Token::Accessor), ".", 59..60),
         ],
     );
 }
@@ -183,13 +182,13 @@ fn keywords() {
     assert_lex(
         "priv private primitive protected protectee in instanceof",
         &[
-            (Token::Priv, "priv", 0..4),
-            (Token::Private, "private", 5..12),
-            (Token::Primitive, "primitive", 13..22),
-            (Token::Protected, "protected", 23..32),
-            (Token::Protectee, "protectee", 33..42),
-            (Token::In, "in", 43..45),
-            (Token::Instanceof, "instanceof", 46..56),
+            (Ok(Token::Priv), "priv", 0..4),
+            (Ok(Token::Private), "private", 5..12),
+            (Ok(Token::Primitive), "primitive", 13..22),
+            (Ok(Token::Protected), "protected", 23..32),
+            (Ok(Token::Protectee), "protectee", 33..42),
+            (Ok(Token::In), "in", 43..45),
+            (Ok(Token::Instanceof), "instanceof", 46..56),
         ],
     );
 }
@@ -199,14 +198,14 @@ fn keywords_mix_identifiers() {
     assert_lex(
         "pri priv priva privb privat private privatee privateer",
         &[
-            (Token::Identifier, "pri", 0..3),
-            (Token::Priv, "priv", 4..8),
-            (Token::Identifier, "priva", 9..14),
-            (Token::Identifier, "privb", 15..20),
-            (Token::Identifier, "privat", 21..27),
-            (Token::Private, "private", 28..35),
-            (Token::Identifier, "privatee", 36..44),
-            (Token::Identifier, "privateer", 45..54),
+            (Ok(Token::Identifier), "pri", 0..3),
+            (Ok(Token::Priv), "priv", 4..8),
+            (Ok(Token::Identifier), "priva", 9..14),
+            (Ok(Token::Identifier), "privb", 15..20),
+            (Ok(Token::Identifier), "privat", 21..27),
+            (Ok(Token::Private), "private", 28..35),
+            (Ok(Token::Identifier), "privatee", 36..44),
+            (Ok(Token::Identifier), "privateer", 45..54),
         ],
     );
 }
@@ -218,10 +217,10 @@ fn iterator() {
     assert_eq!(
         tokens,
         &[
-            Token::Identifier,
-            Token::Priv,
-            Token::Identifier,
-            Token::Private,
+            Ok(Token::Identifier),
+            Ok(Token::Priv),
+            Ok(Token::Identifier),
+            Ok(Token::Private),
         ]
     );
 }
@@ -233,10 +232,10 @@ fn spanned_iterator() {
     assert_eq!(
         tokens,
         &[
-            (Token::Identifier, 0..3),
-            (Token::Priv, 4..8),
-            (Token::Identifier, 9..14),
-            (Token::Private, 15..22),
+            (Ok(Token::Identifier), 0..3),
+            (Ok(Token::Priv), 4..8),
+            (Ok(Token::Identifier), 9..14),
+            (Ok(Token::Private), 15..22),
         ]
     );
 }
@@ -246,27 +245,27 @@ fn numbers() {
     assert_lex(
         "0 1 2 3 4 10 42 1337",
         &[
-            (Token::Number, "0", 0..1),
-            (Token::Number, "1", 2..3),
-            (Token::Number, "2", 4..5),
-            (Token::Number, "3", 6..7),
-            (Token::Number, "4", 8..9),
-            (Token::Number, "10", 10..12),
-            (Token::Number, "42", 13..15),
-            (Token::Number, "1337", 16..20),
+            (Ok(Token::Number), "0", 0..1),
+            (Ok(Token::Number), "1", 2..3),
+            (Ok(Token::Number), "2", 4..5),
+            (Ok(Token::Number), "3", 6..7),
+            (Ok(Token::Number), "4", 8..9),
+            (Ok(Token::Number), "10", 10..12),
+            (Ok(Token::Number), "42", 13..15),
+            (Ok(Token::Number), "1337", 16..20),
         ],
     );
 }
 
 #[test]
 fn invalid_tokens() {
-    assert_lex(
+    assert_lex::<Token>(
         "@-/!",
         &[
-            (Token::Error, "@", 0..1),
-            (Token::Error, "-", 1..2),
-            (Token::Error, "/", 2..3),
-            (Token::Error, "!", 3..4),
+            (Err(()), "@", 0..1),
+            (Err(()), "-", 1..2),
+            (Err(()), "/", 2..3),
+            (Err(()), "!", 3..4),
         ],
     );
 }
@@ -276,8 +275,8 @@ fn hex_and_binary() {
     assert_lex(
         "0x0672deadbeef 0b0100010011",
         &[
-            (Token::Hex, "0x0672deadbeef", 0..14),
-            (Token::Binary, "0b0100010011", 15..27),
+            (Ok(Token::Hex), "0x0672deadbeef", 0..14),
+            (Ok(Token::Binary), "0b0100010011", 15..27),
         ],
     );
 }
@@ -287,10 +286,10 @@ fn invalid_hex_and_binary() {
     assert_lex(
         "0x 0b",
         &[
-            (Token::Number, "0", 0..1),
-            (Token::Identifier, "x", 1..2),
-            (Token::Number, "0", 3..4),
-            (Token::Identifier, "b", 4..5),
+            (Ok(Token::Number), "0", 0..1),
+            (Ok(Token::Identifier), "x", 1..2),
+            (Ok(Token::Number), "0", 3..4),
+            (Ok(Token::Identifier), "b", 4..5),
         ],
     );
 }
@@ -300,10 +299,10 @@ fn abcs() {
     assert_lex(
         "abc abcabcabcabc abcdef abcabcxyz",
         &[
-            (Token::Abc, "abc", 0..3),
-            (Token::Abc, "abcabcabcabc", 4..16),
-            (Token::Abc, "abcdef", 17..23),
-            (Token::Abc, "abcabcxyz", 24..33),
+            (Ok(Token::Abc), "abc", 0..3),
+            (Ok(Token::Abc), "abcabcabcabc", 4..16),
+            (Ok(Token::Abc), "abcdef", 17..23),
+            (Ok(Token::Abc), "abcabcxyz", 24..33),
         ],
     );
 }
@@ -313,12 +312,12 @@ fn invalid_abcs() {
     assert_lex(
         "ab abca abcabcab abxyz abcxy abcdefxyz",
         &[
-            (Token::Identifier, "ab", 0..2),
-            (Token::Identifier, "abca", 3..7),
-            (Token::Identifier, "abcabcab", 8..16),
-            (Token::Identifier, "abxyz", 17..22),
-            (Token::Identifier, "abcxy", 23..28),
-            (Token::Identifier, "abcdefxyz", 29..38),
+            (Ok(Token::Identifier), "ab", 0..2),
+            (Ok(Token::Identifier), "abca", 3..7),
+            (Ok(Token::Identifier), "abcabcab", 8..16),
+            (Ok(Token::Identifier), "abxyz", 17..22),
+            (Ok(Token::Identifier), "abcxy", 23..28),
+            (Ok(Token::Identifier), "abcdefxyz", 29..38),
         ],
     );
 }
@@ -328,9 +327,9 @@ fn bytes() {
     assert_lex(
         "byte bytes1 bytes32",
         &[
-            (Token::Byte, "byte", 0..4),
-            (Token::Byte, "bytes1", 5..11),
-            (Token::Byte, "bytes32", 12..19),
+            (Ok(Token::Byte), "byte", 0..4),
+            (Ok(Token::Byte), "bytes1", 5..11),
+            (Ok(Token::Byte), "bytes32", 12..19),
         ],
     );
 }
@@ -356,38 +355,38 @@ fn ints() {
          int160 int168 int176 int184 int192 int200 int208 int216 int224 \
          int232 int240 int248 int256",
         &[
-            (Token::Int, "int8", 0..4),
-            (Token::Int, "int16", 5..10),
-            (Token::Int, "int24", 11..16),
-            (Token::Int, "int32", 17..22),
-            (Token::Int, "int40", 23..28),
-            (Token::Int, "int48", 29..34),
-            (Token::Int, "int56", 35..40),
-            (Token::Int, "int64", 41..46),
-            (Token::Int, "int72", 47..52),
-            (Token::Int, "int80", 53..58),
-            (Token::Int, "int88", 59..64),
-            (Token::Int, "int96", 65..70),
-            (Token::Int, "int104", 71..77),
-            (Token::Int, "int112", 78..84),
-            (Token::Int, "int120", 85..91),
-            (Token::Int, "int128", 92..98),
-            (Token::Int, "int136", 99..105),
-            (Token::Int, "int144", 106..112),
-            (Token::Int, "int152", 113..119),
-            (Token::Int, "int160", 120..126),
-            (Token::Int, "int168", 127..133),
-            (Token::Int, "int176", 134..140),
-            (Token::Int, "int184", 141..147),
-            (Token::Int, "int192", 148..154),
-            (Token::Int, "int200", 155..161),
-            (Token::Int, "int208", 162..168),
-            (Token::Int, "int216", 169..175),
-            (Token::Int, "int224", 176..182),
-            (Token::Int, "int232", 183..189),
-            (Token::Int, "int240", 190..196),
-            (Token::Int, "int248", 197..203),
-            (Token::Int, "int256", 204..210),
+            (Ok(Token::Int), "int8", 0..4),
+            (Ok(Token::Int), "int16", 5..10),
+            (Ok(Token::Int), "int24", 11..16),
+            (Ok(Token::Int), "int32", 17..22),
+            (Ok(Token::Int), "int40", 23..28),
+            (Ok(Token::Int), "int48", 29..34),
+            (Ok(Token::Int), "int56", 35..40),
+            (Ok(Token::Int), "int64", 41..46),
+            (Ok(Token::Int), "int72", 47..52),
+            (Ok(Token::Int), "int80", 53..58),
+            (Ok(Token::Int), "int88", 59..64),
+            (Ok(Token::Int), "int96", 65..70),
+            (Ok(Token::Int), "int104", 71..77),
+            (Ok(Token::Int), "int112", 78..84),
+            (Ok(Token::Int), "int120", 85..91),
+            (Ok(Token::Int), "int128", 92..98),
+            (Ok(Token::Int), "int136", 99..105),
+            (Ok(Token::Int), "int144", 106..112),
+            (Ok(Token::Int), "int152", 113..119),
+            (Ok(Token::Int), "int160", 120..126),
+            (Ok(Token::Int), "int168", 127..133),
+            (Ok(Token::Int), "int176", 134..140),
+            (Ok(Token::Int), "int184", 141..147),
+            (Ok(Token::Int), "int192", 148..154),
+            (Ok(Token::Int), "int200", 155..161),
+            (Ok(Token::Int), "int208", 162..168),
+            (Ok(Token::Int), "int216", 169..175),
+            (Ok(Token::Int), "int224", 176..182),
+            (Ok(Token::Int), "int232", 183..189),
+            (Ok(Token::Int), "int240", 190..196),
+            (Ok(Token::Int), "int248", 197..203),
+            (Ok(Token::Int), "int256", 204..210),
         ],
     );
 }
@@ -396,15 +395,15 @@ fn ints() {
 fn uints() {
     let mut lex = Token::lexer("uint8 uint16 uint32");
 
-    assert_eq!(lex.next(), Some(Token::Uint));
+    assert_eq!(lex.next(), Some(Ok(Token::Uint)));
     assert_eq!(lex.span(), 0..5);
     assert_eq!(lex.extras.byte_size, 1);
 
-    assert_eq!(lex.next(), Some(Token::Uint));
+    assert_eq!(lex.next(), Some(Ok(Token::Uint)));
     assert_eq!(lex.span(), 6..12);
     assert_eq!(lex.extras.byte_size, 2);
 
-    assert_eq!(lex.next(), Some(Token::Uint));
+    assert_eq!(lex.next(), Some(Ok(Token::Uint)));
     assert_eq!(lex.span(), 13..19);
     assert_eq!(lex.extras.byte_size, 4);
 

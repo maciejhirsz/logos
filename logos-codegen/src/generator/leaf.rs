@@ -41,12 +41,12 @@ impl<'a> Generator<'a> {
             }
             None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
-                lex.set(#name::#ident);
+                lex.set(Ok(#name::#ident));
             },
             None => quote! {
                 #bump
                 let token = #name::#ident(lex.slice());
-                lex.set(token);
+                lex.set(Ok(token));
             },
         }
     }

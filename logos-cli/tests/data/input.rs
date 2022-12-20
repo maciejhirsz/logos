@@ -2,6 +2,4 @@
 enum Token {
     #[regex("a-z")]
     Letter,
-    #[error]
-    Error,
 }

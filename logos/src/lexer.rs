@@ -12,7 +12,7 @@ pub type Span = core::ops::Range<usize>;
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
-    token: ManuallyDrop<Option<Token>>,
+    token: ManuallyDrop<Option<Result<Token, Token::Error>>>,
     token_start: usize,
     token_end: usize,
 
@@ -74,11 +74,30 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// ```
     /// use logos::Logos;
     ///
+    /// #[derive(Debug, PartialEq, Clone, Default)]
+    /// enum LexingError {
+    ///     NumberParseError,
+    ///     #[default]
+    ///     Other
+    /// }
+    ///
+    /// impl From<std::num::ParseIntError> for LexingError {
+    ///    fn from(_: std::num::ParseIntError) -> Self {
+    ///       LexingError::NumberParseError
+    ///   }
+    /// }
+    ///
+    /// impl From<std::num::ParseFloatError> for LexingError {
+    ///   fn from(_: std::num::ParseFloatError) -> Self {
+    ///      LexingError::NumberParseError
+    ///   }
+    /// }
+    ///
     /// #[derive(Logos, Debug, PartialEq)]
+    /// #[logos(error = LexingError)]
     /// enum Example {
     ///     #[regex(r"[ \n\t\f]+", logos::skip)]
-    ///     #[error]
-    ///     Error,
+    ///     Ignored,
     ///
     ///     #[regex("-?[0-9]+", |lex| lex.slice().parse())]
     ///     Integer(i64),
@@ -92,10 +111,10 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// assert_eq!(
     ///     tokens,
     ///     &[
-    ///         (Example::Integer(42), 0..2),
-    ///         (Example::Float(3.14), 3..7),
-    ///         (Example::Integer(-5), 8..10),
-    ///         (Example::Error, 11..12), // 'f' is not a recognized token
+    ///         (Ok(Example::Integer(42)), 0..2),
+    ///         (Ok(Example::Float(3.14)), 3..7),
+    ///         (Ok(Example::Integer(-5)), 8..10),
+    ///         (Err(LexingError::Other), 11..12), // 'f' is not a recognized token
     ///     ],
     /// );
     /// ```
@@ -184,10 +203,10 @@ impl<'source, Token> Iterator for Lexer<'source, Token>
 where
     Token: Logos<'source>,
 {
-    type Item = Token;
+    type Item = Result<Token, Token::Error>;
 
     #[inline]
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<Result<Token, Token::Error>> {
         self.token_start = self.token_end;
 
         Token::lex(self);
@@ -211,7 +230,7 @@ impl<'source, Token> Iterator for SpannedIter<'source, Token>
 where
     Token: Logos<'source>,
 {
-    type Item = (Token, Span);
+    type Item = (Result<Token, Token::Error>, Span);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer.next().map(|token| (token, self.lexer.span()))
@@ -304,7 +323,7 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        self.token = ManuallyDrop::new(Some(Token::ERROR));
+        self.token = ManuallyDrop::new(Some(Err(Token::Error::default())));
     }
 
     #[inline]
@@ -313,7 +332,13 @@ where
     }
 
     #[inline]
-    fn set(&mut self, token: Token) {
+    fn set(
+        &mut self,
+        token: Result<
+            Self::Token,
+            <<Self as LexerInternal<'source>>::Token as Logos<'source>>::Error,
+        >,
+    ) {
         self.token = ManuallyDrop::new(Some(token));
     }
 }
