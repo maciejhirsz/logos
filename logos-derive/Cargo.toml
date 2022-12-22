@@ -9,7 +9,7 @@ documentation = "https://docs.rs/logos-derive"
 keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 categories = ["parsing", "text-processing"]
 readme = "../README.md"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "logos_derive"

@@ -2,6 +2,7 @@ use std::fmt::{self, Debug, Display};
 use std::hash::{Hash, Hasher};
 
 use crate::graph::{Fork, Graph, Node, NodeId, Range, Rope};
+use crate::util::is_ascii;
 
 impl<T> From<Fork> for Node<T> {
     fn from(fork: Fork) -> Self {
@@ -12,10 +13,6 @@ impl<T> From<Rope> for Node<T> {
     fn from(rope: Rope) -> Self {
         Node::Rope(rope)
     }
-}
-
-fn is_ascii(byte: u8) -> bool {
-    (byte >= 0x20) & (byte < 0x7F)
 }
 
 impl Hash for Fork {

@@ -1,8 +1,9 @@
-use proc_macro2::TokenStream;
-use quote::quote;
+use proc_macro2::{Literal, TokenStream};
+use quote::{quote, ToTokens as _};
 
 use crate::generator::{Context, Generator};
 use crate::graph::Rope;
+use crate::util::is_ascii;
 
 impl<'a> Generator<'a> {
     pub fn generate_rope(&mut self, rope: &Rope, mut ctx: Context) -> TokenStream {
@@ -19,21 +20,19 @@ impl<'a> Generator<'a> {
             }
         };
 
-        return quote! {
+        quote! {
             match #read {
                 Some(#pat) => #then,
                 _ => #miss,
             }
-        };
+        }
     }
 }
 
 fn byte_slice_literal(bytes: &[u8]) -> TokenStream {
-    if bytes.iter().any(|&b| b < 0x20 || b >= 0x7F) {
-        return quote!(&[#(#bytes),*]);
+    if bytes.iter().copied().all(is_ascii) {
+        Literal::byte_string(bytes).into_token_stream()
+    } else {
+        quote!(&[#(#bytes),*])
     }
-
-    let slice = std::str::from_utf8(bytes).unwrap();
-
-    syn::parse_str(&format!("b{:?}", slice)).unwrap()
 }

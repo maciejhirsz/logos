@@ -4,7 +4,7 @@ use regex_syntax::utf8::Utf8Range;
 
 use std::cmp::{Ord, Ordering};
 
-#[derive(Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Range {
     pub start: u8,
     pub end: u8,
@@ -61,6 +61,12 @@ impl Iterator for Range {
             }
             std::cmp::Ordering::Greater => None,
         }
+    }
+}
+
+impl PartialOrd for Range {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

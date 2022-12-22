@@ -12,6 +12,7 @@ use std::ops::Range;
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
+#[allow(clippy::len_without_is_empty)] // internal trait, no need
 pub trait Source {
     /// A type this `Source` can be sliced into.
     type Slice: ?Sized + PartialEq + Eq + Debug;
@@ -41,6 +42,10 @@ pub trait Source {
         Chunk: self::Chunk<'a>;
 
     /// Read a chunk of bytes into an array without doing bounds checks.
+    ///
+    /// # Safety
+    ///
+    /// Same as `str::get_unchecked` or `[u8]::get_unchecked`.
     unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
     where
         Chunk: self::Chunk<'a>;
@@ -59,8 +64,6 @@ pub trait Source {
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
     ///
-    /// **Using this method with range out of bounds is undefined behavior!**
-    ///
     /// ```rust
     /// use logos::Source;
     ///
@@ -70,6 +73,10 @@ pub trait Source {
     ///     assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     /// }
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// Same as `slice::get_unchecked`.
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self::Slice;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
@@ -207,6 +214,10 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     const SIZE: usize;
 
     /// Create a chunk from a raw byte pointer.
+    ///
+    /// # Safety
+    ///
+    /// Same as `std::slice::from_raw_parts` with `Self::SIZE` for `len`.
     unsafe fn from_ptr(ptr: *const u8) -> Self;
 }
 

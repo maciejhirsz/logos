@@ -2,6 +2,10 @@ use proc_macro2::{Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
 use syn::Ident;
 
+pub fn is_ascii(byte: u8) -> bool {
+    (0x20..0x7f).contains(&byte)
+}
+
 /// Analog to Option<TokenStream>, except when put into the quote!
 /// macro, `MaybeVoid::Void` will produce `()`
 #[derive(Clone)]
@@ -50,19 +54,12 @@ impl ToTokens for MaybeVoid {
 }
 
 pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
-    match tt {
-        TokenTree::Punct(punct)
-            if punct.as_char() == expect && punct.spacing() == Spacing::Alone =>
-        {
-            true
-        }
-        _ => false,
-    }
+    matches!(tt, TokenTree::Punct(punct) if punct.as_char() == expect && punct.spacing() == Spacing::Alone)
 }
 
 /// If supplied `tt` is a punct matching a char, returns `None`, else returns `tt`
 pub fn expect_punct(tt: Option<TokenTree>, expect: char) -> Option<TokenTree> {
-    tt.filter(|tt| !is_punct(&tt, expect))
+    tt.filter(|tt| !is_punct(tt, expect))
 }
 
 pub trait ToIdent {

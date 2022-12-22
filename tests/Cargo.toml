@@ -4,7 +4,7 @@ version = "0.0.0"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/maciejhirsz/logos"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 logos = { path = "../logos", default-features = false, features = ["std"] }

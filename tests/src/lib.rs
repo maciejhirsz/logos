@@ -6,10 +6,17 @@ use std::ops::Range;
 
 mod binary;
 
-pub fn assert_lex<'a, Token>(
-    source: &'a Token::Source,
-    tokens: &[(Token, &'a <Token::Source as Source>::Slice, Range<usize>)],
-) where
+type LexInvariants<'a, Token> = (
+    // the token itself
+    Token,
+    // the source corresponding to the token
+    &'a <<Token as Logos<'a>>::Source as Source>::Slice,
+    // the token's span
+    Range<usize>,
+);
+
+pub fn assert_lex<'a, Token>(source: &'a Token::Source, tokens: &[LexInvariants<'a, Token>])
+where
     Token: Logos<'a> + fmt::Debug + PartialEq,
     Token::Extras: Default,
 {
