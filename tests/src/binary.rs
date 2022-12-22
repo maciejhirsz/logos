@@ -11,9 +11,7 @@
 //!     NonUtf8,
 //! }
 //!
-//! fn main() {
-//!     Token::lexer("This shouldn't work with a string literal!");
-//! }
+//! Token::lexer("This shouldn't work with a string literal!")
 //! ```
 //! Same, but with regex:
 //!
@@ -30,9 +28,7 @@
 //!     NonUtf8,
 //! }
 //!
-//! fn main() {
-//!     Token::lexer("This shouldn't work with a string literal!");
-//! }
+//! Token::lexer("This shouldn't work with a string literal!")
 //! ```
 
 pub use super::assert_lex;

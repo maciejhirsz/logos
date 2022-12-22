@@ -208,15 +208,10 @@ pub mod ascii_case {
 
     impl MakeAsciiCaseInsensitive for u8 {
         fn make_ascii_case_insensitive(self) -> Mir {
-            if b'a' <= self && self <= b'z' {
+            if self.is_ascii_alphabetic() {
                 Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self - 32)),
-                    Mir::Literal(hir::Literal::Byte(self)),
-                ])
-            } else if b'A' <= self && self <= b'Z' {
-                Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self)),
-                    Mir::Literal(hir::Literal::Byte(self + 32)),
+                    Mir::Literal(hir::Literal::Byte(self.to_ascii_lowercase())),
+                    Mir::Literal(hir::Literal::Byte(self.to_ascii_uppercase())),
                 ])
             } else {
                 Mir::Literal(hir::Literal::Byte(self))
@@ -226,8 +221,8 @@ pub mod ascii_case {
 
     impl MakeAsciiCaseInsensitive for char {
         fn make_ascii_case_insensitive(self) -> Mir {
-            if self.is_ascii() {
-                (self as u8).make_ascii_case_insensitive()
+            if let Ok(byte) = u8::try_from(self) {
+                byte.make_ascii_case_insensitive()
             } else {
                 Mir::Literal(hir::Literal::Unicode(self))
             }
@@ -254,23 +249,19 @@ pub mod ascii_case {
         fn make_ascii_case_insensitive(mut self) -> Mir {
             use std::cmp;
 
-            // Manuall implementation to only perform the case folding on ascii characters.
+            // Manual implementation to only perform the case folding on ASCII characters.
 
             let mut ranges = Vec::new();
 
             for range in self.ranges() {
                 #[inline]
                 fn overlaps(st1: u8, end1: u8, st2: u8, end2: u8) -> bool {
-                    (st2 <= st1 && st1 <= end2) || (st1 <= st2 && st2 <= end1)
+                    (st1..=end1).contains(&st2) || (st2..=end2).contains(&st1)
                 }
 
                 #[inline]
                 fn make_ascii(c: char) -> Option<u8> {
-                    if c.is_ascii() {
-                        return Some(c as u8);
-                    } else {
-                        None
-                    }
+                    c.try_into().ok()
                 }
 
                 match (make_ascii(range.start()), make_ascii(range.end())) {
