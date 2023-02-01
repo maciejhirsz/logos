@@ -1,5 +1,5 @@
 use crate::source::Chunk;
-use crate::{Filter, Lexer, Logos, Skip};
+use crate::{Filter, FilterResult, Lexer, Logos, Skip};
 
 /// Trait used by the functions contained in the `Lexicon`.
 ///
@@ -118,6 +118,22 @@ impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Filter<P> {
                 lex.trivia();
                 T::lex(lex);
             }
+        }
+    }
+}
+
+impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for FilterResult<P> {
+    fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(P) -> T,
+    {
+        match self {
+            FilterResult::Emit(product) => lex.set(c(product)),
+            FilterResult::Skip => {
+                lex.trivia();
+                T::lex(lex);
+            }
+            FilterResult::Error => lex.set(T::ERROR),
         }
     }
 }

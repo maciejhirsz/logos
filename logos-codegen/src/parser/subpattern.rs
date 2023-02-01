@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use syn::{Ident, LitByteStr, LitStr};
+use syn::Ident;
 
 use crate::error::Errors;
 use crate::mir::Mir;
@@ -7,7 +7,7 @@ use crate::parser::definition::{bytes_to_regex_string, Literal};
 
 #[derive(Default)]
 pub struct Subpatterns {
-    map: Vec<(Ident, Literal)>,
+    map: Vec<(Ident, String)>,
 }
 
 impl Subpatterns {
@@ -27,28 +27,19 @@ impl Subpatterns {
             return;
         }
 
-        // Validate the literal as proper regex. If it's not, error and manufacture a substitute.
-        let lit = match &lit {
-            Literal::Utf8(s) => match Mir::utf8(&s.value()) {
-                Ok(_) => lit,
-                Err(err) => {
-                    errors.err(err, lit.span());
-                    Literal::Utf8(LitStr::new(&param.to_string(), lit.span()))
-                }
-            },
-            Literal::Bytes(b) => {
-                let source = bytes_to_regex_string(b.value());
-                match Mir::binary(&source) {
-                    Ok(_) => lit,
-                    Err(err) => {
-                        errors.err(err, lit.span());
-                        Literal::Bytes(LitByteStr::new(param.to_string().as_bytes(), lit.span()))
-                    }
-                }
-            }
+        let fixed = self.fix(&lit, errors);
+
+        // Validate the literal as proper regex. If it's not, emit an error.
+        let mir = match &lit {
+            Literal::Utf8(_) => Mir::utf8(&fixed),
+            Literal::Bytes(_) => Mir::binary(&fixed),
         };
 
-        self.map.push((param, lit));
+        if let Err(err) = mir {
+            errors.err(err, lit.span());
+        };
+
+        self.map.push((param, fixed));
     }
 
     pub fn fix(&self, lit: &Literal, errors: &mut Errors) -> String {
@@ -86,18 +77,10 @@ impl Subpatterns {
             };
 
             match self.map.iter().find(|(def, _)| *def == name) {
-                Some((_, val)) => match val {
-                    Literal::Utf8(val) => {
-                        let subpattern = val.value();
-                        pattern.replace_range(i..subref_end, &subpattern);
-                        i += subpattern.len() + 1;
-                    }
-                    Literal::Bytes(val) => {
-                        let subpattern = bytes_to_regex_string(val.value());
-                        pattern.replace_range(i..subref_end, &subpattern);
-                        i += subpattern.len() + 1;
-                    }
-                },
+                Some((_, subpattern)) => {
+                    pattern.replace_range(i..subref_end, &subpattern);
+                    i += subpattern.len() + 1;
+                }
                 None => {
                     errors.err(
                         format!("subpattern reference `{}` has not been defined", name),

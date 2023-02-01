@@ -219,20 +219,11 @@ impl<'source> Chunk<'source> for u8 {
     }
 }
 
-macro_rules! impl_array {
-    ($($size:expr),*) => ($(
-        impl<'source> Chunk<'source> for &'source [u8; $size] {
-            const SIZE: usize = $size;
+impl<'source, const N: usize> Chunk<'source> for &'source [u8; N] {
+    const SIZE: usize = N;
 
-            #[inline]
-            unsafe fn from_ptr(ptr: *const u8) -> Self {
-                &*(ptr as *const [u8; $size])
-            }
-        }
-    )*);
+    #[inline]
+    unsafe fn from_ptr(ptr: *const u8) -> Self {
+        &*(ptr as *const [u8; N])
+    }
 }
-
-impl_array!(
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-    27, 28, 29, 30, 31, 32
-);

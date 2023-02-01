@@ -7,6 +7,7 @@ use syn::{Attribute, GenericParam, Lit, Type};
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, MaybeVoid};
+use crate::LOGOS_ATTR;
 
 mod definition;
 mod ignore_flags;
@@ -71,7 +72,7 @@ impl Parser {
     /// Try to parse the main `#[logos(...)]`, does nothing if
     /// the attribute's name isn't `logos`.
     pub fn try_parse_logos(&mut self, attr: &mut Attribute) {
-        if !attr.path.is_ident("logos") {
+        if !attr.path.is_ident(LOGOS_ATTR) {
             return;
         }
 
@@ -114,8 +115,8 @@ impl Parser {
                     // TODO: Remove in future versions
                     self.err(
                         "\
-                        trivia are no longer supported.\n\n\
-
+                        trivia are no longer supported.\n\
+                        \n\
                         For help with migration see release notes: \
                         https://github.com/maciejhirsz/logos/releases\
                         ",
@@ -178,8 +179,8 @@ impl Parser {
                     _ => {
                         self.err(
                             "\
-                            Expected a named argument at this position\n\n\
-
+                            Expected a named argument at this position\n\
+                            \n\
                             hint: If you are trying to define a callback here use: callback = ...\
                             ",
                             tokens.span(),
