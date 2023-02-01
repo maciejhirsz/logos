@@ -1,5 +1,5 @@
 [workspace]
-members = ["logos", "logos-cli", "logos-codegen", "logos-derive", "tests"]
+members = ["logos", "logos-codegen", "logos-derive", "tests"]
 
 [profile]
 release = { lto = true }
