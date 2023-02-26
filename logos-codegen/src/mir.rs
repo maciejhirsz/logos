@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use regex_syntax::hir::{Hir, HirKind, RepetitionKind};
+use regex_syntax::hir::{Hir, HirKind, RepetitionKind, RepetitionRange};
 use regex_syntax::ParserBuilder;
 
 pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
@@ -118,8 +118,34 @@ impl TryFrom<Hir> for Mir {
                     RepetitionKind::OneOrMore => {
                         Ok(Mir::Concat(vec![mir.clone(), Mir::Loop(Box::new(mir))]))
                     }
-                    RepetitionKind::Range(..) => {
-                        Err("#[regex]: {n,m} repetition range is currently unsupported.".into())
+                    RepetitionKind::Range(range) => {
+                        match range {
+                            RepetitionRange::Exactly(n) => {
+                                let mut out = Vec::with_capacity(n as usize);
+                                for _ in 0..n {
+                                    out.push(mir.clone());
+                                }
+                                Ok(Mir::Concat(out))
+                            }
+                            RepetitionRange::AtLeast(n) => {
+                                let mut out = Vec::with_capacity(n as usize );
+                                for _ in 0..n {
+                                    out.push(mir.clone());
+                                }
+                                out.push(Mir::Loop(Box::new(mir)));
+                                Ok(Mir::Concat(out))
+                            }
+                            RepetitionRange::Bounded(n, m) => {
+                                let mut out = Vec::with_capacity(m as usize);
+                                for _ in 0..n {
+                                    out.push(mir.clone());
+                                }
+                                for _ in n..m {
+                                    out.push(Mir::Maybe(Box::new(mir.clone())));
+                                }
+                                Ok(Mir::Concat(out))
+                            }
+                        }
                     }
                 }
             }
