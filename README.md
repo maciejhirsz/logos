@@ -139,6 +139,7 @@ Logos can handle callbacks with following return types:
 | [`Skip`]               | _skips matched input_                                                                               |
 | [`Filter<T>`]          | `Ok(Token::Value(T))` **or** _skips matched input_                                                  |
 | [`FilterResult<T, E>`] | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))` **or** _skips matched input_ |
+
 Callbacks can be also used to do perform more specialized lexing in place
 where regular expressions are too limiting. For specifics look at
 `Lexer::remainder` and `Lexer::bump`.
