@@ -3,7 +3,6 @@ use super::Logos;
 use crate::source::{self, Source};
 
 use core::fmt::{self, Debug};
-use core::mem::ManuallyDrop;
 
 /// Byte range in the source.
 pub type Span = core::ops::Range<usize>;
@@ -12,7 +11,7 @@ pub type Span = core::ops::Range<usize>;
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
-    token: ManuallyDrop<Option<Token>>,
+    token: Option<Token>,
     token_start: usize,
     token_end: usize,
 
@@ -53,7 +52,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     pub fn with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
         Lexer {
             source,
-            token: ManuallyDrop::new(None),
+            token: None,
             extras,
             token_start: 0,
             token_end: 0,
@@ -143,7 +142,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     {
         Lexer {
             source: self.source,
-            token: ManuallyDrop::new(None),
+            token: None,
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
@@ -192,11 +191,7 @@ where
 
         Token::lex(self);
 
-        // This basically treats self.token as a temporary field.
-        // Since we always immediately return a newly set token here,
-        // we don't have to replace it with `None` or manually drop
-        // it later.
-        unsafe { ManuallyDrop::take(&mut self.token) }
+        self.token.take()
     }
 }
 
@@ -304,16 +299,16 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        self.token = ManuallyDrop::new(Some(Token::ERROR));
+        self.token = Some(Token::ERROR);
     }
 
     #[inline]
     fn end(&mut self) {
-        self.token = ManuallyDrop::new(None);
+        self.token = None;
     }
 
     #[inline]
     fn set(&mut self, token: Token) {
-        self.token = ManuallyDrop::new(Some(token));
+        self.token = Some(token);
     }
 }
