@@ -34,7 +34,7 @@
 //!   There's more about callbacks below.
 //!
 //! ```rust
-//! use logos::{Logos, Lexer};
+//! use logos::Logos;
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
@@ -59,7 +59,7 @@
 //! }
 //!
 //! fn main() {
-//!     let mut lex: Lexer<_> = Token::lexer("Create ridiculously fast Lexers.");
+//!     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 //!
 //!     assert_eq!(lex.next(), Some(Token::Text));
 //!     assert_eq!(lex.span(), 0..6);
