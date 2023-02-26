@@ -22,6 +22,9 @@ enum Inner {
     #[regex(r"\\u\{[^}]*\}")]
     EscapedCodepoint,
 
+    #[regex(r"\\[0-7]{1,3}")]
+    EscapedOctal,
+
     #[token(r#"\""#)]
     EscapedQuote,
 
@@ -99,7 +102,7 @@ impl<'source> Iterator for ModeBridge<'source> {
 fn iterating_modes() {
     use Inner::*;
     use Tokens::*;
-    let s = r#""Hello W\u{00f4}rld\n""#;
+    let s = r#""Hello W\u{00f4}\162ld\n""#;
     let moded = ModeBridge {
         mode: Modes::new(s),
     };

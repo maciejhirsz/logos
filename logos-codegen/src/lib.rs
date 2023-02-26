@@ -25,6 +25,7 @@ use util::MaybeVoid;
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::parse_quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
 
@@ -214,6 +215,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
         Mode::Utf8 => quote!(str),
         Mode::Binary => quote!([u8]),
     };
+    let logos_path = parser
+        .logos_path
+        .take()
+        .unwrap_or_else(|| parse_quote!(::logos));
 
     let generics = parser.generics();
     let this = quote!(#name #generics);
@@ -292,9 +297,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let body = generator.generate();
     let tokens = impl_logos(quote! {
-        use ::logos::internal::{LexerInternal, CallbackResult};
+        use #logos_path::internal::{LexerInternal, CallbackResult};
 
-        type Lexer<'s> = ::logos::Lexer<'s, #this>;
+        type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()
