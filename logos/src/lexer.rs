@@ -4,6 +4,7 @@ use crate::source::{self, Source};
 
 use core::fmt::{self, Debug};
 use core::mem::ManuallyDrop;
+use core::ops::{Deref, DerefMut};
 
 /// Byte range in the source.
 pub type Span = core::ops::Range<usize>;
@@ -234,6 +235,26 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer.next().map(|token| (token, self.lexer.span()))
+    }
+}
+
+impl<'source, Token> Deref for SpannedIter<'source, Token>
+where
+    Token: Logos<'source>,
+{
+    type Target = Lexer<'source, Token>;
+
+    fn deref(&self) -> &Lexer<'source, Token> {
+        &self.lexer
+    }
+}
+
+impl<'source, Token> DerefMut for SpannedIter<'source, Token>
+where
+    Token: Logos<'source>,
+{
+    fn deref_mut(&mut self) -> &mut Lexer<'source, Token> {
+        &mut self.lexer
     }
 }
 
