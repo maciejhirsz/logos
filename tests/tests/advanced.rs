@@ -4,10 +4,8 @@ use logos_derive::Logos;
 #[logos(subpattern xdigit = r"[0-9a-fA-F]")]
 #[logos(subpattern a = r"A")]
 #[logos(subpattern b = r"(?&a)BB(?&a)")]
+#[logos(skip r"[ \t\n\f]+")]
 enum Token {
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    Ignored,
-
     #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
     LiteralString,
 

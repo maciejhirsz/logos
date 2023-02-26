@@ -91,6 +91,9 @@ impl AttributeParser {
     }
 
     fn parse_literal(&mut self, name: Ident, lit: Literal) -> Nested {
+        // TODO: Error if there are any tokens following
+        let _ = self.collect_tail(Empty);
+
         Nested::Named(name, NestedValue::Literal(lit))
     }
 

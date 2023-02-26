@@ -6,10 +6,8 @@ mod crunch {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
     enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Ignored,
-
         #[token("else")]
         Else,
 
@@ -33,10 +31,8 @@ mod numbers {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
     enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Ignored,
-
         #[regex(r"[0-9][0-9_]*")]
         LiteralUnsignedNumber,
 
@@ -76,10 +72,8 @@ mod benches {
     use super::*;
 
     #[derive(Debug, Clone, Copy, PartialEq, Logos)]
+    #[logos(skip r"[ \t\n\f]+")]
     pub enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        InvalidToken,
-
         #[regex("[a-zA-Z_$][a-zA-Z0-9_$]*")]
         Identifier,
 
@@ -223,10 +217,8 @@ mod unicode_whitespace {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+    #[logos(skip r"\p{Whitespace}+")]
     enum Token {
-        #[regex(r"\p{Whitespace}+", logos::skip)]
-        Ignored,
-
         #[regex("[0-9]+")]
         Number,
     }
@@ -248,10 +240,8 @@ mod trivia {
     use super::*;
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+    #[logos(skip "[a-f]+")]
     enum Token {
-        #[regex("[a-f]+", logos::skip)]
-        Ignored,
-
         #[regex("[0-9]+")]
         Number,
     }
@@ -351,11 +341,9 @@ mod type_params {
         type S = &str,
         type N = u64,
         error = LexingError,
+        skip r"[ \n\t\f]+",
     )]
     enum Token<S, N> {
-        #[regex(r"[ \n\t\f]+", logos::skip)]
-        Ignored,
-
         #[regex("[a-z]+")]
         Ident(S),
 
@@ -385,10 +373,8 @@ mod priority_disambiguate_1 {
     use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \n\t\f]+")]
     enum Token {
-        #[regex(r"[ \n\t\f]+", logos::skip)]
-        Ignored,
-
         #[regex("[abc]+", priority = 2)]
         Abc,
 
@@ -408,10 +394,8 @@ mod priority_disambiguate_2 {
     use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \n\t\f]+")]
     enum Token {
-        #[regex(r"[ \n\t\f]+", logos::skip)]
-        Ignored,
-
         #[regex("[abc]+")]
         Abc,
 
@@ -431,10 +415,8 @@ mod loop_in_loop {
     use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
     pub enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Ignored,
-
         #[regex("f(f*oo)*")]
         Foo,
     }
@@ -458,10 +440,8 @@ mod maybe_in_loop {
     use super::*;
 
     #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
     pub enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Error,
-
         #[regex("f(f?oo)*")]
         Foo,
     }

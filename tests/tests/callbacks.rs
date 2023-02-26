@@ -26,10 +26,8 @@ mod data {
 
     #[derive(Logos, Debug, PartialEq)]
     #[logos(error = LexingError)]
+    #[logos(skip r"[ \t\n\f]+")]
     enum Token<'a> {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Ignored,
-
         #[regex(r"[a-zA-Z]+", |lex| lex.slice())]
         Text(&'a str),
 
@@ -65,10 +63,8 @@ mod nested_lifetime {
 
     #[derive(Logos, Debug, PartialEq)]
     #[logos(error = LexingError)]
+    #[logos(skip r"[ \t\n\f]+")]
     enum Token<'a> {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Ignored,
-
         #[regex(r"[0-9]+", |lex| {
             let slice = lex.slice();
 
@@ -116,10 +112,8 @@ mod rust {
 
     #[derive(Logos, Debug, Clone, Copy, PartialEq)]
     #[logos(error = LexingError)]
+    #[logos(skip r"[ \t\n\f]+")]
     enum Token {
-        #[regex(r"[ \t\n\f]+", logos::skip)]
-        Ignored,
-
         #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
         Ident,
 

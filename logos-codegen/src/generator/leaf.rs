@@ -39,6 +39,14 @@ impl<'a> Generator<'a> {
                     callback(lex).construct(#constructor, lex);
                 }
             }
+            Some(Callback::Skip(_)) => {
+                quote! {
+                    #bump
+
+                    lex.trivia();
+                    #name::lex(lex);
+                }
+            }
             None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
                 lex.set(Ok(#name::#ident));

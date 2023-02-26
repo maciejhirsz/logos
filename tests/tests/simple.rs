@@ -31,7 +31,6 @@ enum Token {
 
         logos::Skip
     })]
-    Ignored,
 
     #[regex("[a-zA-Z$_][a-zA-Z0-9$_]*")]
     Identifier,
