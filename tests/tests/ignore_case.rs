@@ -1,12 +1,10 @@
 mod ignore_ascii_case {
-    use logos::Logos;
+    use logos_derive::Logos;
     use tests::assert_lex;
 
     #[derive(Logos, Debug, PartialEq, Eq)]
+    #[logos(skip " +")]
     enum Words {
-        #[regex(" +", logos::skip)]
-        Ignored,
-
         #[token("lOwERCaSe", ignore(ascii_case))]
         Lowercase,
         #[token("or", ignore(ascii_case))]
@@ -74,10 +72,8 @@ mod ignore_ascii_case {
     }
 
     #[derive(Logos, Debug, PartialEq, Eq)]
+    #[logos(skip " +")]
     enum Letters {
-        #[regex(" +", logos::skip)]
-        Ignored,
-
         #[regex("a", ignore(ascii_case))]
         Single,
         #[regex("bc", ignore(ascii_case))]
@@ -149,14 +145,13 @@ mod ignore_ascii_case {
 }
 
 mod ignore_case {
-    use logos::Logos;
+    // use logos::Logos as _;
+    use logos_derive::Logos;
     use tests::assert_lex;
 
     #[derive(Logos, Debug, PartialEq, Eq)]
+    #[logos(skip " +")]
     enum Words {
-        #[regex(" +", logos::skip)]
-        Ignored,
-
         #[token("élÉphAnt", ignore(case))]
         Elephant,
         #[token("ÉlèvE", ignore(case))]
@@ -200,10 +195,8 @@ mod ignore_case {
     }
 
     #[derive(Logos, PartialEq, Eq, Debug)]
+    #[logos(skip " +")]
     enum Sink {
-        #[regex(" +", logos::skip)]
-        Ignored,
-
         #[regex("[abcéà]+", ignore(case))]
         Letters,
         #[regex("[0-9]+", ignore(case))]

@@ -8,11 +8,9 @@ mod some {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(crate = "some::path::_logos")]
+#[logos(crate = some::path::_logos)]
+#[logos(skip r"[ \t\n\f]+")]
 enum Token {
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    Ignored,
-
     #[regex("-?[0-9]+")]
     LiteralInteger,
 

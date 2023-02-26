@@ -23,6 +23,7 @@
 //! use logos::Logos;
 //!
 //! #[derive(Logos, Debug, PartialEq)]
+//! #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
 //! enum Token {
 //!     // Tokens can be literal strings, of any length.
 //!     #[token("fast")]
@@ -34,12 +35,6 @@
 //!     // Or regular expressions.
 //!     #[regex("[a-zA-Z]+")]
 //!     Text,
-//!
-//!     // Logos requires one token variant to define whitespace,
-//!     // or any other matches we wish to skip.
-//!     // It can be named anything you wish.
-//!     #[regex(r"[ \t\n\f]+", logos::skip)]
-//!     Ignored,
 //! }
 //!
 //! fn main() {
@@ -91,10 +86,8 @@
 //! }
 //!
 //! #[derive(Logos, Debug, PartialEq)]
+//! #[logos(skip r"[ \t\n\f]+")]
 //! enum Token {
-//!     #[regex(r"[ \t\n\f]+", logos::skip)]
-//!     Ignored,
-//!
 //!     // Callbacks can use closure syntax, or refer
 //!     // to a function defined elsewhere.
 //!     //

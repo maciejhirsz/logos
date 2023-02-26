@@ -1,5 +1,5 @@
 use proc_macro2::token_stream::IntoIter as TokenIter;
-use proc_macro2::{Ident, TokenStream, TokenTree};
+use proc_macro2::{Ident, Literal, TokenStream, TokenTree};
 use quote::quote;
 
 use crate::util::{expect_punct, is_punct};
@@ -7,6 +7,8 @@ use crate::util::{expect_punct, is_punct};
 pub enum NestedValue {
     /// `name = ...`
     Assign(TokenStream),
+    /// `name "literal"`
+    Literal(Literal),
     /// `name(...)`
     Group(TokenStream),
     /// `name ident = ...`
@@ -88,6 +90,13 @@ impl AttributeParser {
         Nested::Named(name, NestedValue::Assign(value))
     }
 
+    fn parse_literal(&mut self, name: Ident, lit: Literal) -> Nested {
+        // TODO: Error if there are any tokens following
+        let _ = self.collect_tail(Empty);
+
+        Nested::Named(name, NestedValue::Literal(lit))
+    }
+
     fn parse_group(&mut self, name: Ident, group: TokenStream) -> Nested {
         Nested::Named(name, NestedValue::Group(group))
     }
@@ -127,6 +136,7 @@ impl Iterator for AttributeParser {
 
         match self.next_tt() {
             Some(tt) if is_punct(&tt, '=') => Some(self.parse_assign(name)),
+            Some(TokenTree::Literal(lit)) => Some(self.parse_literal(name, lit)),
             Some(TokenTree::Group(group)) => Some(self.parse_group(name, group.stream())),
             Some(TokenTree::Ident(next)) => Some(self.parse_keyword(name, next)),
             Some(next) => Some(self.parse_unnamed(name, next)),

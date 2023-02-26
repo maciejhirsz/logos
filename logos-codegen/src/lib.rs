@@ -19,7 +19,7 @@ mod util;
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
-use parser::{Mode, Parser};
+use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
 use util::MaybeVoid;
 
@@ -30,9 +30,7 @@ use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
 
 const LOGOS_ATTR: &str = "logos";
-const EXTRAS_ATTR: &str = "extras";
 const ERROR_ATTR: &str = "error";
-const END_ATTR: &str = "end";
 const TOKEN_ATTR: &str = "token";
 const REGEX_ATTR: &str = "regex";
 
@@ -50,24 +48,29 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     for attr in &mut item.attrs {
         parser.try_parse_logos(attr);
-
-        // TODO: Remove in future versions
-        if attr.path.is_ident(EXTRAS_ATTR) {
-            parser.err(
-                "\
-                #[extras] attribute is deprecated. Use #[logos(extras = Type)] instead.\n\
-                \n\
-                For help with migration see release notes: \
-                https://github.com/maciejhirsz/logos/releases\
-                ",
-                attr.span(),
-            );
-        }
     }
 
     let mut ropes = Vec::new();
     let mut regex_ids = Vec::new();
     let mut graph = Graph::new();
+
+    {
+        let errors = &mut parser.errors;
+
+        for literal in &parser.skips {
+            match literal.to_mir(&parser.subpatterns, IgnoreFlags::Empty, errors) {
+                Ok(mir) => {
+                    let then = graph.push(Leaf::new_skip(literal.span()).priority(mir.priority()));
+                    let id = graph.regex(mir, then);
+
+                    regex_ids.push(id);
+                }
+                Err(err) => {
+                    errors.err(err, literal.span());
+                }
+            }
+        }
+    }
 
     for variant in &mut item.variants {
         let field = match &mut variant.fields {
@@ -115,18 +118,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     parser.err(
                         "\
                         Since 0.13 Logos no longer requires the #[error] variant.\n\
-                        \n\
-                        For help with migration see release notes: \
-                        https://github.com/maciejhirsz/logos/releases\
-                        ",
-                        attr.span(),
-                    );
-                }
-                END_ATTR => {
-                    // TODO: Remove in future versions
-                    parser.err(
-                        "\
-                        Since 0.11 Logos no longer requires the #[end] variant.\n\
                         \n\
                         For help with migration see release notes: \
                         https://github.com/maciejhirsz/logos/releases\
@@ -225,7 +216,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let impl_logos = |body| {
         quote! {
-            impl<'s> ::logos::Logos<'s> for #this {
+            impl<'s> #logos_path::Logos<'s> for #this {
                 type Error = #error_type;
 
                 type Extras = #extras;
@@ -266,14 +257,11 @@ pub fn generate(input: TokenStream) -> TokenStream {
             parser.err(
                 format!(
                     "\
-                    A definition of variant `{0}` can match the same input as another definition of variant `{1}`.\n\
+                    A definition of variant `{a}` can match the same input as another definition of variant `{b}`.\n\
                     \n\
                     hint: Consider giving one definition a higher priority: \
-                    #[regex(..., priority = {2})]\
+                    #[regex(..., priority = {disambiguate})]\
                     ",
-                    a.ident,
-                    b.ident,
-                    disambiguate,
                 ),
                 a.span
             );
@@ -354,8 +342,6 @@ fn strip_attrs_from_vec(attrs: &mut Vec<syn::Attribute>) {
 
 fn is_logos_attr(attr: &syn::Attribute) -> bool {
     attr.path.is_ident(LOGOS_ATTR)
-        || attr.path.is_ident(EXTRAS_ATTR)
-        || attr.path.is_ident(END_ATTR)
         || attr.path.is_ident(TOKEN_ATTR)
         || attr.path.is_ident(REGEX_ATTR)
 }

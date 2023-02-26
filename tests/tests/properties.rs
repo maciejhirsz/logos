@@ -5,10 +5,8 @@ mod binary;
 mod custom_error;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+#[logos(skip r"[ \t\n\f]+")]
 enum Token {
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    Ignored,
-
     #[regex(r"[a-zA-Z]+")]
     Ascii,
 
