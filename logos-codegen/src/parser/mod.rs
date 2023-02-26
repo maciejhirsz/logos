@@ -2,7 +2,7 @@ use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Lit, Type};
+use syn::{Attribute, GenericParam, Lit, Path, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -27,6 +27,7 @@ pub struct Parser {
     pub mode: Mode,
     pub extras: MaybeVoid,
     pub subpatterns: Subpatterns,
+    pub logos_path: Option<Path>,
     types: TypeParams,
 }
 
@@ -128,6 +129,21 @@ impl Parser {
                 }
                 ("subpattern", _) => {
                     self.err(r#"Expected: subpattern name = r"regex""#, name.span());
+                }
+                ("crate", NestedValue::Assign(value)) => {
+                    let value = syn::parse2::<Lit>(value).ok().and_then(|lit| match lit {
+                        Lit::Str(string) => syn::parse_str(&string.value()).ok(),
+                        _ => None,
+                    });
+                    match value {
+                        Some(logos_path) => self.logos_path = Some(logos_path),
+                        None => {
+                            self.err(r#"Expected: crate = "some::path::to::logos""#, name.span());
+                        }
+                    }
+                }
+                ("crate", _) => {
+                    self.err(r#"Expected: crate = "some::path::to::logos""#, name.span());
                 }
                 (unknown, _) => {
                     self.err(
