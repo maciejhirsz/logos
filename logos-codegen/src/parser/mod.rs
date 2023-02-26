@@ -150,11 +150,8 @@ impl Parser {
                 }
                 ("crate", NestedValue::Assign(value)) => match syn::parse2(value) {
                     Ok(logos_path) => self.logos_path = Some(logos_path),
-                    Err(_) => {
-                        self.err(
-                            r#"Expected: #[logos(crate = some::path::to::logos)]"#,
-                            name.span(),
-                        );
+                    Err(err) => {
+                        self.err(err.to_string(), err.span());
                     }
                 },
                 ("crate", _) => {
