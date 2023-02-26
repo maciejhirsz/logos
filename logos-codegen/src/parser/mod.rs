@@ -97,6 +97,10 @@ impl Parser {
             };
 
             match (name.to_string().as_str(), value) {
+                ("skip", NestedValue::Literal(lit)) => {}
+                ("skip", _) => {
+                    self.err("Expected: #[logos(skip \"regex literal\")]", name.span());
+                }
                 ("source", NestedValue::Assign(value)) => {
                     let span = value.span();
                     if let Some(previous) = self.source.replace(value) {
@@ -105,7 +109,7 @@ impl Parser {
                     }
                 }
                 ("source", _) => {
-                    self.err("Expected: source = SomeType", name.span());
+                    self.err("Expected: #[logos(source = SomeType)]", name.span());
                 }
                 ("error", NestedValue::Assign(value)) => {
                     let span = value.span();
@@ -116,7 +120,7 @@ impl Parser {
                     }
                 }
                 ("error", _) => {
-                    self.err("Expected: error = SomeType", name.span());
+                    self.err("Expected: #[logos(error = SomeType)]", name.span());
                 }
                 ("extras", NestedValue::Assign(value)) => {
                     let span = value.span();
@@ -127,46 +131,37 @@ impl Parser {
                     }
                 }
                 ("extras", _) => {
-                    self.err("Expected: extras = SomeType", name.span());
+                    self.err("Expected: #[logos(extras = SomeType)]", name.span());
                 }
                 ("type", NestedValue::KeywordAssign(generic, ty)) => {
                     self.types.set(generic, ty, &mut self.errors);
                 }
                 ("type", _) => {
-                    self.err("Expected: type T = SomeType", name.span());
-                }
-                ("trivia", _) => {
-                    // TODO: Remove in future versions
-                    self.err(
-                        "\
-                        trivia are no longer supported.\n\
-                        \n\
-                        For help with migration see release notes: \
-                        https://github.com/maciejhirsz/logos/releases\
-                        ",
-                        name.span(),
-                    );
+                    self.err("Expected: #[logos(type T = SomeType)]", name.span());
                 }
                 ("subpattern", NestedValue::KeywordAssign(name, value)) => {
                     self.subpatterns.add(name, value, &mut self.errors);
                 }
                 ("subpattern", _) => {
-                    self.err(r#"Expected: subpattern name = r"regex""#, name.span());
+                    self.err(
+                        r#"Expected: #[logos(subpattern name = r"regex")]"#,
+                        name.span(),
+                    );
                 }
-                ("crate", NestedValue::Assign(value)) => {
-                    let value = syn::parse2::<Lit>(value).ok().and_then(|lit| match lit {
-                        Lit::Str(string) => syn::parse_str(&string.value()).ok(),
-                        _ => None,
-                    });
-                    match value {
-                        Some(logos_path) => self.logos_path = Some(logos_path),
-                        None => {
-                            self.err(r#"Expected: crate = "some::path::to::logos""#, name.span());
-                        }
+                ("crate", NestedValue::Assign(value)) => match syn::parse2(value) {
+                    Ok(logos_path) => self.logos_path = Some(logos_path),
+                    Err(_) => {
+                        self.err(
+                            r#"Expected: #[logos(crate = some::path::to::logos)]"#,
+                            name.span(),
+                        );
                     }
-                }
+                },
                 ("crate", _) => {
-                    self.err(r#"Expected: crate = "some::path::to::logos""#, name.span());
+                    self.err(
+                        r#"Expected: #[logos(crate = some::path::to::logos)]"#,
+                        name.span(),
+                    );
                 }
                 (unknown, _) => {
                     self.err(
