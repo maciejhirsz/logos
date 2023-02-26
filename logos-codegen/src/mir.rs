@@ -118,35 +118,33 @@ impl TryFrom<Hir> for Mir {
                     RepetitionKind::OneOrMore => {
                         Ok(Mir::Concat(vec![mir.clone(), Mir::Loop(Box::new(mir))]))
                     }
-                    RepetitionKind::Range(range) => {
-                        match range {
-                            RepetitionRange::Exactly(n) => {
-                                let mut out = Vec::with_capacity(n as usize);
-                                for _ in 0..n {
-                                    out.push(mir.clone());
-                                }
-                                Ok(Mir::Concat(out))
+                    RepetitionKind::Range(range) => match range {
+                        RepetitionRange::Exactly(n) => {
+                            let mut out = Vec::with_capacity(n as usize);
+                            for _ in 0..n {
+                                out.push(mir.clone());
                             }
-                            RepetitionRange::AtLeast(n) => {
-                                let mut out = Vec::with_capacity(n as usize );
-                                for _ in 0..n {
-                                    out.push(mir.clone());
-                                }
-                                out.push(Mir::Loop(Box::new(mir)));
-                                Ok(Mir::Concat(out))
-                            }
-                            RepetitionRange::Bounded(n, m) => {
-                                let mut out = Vec::with_capacity(m as usize);
-                                for _ in 0..n {
-                                    out.push(mir.clone());
-                                }
-                                for _ in n..m {
-                                    out.push(Mir::Maybe(Box::new(mir.clone())));
-                                }
-                                Ok(Mir::Concat(out))
-                            }
+                            Ok(Mir::Concat(out))
                         }
-                    }
+                        RepetitionRange::AtLeast(n) => {
+                            let mut out = Vec::with_capacity(n as usize);
+                            for _ in 0..n {
+                                out.push(mir.clone());
+                            }
+                            out.push(Mir::Loop(Box::new(mir)));
+                            Ok(Mir::Concat(out))
+                        }
+                        RepetitionRange::Bounded(n, m) => {
+                            let mut out = Vec::with_capacity(m as usize);
+                            for _ in 0..n {
+                                out.push(mir.clone());
+                            }
+                            for _ in n..m {
+                                out.push(Mir::Maybe(Box::new(mir.clone())));
+                            }
+                            Ok(Mir::Concat(out))
+                        }
+                    },
                 }
             }
             HirKind::Group(group) => Mir::try_from(*group.hir),

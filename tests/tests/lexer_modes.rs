@@ -112,6 +112,7 @@ fn iterating_modes() {
         Ok(OuterToken(Outer::StartString)),
         Ok(InnerToken(Text)),
         Ok(InnerToken(EscapedCodepoint)),
+        Ok(InnerToken(EscapedOctal)),
         Ok(InnerToken(Text)),
         Ok(InnerToken(EscapedNewline)),
         Ok(InnerToken(EndString)),
