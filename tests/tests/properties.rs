@@ -1,11 +1,13 @@
 use logos_derive::Logos;
 use tests::assert_lex;
 
+mod binary;
+mod custom_error;
+
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
     #[regex(r"[ \t\n\f]+", logos::skip)]
-    #[error]
-    Error,
+    Ignored,
 
     #[regex(r"[a-zA-Z]+")]
     Ascii,
@@ -22,10 +24,10 @@ fn greek() {
     assert_lex(
         "λόγος can do unicode",
         &[
-            (Token::Greek, "λόγος", 0..10),
-            (Token::Ascii, "can", 11..14),
-            (Token::Ascii, "do", 15..17),
-            (Token::Ascii, "unicode", 18..25),
+            (Ok(Token::Greek), "λόγος", 0..10),
+            (Ok(Token::Ascii), "can", 11..14),
+            (Ok(Token::Ascii), "do", 15..17),
+            (Ok(Token::Ascii), "unicode", 18..25),
         ],
     )
 }
@@ -35,8 +37,8 @@ fn cyrillic() {
     assert_lex(
         "До свидания",
         &[
-            (Token::Cyrillic, "До", 0..4),
-            (Token::Cyrillic, "свидания", 5..21),
+            (Ok(Token::Cyrillic), "До", 0..4),
+            (Ok(Token::Cyrillic), "свидания", 5..21),
         ],
     )
 }

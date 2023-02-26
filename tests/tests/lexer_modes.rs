@@ -4,9 +4,6 @@ use logos_derive::Logos;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Outer {
-    #[error]
-    Error,
-
     #[token("\"")]
     StartString,
 
@@ -16,9 +13,6 @@ enum Outer {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Inner {
-    #[error]
-    Error,
-
     #[regex(r#"[^\\"]+"#)]
     Text,
 
@@ -44,15 +38,15 @@ fn main() {
     let mut outer = Outer::lexer(s);
 
     // The outer lexer has picked up the initial quote character
-    assert_eq!(outer.next(), Some(Outer::StartString));
+    assert_eq!(outer.next(), Some(Ok(Outer::StartString)));
 
     // We've entered a string, parser creates sublexer
     let mut inner = outer.morph();
-    assert_eq!(inner.next(), Some(Inner::Text));
-    assert_eq!(inner.next(), Some(Inner::EscapedCodepoint));
-    assert_eq!(inner.next(), Some(Inner::Text));
-    assert_eq!(inner.next(), Some(Inner::EscapedNewline));
-    assert_eq!(inner.next(), Some(Inner::EndString));
+    assert_eq!(inner.next(), Some(Ok(Inner::Text)));
+    assert_eq!(inner.next(), Some(Ok(Inner::EscapedCodepoint)));
+    assert_eq!(inner.next(), Some(Ok(Inner::Text)));
+    assert_eq!(inner.next(), Some(Ok(Inner::EscapedNewline)));
+    assert_eq!(inner.next(), Some(Ok(Inner::EndString)));
 
     // We've exited the string, parser returns to outer lexer
     outer = inner.morph();
@@ -82,23 +76,23 @@ struct ModeBridge<'source> {
 
 // Clones as we switch between modes
 impl<'source> Iterator for ModeBridge<'source> {
-    type Item = Tokens;
+    type Item = Result<Tokens, ()>;
     fn next(&mut self) -> Option<Self::Item> {
         use Tokens::*;
         match &mut self.mode {
             Modes::Inner(inner) => {
                 let result = inner.next();
-                if Some(Inner::EndString) == result {
+                if Some(Ok(Inner::EndString)) == result {
                     self.mode = Modes::Outer(inner.to_owned().morph());
                 }
-                result.map(InnerToken)
+                result.map(|inner| inner.map(InnerToken))
             }
             Modes::Outer(outer) => {
                 let result = outer.next();
-                if Some(Outer::StartString) == result {
+                if Some(Ok(Outer::StartString)) == result {
                     self.mode = Modes::Inner(outer.to_owned().morph());
                 }
-                result.map(OuterToken)
+                result.map(|outer| outer.map(OuterToken))
             }
         }
     }
@@ -113,15 +107,15 @@ fn iterating_modes() {
         mode: Modes::new(s),
     };
 
-    let results: Vec<Tokens> = moded.collect();
+    let results: Vec<Result<Tokens, ()>> = moded.collect();
     let expect = vec![
-        OuterToken(Outer::StartString),
-        InnerToken(Text),
-        InnerToken(EscapedCodepoint),
-        InnerToken(EscapedOctal),
-        InnerToken(Text),
-        InnerToken(EscapedNewline),
-        InnerToken(EndString),
+        Ok(OuterToken(Outer::StartString)),
+        Ok(InnerToken(Text)),
+        Ok(InnerToken(EscapedCodepoint)),
+        Ok(InnerToken(EscapedOctal)),
+        Ok(InnerToken(Text)),
+        Ok(InnerToken(EscapedNewline)),
+        Ok(InnerToken(EndString)),
     ];
     assert_eq!(results, expect);
 }

@@ -6,8 +6,7 @@ use logos_derive::Logos;
 #[logos(subpattern b = r"(?&a)BB(?&a)")]
 enum Token {
     #[regex(r"[ \t\n\f]+", logos::skip)]
-    #[error]
-    Error,
+    Ignored,
 
     #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
     LiteralString,
@@ -77,14 +76,14 @@ mod advanced {
         assert_lex(
             r#" "" "foobar" "escaped\"quote" "escaped\nnew line" "\x" "#,
             &[
-                (Token::LiteralString, "\"\"", 1..3),
-                (Token::LiteralString, "\"foobar\"", 4..12),
-                (Token::LiteralString, "\"escaped\\\"quote\"", 13..29),
-                (Token::LiteralString, "\"escaped\\nnew line\"", 30..49),
-                (Token::Error, "\"", 50..51),
-                (Token::Error, "\\", 51..52),
-                (Token::Error, "x", 52..53),
-                (Token::Error, "\" ", 53..55),
+                (Ok(Token::LiteralString), "\"\"", 1..3),
+                (Ok(Token::LiteralString), "\"foobar\"", 4..12),
+                (Ok(Token::LiteralString), "\"escaped\\\"quote\"", 13..29),
+                (Ok(Token::LiteralString), "\"escaped\\nnew line\"", 30..49),
+                (Err(()), "\"", 50..51),
+                (Err(()), "\\", 51..52),
+                (Err(()), "x", 52..53),
+                (Err(()), "\" ", 53..55),
             ],
         );
     }
@@ -94,20 +93,20 @@ mod advanced {
         assert_lex(
             "0x 0X 0x0 0x9 0xa 0xf 0X0 0X9 0XA 0XF 0x123456789abcdefABCDEF 0xdeadBEEF",
             &[
-                (Token::LiteralInteger, "0", 0..1),
-                (Token::Error, "x", 1..2),
-                (Token::LiteralInteger, "0", 3..4),
-                (Token::Error, "X", 4..5),
-                (Token::LiteralHex, "0x0", 6..9),
-                (Token::LiteralHex, "0x9", 10..13),
-                (Token::LiteralHex, "0xa", 14..17),
-                (Token::LiteralHex, "0xf", 18..21),
-                (Token::LiteralHex, "0X0", 22..25),
-                (Token::LiteralHex, "0X9", 26..29),
-                (Token::LiteralHex, "0XA", 30..33),
-                (Token::LiteralHex, "0XF", 34..37),
-                (Token::LiteralHex, "0x123456789abcdefABCDEF", 38..61),
-                (Token::LiteralHex, "0xdeadBEEF", 62..72),
+                (Ok(Token::LiteralInteger), "0", 0..1),
+                (Err(()), "x", 1..2),
+                (Ok(Token::LiteralInteger), "0", 3..4),
+                (Err(()), "X", 4..5),
+                (Ok(Token::LiteralHex), "0x0", 6..9),
+                (Ok(Token::LiteralHex), "0x9", 10..13),
+                (Ok(Token::LiteralHex), "0xa", 14..17),
+                (Ok(Token::LiteralHex), "0xf", 18..21),
+                (Ok(Token::LiteralHex), "0X0", 22..25),
+                (Ok(Token::LiteralHex), "0X9", 26..29),
+                (Ok(Token::LiteralHex), "0XA", 30..33),
+                (Ok(Token::LiteralHex), "0XF", 34..37),
+                (Ok(Token::LiteralHex), "0x123456789abcdefABCDEF", 38..61),
+                (Ok(Token::LiteralHex), "0xdeadBEEF", 62..72),
             ],
         );
     }
@@ -117,11 +116,11 @@ mod advanced {
         assert_lex(
             "0 5 123 9001 -42",
             &[
-                (Token::LiteralInteger, "0", 0..1),
-                (Token::LiteralInteger, "5", 2..3),
-                (Token::LiteralInteger, "123", 4..7),
-                (Token::LiteralInteger, "9001", 8..12),
-                (Token::LiteralInteger, "-42", 13..16),
+                (Ok(Token::LiteralInteger), "0", 0..1),
+                (Ok(Token::LiteralInteger), "5", 2..3),
+                (Ok(Token::LiteralInteger), "123", 4..7),
+                (Ok(Token::LiteralInteger), "9001", 8..12),
+                (Ok(Token::LiteralInteger), "-42", 13..16),
             ],
         );
     }
@@ -131,13 +130,13 @@ mod advanced {
         assert_lex(
             "0.0 3.14 .1234 10e5 5E-10 42.9001e+12 .1e-3",
             &[
-                (Token::LiteralFloat, "0.0", 0..3),
-                (Token::LiteralFloat, "3.14", 4..8),
-                (Token::LiteralFloat, ".1234", 9..14),
-                (Token::LiteralFloat, "10e5", 15..19),
-                (Token::LiteralFloat, "5E-10", 20..25),
-                (Token::LiteralFloat, "42.9001e+12", 26..37),
-                (Token::LiteralFloat, ".1e-3", 38..43),
+                (Ok(Token::LiteralFloat), "0.0", 0..3),
+                (Ok(Token::LiteralFloat), "3.14", 4..8),
+                (Ok(Token::LiteralFloat), ".1234", 9..14),
+                (Ok(Token::LiteralFloat), "10e5", 15..19),
+                (Ok(Token::LiteralFloat), "5E-10", 20..25),
+                (Ok(Token::LiteralFloat), "42.9001e+12", 26..37),
+                (Ok(Token::LiteralFloat), ".1e-3", 38..43),
             ],
         );
     }
@@ -147,10 +146,10 @@ mod advanced {
         assert_lex(
             "🦀 🦀🦀 🦀🦀🦀 🦀🦀🦀🦀",
             &[
-                (Token::Rustaceans, "🦀", 0..4),
-                (Token::Rustaceans, "🦀🦀", 5..13),
-                (Token::Rustaceans, "🦀🦀🦀", 14..26),
-                (Token::Rustaceans, "🦀🦀🦀🦀", 27..43),
+                (Ok(Token::Rustaceans), "🦀", 0..4),
+                (Ok(Token::Rustaceans), "🦀🦀", 5..13),
+                (Ok(Token::Rustaceans), "🦀🦀🦀", 14..26),
+                (Ok(Token::Rustaceans), "🦀🦀🦀🦀", 27..43),
             ],
         );
     }
@@ -160,11 +159,11 @@ mod advanced {
         assert_lex(
             "ą ę ó ąąąą łóżź",
             &[
-                (Token::Polish, "ą", 0..2),
-                (Token::Polish, "ę", 3..5),
-                (Token::Polish, "ó", 6..8),
-                (Token::Polish, "ąąąą", 9..17),
-                (Token::Polish, "łóżź", 18..26),
+                (Ok(Token::Polish), "ą", 0..2),
+                (Ok(Token::Polish), "ę", 3..5),
+                (Ok(Token::Polish), "ó", 6..8),
+                (Ok(Token::Polish), "ąąąą", 9..17),
+                (Ok(Token::Polish), "łóżź", 18..26),
             ],
         );
     }
@@ -174,8 +173,8 @@ mod advanced {
         assert_lex(
             "До свидания",
             &[
-                (Token::Cyrillic, "До", 0..4),
-                (Token::Cyrillic, "свидания", 5..21),
+                (Ok(Token::Cyrillic), "До", 0..4),
+                (Ok(Token::Cyrillic), "свидания", 5..21),
             ],
         );
     }
@@ -185,9 +184,9 @@ mod advanced {
         assert_lex(
             "try type typeof",
             &[
-                (Token::Keyword, "try", 0..3),
-                (Token::Keyword, "type", 4..8),
-                (Token::Keyword, "typeof", 9..15),
+                (Ok(Token::Keyword), "try", 0..3),
+                (Ok(Token::Keyword), "type", 4..8),
+                (Ok(Token::Keyword), "typeof", 9..15),
             ],
         );
     }
@@ -197,14 +196,14 @@ mod advanced {
         assert_lex(
             "~ ~m23 ~s42 ~s42..cafe.babe ~h23 ~sod ~myd ~songname",
             &[
-                (Token::LiteralNull, "~", 0..1),
-                (Token::LiteralRelDate, "~m23", 2..6),
-                (Token::LiteralRelDate, "~s42", 7..11),
-                (Token::LiteralRelDate, "~s42..cafe.babe", 12..27),
-                (Token::LiteralRelDate, "~h23", 28..32),
-                (Token::LiteralUrbitAddress, "~sod", 33..37),
-                (Token::LiteralUrbitAddress, "~myd", 38..42),
-                (Token::LiteralUrbitAddress, "~songname", 43..52),
+                (Ok(Token::LiteralNull), "~", 0..1),
+                (Ok(Token::LiteralRelDate), "~m23", 2..6),
+                (Ok(Token::LiteralRelDate), "~s42", 7..11),
+                (Ok(Token::LiteralRelDate), "~s42..cafe.babe", 12..27),
+                (Ok(Token::LiteralRelDate), "~h23", 28..32),
+                (Ok(Token::LiteralUrbitAddress), "~sod", 33..37),
+                (Ok(Token::LiteralUrbitAddress), "~myd", 38..42),
+                (Ok(Token::LiteralUrbitAddress), "~songname", 43..52),
             ],
         );
     }
@@ -214,10 +213,10 @@ mod advanced {
         assert_lex(
             "' ''' ''",
             &[
-                (Token::SingleQuote, "'", 0..1),
-                (Token::TripleQuote, "'''", 2..5),
-                (Token::SingleQuote, "'", 6..7),
-                (Token::SingleQuote, "'", 7..8),
+                (Ok(Token::SingleQuote), "'", 0..1),
+                (Ok(Token::TripleQuote), "'''", 2..5),
+                (Ok(Token::SingleQuote), "'", 6..7),
+                (Ok(Token::SingleQuote), "'", 7..8),
             ],
         );
     }
@@ -227,9 +226,9 @@ mod advanced {
         assert_lex(
             "!#@? #!!!?!@? ????####@@@@!!!!",
             &[
-                (Token::WhatTheHeck, "!#@?", 0..4),
-                (Token::WhatTheHeck, "#!!!?!@?", 5..13),
-                (Token::WhatTheHeck, "????####@@@@!!!!", 14..30),
+                (Ok(Token::WhatTheHeck), "!#@?", 0..4),
+                (Ok(Token::WhatTheHeck), "#!!!?!@?", 5..13),
+                (Ok(Token::WhatTheHeck), "????####@@@@!!!!", 14..30),
             ],
         );
     }
@@ -239,10 +238,10 @@ mod advanced {
         assert_lex(
             "ABBA~ ~ABBA ~ABBA~ ABBA",
             &[
-                (Token::Abba, "ABBA~", 0..5),
-                (Token::Abba, "~ABBA", 6..11),
-                (Token::Abba, "~ABBA~", 12..18),
-                (Token::Abba, "ABBA", 19..23),
+                (Ok(Token::Abba), "ABBA~", 0..5),
+                (Ok(Token::Abba), "~ABBA", 6..11),
+                (Ok(Token::Abba), "~ABBA~", 12..18),
+                (Ok(Token::Abba), "ABBA", 19..23),
             ],
         );
     }
