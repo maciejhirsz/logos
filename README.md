@@ -25,55 +25,53 @@ To achieve those, **Logos**:
 ## Example
 
 ```rust
-use logos::Logos;
+ use logos::Logos;
 
-#[derive(Logos, Debug, PartialEq)]
-enum Token {
-    // Tokens can be literal strings, of any length.
-    #[token("fast")]
-    Fast,
+ #[derive(Logos, Debug, PartialEq)]
+ enum Token {
+     // Tokens can be literal strings, of any length.
+     #[token("fast")]
+     Fast,
 
-    #[token(".")]
-    Period,
+     #[token(".")]
+     Period,
 
-    // Or regular expressions.
-    #[regex("[a-zA-Z]+")]
-    Text,
+     // Or regular expressions.
+     #[regex("[a-zA-Z]+")]
+     Text,
 
-    // Logos requires one token variant to handle errors,
-    // it can be named anything you wish.
-    #[error]
-    // We can also use this variant to define whitespace,
-    // or any other matches we wish to skip.
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    Error,
-}
+     // Logos requires one token variant to define whitespace,
+     // or any other matches we wish to skip.
+     // It can be named anything you wish.
+     #[regex(r"[ \t\n\f]+", logos::skip)]
+     Ignored,
+ }
 
-fn main() {
-    let mut lex = Token::lexer("Create ridiculously fast Lexers.");
+ fn main() {
+     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 
-    assert_eq!(lex.next(), Some(Token::Text));
-    assert_eq!(lex.span(), 0..6);
-    assert_eq!(lex.slice(), "Create");
+     assert_eq!(lex.next(), Some(Ok(Token::Text)));
+     assert_eq!(lex.span(), 0..6);
+     assert_eq!(lex.slice(), "Create");
 
-    assert_eq!(lex.next(), Some(Token::Text));
-    assert_eq!(lex.span(), 7..19);
-    assert_eq!(lex.slice(), "ridiculously");
+     assert_eq!(lex.next(), Some(Ok(Token::Text)));
+     assert_eq!(lex.span(), 7..19);
+     assert_eq!(lex.slice(), "ridiculously");
 
-    assert_eq!(lex.next(), Some(Token::Fast));
-    assert_eq!(lex.span(), 20..24);
-    assert_eq!(lex.slice(), "fast");
+     assert_eq!(lex.next(), Some(Ok(Token::Fast)));
+     assert_eq!(lex.span(), 20..24);
+     assert_eq!(lex.slice(), "fast");
 
-    assert_eq!(lex.next(), Some(Token::Text));
-    assert_eq!(lex.span(), 25..31);
-    assert_eq!(lex.slice(), "Lexers");
+     assert_eq!(lex.next(), Some(Ok(Token::Text)));
+     assert_eq!(lex.slice(), "Lexers");
+     assert_eq!(lex.span(), 25..31);
 
-    assert_eq!(lex.next(), Some(Token::Period));
-    assert_eq!(lex.span(), 31..32);
-    assert_eq!(lex.slice(), ".");
+     assert_eq!(lex.next(), Some(Ok(Token::Period)));
+     assert_eq!(lex.span(), 31..32);
+     assert_eq!(lex.slice(), ".");
 
-    assert_eq!(lex.next(), None);
-}
+     assert_eq!(lex.next(), None);
+ }
 ```
 
 ### Callbacks
@@ -82,69 +80,77 @@ fn main() {
 which can be used to put data into a variant:
 
 ```rust
-use logos::{Logos, Lexer};
+ use logos::{Logos, Lexer};
 
-// Note: callbacks can return `Option` or `Result`
-fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
-    let slice = lex.slice();
-    let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'k'
-    Some(n * 1_000)
-}
+ // Note: callbacks can return `Option` or `Result`
+ fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
+     let slice = lex.slice();
+     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'k'
+     Some(n * 1_000)
+ }
 
-fn mega(lex: &mut Lexer<Token>) -> Option<u64> {
-    let slice = lex.slice();
-    let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'm'
-    Some(n * 1_000_000)
-}
+ fn mega(lex: &mut Lexer<Token>) -> Option<u64> {
+     let slice = lex.slice();
+     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'm'
+     Some(n * 1_000_000)
+ }
 
-#[derive(Logos, Debug, PartialEq)]
-enum Token {
-    #[error]
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    Error,
+ #[derive(Logos, Debug, PartialEq)]
+ enum Token {
+     #[regex(r"[ \t\n\f]+", logos::skip)]
+     Ignored,
 
-    // Callbacks can use closure syntax, or refer
-    // to a function defined elsewhere.
-    //
-    // Each pattern can have it's own callback.
-    #[regex("[0-9]+", |lex| lex.slice().parse())]
-    #[regex("[0-9]+k", kilo)]
-    #[regex("[0-9]+m", mega)]
-    Number(u64),
-}
+     // Callbacks can use closure syntax, or refer
+     // to a function defined elsewhere.
+     //
+     // Each pattern can have it's own callback.
+     #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
+     #[regex("[0-9]+k", kilo)]
+     #[regex("[0-9]+m", mega)]
+     Number(u64),
+ }
 
-fn main() {
-    let mut lex = Token::lexer("5 42k 75m");
+ fn main() {
+     let mut lex = Token::lexer("5 42k 75m");
 
-    assert_eq!(lex.next(), Some(Token::Number(5)));
-    assert_eq!(lex.slice(), "5");
+     assert_eq!(lex.next(), Some(Ok(Token::Number(5))));
+     assert_eq!(lex.slice(), "5");
 
-    assert_eq!(lex.next(), Some(Token::Number(42_000)));
-    assert_eq!(lex.slice(), "42k");
+     assert_eq!(lex.next(), Some(Ok(Token::Number(42_000))));
+     assert_eq!(lex.slice(), "42k");
 
-    assert_eq!(lex.next(), Some(Token::Number(75_000_000)));
-    assert_eq!(lex.slice(), "75m");
+     assert_eq!(lex.next(), Some(Ok(Token::Number(75_000_000))));
+     assert_eq!(lex.slice(), "75m");
 
-    assert_eq!(lex.next(), None);
-}
+     assert_eq!(lex.next(), None);
+ }
 ```
 
 Logos can handle callbacks with following return types:
 
-| Return type                       | Produces                                           |
-|-----------------------------------|----------------------------------------------------|
-| `()`                              | `Token::Unit`                                      |
-| `bool`                            | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-| `Result<(), _>`                   | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-| `T`                               | `Token::Value(T)`                                  |
-| `Option<T>`                       | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-| `Result<T, _>`                    | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-| `Skip`                            | _skips matched input_                              |
-| `Filter<T>`                       | `Token::Value(T)` **or** _skips matched input_     |
+| Return type            | Produces                                                                                            |
+|------------------------|-----------------------------------------------------------------------------------------------------|
+| `()`                   | `Ok(Token::Unit)`                                                                                   |
+| `bool`                 | `Ok(Token::Unit)` **or** `Err(<Token as Logos>::Error::default())`                                  |
+| `Result<(), E>`        | `Ok(Token::Unit)` **or** `Err(<Token as Logos>::Error::from(err))`                                  |
+| `T`                    | `Ok(Token::Value(T))`                                                                               |
+| `Option<T>`            | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::default())`                              |
+| `Result<T, E>`         | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))`                              |
+| [`Skip`]               | _skips matched input_                                                                               |
+| [`Filter<T>`]          | `Ok(Token::Value(T))` **or** _skips matched input_                                                  |
+| [`FilterResult<T, E>`] | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))` **or** _skips matched input_ |
 
 Callbacks can be also used to do perform more specialized lexing in place
 where regular expressions are too limiting. For specifics look at
 `Lexer::remainder` and `Lexer::bump`.
+
+## Errors
+
+By default, **Logos** uses `()` as the error type, which means that it
+doesn't store any information about the error.
+This can be changed by using `#[logos(error = T)]` attribute on the enum.
+The type `T` can be any type that implements `Clone`, `PartialEq`,
+`Default` and `From<E>` for each callback's error type `E`.
 
 ## Token disambiguation
 

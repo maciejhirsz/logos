@@ -3,8 +3,7 @@ use logos_derive::Logos;
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 enum Token {
     #[regex(r"[ \t\n\f]+", logos::skip)]
-    #[error]
-    Error,
+    Ignored,
 
     #[regex("em|ex|ch|rem|vw|vh|vmin|vmax")]
     RelativeLength,
@@ -37,13 +36,13 @@ mod css {
         assert_lex(
             "h2 { line-height: 3cm }",
             &[
-                (Token::Ident, "h2", 0..2),
-                (Token::CurlyBracketOpen, "{", 3..4),
-                (Token::Ident, "line-height", 5..16),
-                (Token::Colon, ":", 16..17),
-                (Token::Number, "3", 18..19),
-                (Token::AbsoluteLength, "cm", 19..21),
-                (Token::CurlyBracketClose, "}", 22..23),
+                (Ok(Token::Ident), "h2", 0..2),
+                (Ok(Token::CurlyBracketOpen), "{", 3..4),
+                (Ok(Token::Ident), "line-height", 5..16),
+                (Ok(Token::Colon), ":", 16..17),
+                (Ok(Token::Number), "3", 18..19),
+                (Ok(Token::AbsoluteLength), "cm", 19..21),
+                (Ok(Token::CurlyBracketClose), "}", 22..23),
             ],
         );
     }
@@ -53,13 +52,13 @@ mod css {
         assert_lex(
             "h3 { word-spacing: 4mm }",
             &[
-                (Token::Ident, "h3", 0..2),
-                (Token::CurlyBracketOpen, "{", 3..4),
-                (Token::Ident, "word-spacing", 5..17),
-                (Token::Colon, ":", 17..18),
-                (Token::Number, "4", 19..20),
-                (Token::AbsoluteLength, "mm", 20..22),
-                (Token::CurlyBracketClose, "}", 23..24),
+                (Ok(Token::Ident), "h3", 0..2),
+                (Ok(Token::CurlyBracketOpen), "{", 3..4),
+                (Ok(Token::Ident), "word-spacing", 5..17),
+                (Ok(Token::Colon), ":", 17..18),
+                (Ok(Token::Number), "4", 19..20),
+                (Ok(Token::AbsoluteLength), "mm", 20..22),
+                (Ok(Token::CurlyBracketClose), "}", 23..24),
             ],
         );
     }
@@ -69,13 +68,13 @@ mod css {
         assert_lex(
             "h3 { letter-spacing: 42em }",
             &[
-                (Token::Ident, "h3", 0..2),
-                (Token::CurlyBracketOpen, "{", 3..4),
-                (Token::Ident, "letter-spacing", 5..19),
-                (Token::Colon, ":", 19..20),
-                (Token::Number, "42", 21..23),
-                (Token::RelativeLength, "em", 23..25),
-                (Token::CurlyBracketClose, "}", 26..27),
+                (Ok(Token::Ident), "h3", 0..2),
+                (Ok(Token::CurlyBracketOpen), "{", 3..4),
+                (Ok(Token::Ident), "letter-spacing", 5..19),
+                (Ok(Token::Colon), ":", 19..20),
+                (Ok(Token::Number), "42", 21..23),
+                (Ok(Token::RelativeLength), "em", 23..25),
+                (Ok(Token::CurlyBracketClose), "}", 26..27),
             ],
         );
     }

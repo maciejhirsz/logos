@@ -80,8 +80,8 @@ impl IgnoreFlags {
                 parser.err(
                     format!(
                         "\
-                        Unknown flag: {}\n\n\
-                        
+                        Unknown flag: {}\n\
+                        \n\
                         Expected one of: case, ascii_case\
                         ",
                         unknown
@@ -125,8 +125,8 @@ impl IgnoreFlags {
                     _ => {
                         parser.err(
                             "\
-                            Invalid ignore flag\n\n\
-                                
+                            Invalid ignore flag\n\
+                            \n\
                             Expected one of: case, ascii_case\
                             ",
                             name.span(),

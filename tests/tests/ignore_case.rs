@@ -4,9 +4,8 @@ mod ignore_ascii_case {
 
     #[derive(Logos, Debug, PartialEq, Eq)]
     enum Words {
-        #[error]
         #[regex(" +", logos::skip)]
-        Error,
+        Ignored,
 
         #[token("lOwERCaSe", ignore(ascii_case))]
         Lowercase,
@@ -44,14 +43,14 @@ mod ignore_ascii_case {
         assert_lex(
             "LowErcase or UppeRCase: ThAT iS tHe question",
             &[
-                (Words::Lowercase, "LowErcase", 0..9),
-                (Words::Or, "or", 10..12),
-                (Words::Uppercase, "UppeRCase", 13..22),
-                (Words::Colon, ":", 22..23),
-                (Words::That, "ThAT", 24..28),
-                (Words::Is, "iS", 29..31),
-                (Words::The, "tHe", 32..35),
-                (Words::Question, "question", 36..44),
+                (Ok(Words::Lowercase), "LowErcase", 0..9),
+                (Ok(Words::Or), "or", 10..12),
+                (Ok(Words::Uppercase), "UppeRCase", 13..22),
+                (Ok(Words::Colon), ":", 22..23),
+                (Ok(Words::That), "ThAT", 24..28),
+                (Ok(Words::Is), "iS", 29..31),
+                (Ok(Words::The), "tHe", 32..35),
+                (Ok(Words::Question), "question", 36..44),
             ],
         )
     }
@@ -61,24 +60,23 @@ mod ignore_ascii_case {
         assert_lex(
             "Mon Frère Était lÀ cet Été",
             &[
-                (Words::Mon, "Mon", 0..3),
-                (Words::Frere, "Frère", 4..10),
-                (Words::Etait, "Était", 11..17),
-                (Words::Error, "l", 18..19),
-                (Words::Error, "À", 19..21),
-                (Words::Cet, "cet", 22..25),
-                (Words::Error, "É", 26..28),
-                (Words::Error, "t", 28..29),
-                (Words::Error, "é", 29..31),
+                (Ok(Words::Mon), "Mon", 0..3),
+                (Ok(Words::Frere), "Frère", 4..10),
+                (Ok(Words::Etait), "Était", 11..17),
+                (Err(()), "l", 18..19),
+                (Err(()), "À", 19..21),
+                (Ok(Words::Cet), "cet", 22..25),
+                (Err(()), "É", 26..28),
+                (Err(()), "t", 28..29),
+                (Err(()), "é", 29..31),
             ],
         )
     }
 
     #[derive(Logos, Debug, PartialEq, Eq)]
     enum Letters {
-        #[error]
         #[regex(" +", logos::skip)]
-        Error,
+        Ignored,
 
         #[regex("a", ignore(ascii_case))]
         Single,
@@ -110,18 +108,18 @@ mod ignore_ascii_case {
         assert_lex(
             "aA BCbC DdEE fFff g gg hHiIjJkK",
             &[
-                (Letters::Single, "a", 0..1),
-                (Letters::Single, "A", 1..2),
-                (Letters::Concat, "BC", 3..5),
-                (Letters::Concat, "bC", 5..7),
-                (Letters::Altern, "D", 8..9),
-                (Letters::Altern, "d", 9..10),
-                (Letters::Altern, "E", 10..11),
-                (Letters::Altern, "E", 11..12),
-                (Letters::Loop, "fFff", 13..17),
-                (Letters::Maybe, "g", 18..19),
-                (Letters::Maybe, "gg", 20..22),
-                (Letters::Range, "hHiIjJkK", 23..31),
+                (Ok(Letters::Single), "a", 0..1),
+                (Ok(Letters::Single), "A", 1..2),
+                (Ok(Letters::Concat), "BC", 3..5),
+                (Ok(Letters::Concat), "bC", 5..7),
+                (Ok(Letters::Altern), "D", 8..9),
+                (Ok(Letters::Altern), "d", 9..10),
+                (Ok(Letters::Altern), "E", 10..11),
+                (Ok(Letters::Altern), "E", 11..12),
+                (Ok(Letters::Loop), "fFff", 13..17),
+                (Ok(Letters::Maybe), "g", 18..19),
+                (Ok(Letters::Maybe), "gg", 20..22),
+                (Ok(Letters::Range), "hHiIjJkK", 23..31),
             ],
         )
     }
@@ -131,20 +129,20 @@ mod ignore_ascii_case {
         assert_lex(
             "à À éèD Éèd CcûÛüÜC i i§ xXyYzZ|{}",
             &[
-                (Letters::NaSingle, "à", 0..2),
-                (Letters::NaRange, "À", 3..5),
-                (Letters::NaConcat, "éèD", 6..11),
-                (Letters::NaRange, "É", 12..14),
-                (Letters::Error, "è", 14..16),
-                (Letters::Altern, "d", 16..17),
-                (Letters::NaAltern, "Ccû", 18..22),
-                (Letters::NaRange, "Û", 22..24),
-                (Letters::NaAltern, "ü", 24..26),
-                (Letters::NaRange, "Ü", 26..28),
-                (Letters::NaAltern, "C", 28..29),
-                (Letters::NaMaybe, "i", 30..31),
-                (Letters::NaMaybe, "i§", 32..35),
-                (Letters::NaRange, "xXyYzZ|{}", 36..45),
+                (Ok(Letters::NaSingle), "à", 0..2),
+                (Ok(Letters::NaRange), "À", 3..5),
+                (Ok(Letters::NaConcat), "éèD", 6..11),
+                (Ok(Letters::NaRange), "É", 12..14),
+                (Err(()), "è", 14..16),
+                (Ok(Letters::Altern), "d", 16..17),
+                (Ok(Letters::NaAltern), "Ccû", 18..22),
+                (Ok(Letters::NaRange), "Û", 22..24),
+                (Ok(Letters::NaAltern), "ü", 24..26),
+                (Ok(Letters::NaRange), "Ü", 26..28),
+                (Ok(Letters::NaAltern), "C", 28..29),
+                (Ok(Letters::NaMaybe), "i", 30..31),
+                (Ok(Letters::NaMaybe), "i§", 32..35),
+                (Ok(Letters::NaRange), "xXyYzZ|{}", 36..45),
             ],
         )
     }
@@ -156,9 +154,8 @@ mod ignore_case {
 
     #[derive(Logos, Debug, PartialEq, Eq)]
     enum Words {
-        #[error]
         #[regex(" +", logos::skip)]
-        Error,
+        Ignored,
 
         #[token("élÉphAnt", ignore(case))]
         Elephant,
@@ -176,12 +173,12 @@ mod ignore_case {
         assert_lex(
             "ÉLÉPHANT Éléphant ÉLèVE à À a",
             &[
-                (Words::Elephant, "ÉLÉPHANT", 0..10),
-                (Words::Elephant, "Éléphant", 11..21),
-                (Words::Eleve, "ÉLèVE", 22..29),
-                (Words::A, "à", 30..32),
-                (Words::A, "À", 33..35),
-                (Words::Error, "a", 36..37),
+                (Ok(Words::Elephant), "ÉLÉPHANT", 0..10),
+                (Ok(Words::Elephant), "Éléphant", 11..21),
+                (Ok(Words::Eleve), "ÉLèVE", 22..29),
+                (Ok(Words::A), "à", 30..32),
+                (Ok(Words::A), "À", 33..35),
+                (Err(()), "a", 36..37),
             ],
         )
     }
@@ -191,22 +188,21 @@ mod ignore_case {
         assert_lex(
             "[abc]+ abccBA",
             &[
-                (Words::Abc, "[abc]+", 0..6),
-                (Words::Error, "a", 7..8),
-                (Words::Error, "b", 8..9),
-                (Words::Error, "c", 9..10),
-                (Words::Error, "c", 10..11),
-                (Words::Error, "B", 11..12),
-                (Words::Error, "A", 12..13),
+                (Ok(Words::Abc), "[abc]+", 0..6),
+                (Err(()), "a", 7..8),
+                (Err(()), "b", 8..9),
+                (Err(()), "c", 9..10),
+                (Err(()), "c", 10..11),
+                (Err(()), "B", 11..12),
+                (Err(()), "A", 12..13),
             ],
         )
     }
 
     #[derive(Logos, PartialEq, Eq, Debug)]
     enum Sink {
-        #[error]
         #[regex(" +", logos::skip)]
-        Error,
+        Ignored,
 
         #[regex("[abcéà]+", ignore(case))]
         Letters,
@@ -221,11 +217,11 @@ mod ignore_case {
         assert_lex(
             "aabbccééààéé 00123 ééààé ABCÉÀÀ ÉÉàÀÉ",
             &[
-                (Sink::Letters, "aabbccééààéé", 0..18),
-                (Sink::Numbers, "00123", 19..24),
-                (Sink::Sequence, "ééààé", 25..35),
-                (Sink::Letters, "ABCÉÀÀ", 36..45),
-                (Sink::Sequence, "ÉÉàÀÉ", 46..56),
+                (Ok(Sink::Letters), "aabbccééààéé", 0..18),
+                (Ok(Sink::Numbers), "00123", 19..24),
+                (Ok(Sink::Sequence), "ééààé", 25..35),
+                (Ok(Sink::Letters), "ABCÉÀÀ", 36..45),
+                (Ok(Sink::Sequence), "ÉÉàÀÉ", 46..56),
             ],
         )
     }

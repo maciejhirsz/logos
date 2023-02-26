@@ -1,7 +1,6 @@
 [package]
-name = "logos-derive"
-version = "0.12.1"
-authors = ["Maciej Hirsz <hello@maciej.codes>"]
+name = "logos-cli"
+version = "0.12.0"
 license = "MIT OR Apache-2.0"
 description = "Create ridiculously fast Lexers"
 repository = "https://github.com/maciejhirsz/logos"
@@ -11,9 +10,14 @@ categories = ["parsing", "text-processing"]
 readme = "../README.md"
 edition = "2018"
 
-[lib]
-name = "logos_derive"
-proc-macro = true
-
 [dependencies]
+anyhow = "1.0.57"
+clap = { version = "3.1.18", features = ["derive"] }
+fs-err = "2.7.0"
 logos-codegen = { path = "../logos-codegen", version = "0.12.0" }
+proc-macro2 = "1.0.39"
+
+[dev-dependencies]
+assert_cmd = "2.0.4"
+assert_fs = "1.0.7"
+predicates = "2.1.1"

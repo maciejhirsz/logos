@@ -2,11 +2,12 @@ use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Lit, Type};
+use syn::{Attribute, GenericParam, Lit, Path, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, MaybeVoid};
+use crate::LOGOS_ATTR;
 
 mod definition;
 mod ignore_flags;
@@ -26,7 +27,9 @@ pub struct Parser {
     pub mode: Mode,
     pub source: Option<TokenStream>,
     pub extras: MaybeVoid,
+    pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
+    pub logos_path: Option<Path>,
     types: TypeParams,
 }
 
@@ -72,7 +75,7 @@ impl Parser {
     /// Try to parse the main `#[logos(...)]`, does nothing if
     /// the attribute's name isn't `logos`.
     pub fn try_parse_logos(&mut self, attr: &mut Attribute) {
-        if !attr.path.is_ident("logos") {
+        if !attr.path.is_ident(LOGOS_ATTR) {
             return;
         }
 
@@ -101,6 +104,20 @@ impl Parser {
                             .err("Previous definition here", previous.span());
                     }
                 }
+                ("source", _) => {
+                    self.err("Expected: source = SomeType", name.span());
+                }
+                ("error", NestedValue::Assign(value)) => {
+                    let span = value.span();
+
+                    if let MaybeVoid::Some(previous) = self.error_type.replace(value) {
+                        self.err("Error type can be defined only once", span)
+                            .err("Previous definition here", previous.span());
+                    }
+                }
+                ("error", _) => {
+                    self.err("Expected: error = SomeType", name.span());
+                }
                 ("extras", NestedValue::Assign(value)) => {
                     let span = value.span();
 
@@ -122,8 +139,8 @@ impl Parser {
                     // TODO: Remove in future versions
                     self.err(
                         "\
-                        trivia are no longer supported.\n\n\
-
+                        trivia are no longer supported.\n\
+                        \n\
                         For help with migration see release notes: \
                         https://github.com/maciejhirsz/logos/releases\
                         ",
@@ -135,6 +152,21 @@ impl Parser {
                 }
                 ("subpattern", _) => {
                     self.err(r#"Expected: subpattern name = r"regex""#, name.span());
+                }
+                ("crate", NestedValue::Assign(value)) => {
+                    let value = syn::parse2::<Lit>(value).ok().and_then(|lit| match lit {
+                        Lit::Str(string) => syn::parse_str(&string.value()).ok(),
+                        _ => None,
+                    });
+                    match value {
+                        Some(logos_path) => self.logos_path = Some(logos_path),
+                        None => {
+                            self.err(r#"Expected: crate = "some::path::to::logos""#, name.span());
+                        }
+                    }
+                }
+                ("crate", _) => {
+                    self.err(r#"Expected: crate = "some::path::to::logos""#, name.span());
                 }
                 (unknown, _) => {
                     self.err(
@@ -186,8 +218,8 @@ impl Parser {
                     _ => {
                         self.err(
                             "\
-                            Expected a named argument at this position\n\n\
-
+                            Expected a named argument at this position\n\
+                            \n\
                             hint: If you are trying to define a callback here use: callback = ...\
                             ",
                             tokens.span(),

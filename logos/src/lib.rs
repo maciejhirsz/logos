@@ -35,35 +35,33 @@
 //!     #[regex("[a-zA-Z]+")]
 //!     Text,
 //!
-//!     // Logos requires one token variant to handle errors,
-//!     // it can be named anything you wish.
-//!     #[error]
-//!     // We can also use this variant to define whitespace,
+//!     // Logos requires one token variant to define whitespace,
 //!     // or any other matches we wish to skip.
+//!     // It can be named anything you wish.
 //!     #[regex(r"[ \t\n\f]+", logos::skip)]
-//!     Error,
+//!     Ignored,
 //! }
 //!
 //! fn main() {
 //!     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Text)));
 //!     assert_eq!(lex.span(), 0..6);
 //!     assert_eq!(lex.slice(), "Create");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Text)));
 //!     assert_eq!(lex.span(), 7..19);
 //!     assert_eq!(lex.slice(), "ridiculously");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Fast));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Fast)));
 //!     assert_eq!(lex.span(), 20..24);
 //!     assert_eq!(lex.slice(), "fast");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Text));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Text)));
 //!     assert_eq!(lex.slice(), "Lexers");
 //!     assert_eq!(lex.span(), 25..31);
 //!
-//!     assert_eq!(lex.next(), Some(Token::Period));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Period)));
 //!     assert_eq!(lex.span(), 31..32);
 //!     assert_eq!(lex.slice(), ".");
 //!
@@ -95,14 +93,13 @@
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
 //!     #[regex(r"[ \t\n\f]+", logos::skip)]
-//!     #[error]
-//!     Error,
+//!     Ignored,
 //!
 //!     // Callbacks can use closure syntax, or refer
 //!     // to a function defined elsewhere.
 //!     //
 //!     // Each pattern can have it's own callback.
-//!     #[regex("[0-9]+", |lex| lex.slice().parse())]
+//!     #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
 //!     #[regex("[0-9]+k", kilo)]
 //!     #[regex("[0-9]+m", mega)]
 //!     Number(u64),
@@ -111,13 +108,13 @@
 //! fn main() {
 //!     let mut lex = Token::lexer("5 42k 75m");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Number(5)));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Number(5))));
 //!     assert_eq!(lex.slice(), "5");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Number(42_000)));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Number(42_000))));
 //!     assert_eq!(lex.slice(), "42k");
 //!
-//!     assert_eq!(lex.next(), Some(Token::Number(75_000_000)));
+//!     assert_eq!(lex.next(), Some(Ok(Token::Number(75_000_000))));
 //!     assert_eq!(lex.slice(), "75m");
 //!
 //!     assert_eq!(lex.next(), None);
@@ -126,21 +123,30 @@
 //!
 //! Logos can handle callbacks with following return types:
 //!
-//! | Return type                       | Produces                                           |
-//! |-----------------------------------|----------------------------------------------------|
-//! | `()`                              | `Token::Unit`                                      |
-//! | `bool`                            | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-//! | `Result<(), _>`                   | `Token::Unit` **or** `<Token as Logos>::ERROR`     |
-//! | `T`                               | `Token::Value(T)`                                  |
-//! | `Option<T>`                       | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-//! | `Result<T, _>`                    | `Token::Value(T)` **or** `<Token as Logos>::ERROR` |
-//! | [`Skip`](./struct.Skip.html)      | _skips matched input_                              |
-//! | [`Filter<T>`](./enum.Filter.html) | `Token::Value(T)` **or** _skips matched input_     |
+//! | Return type                                      | Produces                                                                                            |
+//! |--------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+//! | `()`                                             | `Ok(Token::Unit)`                                                                                   |
+//! | `bool`                                           | `Ok(Token::Unit)` **or** `Err(<Token as Logos>::Error::default())`                                  |
+//! | `Result<(), E>`                                  | `Ok(Token::Unit)` **or** `Err(<Token as Logos>::Error::from(err))`                                  |
+//! | `T`                                              | `Ok(Token::Value(T))`                                                                               |
+//! | `Option<T>`                                      | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::default())`                              |
+//! | `Result<T, E>`                                   | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))`                              |
+//! | [`Skip`](./struct.Skip.html)                     | _skips matched input_                                                                               |
+//! | [`Filter<T>`](./enum.Filter.html)                | `Ok(Token::Value(T))` **or** _skips matched input_                                                  |
+//! | [`FilterResult<T, E>`](./enum.FilterResult.html) | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))` **or** _skips matched input_ |
 //!
 //! Callbacks can be also used to do perform more specialized lexing in place
 //! where regular expressions are too limiting. For specifics look at
 //! [`Lexer::remainder`](./struct.Lexer.html#method.remainder) and
 //! [`Lexer::bump`](./struct.Lexer.html#method.bump).
+//!
+//! ## Errors
+//!
+//! By default, **Logos** uses `()` as the error type, which means that it
+//! doesn't store any information about the error.
+//! This can be changed by using `#[logos(error = T)]` attribute on the enum.
+//! The type `T` can be any type that implements `Clone`, `PartialEq`,
+//! `Default` and `From<E>` for each callback's error type.
 //!
 //! ## Token disambiguation
 //!
@@ -170,6 +176,7 @@ extern crate core as std;
 
 #[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
+use std::fmt::Debug;
 
 mod lexer;
 pub mod source;
@@ -192,8 +199,9 @@ pub trait Logos<'source>: Sized {
     /// or byte slices, in which case that implementation will use `[u8]`.
     type Source: Source + ?Sized + 'source;
 
-    /// Helper `const` of the variant marked as `#[error]`.
-    const ERROR: Self;
+    /// Error type returned by the lexer. This can be set using
+    /// `#[logos(error = MyError)]`. Defaults to `()` if not set.
+    type Error: Default + Clone + PartialEq + Debug + 'source;
 
     /// The heart of Logos. Called by the `Lexer`. The implementation for this function
     /// is generated by the `logos-derive` crate.
@@ -231,8 +239,7 @@ pub trait Logos<'source>: Sized {
 ///     // We will treat "abc" as if it was whitespace.
 ///     // This is identical to using `logos::skip`.
 ///     #[regex(" |abc", |_| Skip)]
-///     #[error]
-///     Error,
+///     Ignored,
 ///
 ///     #[regex("[a-zA-Z]+")]
 ///     Text(&'a str),
@@ -243,8 +250,8 @@ pub trait Logos<'source>: Sized {
 /// assert_eq!(
 ///     tokens,
 ///     &[
-///         Token::Text("Hello"),
-///         Token::Text("world"),
+///         Ok(Token::Text("Hello")),
+///         Ok(Token::Text("world")),
 ///     ],
 /// );
 /// ```
@@ -261,8 +268,7 @@ pub struct Skip;
 /// #[derive(Logos, Debug, PartialEq)]
 /// enum Token {
 ///     #[regex(r"[ \n\f\t]+", logos::skip)]
-///     #[error]
-///     Error,
+///     Ignored,
 ///
 ///     #[regex("[0-9]+", |lex| {
 ///         let n: u64 = lex.slice().parse().unwrap();
@@ -281,12 +287,12 @@ pub struct Skip;
 /// assert_eq!(
 ///     tokens,
 ///     &[
-///         Token::EvenNumber(20),
+///         Ok(Token::EvenNumber(20)),
 ///         // skipping 11
-///         Token::EvenNumber(42),
+///         Ok(Token::EvenNumber(42)),
 ///         // skipping 23
-///         Token::EvenNumber(100),
-///         Token::EvenNumber(8002),
+///         Ok(Token::EvenNumber(100)),
+///         Ok(Token::EvenNumber(8002))
 ///     ]
 /// );
 /// ```
@@ -295,6 +301,76 @@ pub enum Filter<T> {
     Emit(T),
     /// Skip current match, analog to [`Skip`](./struct.Skip.html).
     Skip,
+}
+
+/// Type that can be returned from a callback, either producing a field
+/// for a token, skipping it, or emitting an error.
+///
+/// # Example
+///
+/// ```rust
+/// use logos::{Logos, FilterResult};
+///
+/// #[derive(Debug, PartialEq, Clone, Default)]
+/// enum LexingError {
+///     NumberParseError,
+///     NumberIsTen,
+///     #[default]
+///     Other,
+/// }
+///
+/// impl From<std::num::ParseIntError> for LexingError {
+///     fn from(_: std::num::ParseIntError) -> Self {
+///         LexingError::NumberParseError
+///     }
+/// }
+///
+/// #[derive(Logos, Debug, PartialEq)]
+/// #[logos(error = LexingError)]
+/// enum Token {
+///     #[regex(r"[ \n\f\t]+", logos::skip)]
+///     Ignored,
+///
+///     #[regex("[0-9]+", |lex| {
+///         let n: u64 = lex.slice().parse().unwrap();
+///
+///         // Only emit a token if `n` is an even number.
+///         if n % 2 == 0 {
+///             // Emit an error if `n` is 10.
+///             if n == 10 {
+///                 FilterResult::Error(LexingError::NumberIsTen)
+///             } else {
+///                 FilterResult::Emit(n)
+///             }
+///         } else {
+///             FilterResult::Skip
+///         }
+///     })]
+///     NiceEvenNumber(u64)
+/// }
+///
+/// let tokens: Vec<_> = Token::lexer("20 11 42 23 100 10").collect();
+///
+/// assert_eq!(
+///     tokens,
+///     &[
+///         Ok(Token::NiceEvenNumber(20)),
+///         // skipping 11
+///         Ok(Token::NiceEvenNumber(42)),
+///         // skipping 23
+///         Ok(Token::NiceEvenNumber(100)),
+///         // error at 10
+///         Err(LexingError::NumberIsTen),
+///     ]
+/// );
+/// ```
+pub enum FilterResult<T, E> {
+    /// Emit a token with a given value `T`. Use `()` for unit variants without fields.
+    Emit(T),
+    /// Skip current match, analog to [`Skip`](./struct.Skip.html).
+    Skip,
+    /// Emit a `<Token as Logos>::ERROR` token.
+    Error(E),
 }
 
 /// Predefined callback that will inform the `Lexer` to skip a definition.
@@ -308,8 +384,7 @@ pub enum Filter<T> {
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace
 ///     #[regex(" |abc", logos::skip)]
-///     #[error]
-///     Error,
+///     Ignored,
 ///
 ///     #[regex("[a-zA-Z]+")]
 ///     Text(&'a str),
@@ -320,8 +395,8 @@ pub enum Filter<T> {
 /// assert_eq!(
 ///     tokens,
 ///     &[
-///         Token::Text("Hello"),
-///         Token::Text("world"),
+///         Ok(Token::Text("Hello")),
+///         Ok(Token::Text("world")),
 ///     ],
 /// );
 /// ```
