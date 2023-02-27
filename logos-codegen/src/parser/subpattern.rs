@@ -1,9 +1,9 @@
-use proc_macro::Ident;
+use proc_macro2::Ident;
 
 use crate::error::Errors;
 use crate::mir::Mir;
-use crate::parser::definition::{bytes_to_regex_string, Literal};
 use crate::parse::IdentExt;
+use crate::parser::definition::{bytes_to_regex_string, Literal};
 
 #[derive(Default)]
 pub struct Subpatterns {
@@ -14,7 +14,7 @@ impl Subpatterns {
     pub fn add(&mut self, param: Ident, lit: Literal, errors: &mut Errors) {
         let name = param.to_string();
 
-        if let Some((name, _)) = self.map.iter().find(|(ident, _)| ident.eq(&name)) {
+        if let Some((name, _)) = self.map.iter().find(|(ident, _)| ident.eq_str(&name)) {
             errors
                 .err(format!("{} can only be assigned once", param), param.span())
                 .err("Previously assigned here", name.span());
@@ -56,21 +56,19 @@ impl Subpatterns {
             };
 
             let name = &pattern[i..subref_end];
-            // let ident = match syn::parse_str::<Ident>(name) {
-            //     Ok(name) => name,
-            //     Err(_) => {
-            //         errors.err(
-            //             format!("subpattern reference `{}` is not an identifier", name),
-            //             lit.span(),
-            //         );
-            //         // we emitted the error; make something up and continue
-            //         pattern.replace_range(i..subref_end, "_");
-            //         i += 2;
-            //         continue;
-            //     }
-            // };
 
-            match self.map.iter().find(|(def, _)| def.eq(name)) {
+            if syn::parse_str::<Ident>(name).is_err() {
+                errors.err(
+                    format!("subpattern reference `{}` is not an identifier", name),
+                    lit.span(),
+                );
+                // we emitted the error; make something up and continue
+                pattern.replace_range(i..subref_end, "_");
+                i += 2;
+                continue;
+            };
+
+            match self.map.iter().find(|(def, _)| def.eq_str(name)) {
                 Some((_, subpattern)) => {
                     pattern.replace_range(i..subref_end, subpattern);
                     i += subpattern.len() + 1;

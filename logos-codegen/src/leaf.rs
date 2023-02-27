@@ -1,8 +1,8 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug, Display};
 
-use proc_macro2::{Span, TokenStream};
-use syn::{spanned::Spanned, Ident};
+use proc_macro2::{Ident, Span, TokenStream};
+use syn::spanned::Spanned;
 
 use crate::graph::{Disambiguate, Node};
 use crate::util::MaybeVoid;

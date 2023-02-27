@@ -1,12 +1,12 @@
-use proc_macro2::{Ident, Span};
-use syn::{spanned::Spanned, LitByteStr, LitStr};
+use proc_macro2::{Ident, Span, TokenStream, TokenTree};
+use syn::{LitByteStr, LitStr};
 
 use crate::error::{Errors, Result};
 use crate::leaf::Callback;
 use crate::mir::Mir;
 use crate::parse::prelude::*;
-use crate::parser::nested::NestedValue;
-use crate::parser::{IgnoreFlags, Parser, Subpatterns};
+use crate::parser::nested::NestedAssign;
+use crate::parser::{IgnoreFlags, Subpatterns};
 
 use super::ignore_flags::ascii_case::MakeAsciiCaseInsensitive;
 
@@ -27,12 +27,10 @@ impl Parse for Literal {
         let lit = stream.expect(Lit)?;
         let span = lit.span();
 
-        match syn::parse::<syn::Lit>(lit.into()) {
+        match syn::parse2::<syn::Lit>(lit.into()) {
             Ok(syn::Lit::Str(string)) => Ok(Literal::Utf8(string)),
             Ok(syn::Lit::ByteStr(bytes)) => Ok(Literal::Bytes(bytes)),
-            _ => {
-                Err(ParseError::new("Expected a &str or &[u8] slice", span))
-            }
+            _ => Err(ParseError::new("Expected a &str or &[u8] slice", span)),
         }
     }
 }
@@ -47,64 +45,97 @@ impl Definition {
         }
     }
 
-    pub fn named_attr(&mut self, name: Ident, value: NestedValue, parser: &mut Parser) {
-        match (name.to_string().as_str(), value) {
-            ("priority", NestedValue::Assign(tokens)) => {
-                let prio = match tokens.to_string().parse() {
-                    Ok(prio) => prio,
-                    Err(_) => {
-                        parser.err("Expected an unsigned integer", tokens.span());
-                        return;
-                    }
-                };
+    pub fn named_attr(
+        &mut self,
+        stream: &mut ParseStream,
+        errors: &mut Errors,
+    ) -> Option<TokenStream> {
+        type Handler = fn(
+            &mut Definition,
+            &mut Errors,
+            stream: &mut ParseStream,
+            Span,
+        ) -> Result<(), ParseError>;
 
-                if self.priority.replace(prio).is_some() {
-                    parser.err("Resetting previously set priority", tokens.span());
-                }
-            }
-            ("priority", _) => {
-                parser.err("Expected: priority = <integer>", name.span());
-            }
-            ("callback", NestedValue::Assign(tokens)) => {
-                let span = tokens.span();
-                let callback = match parser.parse_callback(tokens) {
-                    Some(callback) => callback,
-                    None => {
-                        parser.err("Not a valid callback", span);
-                        return;
-                    }
-                };
+        let name: Ident = match stream.peek()? {
+            TokenTree::Ident(_) => stream.parse().unwrap(),
+            _ => return Some(stream.collect()),
+        };
 
-                if let Some(previous) = self.callback.replace(callback) {
-                    parser
-                        .err(
-                            "Callback has been already set",
-                            span.join(name.span()).unwrap(),
-                        )
-                        .err("Previous callback set here", previous.span());
+        // IMPORTANT: Keep these sorted alphabetically for binary search down the line
+        static DEF_ATTRS: &[(&str, &str, Handler)] = &[
+            (
+                "callback",
+                "Expected: callback = ...",
+                |def, errors, stream, span| {
+                    let NestedAssign { value } = stream.parse()?;
+
+                    if let Some(previous) = def.callback.replace(value) {
+                        errors
+                            .err("Callback has been already set", span)
+                            .err("Previous callback set here", previous.span());
+                    }
+
+                    Ok(())
+                },
+            ),
+            (
+                "ignore",
+                "Expected: ignore(<flag>, ...)",
+                |def, _, stream, _| {
+                    if let TokenTree::Group(group) = stream.expect('(')? {
+                        def.ignore_flags.parse_group(group.stream())?;
+                    }
+
+                    Ok(())
+                },
+            ),
+            (
+                "priority",
+                "Expected: priority = <integer>",
+                |def, _, stream, _| {
+                    let NestedAssign { value } =
+                        stream.parse::<NestedAssign<proc_macro2::Literal>>()?;
+
+                    let prio = match value.to_string().parse() {
+                        Ok(prio) => prio,
+                        Err(_) => {
+                            return Err(ParseError::new(
+                                "Expected an unsigned integer",
+                                value.span(),
+                            ))
+                        }
+                    };
+
+                    if def.priority.replace(prio).is_some() {
+                        return Err(ParseError::new(
+                            "Resetting previously set priority",
+                            value.span(),
+                        ));
+                    }
+
+                    Ok(())
+                },
+            ),
+        ];
+
+        match name.with_str(|name| DEF_ATTRS.binary_search_by_key(&name, |(n, _, _)| n)) {
+            Ok(idx) => {
+                let span = name.span();
+                let (_, expected, handler) = DEF_ATTRS[idx];
+                if let Err(err) = (handler)(self, errors, stream, span) {
+                    errors.err(expected, span).push(err);
                 }
+
+                None
             }
-            ("callback", _) => {
-                parser.err("Expected: callback = ...", name.span());
-            }
-            ("ignore", NestedValue::Group(tokens)) => {
-                self.ignore_flags.parse_group(name, tokens, parser);
-            }
-            ("ignore", _) => {
-                parser.err("Expected: ignore(<flag>, ...)", name.span());
-            }
-            (unknown, _) => {
-                parser.err(
-                    format!(
-                        "\
-                        Unknown nested attribute: {}\n\
-                        \n\
-                        Expected one of: priority, callback\
-                        ",
-                        unknown
-                    ),
-                    name.span(),
-                );
+            Err(_) => {
+                let mut out = TokenStream::new();
+
+                out.extend([TokenTree::Ident(name)]);
+                out.extend(stream);
+
+                Some(out)
             }
         }
     }

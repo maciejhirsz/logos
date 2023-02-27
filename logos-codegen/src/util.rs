@@ -1,4 +1,4 @@
-use proc_macro2::{Spacing, Span, TokenStream, TokenTree};
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::Ident;
 
@@ -47,15 +47,6 @@ impl ToTokens for MaybeVoid {
             MaybeVoid::Void => quote!(()),
         }
     }
-}
-
-pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
-    matches!(tt, TokenTree::Punct(punct) if punct.as_char() == expect && punct.spacing() == Spacing::Alone)
-}
-
-/// If supplied `tt` is a punct matching a char, returns `None`, else returns `tt`
-pub fn expect_punct(tt: Option<TokenTree>, expect: char) -> Option<TokenTree> {
-    tt.filter(|tt| !is_punct(tt, expect))
 }
 
 pub trait ToIdent {

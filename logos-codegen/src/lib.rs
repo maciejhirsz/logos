@@ -18,7 +18,7 @@ mod parse;
 mod parser;
 mod util;
 
-extern crate proc_macro;
+// extern crate proc_macro;
 
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};

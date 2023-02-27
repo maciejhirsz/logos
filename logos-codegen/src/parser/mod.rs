@@ -1,14 +1,13 @@
 use beef::lean::Cow;
-use proc_macro2::{TokenStream, TokenTree};
+use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Lit, Type};
+use syn::{Attribute, GenericParam, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
 use crate::parse::prelude::*;
-use crate::parse::TokenStreamExt;
-use crate::util::{expect_punct, MaybeVoid};
+use crate::util::MaybeVoid;
 use crate::LOGOS_ATTR;
 
 mod definition;
@@ -22,7 +21,7 @@ pub use self::ignore_flags::IgnoreFlags;
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
-use nested::{AttributeParser, CommaSplitter, Nested, NestedAssign, NestedKeywordAssign};
+use nested::{NestedAssign, NestedKeywordAssign, Splitter};
 
 #[derive(Default)]
 pub struct Parser {
@@ -55,7 +54,7 @@ impl Parser {
                 self.types.explicit_lifetime(lt, &mut self.errors);
             }
             GenericParam::Type(ty) => {
-                self.types.add2(ty.ident);
+                self.types.add(ty.ident);
             }
             GenericParam::Const(c) => {
                 self.err("Logos doesn't support const generics.", c.span());
@@ -67,20 +66,11 @@ impl Parser {
         self.types.generics(&mut self.errors)
     }
 
-    fn parse_attr2(&mut self, attr: &mut Attribute) -> Option<AttributeParser> {
+    fn parse_attr(&mut self, attr: &mut Attribute) -> Option<Splitter> {
         let mut tokens = std::mem::replace(&mut attr.tokens, TokenStream::new()).into_iter();
 
         match tokens.next() {
-            Some(TokenTree::Group(group)) => Some(AttributeParser::new(group.stream())),
-            _ => None,
-        }
-    }
-
-    fn parse_attr(&mut self, attr: &mut Attribute) -> Option<CommaSplitter> {
-        let mut tokens = std::mem::replace(&mut attr.tokens, TokenStream::new()).into_iter();
-
-        match tokens.next() {
-            Some(TokenTree::Group(group)) => Some(CommaSplitter::new(group.stream())),
+            Some(TokenTree::Group(group)) => Some(Splitter::new(group.stream())),
             _ => None,
         }
     }
@@ -103,7 +93,7 @@ impl Parser {
         for stream in nested {
             let mut stream = stream.parse_stream();
 
-            let name: proc_macro::Ident = match stream.parse() {
+            let name: Ident = match stream.parse() {
                 Ok(ident) => ident,
                 Err(err) => {
                     self.errors.push(err);
@@ -111,21 +101,18 @@ impl Parser {
                 }
             };
 
-            type Callback = fn(
-                &mut Parser,
-                proc_macro::Span,
-                stream: &mut ParseStream,
-            ) -> Result<(), ParseError>;
+            type Handler =
+                fn(&mut Parser, Span, stream: &mut ParseStream) -> Result<(), ParseError>;
 
             // IMPORTANT: Keep these sorted alphabetically for binary search down the line
-            static NESTED_LOOKUP: &[(&str, &str, Callback)] = &[
+            static NESTED_ATTRS: &[(&str, &str, Handler)] = &[
                 (
                     "crate",
                     "Expected: #[logos(crate = path::to::logos)]",
                     |parser, span, stream| {
                         let NestedAssign { value } = stream.parse::<NestedAssign>()?;
 
-                        if let Some(previous) = parser.logos_path.replace(value.into()) {
+                        if let Some(previous) = parser.logos_path.replace(value) {
                             parser
                                 .err("#[logos(crate)] can be defined only once", span)
                                 .err("Previous definition here", previous.span());
@@ -140,7 +127,7 @@ impl Parser {
                     |parser, span, stream| {
                         let NestedAssign { value } = stream.parse::<NestedAssign>()?;
 
-                        if let MaybeVoid::Some(previous) = parser.error_type.replace(value.into()) {
+                        if let MaybeVoid::Some(previous) = parser.error_type.replace(value) {
                             parser
                                 .err("#[logos(error)] can be defined only once", span)
                                 .err("Previous definition here", previous.span());
@@ -155,7 +142,7 @@ impl Parser {
                     |parser, span, stream| {
                         let NestedAssign { value } = stream.parse::<NestedAssign>()?;
 
-                        if let MaybeVoid::Some(previous) = parser.extras.replace(value.into()) {
+                        if let MaybeVoid::Some(previous) = parser.extras.replace(value) {
                             parser
                                 .err("#[logos(extras)] can be defined only once", span)
                                 .err("Previous definition here", previous.span());
@@ -179,7 +166,7 @@ impl Parser {
                     |parser, span, stream| {
                         let NestedAssign { value } = stream.parse::<NestedAssign>()?;
 
-                        if let Some(previous) = parser.source.replace(value.into()) {
+                        if let Some(previous) = parser.source.replace(value) {
                             parser
                                 .err("#[logos(source)] can be defined only once", span)
                                 .err("Previous definition here", previous.span());
@@ -197,7 +184,7 @@ impl Parser {
                         parser.subpatterns.add(name, value, &mut parser.errors);
 
                         Ok(())
-                    }
+                    },
                 ),
                 (
                     "type",
@@ -208,49 +195,31 @@ impl Parser {
                         parser.types.set(name, value, &mut parser.errors);
 
                         Ok(())
-                    }
-                )
+                    },
+                ),
             ];
 
-            name.with_str(
-                |nstr| match NESTED_LOOKUP.binary_search_by_key(&nstr, |(n, _, _)| n) {
-                    Ok(idx) => {
-                        let span = name.span();
-                        let (_, expected, callback) = NESTED_LOOKUP[idx];
-                        if let Err(err) = (callback)(self, span, &mut stream) {
-                            self.err(expected, span).push(err);
-                        }
+            match name.with_str(|name| NESTED_ATTRS.binary_search_by_key(&name, |(n, _, _)| n)) {
+                Ok(idx) => {
+                    let span = name.span();
+                    let (_, expected, handler) = NESTED_ATTRS[idx];
+                    if let Err(err) = (handler)(self, span, &mut stream) {
+                        self.err(expected, span).push(err);
                     }
-                    Err(_) => {
-                        let mut err = format!(
-                            "Unknown nested attribute #[logos({name})], expected one of: {}",
-                            NESTED_LOOKUP[0].0
-                        );
+                }
+                Err(_) => {
+                    let mut err = format!(
+                        "Unknown nested attribute #[logos({name})], expected one of: {}",
+                        NESTED_ATTRS[0].0
+                    );
 
-                        for (allowed, _, _) in &NESTED_LOOKUP[1..] {
-                            err.push_str(", ");
-                            err.push_str(allowed);
-                        }
-
-                        self.err(err, name.span());
+                    for (allowed, _, _) in &NESTED_ATTRS[1..] {
+                        err.push_str(", ");
+                        err.push_str(allowed);
                     }
-                },
-            );
-        }
-    }
 
-    pub fn parse_literal(&mut self, lit: Lit) -> Option<Literal> {
-        match lit {
-            Lit::Str(string) => Some(Literal::Utf8(string)),
-            Lit::ByteStr(bytes) => {
-                self.mode = Mode::Binary;
-
-                Some(Literal::Bytes(bytes))
-            }
-            _ => {
-                self.err("Expected a &str or &[u8] slice", lit.span());
-
-                None
+                    self.err(err, name.span());
+                }
             }
         }
     }
@@ -260,89 +229,54 @@ impl Parser {
     /// + `#[token(literal[, callback])]`
     /// + `#[regex(literal[, callback])]`
     pub fn parse_definition(&mut self, attr: &mut Attribute) -> Option<Definition> {
-        let mut nested = self.parse_attr2(attr)?;
+        let span = attr.tokens.span();
+        let mut nested = self.parse_attr(attr)?;
 
-        let literal = match nested.parsed::<Lit>()? {
-            Ok(lit) => self.parse_literal(lit)?,
-            Err(err) => {
-                self.err(err.to_string(), err.span());
+        let mut stream = match nested.next() {
+            Some(tokens) => tokens.parse_stream(),
+            None => {
+                self.err("Expected a literal", span);
 
                 return None;
             }
         };
 
+        let literal = match stream.parse() {
+            Ok(lit) => lit,
+            Err(err) => {
+                self.errors.push(err);
+
+                return None;
+            }
+        };
+
+        if matches!(literal, Literal::Bytes(_)) {
+            self.mode = Mode::Binary;
+        }
+
         let mut def = Definition::new(literal);
 
-        for (position, next) in nested.enumerate() {
-            match next {
-                Nested::Unexpected(tokens) => {
-                    self.err("Unexpected token in attribute", tokens.span());
-                }
-                Nested::Unnamed(tokens) => match position {
-                    0 => def.callback = self.parse_callback(tokens),
-                    _ => {
-                        self.err(
-                            "\
-                            Expected a named argument at this position\n\
-                            \n\
-                            hint: If you are trying to define a callback here use: callback = ...\
-                            ",
-                            tokens.span(),
-                        );
+        for stream in nested {
+            let mut stream = stream.parse_stream();
+
+            match stream.peek() {
+                Some(TokenTree::Ident(_)) => (),
+                _ => match stream.parse::<Callback>() {
+                    Ok(callback) => {
+                        def.callback = Some(callback);
+                    }
+                    Err(err) => {
+                        self.errors.push(err);
                     }
                 },
-                Nested::Named(name, value) => {
-                    def.named_attr(name, value, self);
-                }
+            }
+
+            if let Some(tokens) = def.named_attr(&mut stream, &mut self.errors) {
+                def.callback = Some(Callback::Label(tokens));
             }
         }
 
         Some(def)
-    }
-
-    fn parse_callback(&mut self, tokens: TokenStream) -> Option<Callback> {
-        let span = tokens.span();
-        let mut tokens = tokens.into_iter();
-
-        if let Some(tt) = expect_punct(tokens.next(), '|') {
-            let mut label = TokenStream::from(tt);
-
-            label.extend(tokens);
-
-            return Some(Callback::Label(label));
-        }
-
-        let first = tokens.next();
-        let error = expect_punct(tokens.next(), '|');
-
-        let arg = match (error, first) {
-            (None, Some(TokenTree::Ident(arg))) => arg,
-            _ => {
-                self.err(
-                    "Inline callbacks must use closure syntax with exactly one parameter",
-                    span,
-                );
-                return None;
-            }
-        };
-
-        let body = match tokens.next() {
-            Some(TokenTree::Group(group)) => group.stream(),
-            Some(first) => {
-                let mut body = TokenStream::from(first);
-
-                body.extend(tokens);
-                body
-            }
-            None => {
-                self.err("Callback missing a body", span);
-                return None;
-            }
-        };
-
-        let inline = InlineCallback { arg, body, span };
-
-        Some(inline.into())
     }
 
     /// Checks if `ty` is a declared generic param, if so replaces it
@@ -377,5 +311,29 @@ impl Parser {
         S: IntoSpan,
     {
         self.errors.err(message, span)
+    }
+}
+
+impl Parse for Callback {
+    fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
+        if stream.allow_consume('|').is_some() {
+            let arg = stream.parse::<Ident>()?;
+            let span = arg.span();
+
+            stream.expect('|').map_err(|err| {
+                err.explain("Inline callbacks must use closure syntax with exactly one parameter")
+            })?;
+
+            let body = match stream.allow_consume('{') {
+                Some(TokenTree::Group(group)) => group.stream(),
+                _ => stream.collect(),
+            };
+
+            let arg = proc_macro2::Ident::new(&arg.to_string(), arg.span());
+
+            return Ok(InlineCallback { arg, body, span }.into());
+        }
+
+        Ok(Callback::Label(stream.collect()))
     }
 }

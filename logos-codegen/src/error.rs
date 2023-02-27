@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
-use crate::parse::{ParseError, IntoSpan};
+use crate::parse::{IntoSpan, ParseError};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -88,7 +88,7 @@ impl ToTokens for ParseError {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let message = &*self.msg;
 
-        tokens.append_all(quote_spanned!(self.span.into() => {
+        tokens.append_all(quote_spanned!(self.span => {
             compile_error!(#message)
         }))
     }

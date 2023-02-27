@@ -2,12 +2,12 @@
 //! token streams without `syn` or `quote`.
 
 use beef::lean::Cow;
-use proc_macro::{Delimiter, Ident, Literal, Spacing, Span, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Ident, Literal, Spacing, Span, TokenStream, TokenTree};
 
-pub type ParseStream = std::iter::Peekable<proc_macro::token_stream::IntoIter>;
+pub type ParseStream = std::iter::Peekable<proc_macro2::token_stream::IntoIter>;
 
 pub mod prelude {
-    pub use super::{IdentExt, IteratorExt, TokenTreeExt, TokenStreamExt};
+    pub use super::{IdentExt, IteratorExt, TokenStreamExt, TokenTreeExt};
     pub use super::{IntoSpan, Lit, Parse, ParseError, ParseStream};
 }
 
@@ -17,14 +17,23 @@ pub struct ParseError {
     pub span: Span,
 }
 
-pub trait IntoSpan {
-    fn into_span(self) -> Span;
+impl ParseError {
+    pub fn explain(mut self, explanation: &str) -> Self {
+        self.msg = {
+            let mut msg = self.msg.into_owned();
+
+            msg.push_str("\n\n");
+            msg.push_str(explanation);
+
+            msg.into()
+        };
+
+        self
+    }
 }
 
-impl IntoSpan for proc_macro2::Span {
-    fn into_span(self) -> Span {
-        self.unwrap()
-    }
+pub trait IntoSpan {
+    fn into_span(self) -> Span;
 }
 
 impl IntoSpan for Span {
@@ -36,6 +45,12 @@ impl IntoSpan for Span {
 impl IntoSpan for TokenTree {
     fn into_span(self) -> Span {
         self.span()
+    }
+}
+
+impl IntoSpan for TokenStream {
+    fn into_span(self) -> Span {
+        self.into_iter().next().into_span()
     }
 }
 
@@ -119,7 +134,7 @@ impl Pattern for Lit {
 impl Pattern for &str {
     fn matches(self, tt: &TokenTree) -> bool {
         match tt {
-            TokenTree::Ident(ident) => ident.eq(self),
+            TokenTree::Ident(ident) => ident.eq_str(self),
             _ => false,
         }
     }
@@ -242,12 +257,6 @@ impl TokenStreamExt for TokenStream {
     }
 }
 
-impl TokenStreamExt for proc_macro2::TokenStream {
-    fn parse_stream(self) -> ParseStream {
-        TokenStream::from(self).into_iter().peekable()
-    }
-}
-
 pub trait TokenTreeExt {
     fn is(&self, pattern: impl Pattern) -> bool;
 }
@@ -295,7 +304,7 @@ mod util {
             })
         }
 
-        fn eq(&self, other: &str) -> bool {
+        fn eq_str(&self, other: &str) -> bool {
             self.with_str(|s| s == other)
         }
 
@@ -304,7 +313,7 @@ mod util {
         }
     }
 
-    impl IdentExt for proc_macro::Ident {}
+    impl IdentExt for proc_macro2::Ident {}
 }
 
 pub use util::IdentExt;

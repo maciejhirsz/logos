@@ -1,5 +1,4 @@
-use proc_macro2::Span;
-use proc_macro::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Lifetime, LifetimeDef, Path, Type};
@@ -28,14 +27,8 @@ impl TypeParams {
         self.type_params.push((param, None));
     }
 
-    pub fn add2(&mut self, param: proc_macro2::Ident) {
-        let param = Ident::new(&param.to_string(), param.span().unwrap());
-
-        self.add(param)
-    }
-
     pub fn set(&mut self, param: Ident, ty: TokenStream, errors: &mut Errors) {
-        let ty = match syn::parse::<Type>(ty) {
+        let ty = match syn::parse2::<Type>(ty) {
             Ok(mut ty) => {
                 replace_lifetimes(&mut ty);
                 ty
@@ -48,7 +41,11 @@ impl TypeParams {
 
         let name = param.to_string();
 
-        match self.type_params.iter_mut().find(|(ident, _)| ident.eq(&name)) {
+        match self
+            .type_params
+            .iter_mut()
+            .find(|(ident, _)| ident.eq_str(&name))
+        {
             Some((_, slot)) => {
                 if let Some(previous) = slot.replace(ty) {
                     errors
@@ -70,7 +67,7 @@ impl TypeParams {
 
     pub fn find(&self, name: &str) -> Option<Type> {
         for (ident, ty) in &self.type_params {
-            if ident.eq(name) {
+            if ident.eq_str(name) {
                 return ty.clone();
             }
         }

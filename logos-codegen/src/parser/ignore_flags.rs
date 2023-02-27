@@ -1,9 +1,8 @@
 use std::ops::{BitAnd, BitOr};
 
-use proc_macro2::{Ident, TokenStream, TokenTree};
+use proc_macro2::{Ident, TokenStream};
 
-use crate::parser::Parser;
-use crate::util::is_punct;
+use crate::parse::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct IgnoreFlags {
@@ -46,135 +45,59 @@ impl IgnoreFlags {
     ///
     /// An error causes this function to return `false` and emits an error to
     /// the given `Parser`.
-    fn parse_ident(&mut self, ident: Ident, parser: &mut Parser) -> bool {
-        match ident.to_string().as_str() {
+    fn parse_ident(&mut self, ident: Ident) -> Result<(), ParseError> {
+        ident.with_str(|name| match name {
             "case" => {
                 if self.contains(Self::IgnoreAsciiCase) {
-                    parser.err(
+                    Err(ParseError::new(
                         "\
                         The flag \"case\" cannot be used along with \"ascii_case\"\
                         ",
                         ident.span(),
-                    );
-                    false
+                    ))
                 } else {
                     self.enable(Self::IgnoreCase);
-                    true
+                    Ok(())
                 }
             }
             "ascii_case" => {
                 if self.contains(Self::IgnoreCase) {
-                    parser.err(
+                    Err(ParseError::new(
                         "\
                         The flag \"ascii_case\" cannot be used along with \"case\"\
                         ",
                         ident.span(),
-                    );
-                    false
+                    ))
                 } else {
                     self.enable(Self::IgnoreAsciiCase);
-                    true
+                    Ok(())
                 }
             }
-            unknown => {
-                parser.err(
-                    format!(
-                        "\
+            unknown => Err(ParseError::new(
+                format!(
+                    "\
                         Unknown flag: {}\n\
                         \n\
                         Expected one of: case, ascii_case\
                         ",
-                        unknown
-                    ),
-                    ident.span(),
-                );
-                false
-            }
-        }
+                    unknown
+                ),
+                ident.span(),
+            )),
+        })
     }
 
-    pub fn parse_group(&mut self, name: Ident, tokens: TokenStream, parser: &mut Parser) {
-        // Little finite state machine to parse "<flag>(,<flag>)*,?"
+    pub fn parse_group(&mut self, tokens: TokenStream) -> Result<(), ParseError> {
+        // Parse "<flag>(,<flag>)*,?"
+        let mut stream = tokens.parse_stream();
 
-        // FSM description for future maintenance
-        // 0: Initial state
-        //   <flag> -> 1
-        //        _ -> error
-        // 1: A flag was found
-        //        , -> 2
-        //     None -> done
-        //        _ -> error
-        // 2: A comma was found (after a <flag>)
-        //   <flag> -> 1
-        //     None -> done
-        //        _ -> error
-        let mut state = 0u8;
+        self.parse_ident(stream.parse()?)?;
 
-        let mut tokens = tokens.into_iter();
-
-        loop {
-            state = match state {
-                0 => match tokens.next() {
-                    Some(TokenTree::Ident(ident)) => {
-                        if self.parse_ident(ident, parser) {
-                            1
-                        } else {
-                            return;
-                        }
-                    }
-                    _ => {
-                        parser.err(
-                            "\
-                            Invalid ignore flag\n\
-                            \n\
-                            Expected one of: case, ascii_case\
-                            ",
-                            name.span(),
-                        );
-                        return;
-                    }
-                },
-                1 => match tokens.next() {
-                    Some(tt) if is_punct(&tt, ',') => 2,
-                    None => return,
-                    Some(unexpected_tt) => {
-                        parser.err(
-                            format!(
-                                "\
-                                Unexpected token: {:?}\
-                                ",
-                                unexpected_tt.to_string(),
-                            ),
-                            unexpected_tt.span(),
-                        );
-                        return;
-                    }
-                },
-                2 => match tokens.next() {
-                    Some(TokenTree::Ident(ident)) => {
-                        if self.parse_ident(ident, parser) {
-                            1
-                        } else {
-                            return;
-                        }
-                    }
-                    None => return,
-                    Some(unexpected_tt) => {
-                        parser.err(
-                            format!(
-                                "\
-                                Unexpected token: {:?}\
-                                ",
-                                unexpected_tt.to_string(),
-                            ),
-                            unexpected_tt.span(),
-                        );
-                        return;
-                    }
-                },
-                _ => unreachable!("Internal Error: invalid state ({})", state),
-            }
+        while stream.allow_consume(',').is_some() {
+            self.parse_ident(stream.parse()?)?;
         }
+
+        Ok(())
     }
 }
 

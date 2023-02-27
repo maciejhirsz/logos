@@ -20,10 +20,12 @@ impl<'a> Generator<'a> {
         };
 
         match &leaf.callback {
-            Some(Callback::Label(callback)) => quote! {
-                #bump
-                #callback(lex).construct(#constructor, lex);
-            },
+            Some(Callback::Label(callback)) => {
+                quote! {
+                    #bump
+                    #callback(lex).construct(#constructor, lex);
+                }
+            }
             Some(Callback::Inline(inline)) => {
                 let arg = &inline.arg;
                 let body = &inline.body;
