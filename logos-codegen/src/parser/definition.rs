@@ -4,6 +4,7 @@ use syn::{spanned::Spanned, LitByteStr, LitStr};
 use crate::error::{Errors, Result};
 use crate::leaf::Callback;
 use crate::mir::Mir;
+use crate::parse::prelude::*;
 use crate::parser::nested::NestedValue;
 use crate::parser::{IgnoreFlags, Parser, Subpatterns};
 
@@ -19,6 +20,21 @@ pub struct Definition {
 pub enum Literal {
     Utf8(LitStr),
     Bytes(LitByteStr),
+}
+
+impl Parse for Literal {
+    fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
+        let lit = stream.expect(Lit)?;
+        let span = lit.span();
+
+        match syn::parse::<syn::Lit>(lit.into()) {
+            Ok(syn::Lit::Str(string)) => Ok(Literal::Utf8(string)),
+            Ok(syn::Lit::ByteStr(bytes)) => Ok(Literal::Bytes(bytes)),
+            _ => {
+                Err(ParseError::new("Expected a &str or &[u8] slice", span))
+            }
+        }
+    }
 }
 
 impl Definition {

@@ -1,35 +1,32 @@
 use std::fmt;
 
 use beef::lean::Cow;
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
-use crate::parse::ParseError;
+use crate::parse::{ParseError, IntoSpan};
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Default)]
 pub struct Errors {
     collected: Vec<ParseError>,
 }
 
-// impl Default for Errors {
-//     fn default() -> Self {
-//         Errors {
-//             collected: Vec::new(),
-//         }
-//     }
-// }
-
 impl Errors {
-    pub fn err<M>(&mut self, message: M, span: Span) -> &mut Self
+    pub fn err<M, S>(&mut self, message: M, span: S) -> &mut Self
     where
         M: Into<Cow<'static, str>>,
+        S: IntoSpan,
     {
         self.collected.push(ParseError::new(message, span));
 
         self
+    }
+
+    pub fn push(&mut self, err: ParseError) {
+        self.collected.push(err);
     }
 
     pub fn render(self) -> Option<TokenStream> {

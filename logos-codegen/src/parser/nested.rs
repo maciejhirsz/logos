@@ -1,18 +1,85 @@
 use proc_macro2::token_stream::IntoIter as TokenIter;
-use proc_macro2::{Ident, Literal, TokenStream, TokenTree};
+use proc_macro2::{Ident, Literal, TokenStream as TokenStream2, TokenTree};
+
+use proc_macro::TokenStream;
 use quote::quote;
 
+use crate::parse::prelude::*;
 use crate::util::{expect_punct, is_punct};
+
+pub struct CommaSplitter {
+    stream: ParseStream,
+}
+
+impl CommaSplitter {
+    pub fn new(stream: TokenStream2) -> Self {
+        CommaSplitter {
+            stream: stream.parse_stream(),
+        }
+    }
+}
+
+impl Iterator for CommaSplitter {
+    type Item = TokenStream;
+
+    fn next(&mut self) -> Option<TokenStream> {
+        let first = self.stream.next()?;
+
+        if first.is(',') {
+            return Some(TokenStream::new());
+        }
+
+        let mut out: TokenStream = first.into();
+
+        out.extend((&mut self.stream).take_while(|tt| !tt.is(',')));
+
+        Some(out)
+    }
+}
+
+/// `name = ...`
+pub struct NestedAssign<T = TokenStream> {
+    pub value: T,
+}
+
+/// `name ident = ...`
+pub struct NestedKeywordAssign<T = TokenStream> {
+    pub name: proc_macro::Ident,
+    pub value: T,
+}
+
+impl<T: Parse> Parse for NestedAssign<T> {
+    fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
+        stream.expect('=')?;
+
+        Ok(NestedAssign {
+            value: stream.parse()?,
+        })
+    }
+}
+
+impl<T: Parse> Parse for NestedKeywordAssign<T> {
+    fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
+        let name = stream.parse()?;
+
+        stream.expect('=')?;
+
+        Ok(NestedKeywordAssign {
+            name,
+            value: stream.parse()?,
+        })
+    }
+}
 
 pub enum NestedValue {
     /// `name = ...`
-    Assign(TokenStream),
+    Assign(TokenStream2),
     /// `name "literal"`
     Literal(Literal),
     /// `name(...)`
-    Group(TokenStream),
+    Group(TokenStream2),
     /// `name ident = ...`
-    KeywordAssign(Ident, TokenStream),
+    KeywordAssign(Ident, TokenStream2),
 }
 
 pub enum Nested {
@@ -20,11 +87,11 @@ pub enum Nested {
     /// callback closure, or a lone ident/path
     ///
     /// Note: a lone ident will be Named with no value instead
-    Unnamed(TokenStream),
+    Unnamed(TokenStream2),
     /// Named: name ...
     Named(Ident, NestedValue),
     /// Unexpected token,
-    Unexpected(TokenStream),
+    Unexpected(TokenStream2),
 }
 
 pub struct AttributeParser {
@@ -33,14 +100,14 @@ pub struct AttributeParser {
 
 pub struct Empty;
 
-impl From<Empty> for TokenStream {
-    fn from(_: Empty) -> TokenStream {
-        TokenStream::new()
+impl From<Empty> for TokenStream2 {
+    fn from(_: Empty) -> TokenStream2 {
+        TokenStream2::new()
     }
 }
 
 impl AttributeParser {
-    pub fn new(stream: TokenStream) -> Self {
+    pub fn new(stream: TokenStream2) -> Self {
         AttributeParser {
             inner: stream.into_iter(),
         }
@@ -50,7 +117,7 @@ impl AttributeParser {
     where
         T: syn::parse::Parse,
     {
-        let tokens = self.collect_tail(TokenStream::new());
+        let tokens = self.collect_tail(TokenStream2::new());
 
         if tokens.is_empty() {
             return None;
@@ -63,9 +130,9 @@ impl AttributeParser {
         expect_punct(self.inner.next(), ',')
     }
 
-    fn collect_tail<T>(&mut self, first: T) -> TokenStream
+    fn collect_tail<T>(&mut self, first: T) -> TokenStream2
     where
-        T: Into<TokenStream>,
+        T: Into<TokenStream2>,
     {
         let mut out = first.into();
 
@@ -77,7 +144,7 @@ impl AttributeParser {
     }
 
     fn parse_unnamed(&mut self, first: Ident, next: TokenTree) -> Nested {
-        let mut out = TokenStream::from(TokenTree::Ident(first));
+        let mut out = TokenStream2::from(TokenTree::Ident(first));
 
         out.extend(self.collect_tail(next));
 
@@ -97,7 +164,7 @@ impl AttributeParser {
         Nested::Named(name, NestedValue::Literal(lit))
     }
 
-    fn parse_group(&mut self, name: Ident, group: TokenStream) -> Nested {
+    fn parse_group(&mut self, name: Ident, group: TokenStream2) -> Nested {
         Nested::Named(name, NestedValue::Group(group))
     }
 

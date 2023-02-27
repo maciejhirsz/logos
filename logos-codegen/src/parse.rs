@@ -2,7 +2,7 @@
 //! token streams without `syn` or `quote`.
 
 use beef::lean::Cow;
-use proc_macro::{Delimiter, Ident, Spacing, Span, TokenStream, TokenTree};
+use proc_macro::{Delimiter, Ident, Literal, Spacing, Span, TokenStream, TokenTree};
 
 pub type ParseStream = std::iter::Peekable<proc_macro::token_stream::IntoIter>;
 
@@ -70,11 +70,26 @@ pub trait Parse: Sized {
     fn parse(stream: &mut ParseStream) -> Result<Self, ParseError>;
 }
 
+impl Parse for TokenStream {
+    fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
+        Ok(stream.collect())
+    }
+}
+
 impl Parse for Ident {
     fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
         match stream.next() {
             Some(TokenTree::Ident(ident)) => Ok(ident),
             tt => Err(ParseError::new("Expected an identifier", tt)),
+        }
+    }
+}
+
+impl Parse for Literal {
+    fn parse(stream: &mut ParseStream) -> Result<Self, ParseError> {
+        match stream.next() {
+            Some(TokenTree::Literal(lit)) => Ok(lit),
+            tt => Err(ParseError::new("Expected a literal value", tt)),
         }
     }
 }
@@ -207,9 +222,18 @@ impl IteratorExt for ParseStream {
     }
 }
 
-
-pub trait TokenStreamExt {
+pub trait TokenStreamExt: Sized {
     fn parse_stream(self) -> ParseStream;
+
+    fn parse<T: Parse>(self) -> Result<T, ParseError> {
+        let mut stream = self.parse_stream();
+
+        let out = stream.parse()?;
+
+        stream.parse::<()>()?;
+
+        Ok(out)
+    }
 }
 
 impl TokenStreamExt for TokenStream {

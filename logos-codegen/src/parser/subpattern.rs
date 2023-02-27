@@ -1,9 +1,9 @@
-use proc_macro2::TokenStream;
-use syn::Ident;
+use proc_macro::Ident;
 
 use crate::error::Errors;
 use crate::mir::Mir;
 use crate::parser::definition::{bytes_to_regex_string, Literal};
+use crate::parse::IdentExt;
 
 #[derive(Default)]
 pub struct Subpatterns {
@@ -11,16 +11,10 @@ pub struct Subpatterns {
 }
 
 impl Subpatterns {
-    pub fn add(&mut self, param: Ident, pattern: TokenStream, errors: &mut Errors) {
-        let lit = match syn::parse2::<Literal>(pattern) {
-            Ok(lit) => lit,
-            Err(e) => {
-                errors.err(e.to_string(), e.span());
-                return;
-            }
-        };
+    pub fn add(&mut self, param: Ident, lit: Literal, errors: &mut Errors) {
+        let name = param.to_string();
 
-        if let Some((name, _)) = self.map.iter().find(|(name, _)| *name == param) {
+        if let Some((name, _)) = self.map.iter().find(|(ident, _)| ident.eq(&name)) {
             errors
                 .err(format!("{} can only be assigned once", param), param.span())
                 .err("Previously assigned here", name.span());
@@ -62,21 +56,21 @@ impl Subpatterns {
             };
 
             let name = &pattern[i..subref_end];
-            let name = match syn::parse_str::<Ident>(name) {
-                Ok(name) => name,
-                Err(_) => {
-                    errors.err(
-                        format!("subpattern reference `{}` is not an identifier", name),
-                        lit.span(),
-                    );
-                    // we emitted the error; make something up and continue
-                    pattern.replace_range(i..subref_end, "_");
-                    i += 2;
-                    continue;
-                }
-            };
+            // let ident = match syn::parse_str::<Ident>(name) {
+            //     Ok(name) => name,
+            //     Err(_) => {
+            //         errors.err(
+            //             format!("subpattern reference `{}` is not an identifier", name),
+            //             lit.span(),
+            //         );
+            //         // we emitted the error; make something up and continue
+            //         pattern.replace_range(i..subref_end, "_");
+            //         i += 2;
+            //         continue;
+            //     }
+            // };
 
-            match self.map.iter().find(|(def, _)| *def == name) {
+            match self.map.iter().find(|(def, _)| def.eq(name)) {
                 Some((_, subpattern)) => {
                     pattern.replace_range(i..subref_end, subpattern);
                     i += subpattern.len() + 1;

@@ -1,9 +1,11 @@
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::Span;
+use proc_macro::{Ident, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Lifetime, LifetimeDef, Path, Type};
 
 use crate::error::Errors;
+use crate::parse::IdentExt;
 
 #[derive(Default)]
 pub struct TypeParams {
@@ -26,8 +28,14 @@ impl TypeParams {
         self.type_params.push((param, None));
     }
 
+    pub fn add2(&mut self, param: proc_macro2::Ident) {
+        let param = Ident::new(&param.to_string(), param.span().unwrap());
+
+        self.add(param)
+    }
+
     pub fn set(&mut self, param: Ident, ty: TokenStream, errors: &mut Errors) {
-        let ty = match syn::parse2::<Type>(ty) {
+        let ty = match syn::parse::<Type>(ty) {
             Ok(mut ty) => {
                 replace_lifetimes(&mut ty);
                 ty
@@ -38,7 +46,9 @@ impl TypeParams {
             }
         };
 
-        match self.type_params.iter_mut().find(|(name, _)| *name == param) {
+        let name = param.to_string();
+
+        match self.type_params.iter_mut().find(|(ident, _)| ident.eq(&name)) {
             Some((_, slot)) => {
                 if let Some(previous) = slot.replace(ty) {
                     errors
@@ -58,9 +68,9 @@ impl TypeParams {
         }
     }
 
-    pub fn find(&self, path: &Path) -> Option<Type> {
+    pub fn find(&self, name: &str) -> Option<Type> {
         for (ident, ty) in &self.type_params {
-            if path.is_ident(ident) {
+            if ident.eq(name) {
                 return ty.clone();
             }
         }
@@ -68,7 +78,7 @@ impl TypeParams {
         None
     }
 
-    pub fn generics(&self, errors: &mut Errors) -> Option<TokenStream> {
+    pub fn generics(&self, errors: &mut Errors) -> Option<proc_macro2::TokenStream> {
         if !self.lifetime && self.type_params.is_empty() {
             return None;
         }
