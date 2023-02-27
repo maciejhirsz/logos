@@ -61,6 +61,7 @@ enum Token {
     #[regex(r"([#@!\\?][#@!\\?][#@!\\?][#@!\\?])+")]
     WhatTheHeck,
 
+    // #[token("try" | "type" | "typeof")]
     #[regex("try|type|typeof")]
     Keyword,
 }

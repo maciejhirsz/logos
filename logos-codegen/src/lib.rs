@@ -13,8 +13,11 @@ mod generator;
 mod graph;
 mod leaf;
 mod mir;
+mod parse;
 mod parser;
 mod util;
+
+extern crate proc_macro;
 
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
@@ -50,7 +53,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         parser.try_parse_logos(attr);
     }
 
-    let mut ropes = Vec::new();
+    let mut tokens = Vec::new();
     let mut regex_ids = Vec::new();
     let mut graph = Graph::new();
 
@@ -142,7 +145,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                                 .callback(definition.callback),
                         );
 
-                        ropes.push(Rope::new(bytes, then));
+                        tokens.push(Rope::new(bytes, then));
                     } else {
                         let mir = definition
                             .literal
@@ -235,7 +238,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
         root.merge(fork, &mut graph);
     }
-    for rope in ropes {
+    for rope in tokens {
         root.merge(rope.into_fork(&mut graph), &mut graph);
     }
     while let Some(id) = root.miss.take() {

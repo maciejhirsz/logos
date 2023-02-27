@@ -9,10 +9,11 @@ documentation = "https://docs.rs/logos-derive"
 keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 categories = ["parsing", "text-processing"]
 readme = "../README.md"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-beef = "0.5.0"
+arrayvec = "0.7.2"
+beef = "0.5.2"
 fnv = "1.0.6"
 syn = { version = "1.0.17", features = ["full"] }
 quote = "1.0.3"

@@ -5,10 +5,12 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
+use crate::parse::ParseError;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct Errors {
-    collected: Vec<SpannedError>,
+    collected: Vec<ParseError>,
 }
 
 impl Default for Errors {
@@ -24,10 +26,7 @@ impl Errors {
     where
         M: Into<Cow<'static, str>>,
     {
-        self.collected.push(SpannedError {
-            message: message.into(),
-            span,
-        });
+        self.collected.push(ParseError::new(message, span));
 
         self
     }
@@ -48,25 +47,12 @@ impl Errors {
 
 pub struct Error(Cow<'static, str>);
 
-#[derive(Debug)]
-pub struct SpannedError {
-    message: Cow<'static, str>,
-    span: Span,
-}
-
 impl Error {
     pub fn new<M>(message: M) -> Self
     where
         M: Into<Cow<'static, str>>,
     {
         Error(message.into())
-    }
-
-    pub fn span(self, span: Span) -> SpannedError {
-        SpannedError {
-            message: self.0,
-            span,
-        }
     }
 }
 
@@ -94,23 +80,17 @@ impl From<&'static str> for Error {
     }
 }
 
-impl From<String> for Error {
-    fn from(err: String) -> Error {
-        Error(err.into())
-    }
-}
-
 impl From<Error> for Cow<'static, str> {
     fn from(err: Error) -> Self {
         err.0
     }
 }
 
-impl ToTokens for SpannedError {
+impl ToTokens for ParseError {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let message = &*self.message;
+        let message = &*self.msg;
 
-        tokens.append_all(quote_spanned!(self.span => {
+        tokens.append_all(quote_spanned!(self.span.into() => {
             compile_error!(#message)
         }))
     }
