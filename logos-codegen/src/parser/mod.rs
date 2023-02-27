@@ -97,8 +97,10 @@ impl Parser {
                 }
             };
 
+            type Callback = fn(&mut Parser, Span, NestedValue);
+
             // IMPORTANT: Keep these sorted alphabetically for binary search down the line
-            static NESTED_LOOKUP: &[(&str, fn(&mut Parser, Span, NestedValue))] = &[
+            static NESTED_LOOKUP: &[(&str, Callback)] = &[
                 ("crate", |parser, span, value| match value {
                     NestedValue::Assign(logos_path) => parser.logos_path = Some(logos_path),
                     _ => {

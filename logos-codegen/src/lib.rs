@@ -7,6 +7,7 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
+#![allow(clippy::let_and_return)]
 
 mod error;
 mod generator;
@@ -275,7 +276,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
     }
 
     if let Some(errors) = parser.errors.render() {
-        return impl_logos(errors).into();
+        return impl_logos(errors);
     }
 
     let root = graph.push(root);

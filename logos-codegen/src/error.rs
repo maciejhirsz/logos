@@ -9,17 +9,18 @@ use crate::parse::ParseError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Default)]
 pub struct Errors {
     collected: Vec<ParseError>,
 }
 
-impl Default for Errors {
-    fn default() -> Self {
-        Errors {
-            collected: Vec::new(),
-        }
-    }
-}
+// impl Default for Errors {
+//     fn default() -> Self {
+//         Errors {
+//             collected: Vec::new(),
+//         }
+//     }
+// }
 
 impl Errors {
     pub fn err<M>(&mut self, message: M, span: Span) -> &mut Self

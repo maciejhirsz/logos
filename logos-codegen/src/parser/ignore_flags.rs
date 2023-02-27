@@ -208,12 +208,12 @@ pub mod ascii_case {
 
     impl MakeAsciiCaseInsensitive for u8 {
         fn make_ascii_case_insensitive(self) -> Mir {
-            if b'a' <= self && self <= b'z' {
+            if (b'a'..=b'z').contains(&self) {
                 Mir::Alternation(vec![
                     Mir::Literal(hir::Literal::Byte(self - 32)),
                     Mir::Literal(hir::Literal::Byte(self)),
                 ])
-            } else if b'A' <= self && self <= b'Z' {
+            } else if (b'A'..=b'Z').contains(&self) {
                 Mir::Alternation(vec![
                     Mir::Literal(hir::Literal::Byte(self)),
                     Mir::Literal(hir::Literal::Byte(self + 32)),
@@ -267,7 +267,7 @@ pub mod ascii_case {
                 #[inline]
                 fn make_ascii(c: char) -> Option<u8> {
                     if c.is_ascii() {
-                        return Some(c as u8);
+                        Some(c as u8)
                     } else {
                         None
                     }

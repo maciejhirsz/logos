@@ -62,7 +62,7 @@ impl Fork {
     pub fn branches(&self) -> ForkIter<'_> {
         ForkIter {
             offset: 0,
-            lut: &*self.lut,
+            lut: &self.lut,
         }
     }
 

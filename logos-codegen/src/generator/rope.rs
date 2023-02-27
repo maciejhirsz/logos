@@ -19,17 +19,17 @@ impl<'a> Generator<'a> {
             }
         };
 
-        return quote! {
+        quote! {
             match #read {
                 Some(#pat) => #then,
                 _ => #miss,
             }
-        };
+        }
     }
 }
 
 fn byte_slice_literal(bytes: &[u8]) -> TokenStream {
-    if bytes.iter().any(|&b| b < 0x20 || b >= 0x7F) {
+    if bytes.iter().any(|b| !(0x20..0x7F).contains(b)) {
         return quote!(&[#(#bytes),*]);
     }
 

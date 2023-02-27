@@ -105,6 +105,7 @@ impl<'a> Generator<'a> {
     fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
         let key = (id, ctx);
 
+        #[allow(clippy::map_entry)]
         if !self.gotos.contains_key(&key) {
             let meta = &self.meta[id];
             let enters_loop = !meta.loop_entry_from.is_empty();
