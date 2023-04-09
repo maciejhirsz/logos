@@ -107,7 +107,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         let leaf = move |span| Leaf::new(var_ident, span).field(field.clone());
 
         for attr in &mut variant.attrs {
-            let attr_name = match attr.path.get_ident() {
+            let attr_name = match attr.path().get_ident() {
                 Some(ident) => ident.to_string(),
                 None => continue,
             };
@@ -314,8 +314,8 @@ pub fn strip_attributes(input: TokenStream) -> TokenStream {
     strip_attrs_from_vec(&mut item.attrs);
 
     for attr in &mut item.attrs {
-        if attr.path.is_ident("derive") {
-            if let Ok(syn::Meta::List(mut meta)) = attr.parse_meta() {
+        if attr.path().is_ident("derive") {
+            if let syn::Meta::List(mut meta) = attr.meta {
                 meta.nested = meta.nested.into_iter().filter(|nested| !matches!(nested, syn::NestedMeta::Meta(nested) if nested.path().is_ident("Logos"))).collect();
 
                 attr.tokens = TokenStream::new();
@@ -341,7 +341,7 @@ fn strip_attrs_from_vec(attrs: &mut Vec<syn::Attribute>) {
 }
 
 fn is_logos_attr(attr: &syn::Attribute) -> bool {
-    attr.path.is_ident(LOGOS_ATTR)
-        || attr.path.is_ident(TOKEN_ATTR)
-        || attr.path.is_ident(REGEX_ATTR)
+    attr.path().is_ident(LOGOS_ATTR)
+        || attr.path().is_ident(TOKEN_ATTR)
+        || attr.path().is_ident(REGEX_ATTR)
 }

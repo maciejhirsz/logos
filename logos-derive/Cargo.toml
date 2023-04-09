@@ -16,4 +16,4 @@ name = "logos_derive"
 proc-macro = true
 
 [dependencies]
-logos-codegen = { path = "../logos-codegen", version = "0.12.0" }
+logos-codegen = { version = "0.12.0", path = "../logos-codegen" }

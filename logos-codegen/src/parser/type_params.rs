@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Lifetime, LifetimeDef, Path, Type};
+use syn::{Lifetime, LifetimeParam, Path, Type};
 
 use crate::error::Errors;
 
@@ -12,7 +12,7 @@ pub struct TypeParams {
 }
 
 impl TypeParams {
-    pub fn explicit_lifetime(&mut self, lt: LifetimeDef, errors: &mut Errors) {
+    pub fn explicit_lifetime(&mut self, lt: LifetimeParam, errors: &mut Errors) {
         if self.lifetime {
             let span = lt.span();
 
@@ -180,8 +180,8 @@ fn traverse_path(path: &mut Path, f: &mut impl FnMut(&mut Type)) {
                         syn::GenericArgument::Type(ty) => {
                             traverse_type(ty, f);
                         }
-                        syn::GenericArgument::Binding(bind) => {
-                            traverse_type(&mut bind.ty, f);
+                        syn::GenericArgument::AssocType(assoc) => {
+                            traverse_type(&mut assoc.ty, f);
                         }
                         _ => (),
                     }

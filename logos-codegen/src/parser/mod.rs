@@ -2,7 +2,7 @@ use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Lit, Type};
+use syn::{Attribute, GenericParam, Lit, Type, Meta};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -65,10 +65,12 @@ impl Parser {
     }
 
     fn parse_attr(&mut self, attr: &mut Attribute) -> Option<AttributeParser> {
-        let mut tokens = std::mem::replace(&mut attr.tokens, TokenStream::new()).into_iter();
+        match attr.meta {
+            Meta::List(list) => {
+                let mut tokens = std::mem::replace(&mut list.tokens, TokenStream::new());
 
-        match tokens.next() {
-            Some(TokenTree::Group(group)) => Some(AttributeParser::new(group.stream())),
+                Some(AttributeParser::new(tokens))
+            }
             _ => None,
         }
     }
@@ -76,7 +78,7 @@ impl Parser {
     /// Try to parse the main `#[logos(...)]`, does nothing if
     /// the attribute's name isn't `logos`.
     pub fn try_parse_logos(&mut self, attr: &mut Attribute) {
-        if !attr.path.is_ident(LOGOS_ATTR) {
+        if !attr.path().is_ident(LOGOS_ATTR) {
             return;
         }
 
