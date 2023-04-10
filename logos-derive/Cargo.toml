@@ -1,6 +1,6 @@
 [package]
 name = "logos-derive"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT OR Apache-2.0"
 description = "Create ridiculously fast Lexers"
@@ -16,4 +16,4 @@ name = "logos_derive"
 proc-macro = true
 
 [dependencies]
-logos-codegen = { version = "0.12.0", path = "../logos-codegen" }
+logos-codegen = { version = "0.13.0", path = "../logos-codegen" }
