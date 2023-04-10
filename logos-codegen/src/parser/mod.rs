@@ -2,7 +2,7 @@ use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Lit, Type, Meta};
+use syn::{Attribute, GenericParam, Lit, Meta, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -65,9 +65,9 @@ impl Parser {
     }
 
     fn parse_attr(&mut self, attr: &mut Attribute) -> Option<AttributeParser> {
-        match attr.meta {
+        match &mut attr.meta {
             Meta::List(list) => {
-                let mut tokens = std::mem::replace(&mut list.tokens, TokenStream::new());
+                let tokens = std::mem::replace(&mut list.tokens, TokenStream::new());
 
                 Some(AttributeParser::new(tokens))
             }

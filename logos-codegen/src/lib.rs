@@ -21,12 +21,13 @@ use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
 use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
+use syn::punctuated::Punctuated;
 use util::MaybeVoid;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::parse_quote;
 use syn::spanned::Spanned;
+use syn::{parse_quote, Token};
 use syn::{Fields, ItemEnum};
 
 const LOGOS_ATTR: &str = "logos";
@@ -314,14 +315,20 @@ pub fn strip_attributes(input: TokenStream) -> TokenStream {
     strip_attrs_from_vec(&mut item.attrs);
 
     for attr in &mut item.attrs {
-        if attr.path().is_ident("derive") {
-            if let syn::Meta::List(mut meta) = attr.meta {
-                meta.nested = meta.nested.into_iter().filter(|nested| !matches!(nested, syn::NestedMeta::Meta(nested) if nested.path().is_ident("Logos"))).collect();
+        if let syn::Meta::List(meta) = &mut attr.meta {
+            if meta.path.is_ident("derive") {
+                let mut other_derives = TokenStream::new();
 
-                attr.tokens = TokenStream::new();
-                meta.paren_token.surround(&mut attr.tokens, |tokens| {
-                    meta.nested.to_tokens(tokens);
+                let _ = meta.parse_nested_meta(|meta| {
+                    if !meta.path.is_ident("Logos") {
+                        meta.path.to_tokens(&mut other_derives);
+                        (Token!(,))(Span::call_site()).to_tokens(&mut other_derives);
+                    }
+
+                    Ok(())
                 });
+
+                meta.tokens = other_derives;
             }
         }
     }
