@@ -1,6 +1,6 @@
 [package]
 name = "logos-codegen"
-version = "0.12.0"
+version = "0.13.0"
 authors = ["Maciej Hirsz <hello@maciej.codes>"]
 license = "MIT OR Apache-2.0"
 description = "Implementation details for logos-codegen and logos-derive. Not for public consumption."
