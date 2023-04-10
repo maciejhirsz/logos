@@ -14,7 +14,7 @@ edition = "2018"
 [dependencies]
 beef = "0.5.0"
 fnv = "1.0.6"
-syn = { version = "1.0.17", features = ["full"] }
+syn = { version = "2.0.13", features = ["full"] }
 quote = "1.0.3"
 proc-macro2 = "1.0.9"
 regex-syntax = "0.6"

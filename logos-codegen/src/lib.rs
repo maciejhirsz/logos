@@ -23,7 +23,7 @@ use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
 use util::MaybeVoid;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{TokenStream, TokenTree};
 use quote::quote;
 use syn::parse_quote;
 use syn::spanned::Spanned;
@@ -107,7 +107,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         let leaf = move |span| Leaf::new(var_ident, span).field(field.clone());
 
         for attr in &mut variant.attrs {
-            let attr_name = match attr.path.get_ident() {
+            let attr_name = match attr.path().get_ident() {
                 Some(ident) => ident.to_string(),
                 None => continue,
             };
@@ -314,14 +314,21 @@ pub fn strip_attributes(input: TokenStream) -> TokenStream {
     strip_attrs_from_vec(&mut item.attrs);
 
     for attr in &mut item.attrs {
-        if attr.path.is_ident("derive") {
-            if let Ok(syn::Meta::List(mut meta)) = attr.parse_meta() {
-                meta.nested = meta.nested.into_iter().filter(|nested| !matches!(nested, syn::NestedMeta::Meta(nested) if nested.path().is_ident("Logos"))).collect();
+        if let syn::Meta::List(meta) = &mut attr.meta {
+            if meta.path.is_ident("derive") {
+                let mut tokens =
+                    std::mem::replace(&mut meta.tokens, TokenStream::new()).into_iter();
 
-                attr.tokens = TokenStream::new();
-                meta.paren_token.surround(&mut attr.tokens, |tokens| {
-                    meta.nested.to_tokens(tokens);
-                });
+                while let Some(TokenTree::Ident(ident)) = tokens.next() {
+                    let punct = tokens.next();
+
+                    if ident == "Logos" {
+                        continue;
+                    }
+
+                    meta.tokens.extend([TokenTree::Ident(ident)]);
+                    meta.tokens.extend(punct);
+                }
             }
         }
     }
@@ -341,7 +348,7 @@ fn strip_attrs_from_vec(attrs: &mut Vec<syn::Attribute>) {
 }
 
 fn is_logos_attr(attr: &syn::Attribute) -> bool {
-    attr.path.is_ident(LOGOS_ATTR)
-        || attr.path.is_ident(TOKEN_ATTR)
-        || attr.path.is_ident(REGEX_ATTR)
+    attr.path().is_ident(LOGOS_ATTR)
+        || attr.path().is_ident(TOKEN_ATTR)
+        || attr.path().is_ident(REGEX_ATTR)
 }
