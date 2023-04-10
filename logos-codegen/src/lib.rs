@@ -21,13 +21,12 @@ use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
 use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
-use syn::punctuated::Punctuated;
 use util::MaybeVoid;
 
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{TokenStream, TokenTree};
 use quote::quote;
+use syn::parse_quote;
 use syn::spanned::Spanned;
-use syn::{parse_quote, Token};
 use syn::{Fields, ItemEnum};
 
 const LOGOS_ATTR: &str = "logos";
@@ -317,18 +316,19 @@ pub fn strip_attributes(input: TokenStream) -> TokenStream {
     for attr in &mut item.attrs {
         if let syn::Meta::List(meta) = &mut attr.meta {
             if meta.path.is_ident("derive") {
-                let mut other_derives = TokenStream::new();
+                let mut tokens =
+                    std::mem::replace(&mut meta.tokens, TokenStream::new()).into_iter();
 
-                let _ = meta.parse_nested_meta(|meta| {
-                    if !meta.path.is_ident("Logos") {
-                        meta.path.to_tokens(&mut other_derives);
-                        (Token!(,))(Span::call_site()).to_tokens(&mut other_derives);
+                while let Some(TokenTree::Ident(ident)) = tokens.next() {
+                    let punct = tokens.next();
+
+                    if ident == "Logos" {
+                        continue;
                     }
 
-                    Ok(())
-                });
-
-                meta.tokens = other_derives;
+                    meta.tokens.extend([TokenTree::Ident(ident)]);
+                    meta.tokens.extend(punct);
+                }
             }
         }
     }
