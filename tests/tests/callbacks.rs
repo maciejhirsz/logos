@@ -138,3 +138,37 @@ mod rust {
         );
     }
 }
+
+mod any_token_callback {
+    use super::*;
+
+    // Adaption of data test for (_) -> Token callbacks
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
+    enum Token {
+        #[regex(r"[a-zA-Z]+", |_| Token::Text)]
+        #[regex(r"-?[0-9]+", |_| Token::Integer)]
+        #[regex(r"-?[0-9]+\.[0-9]+", |_| Token::Float)]
+        Text,
+        Integer,
+        Float,
+    }
+
+    #[test]
+    fn any_token_callback() {
+        let tokens: Vec<_> = Token::lexer("Hello 1 42 -100 pi 3.14 -77.77").collect();
+
+        assert_eq!(
+            tokens,
+            &[
+                Ok(Token::Text),
+                Ok(Token::Integer),
+                Ok(Token::Integer),
+                Ok(Token::Integer),
+                Ok(Token::Text),
+                Ok(Token::Float),
+                Ok(Token::Float),
+            ]
+        );
+    }
+}

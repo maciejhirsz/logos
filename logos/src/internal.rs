@@ -149,3 +149,58 @@ where
         }
     }
 }
+
+impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for T {
+    #[inline]
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        lex.set(Ok(self))
+    }
+}
+
+impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Result<T, T::Error> {
+    #[inline]
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        match self {
+            Ok(product) => lex.set(Ok(product)),
+            Err(err) => lex.set(Err(err.into())),
+        }
+    }
+}
+
+impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Filter<T> {
+    #[inline]
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        match self {
+            Filter::Emit(product) => lex.set(Ok(product)),
+            Filter::Skip => {
+                lex.trivia();
+                T::lex(lex);
+            }
+        }
+    }
+}
+
+impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for FilterResult<T, T::Error> {
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        match self {
+            FilterResult::Emit(product) => lex.set(Ok(product)),
+            FilterResult::Skip => {
+                lex.trivia();
+                T::lex(lex);
+            }
+            FilterResult::Error(err) => lex.set(Err(err.into())),
+        }
+    }
+}
