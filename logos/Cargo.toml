@@ -24,3 +24,7 @@ std = []
 # import this crate and `use logos::Logos` to get both the trait and
 # derive proc macro.
 export_derive = ["logos-derive"]
+
+[[example]]
+name = "brainfuck"
+path = "examples/brainfuck.rs"
