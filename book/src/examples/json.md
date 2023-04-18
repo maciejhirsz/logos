@@ -16,9 +16,9 @@ Knowing that, we can construct a lexer with `Logos` that will identify all those
 {{#include ../../../logos/examples/json.rs:tokens}}
 ```
 
-> NOTE: the hardest part is to defined valid regexes for `Number` and `String` variants. The present solution was inspired by [this stackoverflow thread](https://stackoverflow.com/questions/32155133/regex-to-match-a-json-string).
+> NOTE: the hardest part is to define valid regexes for `Number` and `String` variants. The present solution was inspired by [this stackoverflow thread](https://stackoverflow.com/questions/32155133/regex-to-match-a-json-string).
 
-Once we have our tokens, we must parse them into values. We will proceed be creating 3 functions:
+Once we have our tokens, we must parse them into actual JSON values. We will proceed be creating 3 functions:
 
 + `parse_value` for parsing any JSON object, without prior knowledge of its type;
 + `parse_array` for parsing an array, assuming we matched `[`;
@@ -30,7 +30,7 @@ Starting with parsing an arbitrary value, we can easily obtain the four scalar t
 {{#include ../../../logos/examples/json.rs:value}}
 ```
 
-To parse an array, we simply loop between tokens, alternating between parsing values and commands, until a closing bracket is found.
+To parse an array, we simply loop between tokens, alternating between parsing values and commas, until a closing bracket is found.
 
 ```rust,no_run,noplayground
 {{#include ../../../logos/examples/json.rs:array}}

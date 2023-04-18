@@ -1,6 +1,6 @@
 # Examples
 
-The following examples are ordered by increasing level of difficulty.
+The following examples are ordered by increasing level of complexity.
 
 **[Brainfuck interpreter](./examples/brainfuck.md)**: Lexers are very powerful tools for parsing code programs into meaningful instructions. We show you how you can build an interpreter for the Brainfuck programming language under 100 lines of code! 
 
