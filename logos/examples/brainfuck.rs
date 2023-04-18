@@ -26,9 +26,9 @@
 //! Errors, i.e., unknown tokens, are discarded using `filter_map`.
 //!
 //! More details can be found on Wikipedia:
-//! https://en.wikipedia.org/wiki/Brainfuck.
+//! <https://en.wikipedia.org/wiki/Brainfuck>.
 //!
-//! or on http://brainfuck.org/.
+//! or on <http://brainfuck.org/>.
 
 use logos::Logos;
 use std::collections::HashMap;
@@ -74,7 +74,7 @@ fn read_byte() -> u8 {
 }
 
 /// Execute Brainfuck code from a string slice.
-fn execute(code: &str) {
+pub fn execute(code: &str) {
     let operations: Vec<_> = Op::lexer(code).filter_map(|op| op.ok()).collect();
     let mut data = [0u8; 30_000]; // Minimum recommended size
     let mut pointer: usize = 0;

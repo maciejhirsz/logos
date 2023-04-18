@@ -11,6 +11,11 @@ categories = ["parsing", "text-processing"]
 readme = "../README.md"
 edition = "2018"
 
+[package.metadata.docs.rs]
+all-features = true
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 logos-derive = { version = "0.13.0", path = "../logos-derive", optional = true }
 
