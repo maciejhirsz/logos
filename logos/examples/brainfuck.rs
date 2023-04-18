@@ -30,32 +30,43 @@
 //!
 //! or on <http://brainfuck.org/>.
 
+/* ANCHOR: all */
 use logos::Logos;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
 
+/* ANCHOR: tokens */
 /// Each [`Op`] variant is a single character.
 #[derive(Debug, Logos)]
 enum Op {
+    /// Increment pointer.
     #[token(">")]
     IncPointer,
+    /// Decrement pointer.
     #[token("<")]
     DecPointer,
+    /// Increment data at pointer.
     #[token("+")]
     IncData,
+    /// Decrement data at pointer.
     #[token("-")]
     DecData,
+    /// Output data at pointer.
     #[token(".")]
     OutData,
+    /// Input (read) to data at pointer.
     #[token(",")]
     InpData,
+    /// Conditionally jump to matching `']'`.
     #[token("[")]
     CondJumpForward,
+    /// Conditionally jump to matching `'['`.
     #[token("]")]
     CondJumpBackward,
 }
+/* ANCHOR_END: tokens */
 
 /// Print one byte to the terminal.
 #[inline(always)]
@@ -78,14 +89,10 @@ pub fn execute(code: &str) {
     let operations: Vec<_> = Op::lexer(code).filter_map(|op| op.ok()).collect();
     let mut data = [0u8; 30_000]; // Minimum recommended size
     let mut pointer: usize = 0;
-    let mut i: usize = 0;
     let len = operations.len();
 
     // We pre-process matching jump commands, and we create
     // a mapping between them.
-    //
-    // This is the only portion of code that could panic (or the data allocated being not large
-    // enough).
     let mut queue = Vec::new();
     let mut pairs = HashMap::new();
     let mut pairs_reverse = HashMap::new();
@@ -112,6 +119,8 @@ pub fn execute(code: &str) {
         panic!("Unmatched conditional forward jump at positons {:?}, expecting a closing ']' for each of them", queue);
     }
 
+    /* ANCHOR: fsm */
+    let mut i: usize = 0;
     // True program execution.
     loop {
         match operations[i] {
@@ -140,6 +149,7 @@ pub fn execute(code: &str) {
             break;
         }
     }
+    /* ANCHOR_END: fsm */
 }
 
 fn main() {
@@ -148,3 +158,4 @@ fn main() {
 
     execute(src.as_str());
 }
+/* ANCHOR_END: all */

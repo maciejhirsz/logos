@@ -11,6 +11,7 @@
 //! Example:
 //!     cargo run --example example examples/example.json
 
+/* ANCHOR: all */
 use logos::{Lexer, Logos, Span};
 
 use std::collections::HashMap;
@@ -21,6 +22,7 @@ type Error = (String, Span);
 
 type Result<T> = std::result::Result<T, Error>;
 
+/* ANCHOR: tokens */
 /// All meaningful JSON tokens.
 ///
 /// > NOTE: regexes for [`Token::Number`] and [`Token::String`] may not
@@ -60,18 +62,28 @@ enum Token {
     #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| lex.slice().to_owned())]
     String(String),
 }
+/* ANCHOR_END: tokens */
 
+/* ANCHOR: values */
 /// Represent any valid JSON value.
 #[derive(Debug)]
 enum Value {
+    /// null.
     Null,
+    /// true or false.
     Bool(bool),
+    /// Any floating point number.
     Number(f64),
+    /// Any quoted string.
     String(String),
+    /// An array of values
     Array(Vec<Value>),
+    /// An dictionnary mapping keys and values.
     Object(HashMap<String, Value>),
 }
+/* ANCHOR_END: values */
 
+/* ANCHOR: value */
 /// Parse a token stream into a JSON value.
 fn parse_value<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
     if let Some(token) = lexer.next() {
@@ -91,7 +103,9 @@ fn parse_value<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
         Err(("empty values are not allowed".to_owned(), lexer.span()))
     }
 }
+/* ANCHOR_END: value */
 
+/* ANCHOR: array */
 /// Parse a token stream into an array and return when
 /// a valid terminator is found.
 ///
@@ -143,7 +157,9 @@ fn parse_array<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
     }
     Err(("unmatched opening bracket defined here".to_owned(), span))
 }
+/* ANCHOR_END: array */
 
+/* ANCHOR: object */
 /// Parse a token stream into an object and return when
 /// a valid terminator is found.
 ///
@@ -183,6 +199,7 @@ fn parse_object<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
     }
     Err(("unmatched opening brace defined here".to_owned(), span))
 }
+/* ANCHOR_END: object */
 
 fn main() {
     let filename = env::args().nth(1).expect("Expected file argument");
@@ -212,3 +229,4 @@ fn main() {
         }
     }
 }
+/* ANCHOR_END: all */
