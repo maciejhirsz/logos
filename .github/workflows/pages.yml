@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Build job
+  # Test job
   build-book:
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +34,20 @@ jobs:
       uses: peaceiris/actions-mdbook@v1
       with:
         mdbook-version: '0.4.28'
-        # mdbook-version: 'latest'
+    - name: Build book
+      run: mdbook test book
+
+  # Build job
+  build-book:
+    runs-on: ubuntu-latest
+    needs: [test-book]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup mdBook
+      uses: peaceiris/actions-mdbook@v1
+      with:
+        mdbook-version: '0.4.28'
     - name: Build book
       run: mdbook build book
     - name: Upload artifact
