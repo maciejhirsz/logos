@@ -1,5 +1,11 @@
 //! Brainfuck interpreter written in Rust, using Logos.
 //!
+//! Usage:
+//!     cargo run --example brainfuck <path/to/file>
+//!
+//! Example:
+//!     cargo run --example brainfuck examples/hello_word.bf
+//!
 //! Brainfuck is an esoteric programming language that only
 //! uses 8 single-character commands:
 //! - '>';
@@ -11,7 +17,7 @@
 //! - '[';
 //! - and ']'.
 //!
-//! Despite being very hard to use in practive, this makes
+//! Despite being very hard to use in practice, this makes
 //! this language very simple to interpet. The following code
 //! defines an [`execute`] function that runs Brainfuck code.
 //!
@@ -19,13 +25,15 @@
 //! into meaningful `Op` operations (or commands).
 //! Errors, i.e., unknown tokens, are discarded using `filter_map`.
 //!
-//! The [`main`] function runs an "Hello Worlds!" program.
-//!
 //! More details can be found on Wikipedia:
 //! https://en.wikipedia.org/wiki/Brainfuck.
+//!
+//! or on http://brainfuck.org/.
 
 use logos::Logos;
 use std::collections::HashMap;
+use std::env;
+use std::fs;
 use std::io::{self, Read};
 
 /// Each [`Op`] variant is a single character.
@@ -135,55 +143,8 @@ fn execute(code: &str) {
 }
 
 fn main() {
-    /*
-     * Hellow World! program from Wikipedia
-     * https://en.wikipedia.org/wiki/Brainfuck
-     */
-    let code = r#"
-        [ This program prints "Hello World!" and a newline to the screen, its
-          length is 106 active command characters. [It is not the shortest.]
-        
-          This loop is an "initial comment loop", a simple way of adding a comment
-          to a BF program such that you don't have to worry about any command
-          characters. Any ".", ",", "+", "-", "<" and ">" characters are simply
-          ignored, the "[" and "]" characters just have to be balanced. This
-          loop and the commands it contains are ignored because the current cell
-          defaults to a value of 0; the 0 value causes this loop to be skipped.
-        ]
-        ++++++++               Set Cell #0 to 8
-        [
-            >++++               Add 4 to Cell #1; this will always set Cell #1 to 4
-            [                   as the cell will be cleared by the loop
-                >++             Add 2 to Cell #2
-                >+++            Add 3 to Cell #3
-                >+++            Add 3 to Cell #4
-                >+              Add 1 to Cell #5
-                <<<<-           Decrement the loop counter in Cell #1
-            ]                   Loop until Cell #1 is zero; number of iterations is 4
-            >+                  Add 1 to Cell #2
-            >+                  Add 1 to Cell #3
-            >-                  Subtract 1 from Cell #4
-            >>+                 Add 1 to Cell #6
-            [<]                 Move back to the first zero cell you find; this will
-                                be Cell #1 which was cleared by the previous loop
-            <-                  Decrement the loop Counter in Cell #0
-        ]                       Loop until Cell #0 is zero; number of iterations is 8
-        
-        The result of this is:
-        Cell no :   0   1   2   3   4   5   6
-        Contents:   0   0  72 104  88  32   8
-        Pointer :   ^
-        
-        >>.                     Cell #2 has value 72 which is 'H'
-        >---.                   Subtract 3 from Cell #3 to get 101 which is 'e'
-        +++++++..+++.           Likewise for 'llo' from Cell #3
-        >>.                     Cell #5 is 32 for the space
-        <-.                     Subtract 1 from Cell #4 for 87 to give a 'W'
-        <.                      Cell #3 was set to 'o' from the end of 'Hello'
-        +++.------.--------.    Cell #3 for 'rl' and 'd'
-        >>+.                    Add 1 to Cell #5 gives us an exclamation point
-        >++.                    And finally a newline from Cell #6        
-    "#;
+    let src = fs::read_to_string(env::args().nth(1).expect("Expected file argument"))
+        .expect("Failed to read file");
 
-    execute(code);
+    execute(src.as_str());
 }
