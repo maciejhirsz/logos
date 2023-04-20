@@ -13,8 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: pip install term2md
-
     - name: Install stable toolchain
       uses: dtolnay/rust-toolchain@stable
 
@@ -39,4 +37,14 @@ jobs:
       run: cargo bench --bench bench -- --save-baseline before
 
     - name: Compare benchmarks
-      run: critcmp before changes --color=always | term2md >> $GITHUB_STEP_SUMMARY
+      run: echo "results=$(critcmp before changes)" >> $GITHUB_OUTPUT
+
+    - name: Comment PR with execution number
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        message: |
+          Benchmark results:
+          ```
+          $${{ steps.outputs.results }}
+          ```
+        comment_tag: benchmarks
