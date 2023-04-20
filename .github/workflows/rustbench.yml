@@ -33,6 +33,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         ref: ${{ github.event.pull_request.base.sha }}
+        clean: false
 
     - name: Run Benchmarks before changes
       run: cargo bench --bench bench -- --save-baseline before
