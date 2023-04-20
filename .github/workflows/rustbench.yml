@@ -41,6 +41,7 @@ jobs:
 
     - name: Compare benchmarks
       run: echo 'results="$(critcmp before changes)"' >> $GITHUB_OUTPUT
+      id: compare
 
     - name: Comment PR with execution number
       uses: thollander/actions-comment-pull-request@v2
@@ -48,6 +49,6 @@ jobs:
         message: |
           Benchmark results:
           ```
-          $${{ steps.outputs.results }}
+          ${{ steps.compare.outputs.results }}
           ```
         comment_tag: benchmarks
