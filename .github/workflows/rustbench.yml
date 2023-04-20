@@ -37,7 +37,7 @@ jobs:
       run: cargo bench --bench bench -- --save-baseline before
 
     - name: Compare benchmarks
-      run: echo "results=$(critcmp before changes)" >> $GITHUB_OUTPUT
+      run: echo 'results="$(critcmp before changes)"' >> $GITHUB_OUTPUT
 
     - name: Comment PR with execution number
       uses: thollander/actions-comment-pull-request@v2
