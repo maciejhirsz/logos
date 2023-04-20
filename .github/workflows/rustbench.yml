@@ -7,6 +7,9 @@ on:
 
 name: Benchmark
 
+permissions: 
+   pull-requests: write
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
