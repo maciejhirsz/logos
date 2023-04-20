@@ -40,7 +40,11 @@ jobs:
       run: cargo bench --bench bench -- --save-baseline before
 
     - name: Compare benchmarks
-      run: echo 'results="$(critcmp before changes)"' >> $GITHUB_OUTPUT
+      run: |
+        echo 'results<<EOF' >> $GITHUB_OUTPUT
+        critcmp before changes >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+
       id: compare
 
     - name: Comment PR with execution number
