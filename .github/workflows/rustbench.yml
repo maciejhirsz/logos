@@ -1,0 +1,41 @@
+on:
+  pull_request:
+    paths:
+    - '**.rs'
+    - '**/Cargo.toml'
+  workflow_dispatch:
+
+name: Benchmark
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - run: pip install term2md
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install Critcmp
+      uses: baptiste0928/cargo-install@v2
+      with:
+        crate: critcmp
+        version: latest
+
+    - name: Run Benchmarks on changes
+      run: cargo bench --bench bench -- --save-baseline changes
+
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+
+    - name: Run Benchmarks before changes
+      run: cargo bench --bench bench -- --save-baseline before
+
+    - name: Compare benchmarks
+      run: critcmp before changes --color=always | term2md >> $GITHUB_STEP_SUMMARY
