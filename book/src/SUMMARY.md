@@ -1,6 +1,10 @@
 # Summary
 
 + [Intro](./intro.md)
++ [Getting Started](./getting-started.md)
++ [Examples](./examples.md)
+  + [Brainfuck interpreter](./examples/brainfuck.md)
+  + [JSON parser](./examples/json.md)
 + [Attributes](./attributes.md)
   + [`#[logos]`](./attributes/logos.md)
   + [`#[error]`](./attributes/error.md)
