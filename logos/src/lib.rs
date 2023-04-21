@@ -161,6 +161,7 @@
 //! + `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
