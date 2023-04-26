@@ -1,11 +1,20 @@
 use std::convert::TryFrom;
 
+use lazy_static::lazy_static;
 use regex_syntax::hir::{Hir, HirKind, RepetitionKind, RepetitionRange};
 use regex_syntax::ParserBuilder;
 
 pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
 
 use crate::error::{Error, Result};
+
+lazy_static! {
+    /// DOT regex that matches utf8 only.
+    static ref DOT_UTF8: Hir = Hir::dot(false);
+
+    /// DOT regex that matches any byte.
+    static ref DOT_BYTES: Hir = Hir::dot(true);
+}
 
 /// Middle Intermediate Representation of the regex, built from
 /// `regex_syntax`'s `Hir`. The goal here is to strip and canonicalize
@@ -110,7 +119,11 @@ impl TryFrom<Hir> for Mir {
                 }
 
                 let kind = repetition.kind;
-                let is_dot = *repetition.hir == Hir::dot(!repetition.hir.is_always_utf8());
+                let is_dot = if repetition.hir.is_always_utf8() {
+                    *repetition.hir == *DOT_UTF8
+                } else {
+                    *repetition.hir == *DOT_BYTES
+                };
                 let mir = Mir::try_from(*repetition.hir)?;
 
                 match kind {
