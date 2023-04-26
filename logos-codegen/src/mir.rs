@@ -1,11 +1,20 @@
 use std::convert::TryFrom;
 
+use lazy_static::lazy_static;
 use regex_syntax::hir::{Hir, HirKind, RepetitionKind, RepetitionRange};
 use regex_syntax::ParserBuilder;
 
 pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
 
 use crate::error::{Error, Result};
+
+lazy_static! {
+    /// DOT regex that matches utf8 only.
+    static ref DOT_UTF8: Hir = Hir::dot(false);
+
+    /// DOT regex that matches any byte.
+    static ref DOT_BYTES: Hir = Hir::dot(true);
+}
 
 /// Middle Intermediate Representation of the regex, built from
 /// `regex_syntax`'s `Hir`. The goal here is to strip and canonicalize
@@ -110,9 +119,26 @@ impl TryFrom<Hir> for Mir {
                 }
 
                 let kind = repetition.kind;
+                let is_dot = if repetition.hir.is_always_utf8() {
+                    *repetition.hir == *DOT_UTF8
+                } else {
+                    *repetition.hir == *DOT_BYTES
+                };
                 let mir = Mir::try_from(*repetition.hir)?;
 
                 match kind {
+                    RepetitionKind::ZeroOrMore | RepetitionKind::OneOrMore if is_dot => {
+                        Err(
+                            "#[regex]: \".+\" and \".*\" patterns will greedily consume \
+                            the entire source till the end as Logos does not allow \
+                            backtracking. If you are looking to match everything until \
+                            a specific character, you should use a negative character \
+                            class. E.g., use regex r\"'[^']*'\" to match anything in \
+                            between two quotes. Read more about that here: \
+                            https://github.com/maciejhirsz/logos/issues/302#issuecomment-1521342541."
+                            .into()
+                        )
+                    }
                     RepetitionKind::ZeroOrOne => Ok(Mir::Maybe(Box::new(mir))),
                     RepetitionKind::ZeroOrMore => Ok(Mir::Loop(Box::new(mir))),
                     RepetitionKind::OneOrMore => {
