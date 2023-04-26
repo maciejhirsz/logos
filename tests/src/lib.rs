@@ -1,3 +1,87 @@
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos)]
+//! enum Token {
+//!     #[token(b"\xFF")]
+//!     NonUtf8,
+//! }
+//!
+//! fn main() {
+//!     Token::lexer("This shouldn't work with a string literal!");
+//! }
+//! ```
+//!
+//! Same, but with regex:
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos)]
+//! enum Token {
+//!     #[regex(b"\xFF")]
+//!     NonUtf8,
+//! }
+//!
+//! fn main() {
+//!     Token::lexer("This shouldn't work with a string literal!");
+//! }
+//! ```
+//!
+//! Matching against .* (or .+) should fail to compile:
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos, Debug, PartialEq)]
+//! enum Token {
+//!     #[regex(r"\(.*\)")]
+//!     BetweenParen,
+//!
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos, Debug, PartialEq)]
+//! enum Token {
+//!     #[regex(r"\(.+\)")]
+//!     BetweenParen,
+//!
+//! }
+//! ```
+//!
+//! And also when working with bytes:
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos, Debug, PartialEq)]
+//! enum Token {
+//!     #[regex(b"\x00.*")]
+//!     NonUtf8,
+//!
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos, Debug, PartialEq)]
+//! enum Token {
+//!     #[regex(b"\x00.+")]
+//!     NonUtf8,
+//!
+//! }
+//! ```
+
 use logos::source::Source;
 use logos::Logos;
 

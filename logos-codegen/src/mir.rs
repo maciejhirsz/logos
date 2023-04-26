@@ -110,9 +110,13 @@ impl TryFrom<Hir> for Mir {
                 }
 
                 let kind = repetition.kind;
+                let is_dot = *repetition.hir == Hir::dot(!repetition.hir.is_always_utf8());
                 let mir = Mir::try_from(*repetition.hir)?;
 
                 match kind {
+                    RepetitionKind::ZeroOrMore | RepetitionKind::OneOrMore if is_dot => {
+                Err(r#"#[regex]: ".+" and ".*" regexes will always match everything, which is most propably not what you want. If you are looking to match everything until a specific character, you should use a capturing group. E.g., use regex r"\([^\}]\)" to match anything in between two parentheses. Read more about that here: https://github.com/maciejhirsz/logos/issues/302#issuecomment-1521342541."#.into())
+            }
                     RepetitionKind::ZeroOrOne => Ok(Mir::Maybe(Box::new(mir))),
                     RepetitionKind::ZeroOrMore => Ok(Mir::Loop(Box::new(mir))),
                     RepetitionKind::OneOrMore => {

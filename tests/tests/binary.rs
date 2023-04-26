@@ -1,34 +1,3 @@
-//! ```compile_fail
-//! use logos::Logos;
-//! use logos_derive::Logos;
-//!
-//! #[derive(Logos)]
-//! enum Token {
-//!     #[token(b"\xFF")]
-//!     NonUtf8,
-//! }
-//!
-//! fn main() {
-//!     Token::lexer("This shouldn't work with a string literal!");
-//! }
-//! ```
-//! Same, but with regex:
-//!
-//! ```compile_fail
-//! use logos::Logos;
-//! use logos_derive::Logos;
-//!
-//! #[derive(Logos)]
-//! enum Token {
-//!     #[regex(b"\xFF")]
-//!     NonUtf8,
-//! }
-//!
-//! fn main() {
-//!     Token::lexer("This shouldn't work with a string literal!");
-//! }
-//! ```
-
 use logos_derive::Logos;
 use tests::assert_lex;
 
