@@ -35,13 +35,13 @@ We now have to define the two callback functions:
 Extras can of course be used for more complicate logic, and there is no limit
 to what you can store within the public `extras` field.
 
-Finally, we provide you the full code that you should be able to run with[^2]:
+Finally, we provide you the full code that you should be able to run with[^1]:
 ```bash
 cd logos/logos
 cargo run --example extras Cargo.toml
 ```
 
-[^2] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
+[^1] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
 {{#include ../../logos/examples/extras.rs:all}}
