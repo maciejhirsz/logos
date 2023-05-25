@@ -39,5 +39,9 @@ name = "brainfuck"
 path = "examples/brainfuck.rs"
 
 [[example]]
+name = "extras"
+path = "examples/extras.rs"
+
+[[example]]
 name = "json"
 path = "examples/json.rs"
