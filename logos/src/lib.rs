@@ -17,7 +17,7 @@
 //! + [Unwinds loops](https://en.wikipedia.org/wiki/Loop_unrolling), and batches reads to minimize bounds checking.
 //! + Does all of that heavy lifting at compile time.
 //!
-//! See the Logos handbook <TODO URL> for additional documentation and usage examples.
+//! See the [Logos handbook](https://maciejhirsz.github.io/logos/) for additional documentation and usage examples.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
