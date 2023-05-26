@@ -37,6 +37,7 @@ export_derive = ["logos-derive"]
 [[example]]
 name = "brainfuck"
 path = "examples/brainfuck.rs"
+doc-scrape-examples = true
 
 [[example]]
 name = "extras"
@@ -45,3 +46,4 @@ path = "examples/extras.rs"
 [[example]]
 name = "json"
 path = "examples/json.rs"
+doc-scrape-example = true
