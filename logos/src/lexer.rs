@@ -261,7 +261,7 @@ where
 #[doc(hidden)]
 /// # WARNING!
 ///
-/// **This trait, and it's methods, are not meant to be used outside of the
+/// **This trait, and its methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
 impl<'source, Token> LexerInternal<'source> for Lexer<'source, Token>
 where
