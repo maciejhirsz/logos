@@ -5,7 +5,7 @@ use crate::{Filter, FilterResult, Lexer, Logos, Skip};
 ///
 /// # WARNING!
 ///
-/// **This trait, and it's methods, are not meant to be used outside of the
+/// **This trait, and its methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
 pub trait LexerInternal<'source> {
     type Token: Logos<'source>;

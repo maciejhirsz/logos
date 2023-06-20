@@ -96,7 +96,7 @@ which can be used to put data into a variant:
      // Callbacks can use closure syntax, or refer
      // to a function defined elsewhere.
      //
-     // Each pattern can have it's own callback.
+     // Each pattern can have its own callback.
      #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
      #[regex("[0-9]+k", kilo)]
      #[regex("[0-9]+m", mega)]
@@ -162,7 +162,7 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 
 + `[a-zA-Z]+` has a priority of 1 (lowest possible), because at minimum it can match a single byte to a class.
 + `foobar` has a priority of 12.
-+ `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
++ `(foo|hello)(bar)?` has a priority of 6, `foo` being its shortest possible match.
 
 If two definitions compute to the same priority and can match the same input **Logos** will
 fail to compile, point out the problematic definitions, and ask you to specify a manual
