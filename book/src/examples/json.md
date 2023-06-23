@@ -8,7 +8,7 @@ Possible values are defined recursively and can be any of the following:
 {{#include ../../../logos/examples/json.rs:values}}
 ```
 
-Object are delimites with braces `{` and `}`, arrays with brackets `[` and `]`, and values with commas `,`. Newlines, tabs or spaces should be ignored by the lexer.
+Object are delimited with braces `{` and `}`, arrays with brackets `[` and `]`, and values with commas `,`. Newlines, tabs or spaces should be ignored by the lexer.
 
 Knowing that, we can construct a lexer with `Logos` that will identify all those cases:
 
@@ -36,7 +36,7 @@ To parse an array, we simply loop between tokens, alternating between parsing va
 {{#include ../../../logos/examples/json.rs:array}}
 ```
 
-A similar approach is used for objects, where the only different is that we expect (key, value) pairs, separated by a colon.
+A similar approach is used for objects, where the only difference is that we expect (key, value) pairs, separated by a colon.
 
 ```rust,no_run,noplayground
 {{#include ../../../logos/examples/json.rs:object}}

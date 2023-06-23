@@ -6,10 +6,10 @@
 //! Otherwise, an error will be printed with its location.
 //!
 //! Usage:
-//!     cargo run --example example <path/to/file>
+//!     cargo run --example json <path/to/file>
 //!
 //! Example:
-//!     cargo run --example example examples/example.json
+//!     cargo run --example json examples/example.json
 
 /* ANCHOR: all */
 use logos::{Lexer, Logos, Span};
