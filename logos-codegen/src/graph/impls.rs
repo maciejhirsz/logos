@@ -15,7 +15,7 @@ impl<T> From<Rope> for Node<T> {
 }
 
 fn is_ascii(byte: u8) -> bool {
-    (byte >= 0x20) & (byte < 0x7F)
+    (0x20..0x7F).contains(&byte)
 }
 
 impl Hash for Fork {

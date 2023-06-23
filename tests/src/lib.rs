@@ -8,9 +8,7 @@
 //!     NonUtf8,
 //! }
 //!
-//! fn main() {
-//!     Token::lexer("This shouldn't work with a string literal!");
-//! }
+//! Token::lexer("This shouldn't work with a string literal!");
 //! ```
 //!
 //! Same, but with regex:
@@ -25,9 +23,7 @@
 //!     NonUtf8,
 //! }
 //!
-//! fn main() {
-//!     Token::lexer("This shouldn't work with a string literal!");
-//! }
+//! Token::lexer("This shouldn't work with a string literal!");
 //! ```
 //!
 //! Matching against .* (or .+) should fail to compile:
@@ -88,6 +84,7 @@ use logos::Logos;
 use std::fmt;
 use std::ops::Range;
 
+#[allow(clippy::type_complexity)]
 pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,
     tokens: &[(

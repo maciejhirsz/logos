@@ -168,7 +168,7 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Result<T, T::Error> {
     {
         match self {
             Ok(product) => lex.set(Ok(product)),
-            Err(err) => lex.set(Err(err.into())),
+            Err(err) => lex.set(Err(err)),
         }
     }
 }
@@ -200,7 +200,7 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for FilterResult<T, T::Error> {
                 lex.trivia();
                 T::lex(lex);
             }
-            FilterResult::Error(err) => lex.set(Err(err.into())),
+            FilterResult::Error(err) => lex.set(Err(err)),
         }
     }
 }

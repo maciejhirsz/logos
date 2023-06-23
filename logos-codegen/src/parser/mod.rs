@@ -34,15 +34,11 @@ pub struct Parser {
     types: TypeParams,
 }
 
+#[derive(Default)]
 pub enum Mode {
+    #[default]
     Utf8,
     Binary,
-}
-
-impl Default for Mode {
-    fn default() -> Mode {
-        Mode::Utf8
-    }
 }
 
 impl Parser {
@@ -100,6 +96,7 @@ impl Parser {
             };
 
             // IMPORTANT: Keep these sorted alphabetically for binary search down the line
+            #[allow(clippy::type_complexity)]
             static NESTED_LOOKUP: &[(&str, fn(&mut Parser, Span, NestedValue))] = &[
                 ("crate", |parser, span, value| match value {
                     NestedValue::Assign(logos_path) => parser.logos_path = Some(logos_path),

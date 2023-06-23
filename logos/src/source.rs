@@ -12,6 +12,7 @@ use std::ops::Range;
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
+#[allow(clippy::len_without_is_empty)]
 pub trait Source {
     /// A type this `Source` can be sliced into.
     type Slice: ?Sized + PartialEq + Eq + Debug;
@@ -41,6 +42,10 @@ pub trait Source {
         Chunk: self::Chunk<'a>;
 
     /// Read a chunk of bytes into an array without doing bounds checks.
+    ///
+    /// # Safety
+    ///
+    /// Offset should not exceed bounds.
     unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
     where
         Chunk: self::Chunk<'a>;
@@ -59,7 +64,9 @@ pub trait Source {
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
     ///
-    /// **Using this method with range out of bounds is undefined behavior!**
+    /// # Safety
+    ///
+    /// Range should not exceed bounds.
     ///
     /// ```rust
     /// use logos::Source;
@@ -102,6 +109,7 @@ impl Source for str {
         Chunk: self::Chunk<'a>,
     {
         if offset + (Chunk::SIZE - 1) < self.len() {
+            // # Safety: we just performed a bound check.
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
@@ -207,6 +215,10 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     const SIZE: usize;
 
     /// Create a chunk from a raw byte pointer.
+    ///
+    /// # Safety
+    ///
+    /// Raw byte pointer should point to a valid location in source.
     unsafe fn from_ptr(ptr: *const u8) -> Self;
 }
 
