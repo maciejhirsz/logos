@@ -9,3 +9,10 @@ edition = "2018"
 [dependencies]
 logos = { path = "../logos", default-features = false, features = ["std"] }
 logos-derive = { path = "../logos-derive" }
+
+[dev-dependencies]
+criterion = "0.4"
+
+[[bench]]
+name = "bench"
+harness = false

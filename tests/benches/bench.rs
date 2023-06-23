@@ -1,8 +1,5 @@
-#![feature(test)]
-extern crate test;
-
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use logos_derive::Logos;
-use test::{black_box, Bencher};
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {
@@ -116,47 +113,46 @@ static IDENTIFIERS: &str = "It was the year when they finally immanentized the E
 
 static STRINGS: &str = r#""tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree." "tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree." "tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree." "tree" "to" "a" "graph" "that can" "more adequately represent" "loops and arbitrary state jumps" "with\"\"\"out" "the\n\n\n\n\n" "expl\"\"\"osive" "nature\"""of trying to build up all possible permutations in a tree.""#;
 
-#[bench]
-fn identifiers(b: &mut Bencher) {
+static CANDIDATES: [(&str, &str); 3] = [
+    ("identifiers", IDENTIFIERS),
+    ("keywords_operators_and_punctators", SOURCE),
+    ("strings", STRINGS),
+];
+
+#[allow(unused_must_use)]
+fn iterate(s: &str) {
     use logos::Logos;
 
-    b.bytes = IDENTIFIERS.len() as u64;
+    let mut lex = Token::lexer(s);
 
-    b.iter(|| {
-        let mut lex = Token::lexer(IDENTIFIERS);
-
-        while let Some(token) = lex.next() {
-            black_box(token);
-        }
-    });
+    while let Some(token) = lex.next() {
+        black_box(token);
+    }
 }
 
-#[bench]
-fn keywords_operators_and_punctators(b: &mut Bencher) {
+fn count_ok(s: &str) -> usize {
     use logos::Logos;
 
-    b.bytes = SOURCE.len() as u64;
-
-    b.iter(|| {
-        let mut lex = Token::lexer(SOURCE);
-
-        while let Some(token) = lex.next() {
-            black_box(token);
-        }
-    });
+    Token::lexer(s).filter_map(|res| res.ok()).count()
 }
 
-#[bench]
-fn strings(b: &mut Bencher) {
-    use logos::Logos;
+fn bench_iterate(c: &mut Criterion) {
+    let mut group = c.benchmark_group("iterate");
 
-    b.bytes = STRINGS.len() as u64;
-
-    b.iter(|| {
-        let mut lex = Token::lexer(STRINGS);
-
-        while let Some(token) = lex.next() {
-            black_box(token);
-        }
-    });
+    for (name, source) in CANDIDATES {
+        group.throughput(Throughput::Bytes(source.len() as u64));
+        group.bench_with_input(name, &source, |b, &s| b.iter(|| iterate(s)));
+    }
 }
+
+fn bench_count_ok(c: &mut Criterion) {
+    let mut group = c.benchmark_group("count_ok");
+
+    for (name, source) in CANDIDATES {
+        group.throughput(Throughput::Bytes(source.len() as u64));
+        group.bench_with_input(name, &source, |b, &s| b.iter(|| count_ok(s)));
+    }
+}
+
+criterion_group!(benches, bench_iterate, bench_count_ok);
+criterion_main!(benches);

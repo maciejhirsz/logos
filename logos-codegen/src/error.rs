@@ -7,16 +7,9 @@ use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Default)]
 pub struct Errors {
     collected: Vec<SpannedError>,
-}
-
-impl Default for Errors {
-    fn default() -> Self {
-        Errors {
-            collected: Vec::new(),
-        }
-    }
 }
 
 impl Errors {

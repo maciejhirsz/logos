@@ -1,0 +1,58 @@
+on:
+  pull_request:
+    paths:
+    - '**.rs'
+    - '**/Cargo.toml'
+  workflow_dispatch:
+
+name: Benchmark
+
+permissions: 
+   pull-requests: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install Critcmp
+      uses: baptiste0928/cargo-install@v2
+      with:
+        crate: critcmp
+        version: latest
+
+    - name: Run Benchmarks on changes
+      run: cargo bench --bench bench -- --save-baseline changes
+
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+        clean: false
+
+    - name: Run Benchmarks before changes
+      run: cargo bench --bench bench -- --save-baseline before
+
+    - name: Compare benchmarks
+      run: |
+        echo 'results<<EOF' >> $GITHUB_OUTPUT
+        critcmp before changes >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+
+      id: compare
+
+    - name: Comment PR with execution number
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        message: |
+          Benchmark results:
+          ```
+          ${{ steps.compare.outputs.results }}
+          ```
+        comment_tag: benchmarks

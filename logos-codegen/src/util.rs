@@ -4,16 +4,11 @@ use syn::Ident;
 
 /// Analog to Option<TokenStream>, except when put into the quote!
 /// macro, `MaybeVoid::Void` will produce `()`
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum MaybeVoid {
     Some(TokenStream),
+    #[default]
     Void,
-}
-
-impl Default for MaybeVoid {
-    fn default() -> MaybeVoid {
-        MaybeVoid::Void
-    }
 }
 
 impl MaybeVoid {
@@ -50,19 +45,12 @@ impl ToTokens for MaybeVoid {
 }
 
 pub fn is_punct(tt: &TokenTree, expect: char) -> bool {
-    match tt {
-        TokenTree::Punct(punct)
-            if punct.as_char() == expect && punct.spacing() == Spacing::Alone =>
-        {
-            true
-        }
-        _ => false,
-    }
+    matches!(tt, TokenTree::Punct(punct) if punct.as_char() == expect && punct.spacing() == Spacing::Alone)
 }
 
 /// If supplied `tt` is a punct matching a char, returns `None`, else returns `tt`
 pub fn expect_punct(tt: Option<TokenTree>, expect: char) -> Option<TokenTree> {
-    tt.filter(|tt| !is_punct(&tt, expect))
+    tt.filter(|tt| !is_punct(tt, expect))
 }
 
 pub trait ToIdent {

@@ -9,7 +9,8 @@ documentation = "https://docs.rs/logos"
 keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 categories = ["parsing", "text-processing"]
 readme = "../README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.62.1"
 
 [dependencies]
 logos-derive = { version = "0.13.0", path = "../logos-derive", optional = true }

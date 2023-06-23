@@ -272,19 +272,17 @@ pub fn generate(input: TokenStream) -> TokenStream {
     }
 
     if let Some(errors) = parser.errors.render() {
-        return impl_logos(errors).into();
+        return impl_logos(errors);
     }
 
     let root = graph.push(root);
 
     graph.shake(root);
 
-    // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
-
     let generator = Generator::new(name, &this, root, &graph);
 
     let body = generator.generate();
-    let tokens = impl_logos(quote! {
+    impl_logos(quote! {
         use #logos_path::internal::{LexerInternal, CallbackResult};
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
@@ -300,11 +298,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
 
         #body
-    });
-
-    // panic!("{}", tokens);
-
-    tokens
+    })
 }
 
 /// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.

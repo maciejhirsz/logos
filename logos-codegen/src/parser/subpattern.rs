@@ -78,7 +78,7 @@ impl Subpatterns {
 
             match self.map.iter().find(|(def, _)| *def == name) {
                 Some((_, subpattern)) => {
-                    pattern.replace_range(i..subref_end, &subpattern);
+                    pattern.replace_range(i..subref_end, subpattern);
                     i += subpattern.len() + 1;
                 }
                 None => {
