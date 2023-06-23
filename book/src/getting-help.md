@@ -1,9 +1,9 @@
 # Getting Help
 
-If you need help using Logos, there are three places you can go to depending
+If you need help using **Logos**, there are three places you can go to depending
 on what you are looking for:
 
-+ [this book](./) for a documented walk through Logo's usage, with detailed
++ [this book](./) for a documented walk through **Logos**' usage, with detailed
   examples, and more. A **must read** for any newcomer;
 + [the API documentation](https://docs.rs/logos/latest/logos/) to obtain precise
   information about function signatures and what the Logos crate exposes in
