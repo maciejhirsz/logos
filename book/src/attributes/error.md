@@ -6,4 +6,10 @@ This can be changed by using `#[logos(error = T)]` attribute on the enum.
 The type `T` can be any type that implements `Clone`, `PartialEq`,
 `Default` and `From<E>` for each callback's error type.
 
-<!-- TODO: show code example with custom error -->
+For example, here is an example using a custom error type:
+
+```rust,no_run,noplayground
+{{#include ../../../logos/examples/custom_error.rs:all}}
+```
+
+You can add error variants to `LexingError`, and implement `From<E>` for each error type `E` that could be returned by a callback. See [callbacks](../callbacks.md).
