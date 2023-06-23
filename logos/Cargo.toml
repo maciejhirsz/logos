@@ -10,7 +10,7 @@ keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 categories = ["parsing", "text-processing"]
 readme = "../README.md"
 edition = "2021"
-rust-version = "1.60.0"
+rust-version = "1.62.1"
 
 [dependencies]
 logos-derive = { version = "0.13.0", path = "../logos-derive", optional = true }
