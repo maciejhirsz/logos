@@ -227,7 +227,7 @@ pub struct SpannedIter<'source, Token: Logos<'source>> {
     lexer: Lexer<'source, Token>,
 }
 
-// deriving Clone doesn't add the Token::Extras: Clone bound
+// deriving Clone doesn't infer the necessary `Token::Extras: Clone` bound
 impl<'source, Token> Clone for SpannedIter<'source, Token>
 where
     Token: Logos<'source> + Clone,
