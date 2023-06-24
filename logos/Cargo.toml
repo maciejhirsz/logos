@@ -37,7 +37,11 @@ export_derive = ["logos-derive"]
 [[example]]
 name = "brainfuck"
 path = "examples/brainfuck.rs"
-doc-scrape-examples = true
+doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
+
+[[example]]
+name = "custom_error"
+path = "examples/custom_error.rs"
 
 [[example]]
 name = "extras"
@@ -46,4 +50,3 @@ path = "examples/extras.rs"
 [[example]]
 name = "json"
 path = "examples/json.rs"
-doc-scrape-example = true
