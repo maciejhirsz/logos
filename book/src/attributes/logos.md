@@ -33,6 +33,9 @@ This can be changed by using `#[logos(error = ErrorType)]` attribute on the enum
 The type `ErrorType` can be any type that implements `Clone`, `PartialEq`,
 `Default` and `From<E>` for each callback's error type.
 
+`ErrorType` must implement the `Default` trait because invalid tokens, i.e.,
+literals that do not match any variant, will produce `Err(ErrorType::default())`.
+
 For example, here is an example using a custom error type:
 
 ```rust,no_run,noplayground
