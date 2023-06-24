@@ -227,6 +227,18 @@ pub struct SpannedIter<'source, Token: Logos<'source>> {
     lexer: Lexer<'source, Token>,
 }
 
+impl<'source, Token> Clone for SpannedIter<'source, Token>
+where
+    Token: Logos<'source> + Clone,
+    Token::Extras: Clone,
+{
+    fn clone(&self) -> Self {
+        SpannedIter {
+            lexer: self.lexer.clone(),
+        }
+    }
+}
+
 impl<'source, Token> Iterator for SpannedIter<'source, Token>
 where
     Token: Logos<'source>,
