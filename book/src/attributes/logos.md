@@ -25,7 +25,7 @@ An example usage of `skip` is provided in the [JSON parser example](../examples/
 
 For more details about extras, read the [eponym section](../extras.md).
 
-## Custom Error Type
+## Custom error type
 
 By default, **Logos** uses `()` as the error type, which means that it
 doesn't store any information about the error.
@@ -46,14 +46,15 @@ You can add error variants to `LexingError`,
 and implement `From<E>` for each error type `E` that could
 be returned by a callback. See [callbacks](../callbacks.md).
 
-## Specifying Path to Logos
+## Specifying path to logos
 
 You can force the derive macro to use a different path to `Logos`'s crate
 with `#[logos(crate = path::to::logos)]`.
 
-## Custom Source Type
+## Custom source type
 
 By default, **Logos**'s lexer will accept `&str` as input, unless any of the
 pattern literals match a non utf-8 bytes sequence. In this case, it will fall
 back to `&[u8]`. You can override this behavior by forcing one of the two
-source types. In the future, it will be possible to use other types too.
+source types. You can also specify any custom time that implements
+[`Source`](https://docs.rs/logos/latest/logos/source/trait.Source.html).
