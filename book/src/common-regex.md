@@ -3,7 +3,7 @@
 Maybe the most important feature of **Logos** is its ability to accept
 regex patterns in your tokens' definition.
 
-[Regular epxressions](https://en.wikipedia.org/wiki/Regular_expression),
+[Regular expressions](https://en.wikipedia.org/wiki/Regular_expression),
 or regexes for short, are sequences of characters (or bytes) that define a match
 pattern. When constructing lexers, this is especially useful to define tokens
 that should match a set of *similar* literals. E.g., a sequence of
