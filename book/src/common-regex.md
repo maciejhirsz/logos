@@ -33,6 +33,10 @@ the following
 + Word boundaries, i.e., r`"\b"`.
 + Anchors, because input source does not treat lines separately.
 
+Additionally, note that capture groups will silently be *ungrouped*,
+because **Logos** does not support capturing groups, but the main slice
+(`lex.slice()`).
+
 [^1]: Most of time, however, it is possible to circumvent this issue by
 rewriting your regex another way, or by using callbacks.
 E.g., see
