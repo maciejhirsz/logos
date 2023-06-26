@@ -1,8 +1,5 @@
 on:
   pull_request:
-    paths:
-    - '**.rs'
-    - '**/Cargo.toml'
   workflow_dispatch:
 
 name: Benchmark
