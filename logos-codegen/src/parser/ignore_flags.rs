@@ -200,6 +200,20 @@ pub mod ascii_case {
     use crate::mir::Mir;
     use crate::parser::Literal;
 
+    macro_rules! literal {
+        ($byte:expr) => {
+            hir::Literal(Box::new([$byte]))
+        };
+        (@char $c:expr) => {
+            hir::Literal(
+                $c.encode_utf8(&mut [0; 4])
+                    .as_bytes()
+                    .to_vec()
+                    .into_boxed_slice(),
+            )
+        };
+    }
+
     pub trait MakeAsciiCaseInsensitive {
         /// Creates a equivalent regular expression which ignore the letter casing
         /// of ascii characters.
@@ -210,16 +224,16 @@ pub mod ascii_case {
         fn make_ascii_case_insensitive(self) -> Mir {
             if self.is_ascii_lowercase() {
                 Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self - 32)),
-                    Mir::Literal(hir::Literal::Byte(self)),
+                    Mir::Literal(literal!(self - 32)),
+                    Mir::Literal(literal!(self)),
                 ])
             } else if self.is_ascii_uppercase() {
                 Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self)),
-                    Mir::Literal(hir::Literal::Byte(self + 32)),
+                    Mir::Literal(literal!(self)),
+                    Mir::Literal(literal!(self + 32)),
                 ])
             } else {
-                Mir::Literal(hir::Literal::Byte(self))
+                Mir::Literal(literal!(self))
             }
         }
     }
@@ -229,17 +243,19 @@ pub mod ascii_case {
             if self.is_ascii() {
                 (self as u8).make_ascii_case_insensitive()
             } else {
-                Mir::Literal(hir::Literal::Unicode(self))
+                Mir::Literal(literal!(@char self))
             }
         }
     }
 
     impl MakeAsciiCaseInsensitive for hir::Literal {
         fn make_ascii_case_insensitive(self) -> Mir {
-            match self {
-                hir::Literal::Byte(b) => b.make_ascii_case_insensitive(),
-                hir::Literal::Unicode(c) => c.make_ascii_case_insensitive(),
-            }
+            Mir::Concat(
+                self.0
+                    .iter()
+                    .map(|x| x.make_ascii_case_insensitive())
+                    .collect(),
+            )
         }
     }
 

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use lazy_static::lazy_static;
-use regex_syntax::hir::{Hir, HirKind, RepetitionKind, RepetitionRange};
+use regex_syntax::hir::{Dot, Hir, HirKind};
 use regex_syntax::ParserBuilder;
 
 pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
@@ -9,11 +9,8 @@ pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
 use crate::error::{Error, Result};
 
 lazy_static! {
-    /// DOT regex that matches utf8 only.
-    static ref DOT_UTF8: Hir = Hir::dot(false);
-
-    /// DOT regex that matches any byte.
-    static ref DOT_BYTES: Hir = Hir::dot(true);
+    static ref DOT_UTF8: Hir = Hir::dot(Dot::AnyChar);
+    static ref DOT_BYTES: Hir = Hir::dot(Dot::AnyByte);
 }
 
 /// Middle Intermediate Representation of the regex, built from
@@ -48,7 +45,7 @@ impl Mir {
     pub fn binary(source: &str) -> Result<Mir> {
         Mir::try_from(
             ParserBuilder::new()
-                .allow_invalid_utf8(true)
+                .utf8(false)
                 .unicode(false)
                 .build()
                 .parse(source)?,
@@ -58,7 +55,7 @@ impl Mir {
     pub fn binary_ignore_case(source: &str) -> Result<Mir> {
         Mir::try_from(
             ParserBuilder::new()
-                .allow_invalid_utf8(true)
+                .utf8(false)
                 .unicode(false)
                 .case_insensitive(true)
                 .build()
@@ -71,8 +68,11 @@ impl Mir {
             Mir::Empty | Mir::Loop(_) | Mir::Maybe(_) => 0,
             Mir::Concat(concat) => concat.iter().map(Mir::priority).sum(),
             Mir::Alternation(alt) => alt.iter().map(Mir::priority).min().unwrap_or(0),
-            Mir::Class(_) => 1,
-            Mir::Literal(_) => 2,
+            Mir::Class(_) => 2,
+            Mir::Literal(lit) => match std::str::from_utf8(&lit.0) {
+                Ok(s) => 2 * s.chars().count(),
+                Err(_) => 2 * lit.0.len(),
+            },
         }
     }
 }
@@ -118,16 +118,15 @@ impl TryFrom<Hir> for Mir {
                     return Err("#[regex]: non-greedy parsing is currently unsupported.".into());
                 }
 
-                let kind = repetition.kind;
-                let is_dot = if repetition.hir.is_always_utf8() {
-                    *repetition.hir == *DOT_UTF8
+                let is_dot = if repetition.sub.properties().is_utf8() {
+                    *repetition.sub == *DOT_UTF8
                 } else {
-                    *repetition.hir == *DOT_BYTES
+                    *repetition.sub == *DOT_BYTES
                 };
-                let mir = Mir::try_from(*repetition.hir)?;
+                let mir = Mir::try_from(*repetition.sub)?;
 
-                match kind {
-                    RepetitionKind::ZeroOrMore | RepetitionKind::OneOrMore if is_dot => {
+                match (repetition.min, repetition.max) {
+                    (0..=1, None) if is_dot => {
                         Err(
                             "#[regex]: \".+\" and \".*\" patterns will greedily consume \
                             the entire source till the end as Logos does not allow \
@@ -139,46 +138,47 @@ impl TryFrom<Hir> for Mir {
                             .into()
                         )
                     }
-                    RepetitionKind::ZeroOrOne => Ok(Mir::Maybe(Box::new(mir))),
-                    RepetitionKind::ZeroOrMore => Ok(Mir::Loop(Box::new(mir))),
-                    RepetitionKind::OneOrMore => {
+                    // 0 or 1
+                    (0, Some(1)) => Ok(Mir::Maybe(Box::new(mir))),
+                    // 0 or more
+                    (0, None) => Ok(Mir::Loop(Box::new(mir))),
+                    // 1 or more
+                    (1, None) => {
                         Ok(Mir::Concat(vec![mir.clone(), Mir::Loop(Box::new(mir))]))
                     }
-                    RepetitionKind::Range(range) => match range {
-                        RepetitionRange::Exactly(n) => {
-                            let mut out = Vec::with_capacity(n as usize);
-                            for _ in 0..n {
-                                out.push(mir.clone());
-                            }
-                            Ok(Mir::Concat(out))
+                    // Exact {n}
+                    (n, Some(m)) if m == n => {
+                        let mut out = Vec::with_capacity(n as usize);
+                        for _ in 0..n {
+                            out.push(mir.clone());
                         }
-                        RepetitionRange::AtLeast(n) => {
-                            let mut out = Vec::with_capacity(n as usize);
-                            for _ in 0..n {
-                                out.push(mir.clone());
-                            }
-                            out.push(Mir::Loop(Box::new(mir)));
-                            Ok(Mir::Concat(out))
+                        Ok(Mir::Concat(out))
+                    }
+                    // At least {n,}
+                    (n, None) => {
+                        let mut out = Vec::with_capacity(n as usize);
+                        for _ in 0..n {
+                            out.push(mir.clone());
                         }
-                        RepetitionRange::Bounded(n, m) => {
-                            let mut out = Vec::with_capacity(m as usize);
-                            for _ in 0..n {
-                                out.push(mir.clone());
-                            }
-                            for _ in n..m {
-                                out.push(Mir::Maybe(Box::new(mir.clone())));
-                            }
-                            Ok(Mir::Concat(out))
+                        out.push(Mir::Loop(Box::new(mir)));
+                        Ok(Mir::Concat(out))
+                    }
+                    // Bounded {n, m}
+                    (n, Some(m)) => {
+                        let mut out = Vec::with_capacity(m as usize);
+                        for _ in 0..n {
+                            out.push(mir.clone());
                         }
-                    },
+                        for _ in n..m {
+                            out.push(Mir::Maybe(Box::new(mir.clone())));
+                        }
+                        Ok(Mir::Concat(out))
+                    }
                 }
             }
-            HirKind::Group(group) => Mir::try_from(*group.hir),
-            HirKind::WordBoundary(_) => {
-                Err("#[regex]: word boundaries are currently unsupported.".into())
-            }
-            HirKind::Anchor(_) => {
-                Err("#[regex]: anchors in #[regex] are currently unsupported.".into())
+            HirKind::Capture(capture) => Mir::try_from(*capture.sub),
+            HirKind::Look(_) => {
+                Err("#[regex]: look-around assertions are currently unsupported.".into())
             }
         }
     }
@@ -191,9 +191,14 @@ mod tests {
     #[test]
     fn priorities() {
         let regexes = [
-            ("[a-z]+", 1),
+            ("a", 2),
+            ("à", 2),
+            ("京", 2),
+            ("Eté", 6),
+            ("Été", 6),
+            ("[a-z]+", 2),
             ("a|b", 2),
-            ("a|[b-z]", 1),
+            ("a|[b-z]", 2),
             ("(foo)+", 6),
             ("foobar", 12),
             ("(fooz|bar)+qux", 12),
@@ -201,7 +206,30 @@ mod tests {
 
         for (regex, expected) in regexes.iter() {
             let mir = Mir::utf8(regex).unwrap();
-            assert_eq!(mir.priority(), *expected);
+            assert_eq!(mir.priority(), *expected, "Failed for regex \"{}\"", regex);
+        }
+    }
+
+    #[test]
+    fn equivalent_patterns() {
+        let regexes = [
+            ("a|b", "[a-b]"),
+            ("1|2|3", "[1-3]"),
+            ("1+", "[1]+"),
+            ("c*", "[c]*"),
+            ("aaa", "a{3}"),
+            ("a[a]{2}", "a{3}"),
+        ];
+
+        for (regex_left, regex_right) in regexes.iter() {
+            let mir_left = Mir::utf8(regex_left).unwrap();
+            let mir_right = Mir::utf8(regex_right).unwrap();
+            assert_eq!(
+                mir_left.priority(),
+                mir_right.priority(),
+                "Regexes \"{regex_left}\" and \"{regex_right}\" \
+                are equivalent but have different priorities"
+            );
         }
     }
 }
