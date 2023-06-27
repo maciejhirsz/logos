@@ -44,11 +44,11 @@ jobs:
         echo 'results<<EOF' >> $GITHUB_OUTPUT
         critcmp before changes >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
-
       id: compare
 
-    - name: Comment PR with execution number
+    - name: Comment PR with benchmarks
       uses: thollander/actions-comment-pull-request@v2
+      continue-on-error: true
       with:
         message: |
           Benchmark results:
@@ -56,3 +56,13 @@ jobs:
           ${{ steps.compare.outputs.results }}
           ```
         comment_tag: benchmarks
+
+      id: comment
+
+    - name: If PR comment failed, write to PR summary
+      if: steps.comment.outcome != 'success'
+      run: |
+        echo '### Benchmark results' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo '${{ steps.compare.outputs.results }}' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
