@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use regex_syntax::utf8::Utf8Sequences;
 
 use crate::graph::{Disambiguate, Fork, Graph, Node, NodeId, Range, ReservedId, Rope};
-use crate::mir::{Class, ClassUnicode, Literal, Mir};
+use crate::mir::{Class, ClassUnicode, Mir};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
@@ -51,14 +51,8 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 self.insert_or_push(reserved, fork)
             }
-            Mir::Literal(literal) => {
-                let pattern = match literal {
-                    Literal::Unicode(unicode) => {
-                        unicode.encode_utf8(&mut [0; 4]).as_bytes().to_vec()
-                    }
-                    Literal::Byte(byte) => [byte].to_vec(),
-                };
-
+            Mir::Literal(c) => {
+                let pattern = c.encode_utf8(&mut [0u8; 4]).as_bytes().to_vec();
                 self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
             }
             Mir::Concat(mut concat) => {
@@ -71,16 +65,11 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut then = then;
 
                 let mut handle_bytes = |graph: &mut Self, mir, then: &mut NodeId| match mir {
-                    Mir::Literal(Literal::Unicode(u)) => {
-                        cur -= u.len_utf8();
-                        for (i, byte) in u.encode_utf8(&mut [0; 4]).bytes().enumerate() {
+                    Mir::Literal(c) => {
+                        cur -= c.len_utf8();
+                        for (i, byte) in c.encode_utf8(&mut [0u8; 4]).bytes().enumerate() {
                             ropebuf[cur + i] = byte.into();
                         }
-                        None
-                    }
-                    Mir::Literal(Literal::Byte(byte)) => {
-                        cur -= 1;
-                        ropebuf[cur] = byte.into();
                         None
                     }
                     Mir::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
@@ -217,7 +206,7 @@ mod tests {
 
         let mir = Mir::utf8("a|b").unwrap();
 
-        assert_eq!(mir.priority(), 2);
+        assert_eq!(mir.priority(), 1);
 
         let leaf = graph.push(Node::Leaf("LEAF"));
         let id = graph.regex(mir, leaf);

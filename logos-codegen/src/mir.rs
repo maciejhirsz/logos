@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use lazy_static::lazy_static;
-use regex_syntax::hir::{Hir, HirKind, RepetitionKind, RepetitionRange};
+use regex_syntax::hir::{Dot, Hir, HirKind, Repetition};
 use regex_syntax::ParserBuilder;
 
 pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
@@ -10,10 +10,10 @@ use crate::error::{Error, Result};
 
 lazy_static! {
     /// DOT regex that matches utf8 only.
-    static ref DOT_UTF8: Hir = Hir::dot(false);
+    static ref DOT_UTF8: Hir = Hir::dot(Dot::AnyChar);
 
     /// DOT regex that matches any byte.
-    static ref DOT_BYTES: Hir = Hir::dot(true);
+    static ref DOT_BYTES: Hir = Hir::dot(Dot::AnyByte);
 }
 
 /// Middle Intermediate Representation of the regex, built from
@@ -28,7 +28,7 @@ pub enum Mir {
     Concat(Vec<Mir>),
     Alternation(Vec<Mir>),
     Class(Class),
-    Literal(Literal),
+    Literal(char),
 }
 
 impl Mir {
@@ -48,7 +48,7 @@ impl Mir {
     pub fn binary(source: &str) -> Result<Mir> {
         Mir::try_from(
             ParserBuilder::new()
-                .allow_invalid_utf8(true)
+                .utf8(false)
                 .unicode(false)
                 .build()
                 .parse(source)?,
@@ -58,7 +58,7 @@ impl Mir {
     pub fn binary_ignore_case(source: &str) -> Result<Mir> {
         Mir::try_from(
             ParserBuilder::new()
-                .allow_invalid_utf8(true)
+                .utf8(false)
                 .unicode(false)
                 .case_insensitive(true)
                 .build()
@@ -111,23 +111,38 @@ impl TryFrom<Hir> for Mir {
 
                 Ok(Mir::Alternation(alternation))
             }
-            HirKind::Literal(literal) => Ok(Mir::Literal(literal)),
+            HirKind::Literal(literal) => {
+                let s = std::str::from_utf8(&*literal.0).unwrap();
+                let mut chars = s.chars().map(Mir::Literal).peekable();
+                let c = chars.next().expect("a literal cannot be empty");
+                if chars.peek().is_some() {
+                    Ok(Mir::Concat(std::iter::once(c).chain(chars).collect()))
+                } else {
+                    Ok(c)
+                }
+            }
             HirKind::Class(class) => Ok(Mir::Class(class)),
             HirKind::Repetition(repetition) => {
-                if !repetition.greedy {
+                let Repetition {
+                    min,
+                    max,
+                    sub,
+                    greedy,
+                } = repetition;
+
+                if !greedy {
                     return Err("#[regex]: non-greedy parsing is currently unsupported.".into());
                 }
 
-                let kind = repetition.kind;
-                let is_dot = if repetition.hir.is_always_utf8() {
-                    *repetition.hir == *DOT_UTF8
+                let is_dot = if sub.properties().is_utf8() {
+                    *sub == *DOT_UTF8
                 } else {
-                    *repetition.hir == *DOT_BYTES
+                    *sub == *DOT_BYTES
                 };
-                let mir = Mir::try_from(*repetition.hir)?;
 
-                match kind {
-                    RepetitionKind::ZeroOrMore | RepetitionKind::OneOrMore if is_dot => {
+                let sub: Mir = Mir::try_from(*sub)?;
+                match (min, max) {
+                    (0 | 1, None) if is_dot => {
                         Err(
                             "#[regex]: \".+\" and \".*\" patterns will greedily consume \
                             the entire source till the end as Logos does not allow \
@@ -139,47 +154,34 @@ impl TryFrom<Hir> for Mir {
                             .into()
                         )
                     }
-                    RepetitionKind::ZeroOrOne => Ok(Mir::Maybe(Box::new(mir))),
-                    RepetitionKind::ZeroOrMore => Ok(Mir::Loop(Box::new(mir))),
-                    RepetitionKind::OneOrMore => {
-                        Ok(Mir::Concat(vec![mir.clone(), Mir::Loop(Box::new(mir))]))
-                    }
-                    RepetitionKind::Range(range) => match range {
-                        RepetitionRange::Exactly(n) => {
-                            let mut out = Vec::with_capacity(n as usize);
-                            for _ in 0..n {
-                                out.push(mir.clone());
-                            }
-                            Ok(Mir::Concat(out))
-                        }
-                        RepetitionRange::AtLeast(n) => {
-                            let mut out = Vec::with_capacity(n as usize);
-                            for _ in 0..n {
-                                out.push(mir.clone());
-                            }
-                            out.push(Mir::Loop(Box::new(mir)));
-                            Ok(Mir::Concat(out))
-                        }
-                        RepetitionRange::Bounded(n, m) => {
-                            let mut out = Vec::with_capacity(m as usize);
-                            for _ in 0..n {
-                                out.push(mir.clone());
-                            }
-                            for _ in n..m {
-                                out.push(Mir::Maybe(Box::new(mir.clone())));
-                            }
-                            Ok(Mir::Concat(out))
-                        }
-                    },
+                    // ZeroOrOne
+                    (0, Some(1)) => Ok(Mir::Maybe(Box::new(sub))),
+                    // ZeroOrMore
+                    (0, None) => Ok(Mir::Loop(Box::new(sub))),
+                    // OneOrMore
+                    (1, None) => Ok(Mir::Concat(vec![sub.clone(), Mir::Loop(Box::new(sub))])),
+                    // Exactly
+                    (n, Some(m)) if n == m => Ok(Mir::Concat(
+                        std::iter::repeat(sub).take(n as usize).collect(),
+                    )),
+                    // AtLeast
+                    (n, None) => Ok(Mir::Concat(
+                        (std::iter::repeat(sub.clone()).take(n as usize))
+                            .chain([Mir::Loop(Box::new(sub))])
+                            .collect(),
+                    )),
+                    // Bounded
+                    (n, Some(m)) => Ok(Mir::Concat(
+                        (std::iter::repeat(sub.clone()).take(n as usize))
+                            .chain(std::iter::repeat(Mir::Maybe(Box::new(sub))).take((n..m).len()))
+                            .collect(),
+                    )),
                 }
             }
-            HirKind::Group(group) => Mir::try_from(*group.hir),
-            HirKind::WordBoundary(_) => {
-                Err("#[regex]: word boundaries are currently unsupported.".into())
+            HirKind::Look(_) => {
+                Err("#[regex]: lookahead and lookbehind are currently unsupported.".into())
             }
-            HirKind::Anchor(_) => {
-                Err("#[regex]: anchors in #[regex] are currently unsupported.".into())
-            }
+            HirKind::Capture(capture) => Mir::try_from(*capture.sub),
         }
     }
 }
@@ -192,7 +194,7 @@ mod tests {
     fn priorities() {
         let regexes = [
             ("[a-z]+", 1),
-            ("a|b", 2),
+            ("a|b", 1),
             ("a|[b-z]", 1),
             ("(foo)+", 6),
             ("foobar", 12),

@@ -210,16 +210,16 @@ pub mod ascii_case {
         fn make_ascii_case_insensitive(self) -> Mir {
             if self.is_ascii_lowercase() {
                 Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self - 32)),
-                    Mir::Literal(hir::Literal::Byte(self)),
+                    Mir::Literal((self - 32) as char),
+                    Mir::Literal(self as char),
                 ])
             } else if self.is_ascii_uppercase() {
                 Mir::Alternation(vec![
-                    Mir::Literal(hir::Literal::Byte(self)),
-                    Mir::Literal(hir::Literal::Byte(self + 32)),
+                    Mir::Literal(self as char),
+                    Mir::Literal((self + 32) as char),
                 ])
             } else {
-                Mir::Literal(hir::Literal::Byte(self))
+                Mir::Literal(self as char)
             }
         }
     }
@@ -229,16 +229,7 @@ pub mod ascii_case {
             if self.is_ascii() {
                 (self as u8).make_ascii_case_insensitive()
             } else {
-                Mir::Literal(hir::Literal::Unicode(self))
-            }
-        }
-    }
-
-    impl MakeAsciiCaseInsensitive for hir::Literal {
-        fn make_ascii_case_insensitive(self) -> Mir {
-            match self {
-                hir::Literal::Byte(b) => b.make_ascii_case_insensitive(),
-                hir::Literal::Unicode(c) => c.make_ascii_case_insensitive(),
+                Mir::Literal(self)
             }
         }
     }
@@ -360,7 +351,7 @@ pub mod ascii_case {
                         .collect(),
                 ),
                 Mir::Class(c) => c.make_ascii_case_insensitive(),
-                Mir::Literal(l) => l.make_ascii_case_insensitive(),
+                Mir::Literal(c) => c.make_ascii_case_insensitive(),
             }
         }
     }
