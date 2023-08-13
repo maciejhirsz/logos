@@ -15,7 +15,9 @@ use std::ops::Range;
 #[allow(clippy::len_without_is_empty)]
 pub trait Source {
     /// A type this `Source` can be sliced into.
-    type Slice: ?Sized + PartialEq + Eq + Debug;
+    type Slice<'a>: PartialEq + Eq + Debug
+    where
+        Self: 'a;
 
     /// Length of the source
     fn len(&self) -> usize;
@@ -59,7 +61,7 @@ pub trait Source {
     /// let foo = "It was the year when they finally immanentized the Eschaton.";
     /// assert_eq!(<str as Source>::slice(&foo, 51..59), Some("Eschaton"));
     /// ```
-    fn slice(&self, range: Range<usize>) -> Option<&Self::Slice>;
+    fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>>;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get_unchecked(range)`.
@@ -77,7 +79,7 @@ pub trait Source {
     ///     assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     /// }
     /// ```
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self::Slice;
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_>;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
     /// can be sliced, starting from `index`.
@@ -96,7 +98,7 @@ pub trait Source {
 }
 
 impl Source for str {
-    type Slice = str;
+    type Slice<'a> = &'a str;
 
     #[inline]
     fn len(&self) -> usize {
@@ -157,7 +159,7 @@ impl Source for str {
 }
 
 impl Source for [u8] {
-    type Slice = [u8];
+    type Slice<'a> = &'a [u8];
 
     #[inline]
     fn len(&self) -> usize {

@@ -139,13 +139,13 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
 
     /// Get a string slice of the current token.
     #[inline]
-    pub fn slice(&self) -> &'source <Token::Source as Source>::Slice {
+    pub fn slice(&self) -> <Token::Source as Source>::Slice<'source> {
         unsafe { self.source.slice_unchecked(self.span()) }
     }
 
     /// Get a slice of remaining source, starting at the end of current token.
     #[inline]
-    pub fn remainder(&self) -> &'source <Token::Source as Source>::Slice {
+    pub fn remainder(&self) -> <Token::Source as Source>::Slice<'source> {
         unsafe {
             self.source
                 .slice_unchecked(self.token_end..self.source.len())

@@ -89,7 +89,7 @@ pub fn assert_lex<'a, Token>(
     source: &'a Token::Source,
     tokens: &[(
         Result<Token, Token::Error>,
-        &'a <Token::Source as Source>::Slice,
+        <Token::Source as Source>::Slice<'a>,
         Range<usize>,
     )],
 ) where
