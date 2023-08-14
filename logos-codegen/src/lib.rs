@@ -23,7 +23,7 @@ use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
 use util::MaybeVoid;
 
-use proc_macro2::{TokenStream, TokenTree};
+use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use quote::quote;
 use syn::parse_quote;
 use syn::spanned::Spanned;
@@ -202,10 +202,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let error_type = parser.error_type.take();
     let extras = parser.extras.take();
-    let source = match parser.mode {
-        Mode::Utf8 => quote!(str),
-        Mode::Binary => quote!([u8]),
-    };
+    let source = parser
+        .source
+        .take()
+        .map(strip_wrapping_parens)
+        .unwrap_or(match parser.mode {
+            Mode::Utf8 => quote!(str),
+            Mode::Binary => quote!([u8]),
+        });
     let logos_path = parser
         .logos_path
         .take()
@@ -345,4 +349,23 @@ fn is_logos_attr(attr: &syn::Attribute) -> bool {
     attr.path().is_ident(LOGOS_ATTR)
         || attr.path().is_ident(TOKEN_ATTR)
         || attr.path().is_ident(REGEX_ATTR)
+}
+
+fn strip_wrapping_parens(t: TokenStream) -> TokenStream {
+    let tts: Vec<TokenTree> = t.into_iter().collect();
+
+    if tts.len() != 1 {
+        tts.into_iter().collect()
+    } else {
+        match tts.into_iter().next().unwrap() {
+            TokenTree::Group(g) => {
+                if g.delimiter() == Delimiter::Parenthesis {
+                    g.stream()
+                } else {
+                    core::iter::once(TokenTree::Group(g)).collect()
+                }
+            }
+            tt => core::iter::once(tt).collect(),
+        }
+    }
 }
