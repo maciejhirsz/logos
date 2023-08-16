@@ -6,7 +6,7 @@ use logos_derive::Logos;
 struct RefSource<'s, S: ?Sized + Source>(&'s S);
 
 impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
-    type Slice = S::Slice;
+    type Slice<'a> = S::Slice<'a> where 's: 'a;
 
     fn len(&self) -> usize {
         self.0.len()
@@ -26,11 +26,11 @@ impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
         self.0.read_unchecked(offset)
     }
 
-    fn slice(&self, range: Range<usize>) -> Option<&Self::Slice> {
+    fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
         self.0.slice(range)
     }
 
-    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self::Slice {
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_> {
         self.0.slice_unchecked(range)
     }
 
