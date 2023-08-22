@@ -22,9 +22,6 @@ pub trait LexerInternal<'source> {
     /// Test a chunk at current position with a closure.
     fn test<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, test: F) -> bool;
 
-    /// Test a chunk at current position offset by `n` with a closure.
-    fn test_at<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, n: usize, test: F) -> bool;
-
     /// Bump the position by `size`.
     fn bump_unchecked(&mut self, size: usize);
 

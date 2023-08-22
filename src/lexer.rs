@@ -322,19 +322,6 @@ where
         }
     }
 
-    /// Test a chunk at current position offset by `n` with a closure.
-    #[inline]
-    fn test_at<T, F>(&self, n: usize, test: F) -> bool
-    where
-        T: source::Chunk<'source>,
-        F: FnOnce(T) -> bool,
-    {
-        match self.source.read::<T>(self.token_end + n) {
-            Some(chunk) => test(chunk),
-            None => false,
-        }
-    }
-
     /// Bump the position `Lexer` is reading from by `size`.
     #[inline]
     fn bump_unchecked(&mut self, size: usize) {
