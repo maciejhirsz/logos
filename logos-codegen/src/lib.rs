@@ -227,7 +227,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                 type Source = #source;
 
-                fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
+                fn lex(lex: &mut #logos_path::Lexer<'s, Self>) {
                     #body
                 }
             }
