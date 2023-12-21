@@ -69,108 +69,9 @@ To achieve those, **Logos**:
  }
 ```
 
-### Callbacks
-
-**Logos** can also call arbitrary functions whenever a pattern is matched,
-which can be used to put data into a variant:
-
-```rust
- use logos::{Logos, Lexer};
-
- // Note: callbacks can return `Option` or `Result`
- fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
-     let slice = lex.slice();
-     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'k'
-     Some(n * 1_000)
- }
-
- fn mega(lex: &mut Lexer<Token>) -> Option<u64> {
-     let slice = lex.slice();
-     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'm'
-     Some(n * 1_000_000)
- }
-
- #[derive(Logos, Debug, PartialEq)]
- #[logos(skip r"[ \t\n\f]+")]
- enum Token {
-     // Callbacks can use closure syntax, or refer
-     // to a function defined elsewhere.
-     //
-     // Each pattern can have its own callback.
-     #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
-     #[regex("[0-9]+k", kilo)]
-     #[regex("[0-9]+m", mega)]
-     Number(u64),
- }
-
- fn main() {
-     let mut lex = Token::lexer("5 42k 75m");
-
-     assert_eq!(lex.next(), Some(Ok(Token::Number(5))));
-     assert_eq!(lex.slice(), "5");
-
-     assert_eq!(lex.next(), Some(Ok(Token::Number(42_000))));
-     assert_eq!(lex.slice(), "42k");
-
-     assert_eq!(lex.next(), Some(Ok(Token::Number(75_000_000))));
-     assert_eq!(lex.slice(), "75m");
-
-     assert_eq!(lex.next(), None);
- }
-```
-
-Logos can handle callbacks with following return types:
-
-| Return type            | Produces                                                                                            |
-|------------------------|-----------------------------------------------------------------------------------------------------|
-| `()`                   | `Ok(Token::Unit)`                                                                                   |
-| `bool`                 | `Ok(Token::Unit)` **or** `Err(<Token as Logos>::Error::default())`                                  |
-| `Result<(), E>`        | `Ok(Token::Unit)` **or** `Err(<Token as Logos>::Error::from(err))`                                  |
-| `T`                    | `Ok(Token::Value(T))`                                                                               |
-| `Option<T>`            | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::default())`                              |
-| `Result<T, E>`         | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))`                              |
-| [`Skip`]               | _skips matched input_                                                                               |
-| [`Filter<T>`]          | `Ok(Token::Value(T))` **or** _skips matched input_                                                  |
-| [`FilterResult<T, E>`] | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))` **or** _skips matched input_ |
-
-Callbacks can be also used to do perform more specialized lexing in place
-where regular expressions are too limiting. For specifics look at
-`Lexer::remainder` and `Lexer::bump`.
-
-## Errors
-
-By default, **Logos** uses `()` as the error type, which means that it
-doesn't store any information about the error.
-This can be changed by using `#[logos(error = T)]` attribute on the enum.
-The type `T` can be any type that implements `Clone`, `PartialEq`,
-`Default`, `Debug` and `From<E>` for each callback's error type `E`.
-
-## Token disambiguation
-
-Rule of thumb is:
-
-+ Longer beats shorter.
-+ Specific beats generic.
-
-If any two definitions could match the same input, like `fast` and `[a-zA-Z]+`
-in the example above, it's the longer and more specific definition of `Token::Fast`
-that will be the result.
-
-This is done by comparing numeric priority attached to each definition. Every consecutive,
-non-repeating single byte adds 2 to the priority, while every range or regex class adds 1.
-Loops or optional blocks are ignored, while alternations count the shortest alternative:
-
-+ `[a-zA-Z]+` has a priority of 1 (lowest possible), because at minimum it can match a single byte to a class.
-+ `foobar` has a priority of 12.
-+ `(foo|hello)(bar)?` has a priority of 6, `foo` being its shortest possible match.
-
-If two definitions compute to the same priority and can match the same input **Logos** will
-fail to compile, point out the problematic definitions, and ask you to specify a manual
-priority for either of them.
-
-For example: `[abc]+` and `[cde]+` both can match sequences of `c`, and both have priority of 1.
-Turning the first definition to `#[regex("[abc]+", priority = 2)]` will allow for tokens
-to be disambiguated again, in this case all sequences of `c` will match `[abc]+`.
+For more examples and documentation, please refer to the
+[Logos handbook](https://maciejhirsz.github.io/logos/) or the
+[crate documentation](https://docs.rs/logos/latest/logos/).
 
 ## How fast?
 
@@ -190,6 +91,9 @@ test strings                           ... bench:         553 ns/iter (+/- 34) =
 
 **Logos** is very much a labor of love. If you find it useful, consider
 [getting me some coffee](https://github.com/sponsors/maciejhirsz). ☕
+
+If you'd like to contribute to Logos, then consider reading the
+[Contributing guide](https://maciejhirsz.github.io/logos/contributing).
 
 ## License
 

@@ -12,8 +12,16 @@ readme = "../README.md"
 edition = "2021"
 rust-version = "1.65.0"
 
+[package.metadata.docs.rs]
+all-features = true
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 logos-derive = { version = "0.13.0", path = "../logos-derive", optional = true }
+
+[dev-dependencies]
+ariadne = { version = "0.2.0", features = ["auto-color"] }
 
 [features]
 default = ["export_derive", "std"]
@@ -25,3 +33,20 @@ std = []
 # import this crate and `use logos::Logos` to get both the trait and
 # derive proc macro.
 export_derive = ["logos-derive"]
+
+[[example]]
+name = "brainfuck"
+path = "examples/brainfuck.rs"
+doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
+
+[[example]]
+name = "custom_error"
+path = "examples/custom_error.rs"
+
+[[example]]
+name = "extras"
+path = "examples/extras.rs"
+
+[[example]]
+name = "json"
+path = "examples/json.rs"
