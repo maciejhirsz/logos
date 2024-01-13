@@ -22,7 +22,7 @@ Once we have our tokens, we must parse them into actual JSON values. We will pro
 
 + `parse_value` for parsing any JSON object, without prior knowledge of its type;
 + `parse_array` for parsing an array, assuming we matched `[`;
-+ and `parse_oject` for parsing an object, assuming we matched `{`.
++ and `parse_object` for parsing an object, assuming we matched `{`.
 
 Starting with parsing an arbitrary value, we can easily obtain the four scalar types, `Bool`, `Null`, `Number`, and `String`, while we will call the next functions for arrays and objects parsing.
 

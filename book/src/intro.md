@@ -23,5 +23,5 @@ There are two main types in **Logos**:
   with plain string or [regular expression](https://en.wikipedia.org/wiki/Regular_expression)
   syntax on `enum` variants as _patterns_ for some input.
 + The `Lexer<T: Logos>`, which is an iterator that takes some input (`&str`,
-  simetimes `&[u8]`) and performs lexical analysis on the input on the go,
+  sometimes `&[u8]`) and performs lexical analysis on the input on the go,
   producing variants of the enum `T` matching the defined patterns.

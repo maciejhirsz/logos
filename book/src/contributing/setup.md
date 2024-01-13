@@ -4,12 +4,12 @@ On this page, you will find all the information needed to run and test your
 own version of the Logos crate, locally.
 
 We assume you have basic knowledge with git and GitHub. If that is not the
-case, please refer to the link mentionned in [Contributing](./contributing.md).
+case, please refer to the link mentioned in [Contributing](./contributing.md).
 
 ## Prerequisites
 
 You need to have both git and Rust installed on your computer,
-see intallation procedures:
+see installation procedures:
 
 + for [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git);
 + and [Rust](https://www.rust-lang.org/tools/install).

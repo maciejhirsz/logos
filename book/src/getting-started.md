@@ -64,7 +64,7 @@ Because [`Lexer`](https://docs.rs/logos/latest/logos/struct.Lexer.html), returne
 for result in Token::lexer("Create ridiculously fast Lexers.") {
     match result {
         Ok(token) => println!("{:#?}", token),
-        Err(e) => panic!("some error occured: {}", e),
+        Err(e) => panic!("some error occurred: {}", e),
     }
 }
 ```
