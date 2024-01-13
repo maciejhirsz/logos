@@ -310,8 +310,8 @@ impl Parser {
                 if tp.qself.is_none() {
                     // If `ty` is a generic type parameter, try to find
                     // its concrete type defined with #[logos(type T = Type)]
-                    if let Some(substitue) = self.types.find(&tp.path) {
-                        *ty = substitue;
+                    if let Some(substitute) = self.types.find(&tp.path) {
+                        *ty = substitute;
                     }
                 }
             }

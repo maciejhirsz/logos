@@ -18,7 +18,7 @@
 //! - and ']'.
 //!
 //! Despite being very hard to use in practice, this makes
-//! this language very simple to interpet. The following code
+//! this language very simple to interpret. The following code
 //! defines an [`execute`] function that runs Brainfuck code.
 //!
 //! Logos is used here to directly transform the code stream
@@ -116,7 +116,7 @@ pub fn execute(code: &str) {
     }
 
     if !queue.is_empty() {
-        panic!("Unmatched conditional forward jump at positons {:?}, expecting a closing ']' for each of them", queue);
+        panic!("Unmatched conditional forward jump at positions {:?}, expecting a closing ']' for each of them", queue);
     }
 
     /* ANCHOR: fsm */

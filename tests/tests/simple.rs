@@ -141,7 +141,7 @@ fn operators() {
 }
 
 #[test]
-fn punctation() {
+fn punctuation() {
     assert_lex(
         "{ . .. ... }",
         &[

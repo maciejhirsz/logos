@@ -17,7 +17,7 @@
 //!
 //! From then, one can easily compute the column number of some token by computing:
 //!
-//! ```rust,no_run,no_playgroud
+//! ```rust,no_run,no_playground
 //! fn get_column(lex: &Lexer<Token>) -> usize {
 //!     lex.span().start - lex.extras.1
 //! }

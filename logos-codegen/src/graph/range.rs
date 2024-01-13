@@ -134,7 +134,7 @@ mod tests {
     }
 
     #[test]
-    fn range_iter_bunds() {
+    fn range_iter_bounds() {
         let byte = Range::from(0xFA..=0xFF);
 
         let collected = byte.take(1000).collect::<Vec<_>>();

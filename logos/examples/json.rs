@@ -78,7 +78,7 @@ enum Value {
     String(String),
     /// An array of values
     Array(Vec<Value>),
-    /// An dictionnary mapping keys and values.
+    /// An dictionary mapping keys and values.
     Object(HashMap<String, Value>),
 }
 /* ANCHOR_END: values */
