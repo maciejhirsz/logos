@@ -1,5 +1,5 @@
 [book]
-authors = ["Maciej Hirsz <hello@maciej.codes>"]
+authors = ["Maciej Hirsz <hello@maciej.codes>", "Jérome Eertmans (maintainer) <jeertmans@icloud.com>"]
 language = "en"
 multilingual = false
 src = "src"

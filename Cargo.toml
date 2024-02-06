@@ -3,7 +3,7 @@ members = ["logos-cli", "logos-codegen", "logos-derive", "tests"]
 resolver = "2"
 
 [workspace.package]
-authors = ["Maciej Hirsz <hello@maciej.codes>"]
+authors = ["Maciej Hirsz <hello@maciej.codes>", "Jérome Eertmans (maintainer) <jeertmans@icloud.com>"]
 categories = ["parsing", "text-processing"]
 description = "Create ridiculously fast Lexers"
 edition = "2021"
