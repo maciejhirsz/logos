@@ -33,13 +33,10 @@ version.workspace = true
 msrv = "1.65.0"  # Needed to duplicate, because cargo-msrv does not support workspace
 
 [package.metadata.release]
-pre-release-commit-message = "chore(version): bump {{crate_name}} version to {{version}}"
 pre-release-replacements = [
   {file="book/src/getting-started.md", search="logos2 = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos2 = \"{{version}}\"", exactly=1},
 ]
-push = false
 shared-version = true
-tag = false
 
 [lib]
 bench = false
