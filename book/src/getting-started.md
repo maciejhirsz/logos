@@ -7,6 +7,13 @@
 logos2 = "0.13.0"
 ```
 
+```admonish warning
+As of v0.14, Logos is released under `logos2`,
+see [#365](https://github.com/maciejhirsz/logos/pull/365). However, the library name
+is still `logos`, so you should only change your dependencies in `Cargo.toml` to
+use the latest versions.
+```
+
 Then, you can automatically derive the [`Logos`](https://docs.rs/logos2/latest/logos/trait.Logos.html) trait on your `enum` using the `Logos` derive macro:
 
 ```rust,no_run,no_playground

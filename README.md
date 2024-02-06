@@ -1,7 +1,7 @@
 <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 
 > [!WARNING]
-> As of v0.14, Logos is releases under `logos2`,
+> As of v0.14, Logos is released under `logos2`,
 > see [#365](https://github.com/maciejhirsz/logos/pull/365). However, the library name
 > is still `logos`, so you should only change your dependencies in `Cargo.toml` to
 > use the latest versions.
