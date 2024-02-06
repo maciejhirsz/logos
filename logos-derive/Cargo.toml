@@ -1,5 +1,5 @@
 [dependencies]
-logos-codegen2 = {version = "0.13.0", path = "../logos-codegen"}
+logos-codegen2 = {version = "0.13.4", path = "../logos-codegen"}
 
 [lib]
 bench = false
