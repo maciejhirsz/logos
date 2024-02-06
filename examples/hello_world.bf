@@ -40,4 +40,4 @@ Pointer :   ^
 <.                      Cell #3 was set to 'o' from the end of 'Hello'
 +++.------.--------.    Cell #3 for 'rl' and 'd'
 >>+.                    Add 1 to Cell #5 gives us an exclamation point
->++.                    And finally a newline from Cell #6        
+>++.                    And finally a newline from Cell #6

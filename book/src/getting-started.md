@@ -4,10 +4,17 @@
 
 ```toml
 [dependencies]
-logos = "0.13.0"
+logos2 = "0.13.0"
 ```
 
-Then, you can automatically derive the [`Logos`](https://docs.rs/logos/latest/logos/trait.Logos.html) trait on your `enum` using the `Logos` derive macro:
+```admonish warning
+As of v0.14, Logos is released under `logos2`,
+see [#365](https://github.com/maciejhirsz/logos/pull/365). However, the library name
+is still `logos`, so you should only change your dependencies in `Cargo.toml` to
+use the latest versions.
+```
+
+Then, you can automatically derive the [`Logos`](https://docs.rs/logos2/latest/logos/trait.Logos.html) trait on your `enum` using the `Logos` derive macro:
 
 ```rust,no_run,no_playground
 use logos::Logos;
@@ -56,9 +63,9 @@ assert_eq!(lex.slice(), ".");
 assert_eq!(lex.next(), None);
 ```
 
-[^1]: Each item is actually a [`Result<Token, _>`](https://docs.rs/logos/latest/logos/struct.Lexer.html#associatedtype.Item), because the lexer returns an error if some part of the string slice does not match any variant of `Token`.
+[^1]: Each item is actually a [`Result<Token, _>`](https://docs.rs/logos2/latest/logos/struct.Lexer.html#associatedtype.Item), because the lexer returns an error if some part of the string slice does not match any variant of `Token`.
 
-Because [`Lexer`](https://docs.rs/logos/latest/logos/struct.Lexer.html), returned by [`Logos::lexer`](https://docs.rs/logos/latest/logos/trait.Logos.html#method.lexer), implements the `Iterator` trait, you can use a `for .. in` construct:
+Because [`Lexer`](https://docs.rs/logos2/latest/logos/struct.Lexer.html), returned by [`Logos::lexer`](https://docs.rs/logos2/latest/logos/trait.Logos.html#method.lexer), implements the `Iterator` trait, you can use a `for .. in` construct:
 
 ```rust,no_run,no_playground
 for result in Token::lexer("Create ridiculously fast Lexers.") {
@@ -68,5 +75,3 @@ for result in Token::lexer("Create ridiculously fast Lexers.") {
     }
 }
 ```
-
-

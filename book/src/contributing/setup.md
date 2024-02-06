@@ -30,7 +30,7 @@ Finally, launch a terminal (i.e., command-line) session and go to the
 A good way to see if you code can compile is to use the eponym command:
 
 ```bash
-cargo check
+cargo check --worspace
 ```
 
 ## Formatting and linting your code
@@ -57,7 +57,13 @@ A code that compiles isn't necessarily correct, and testing it against known
 cases is of good practice:
 
 ```bash
-cargo test
+cargo test --workspace
+```
+
+You can also run benchmarks:
+
+```bash
+cargo bench --workspace --benches
 ```
 
 ## Building the documentation
@@ -71,7 +77,7 @@ rustup install nightly
 ```
 
 Then, use the following command to build the documentation with a similar
-configuration to the one used by [docs.rs](https://docs.rs/logos/latest/logos/):
+configuration to the one used by [docs.rs](https://docs.rs/logos2/latest/logos/):
 
 ```bash
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc \
@@ -91,6 +97,14 @@ This tool can be installed with `cargo`:
 
 ```bash
 cargo install mdbook
+```
+
+You also need to install `mdbook-admonish` and its assets:
+
+```bash
+cargo install mdbook admonish
+cd book/  # You must run the next command from the book/ directory
+mdbook-admonish install
 ```
 
 Then, you can build the book with:

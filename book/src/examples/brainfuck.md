@@ -5,28 +5,27 @@ In most programming languages, commands can be made of multiple program tokens, 
 However, there exists programming languages that are so simple, such as Brainfuck, that each token can be mapped to a single instruction. There are actually 8 single-characters tokens:
 
 ```rust,no_run,noplayground
-{{#include ../../../logos/examples/brainfuck.rs:tokens}}
+{{#include ../../../examples/brainfuck.rs:tokens}}
 ```
 
 All other characters must be ignored.
 
 Once the tokens are obtained, a Brainfuck interpreter can be easily created using a [Finite-state machine](https://en.wikipedia.org/wiki/Finite-state_machine). For the sake of simpliciy, we collected all the tokens into one vector called `operations`.
 
-Now, creating an interpreter becomes straightforward[^1]: 
+Now, creating an interpreter becomes straightforward[^1]:
 ```rust,no_run,noplayground
-{{#include ../../../logos/examples/brainfuck.rs:fsm}}
+{{#include ../../../examples/brainfuck.rs:fsm}}
 ```
 
 [^1]: There is a small trick to make it easy. As it can be seen in the full code, we first perform a check that all beginning loops (`'['`) have a matching end (`']'`). This way, we can create two maps, `pairs` and `pairs_reverse`, to easily jump back and forth between them.
 
 Finally, we provide you the full code that you should be able to run with[^2]:
 ```bash
-cd logos/logos
 cargo run --example brainfuck examples/hello_word.bf
 ```
 
 [^2] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
-{{#include ../../../logos/examples/brainfuck.rs:all}}
+{{#include ../../../examples/brainfuck.rs:all}}
 ```

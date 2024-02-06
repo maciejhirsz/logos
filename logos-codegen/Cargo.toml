@@ -1,24 +1,29 @@
-[package]
-name = "logos-codegen"
-version = "0.13.0"
-authors = ["Maciej Hirsz <hello@maciej.codes>"]
-license = "MIT OR Apache-2.0"
-description = "Implementation details for logos-codegen and logos-derive. Not for public consumption."
-repository = "https://github.com/maciejhirsz/logos"
-documentation = "https://docs.rs/logos-derive"
-keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
-categories = ["parsing", "text-processing"]
-readme = "../README.md"
-edition = "2018"
-
 [dependencies]
 beef = "0.5.0"
 fnv = "1.0.6"
-syn = { version = "2.0.13", features = ["full"] }
-quote = "1.0.3"
-proc-macro2 = "1.0.9"
-regex-syntax = "0.6"
 lazy_static = "1.4.0"
+proc-macro2 = "1.0.9"
+quote = "1.0.3"
+regex-syntax = "0.6"
+syn = { version = "2.0.13", features = ["full"] }
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
+
+[lib]
+bench = false
+name = "logos_codegen"
+
+[package]
+name = "logos-codegen2"
+authors.workspace = true
+categories.workspace = true
+description.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true

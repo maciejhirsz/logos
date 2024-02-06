@@ -1,11 +1,17 @@
 <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 
+> [!WARNING]
+> As of v0.14, Logos is released under `logos2`,
+> see [#365](https://github.com/maciejhirsz/logos/pull/365). However, the library name
+> is still `logos`, so you should only change your dependencies in `Cargo.toml` to
+> use the latest versions.
+
 # Logos
 
 ![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
-[![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
-[![Docs](https://docs.rs/logos/badge.svg)](https://docs.rs/logos)
-[![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
+[![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos2)
+[![Docs](https://docs.rs/logos2/badge.svg)](https://docs.rs/logos2)
+[![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos2)
 
 _Create ridiculously fast Lexers._
 
@@ -71,7 +77,7 @@ To achieve those, **Logos**:
 
 For more examples and documentation, please refer to the
 [Logos handbook](https://maciejhirsz.github.io/logos/) or the
-[crate documentation](https://docs.rs/logos/latest/logos/).
+[crate documentation](https://docs.rs/logos2/latest/logos/).
 
 ## How fast?
 

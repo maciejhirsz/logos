@@ -7,7 +7,7 @@
 //!     cargo run --example extras Cargo.toml
 //!
 //! This is a small example on how to use
-//! [`Extras`](https://docs.rs/logos/latest/logos/trait.Logos.html#associatedtype.Extras)
+//! [`Extras`](https://docs.rs/logos2/latest/logos/trait.Logos.html#associatedtype.Extras)
 //! to convey some (mutable) internal state from token to token.
 //!
 //! Here, the extras will be a tuple with the following fields:

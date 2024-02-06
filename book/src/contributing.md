@@ -10,10 +10,10 @@ There are many ways to help us, and here is a short list of some of them:
 + fixing an [BUG](https://github.com/maciejhirsz/logos/labels/bug), by providing
   a patch (or suggesting in the comments how one could fix it);
 + correcting some typos in the documentation, the book, or anywhere else;
-+ raising an issue about a problem (i.e., 
++ raising an issue about a problem (i.e.,
   [opening an issue](https://github.com/maciejhirsz/logos/issues/new) on GitHub);
-+ proposing new features (either with 
-  [an issue](https://github.com/maciejhirsz/logos/issues/new) or 
++ proposing new features (either with
+  [an issue](https://github.com/maciejhirsz/logos/issues/new) or
   [a pull request](https://github.com/maciejhirsz/logos/pulls) on GitHub);
 + or improving the documentation (either in the crate or in the book).
 

@@ -25,5 +25,7 @@ others are optional.
 You can stack any number of `#[token]` and or `#[regex`] attributes on top of
 the same variant.
 
-> NOTE: for supported `regex` literals, read the
+```admonish info
+For a list of supported `regex` literals, read the
 [Common regular expressions section](../common-regex.md).
+```

@@ -13,7 +13,7 @@ of each token. This is especially useful when one needs to report an erroneous
 token to the user, in an user-friendly manner.
 
 ```rust,no_run,noplayground
-{{#include ../../logos/examples/extras.rs:tokens}}
+{{#include ../../examples/extras.rs:tokens}}
 ```
 
 The above token definition will hold two tokens: `Newline` and `Word`.
@@ -29,7 +29,7 @@ To make it easy, the lexer will contain the following two extras:
 We now have to define the two callback functions:
 
 ```rust,no_run,noplayground
-{{#include ../../logos/examples/extras.rs:callbacks}}
+{{#include ../../examples/extras.rs:callbacks}}
 ```
 
 Extras can of course be used for more complicate logic, and there is no limit
@@ -37,12 +37,11 @@ to what you can store within the public `extras` field.
 
 Finally, we provide you the full code that you should be able to run with[^1]:
 ```bash
-cd logos/logos
 cargo run --example extras Cargo.toml
 ```
 
 [^1] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
-{{#include ../../logos/examples/extras.rs:all}}
+{{#include ../../examples/extras.rs:all}}
 ```
