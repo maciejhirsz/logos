@@ -1,18 +1,15 @@
-[package]
-name = "tests"
-version = "0.0.0"
-authors = ["Maciej Hirsz <hello@maciej.codes>"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/maciejhirsz/logos"
-edition = "2018"
+[[bench]]
+harness = false
+name = "bench"
 
 [dependencies]
-logos = { path = "../logos", default-features = false, features = ["std"] }
-logos-derive = { path = "../logos-derive" }
+logos-derive2 = {path = "../logos-derive"}
+logos2 = {path = "../logos", default-features = false, features = ["std"]}
 
 [dev-dependencies]
 criterion = "0.4"
 
-[[bench]]
-name = "bench"
-harness = false
+[package]
+name = "tests"
+publish = false
+version = "0.0.0"

@@ -23,7 +23,7 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-jobs:  
+jobs:
   # Build job
   build-book:
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
     - name: Setup mdBook
       uses: peaceiris/actions-mdbook@v1
       with:
-        mdbook-version: '0.4.28'
+        mdbook-version: 0.4.28
     - name: Build book
       run: mdbook build book
     - name: Upload artifact

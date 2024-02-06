@@ -7,8 +7,8 @@ on:
 
 name: Benchmark
 
-permissions: 
-   pull-requests: write
+permissions:
+  pull-requests: write
 
 jobs:
   benchmark:

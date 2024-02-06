@@ -1,19 +1,20 @@
-[package]
-name = "logos-derive"
-version = "0.13.0"
-authors = ["Maciej Hirsz <hello@maciej.codes>"]
-license = "MIT OR Apache-2.0"
-description = "Create ridiculously fast Lexers"
-repository = "https://github.com/maciejhirsz/logos"
-documentation = "https://docs.rs/logos-derive"
-keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
-categories = ["parsing", "text-processing"]
-readme = "../README.md"
-edition = "2018"
+[dependencies]
+logos-codegen2 = {version = "0.13.0", path = "../logos-codegen"}
 
 [lib]
 name = "logos_derive"
 proc-macro = true
 
-[dependencies]
-logos-codegen = { version = "0.13.0", path = "../logos-codegen" }
+[package]
+name = "logos-derive2"
+authors.workspace = true
+categories.categories = true
+description.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true

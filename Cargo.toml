@@ -1,6 +1,19 @@
+[profile]
+bench = {lto = true}
+release = {lto = true}
+
 [workspace]
 members = ["logos", "logos-cli", "logos-codegen", "logos-derive", "tests"]
 
-[profile]
-release = { lto = true }
-bench = { lto = true }
+[workspace.package]
+authors = ["Maciej Hirsz <hello@maciej.codes>"]
+categories = ["parsing", "text-processing"]
+description = "Create ridiculously fast Lexers"
+edition = "2021"
+homepage = "https://logos.maciej.codes/"
+keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/maciejhirsz/logos"
+rust-version = "1.65.0"
+version = "0.13.0"

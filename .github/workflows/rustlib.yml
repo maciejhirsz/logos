@@ -29,13 +29,13 @@ jobs:
     strategy:
       matrix:
         rust:
-          - stable
-          - beta
-          - nightly
+        - stable
+        - beta
+        - nightly
         os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
+        - macos-latest
+        - ubuntu-latest
+        - windows-latest
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -55,5 +55,5 @@ jobs:
     - name: Check that code compiles
       uses: actions-rs/cargo@v1
       with:
-          command: test
-          args: --verbose
+        command: test
+        args: --verbose

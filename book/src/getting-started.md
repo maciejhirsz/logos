@@ -68,5 +68,3 @@ for result in Token::lexer("Create ridiculously fast Lexers.") {
     }
 }
 ```
-
-
