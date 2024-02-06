@@ -11,7 +11,7 @@ logos2 = {path = "../", default-features = false, features = ["std"]}
 [dev-dependencies]
 criterion = "0.4"
 
-[package.metadata]
+[package.metadata.release]
 release = false
 
 [[bench]]
