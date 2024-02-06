@@ -7,7 +7,7 @@ path = "src/main.rs"
 anyhow = "1.0.57"
 clap = {version = "3.1.18", features = ["derive"]}
 fs-err = "2.7.0"
-logos-codegen2 = {version = "0.13.3", path = "../logos-codegen"}
+logos-codegen2 = {version = "0.13.4", path = "../logos-codegen"}
 proc-macro2 = "1.0.39"
 
 [dev-dependencies]
