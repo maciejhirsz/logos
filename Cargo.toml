@@ -32,6 +32,13 @@ version.workspace = true
 [package.metadata]
 msrv = "1.65.0"  # Needed to duplicate, because cargo-msrv does not support workspace
 
+[package.metadata.release]
+pre-release-replacements = [
+  {file="README.md", search="> \\[!WARNING\\]\n> ", replace="> **Warning**: ", exactly=1},
+  {file="book/src/getting-started.md", search="logos2 = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos2 = \"{{version}}\"", exactly=1},
+]
+shared-version = true
+
 [lib]
 bench = false
 name = "logos"
@@ -49,10 +56,6 @@ std = []
 all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 rustdoc-args = ["--cfg", "docsrs"]
-
-[package.metadata.release]
-shared-version = true
-tag-name = "v{{version}}"
 
 [profile]
 bench = {lto = true}
