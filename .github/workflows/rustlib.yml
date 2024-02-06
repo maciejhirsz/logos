@@ -42,18 +42,14 @@ jobs:
     - name: Checkout sources
       uses: actions/checkout@v4
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
-        components: rustfmt
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Cache dependencies
       uses: Swatinem/rust-cache@v2
 
-    - name: Check that code compiles
+    - name: Check that tests run
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose
+        args: --workspace --verbose

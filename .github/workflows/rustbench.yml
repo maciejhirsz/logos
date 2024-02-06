@@ -29,7 +29,7 @@ jobs:
         version: latest
 
     - name: Run Benchmarks on changes
-      run: cargo bench --bench bench -- --save-baseline changes
+      run: cargo bench --workspace --benches -- --save-baseline changes
 
     - uses: actions/checkout@v4
       with:
@@ -37,7 +37,7 @@ jobs:
         clean: false
 
     - name: Run Benchmarks before changes
-      run: cargo bench --bench bench -- --save-baseline before
+      run: cargo bench --workspace --benches -- --save-baseline before
 
     - name: Compare benchmarks
       run: |

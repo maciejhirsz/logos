@@ -77,7 +77,6 @@
 //!
 //! }
 //! ```
-
 use logos::source::Source;
 use logos::Logos;
 

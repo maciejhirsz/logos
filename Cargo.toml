@@ -46,6 +46,10 @@ all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 rustdoc-args = ["--cfg", "docsrs"]
 
+[package.metadata.release]
+shared-version = true
+tag-name = "v{{version}}"
+
 [profile]
 bench = {lto = true}
 release = {lto = true}

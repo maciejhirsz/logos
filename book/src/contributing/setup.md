@@ -30,7 +30,7 @@ Finally, launch a terminal (i.e., command-line) session and go to the
 A good way to see if you code can compile is to use the eponym command:
 
 ```bash
-cargo check
+cargo check --worspace
 ```
 
 ## Formatting and linting your code
@@ -57,7 +57,13 @@ A code that compiles isn't necessarily correct, and testing it against known
 cases is of good practice:
 
 ```bash
-cargo test
+cargo test --workspace
+```
+
+You can also run benchmarks:
+
+```bash
+cargo bench --workspace --benches
 ```
 
 ## Building the documentation
