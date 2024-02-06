@@ -23,7 +23,9 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 + `foobar` has a priority of 12.
 + `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
 
-> NOTE: when two patterns have the same priority, **Logos** will issue an compilation
+```admonish info
+When two patterns have the same priority, **Logos** will issue an compilation
 error.
 To prevent this from happening, you can manually set the priority of a given
 pattern with, e.g., `#token("foobar", priority = 20)`.
+```

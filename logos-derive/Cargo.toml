@@ -8,7 +8,7 @@ proc-macro = true
 [package]
 name = "logos-derive2"
 authors.workspace = true
-categories.categories = true
+categories.workspace = true
 description.workspace = true
 edition.workspace = true
 homepage.workspace = true

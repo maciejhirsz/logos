@@ -71,7 +71,7 @@ rustup install nightly
 ```
 
 Then, use the following command to build the documentation with a similar
-configuration to the one used by [docs.rs](https://docs.rs/logos/latest/logos/):
+configuration to the one used by [docs.rs](https://docs.rs/logos2/latest/logos/):
 
 ```bash
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc \
@@ -91,6 +91,14 @@ This tool can be installed with `cargo`:
 
 ```bash
 cargo install mdbook
+```
+
+You also need to install `mdbook-admonish` and its assets:
+
+```bash
+cargo install mdbook admonish
+cd book/  # You must run the next command from the book/ directory
+mdbook-admonish install
 ```
 
 Then, you can build the book with:

@@ -4,7 +4,7 @@ name = "bench"
 
 [dependencies]
 logos-derive2 = {path = "../logos-derive"}
-logos2 = {path = "../logos", default-features = false, features = ["std"]}
+logos2 = {path = "../", default-features = false, features = ["std"]}
 
 [dev-dependencies]
 criterion = "0.4"

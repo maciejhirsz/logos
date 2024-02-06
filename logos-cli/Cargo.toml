@@ -17,7 +17,7 @@ predicates = "2.1.1"
 [package]
 name = "logos-cli2"
 authors.workspace = true
-categories.categories = true
+categories.workspace = true
 description.workspace = true
 edition.workspace = true
 homepage.workspace = true
