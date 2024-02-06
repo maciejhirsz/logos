@@ -1,4 +1,5 @@
 [[bin]]
+bench = false
 name = "logos-cli"
 path = "src/main.rs"
 

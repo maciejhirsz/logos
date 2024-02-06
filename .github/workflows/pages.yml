@@ -43,7 +43,7 @@ jobs:
 
     - name: Download assets
       run: |
-        cd docs/
+        cd book/
         mdbook-admonish install
 
     - name: Build book

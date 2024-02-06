@@ -29,7 +29,11 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[package.metadata]
+msrv = "1.65.0"  # Needed to duplicate, because cargo-msrv does not support workspace
+
 [lib]
+bench = false
 name = "logos"
 
 [features]

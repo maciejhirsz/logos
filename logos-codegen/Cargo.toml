@@ -11,6 +11,7 @@ syn = { version = "2.0.13", features = ["full"] }
 pretty_assertions = "0.6.1"
 
 [lib]
+bench = false
 name = "logos_codegen"
 
 [package]
