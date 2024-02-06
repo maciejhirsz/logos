@@ -37,7 +37,7 @@ pre-release-commit-message = "chore(version): bump {{crate_name}} version to {{v
 pre-release-replacements = [
   {file="book/src/getting-started.md", search="logos2 = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos2 = \"{{version}}\"", exactly=1},
 ]
-push = falsee
+push = false
 shared-version = true
 tag = false
 
