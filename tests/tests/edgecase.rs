@@ -375,7 +375,7 @@ mod priority_disambiguate_1 {
     #[derive(Logos, Debug, PartialEq)]
     #[logos(skip r"[ \n\t\f]+")]
     enum Token {
-        #[regex("[abc]+", priority = 2)]
+        #[regex("[abc]+", priority = 3)]
         Abc,
 
         #[regex("[cde]+")]
@@ -399,7 +399,7 @@ mod priority_disambiguate_2 {
         #[regex("[abc]+")]
         Abc,
 
-        #[regex("[cde]+", priority = 2)]
+        #[regex("[cde]+", priority = 3)]
         Cde,
     }
 
@@ -497,7 +497,7 @@ mod merging_asymmetric_loops {
             #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
             Operator,
 
-            #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
+            #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip, priority = 3)]
             Ignored,
         }
     }

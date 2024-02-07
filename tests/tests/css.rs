@@ -6,10 +6,10 @@ enum Token {
     #[regex("em|ex|ch|rem|vw|vh|vmin|vmax")]
     RelativeLength,
 
-    #[regex("cm|mm|Q|in|pc|pt|px")]
+    #[regex("cm|mm|Q|in|pc|pt|px", priority = 3)]
     AbsoluteLength,
 
-    #[regex("[+-]?[0-9]*[.]?[0-9]+(?:[eE][+-]?[0-9]+)?", priority = 2)]
+    #[regex("[+-]?[0-9]*[.]?[0-9]+(?:[eE][+-]?[0-9]+)?", priority = 3)]
     Number,
 
     #[regex("[-a-zA-Z_][a-zA-Z0-9_-]*")]

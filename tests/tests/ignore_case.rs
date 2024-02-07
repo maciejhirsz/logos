@@ -93,7 +93,7 @@ mod ignore_ascii_case {
         NaConcat,
         #[regex("[cûü]+", ignore(ascii_case))]
         NaAltern,
-        #[regex("i§?", ignore(ascii_case))]
+        #[regex("i§?", priority = 3, ignore(ascii_case))]
         NaMaybe,
         #[regex("[x-à]+", ignore(ascii_case))]
         NaRange,

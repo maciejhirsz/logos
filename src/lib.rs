@@ -90,7 +90,7 @@ pub trait Logos<'source>: Sized {
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace.
 ///     // This is identical to using `logos::skip`.
-///     #[regex(" |abc", |_| Skip)]
+///     #[regex(" |abc", |_| Skip, priority = 3)]
 ///     Ignored,
 ///
 ///     #[regex("[a-zA-Z]+")]
@@ -235,7 +235,7 @@ pub enum FilterResult<T, E> {
 /// #[derive(Logos, Debug, PartialEq)]
 /// enum Token<'a> {
 ///     // We will treat "abc" as if it was whitespace
-///     #[regex(" |abc", logos::skip)]
+///     #[regex(" |abc", logos::skip, priority = 3)]
 ///     Ignored,
 ///
 ///     #[regex("[a-zA-Z]+")]
