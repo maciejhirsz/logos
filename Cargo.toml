@@ -81,3 +81,7 @@ path = "examples/extras.rs"
 [[example]]
 name = "json"
 path = "examples/json.rs"
+
+[[example]]
+name = "json-borrowed"
+path = "examples/json_borrowed.rs"
