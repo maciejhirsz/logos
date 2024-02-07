@@ -13,6 +13,7 @@
 + [Examples](./examples.md)
   + [Brainfuck interpreter](./examples/brainfuck.md)
   + [JSON parser](./examples/json.md)
+  + [JSON-borrowed parser](./examples/json_borrowed.md)
 + [Contributing](./contributing.md)
   + [Setup](./contributing/setup.md)
   + [Internals](./contributing/internals.md)
