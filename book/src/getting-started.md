@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-logos2 = "0.13.4"
+logos2 = "0.14.0"
 ```
 
 ```admonish warning
