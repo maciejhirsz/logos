@@ -8,7 +8,7 @@ regex-syntax = "0.8.2"
 syn = { version = "2.0.13", features = ["full"] }
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
+pretty_assertions = "1.4.0"
 
 [lib]
 bench = false
