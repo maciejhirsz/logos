@@ -18,14 +18,17 @@ consecutive, non-repeating single byte adds 2 to the priority, while every range
 or regex class adds 1.
 Loops or optional blocks are ignored, while alternations count the shortest alternative:
 
-+ `[a-zA-Z]+` has a priority of 1 (lowest possible), because at minimum it can
-  match a single byte to a class.
-+ `foobar` has a priority of 12.
-+ `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
++ `[a-zA-Z]+` has a priority of 2 (lowest possible), because at minimum it can
+  match a single byte to a class;
++ `foobar` has a priority of 12;
++ and `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
+
+Generally speaking, equivalent regex patterns have the same priority. E.g.,
+`a|b` is equivalent to `[a-b]`, and both have a priority of 2.
 
 ```admonish info
-When two patterns have the same priority, **Logos** will issue an compilation
-error.
+When two different patterns have the same priority,
+**Logos** will issue an compilation error.
 To prevent this from happening, you can manually set the priority of a given
 pattern with, e.g., `#token("foobar", priority = 20)`.
 ```
