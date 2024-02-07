@@ -5,8 +5,8 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-logos-derive2 = {path = "../logos-derive"}
-logos2 = {path = "../", default-features = false, features = ["std"]}
+logos-derive = {path = "../logos-derive"}
+logos = {path = "../", default-features = false, features = ["std"]}
 
 [dev-dependencies]
 criterion = "0.4"

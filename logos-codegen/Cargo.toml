@@ -12,10 +12,9 @@ pretty_assertions = "1.4.0"
 
 [lib]
 bench = false
-name = "logos_codegen"
 
 [package]
-name = "logos-codegen2"
+name = "logos-codegen"
 authors.workspace = true
 categories.workspace = true
 description.workspace = true

@@ -1,13 +1,12 @@
 [dependencies]
-logos-codegen2 = {version = "0.14.0", path = "../logos-codegen"}
+logos-codegen = {version = "0.14.0", path = "../logos-codegen"}
 
 [lib]
 bench = false
-name = "logos_derive"
 proc-macro = true
 
 [package]
-name = "logos-derive2"
+name = "logos-derive"
 authors.workspace = true
 categories.workspace = true
 description.workspace = true
