@@ -5,7 +5,7 @@ on what you are looking for:
 
 + [this book](./) for a documented walk through **Logos**' usage, with detailed
   examples, and more. A **must read** for any newcomer;
-+ [the API documentation](https://docs.rs/logos2/latest/logos/) to obtain precise
++ [the API documentation](https://docs.rs/logos/latest/logos/) to obtain precise
   information about function signatures and what the Logos crate exposes in
   terms of features;
 + and [GitHub issues](https://github.com/maciejhirsz/logos/issues) for anything

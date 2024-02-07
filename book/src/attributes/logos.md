@@ -57,4 +57,4 @@ By default, **Logos**'s lexer will accept `&str` as input, unless any of the
 pattern literals match a non utf-8 bytes sequence. In this case, it will fall
 back to `&[u8]`. You can override this behavior by forcing one of the two
 source types. You can also specify any custom time that implements
-[`Source`](https://docs.rs/logos2/latest/logos/source/trait.Source.html).
+[`Source`](https://docs.rs/logos/latest/logos/source/trait.Source.html).

@@ -2,7 +2,7 @@
 //!
 //! # Logos
 //!
-//! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos2).
+//! This is a `#[derive]` macro crate, [for documentation go to main crate](https://docs.rs/logos).
 
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
