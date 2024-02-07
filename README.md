@@ -1,10 +1,5 @@
 <img src="https://raw.githubusercontent.com/maciejhirsz/logos/master/logos.svg?sanitize=true" alt="Logos logo" width="250" align="right">
 
-> **Warning**: as of v0.14, Logos is released under `logos2`,
-> see [#365](https://github.com/maciejhirsz/logos/pull/365). However, the library name
-> is still `logos`, so you should only change your dependencies in `Cargo.toml` to
-> use the latest versions.
-
 # Logos
 
 ![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)

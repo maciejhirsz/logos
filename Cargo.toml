@@ -16,7 +16,7 @@ rust-version = "1.65.0"
 version = "0.14.0"
 
 [package]
-name = "logos2"
+name = "logos"
 authors.workspace = true
 categories.workspace = true
 description.workspace = true
@@ -34,20 +34,19 @@ msrv = "1.65.0"  # Needed to duplicate, because cargo-msrv does not support work
 
 [package.metadata.release]
 pre-release-replacements = [
-  {file="book/src/getting-started.md", search="logos2 = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos2 = \"{{version}}\"", exactly=1},
+  {file="book/src/getting-started.md", search="logos = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos2 = \"{{version}}\"", exactly=1},
 ]
 shared-version = true
 
 [lib]
 bench = false
-name = "logos"
 
 [features]
 default = ["export_derive", "std"]
 # Re-exports the `Logos` derive macro, so that end user only needs to
 # import this crate and `use logos::Logos` to get both the trait and
 # derive proc macro.
-export_derive = ["logos-derive2"]
+export_derive = ["logos-derive"]
 # Should the crate use the standard library?
 std = []
 
@@ -61,7 +60,7 @@ bench = {lto = true}
 release = {lto = true}
 
 [dependencies]
-logos-derive2 = {version = "0.14.0", path = "./logos-derive", optional = true}
+logos-derive = {version = "0.14.0", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
 ariadne = {version = "0.2.0", features = ["auto-color"]}
