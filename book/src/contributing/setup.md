@@ -77,7 +77,7 @@ rustup install nightly
 ```
 
 Then, use the following command to build the documentation with a similar
-configuration to the one used by [docs.rs](https://docs.rs/logos2/latest/logos/):
+configuration to the one used by [docs.rs](https://docs.rs/logos/latest/logos/):
 
 ```bash
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc \

@@ -58,11 +58,11 @@ Logos can handle callbacks with following return types:
 | `T`                                                                               | `Ok(Token::Value(T))`                                                                               |
 | `Option<T>`                                                                       | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::default())`                              |
 | `Result<T, E>`                                                                    | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))`                              |
-| [`Skip`](https://docs.rs/logos2/latest/logos/struct.Skip.html)                     | _skips matched input_                                                                               |
-| [`Filter<T>`](https://docs.rs/logos2/latest/logos/enum.Filter.html)                | `Ok(Token::Value(T))` **or** _skips matched input_                                                  |
-| [`FilterResult<T, E>`](https://docs.rs/logos2/latest/logos/enum.FilterResult.html) | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))` **or** _skips matched input_ |
+| [`Skip`](https://docs.rs/logos/latest/logos/struct.Skip.html)                     | _skips matched input_                                                                               |
+| [`Filter<T>`](https://docs.rs/logos/latest/logos/enum.Filter.html)                | `Ok(Token::Value(T))` **or** _skips matched input_                                                  |
+| [`FilterResult<T, E>`](https://docs.rs/logos/latest/logos/enum.FilterResult.html) | `Ok(Token::Value(T))` **or** `Err(<Token as Logos>::Error::from(err))` **or** _skips matched input_ |
 
 Callbacks can be also used to do perform more specialized lexing in place
 where regular expressions are too limiting. For specifics look at
-[`Lexer::remainder`](https://docs.rs/logos2/latest/logos/struct.Lexer.html#method.remainder) and
-[`Lexer::bump`](https://docs.rs/logos2/latest/logos/struct.Lexer.html#method.bump).
+[`Lexer::remainder`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.remainder) and
+[`Lexer::bump`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.bump).

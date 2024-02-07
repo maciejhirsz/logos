@@ -3,9 +3,9 @@
 # Logos
 
 ![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
-[![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos2)
-[![Docs](https://docs.rs/logos2/badge.svg)](https://docs.rs/logos2)
-[![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos2)
+[![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
+[![Docs](https://docs.rs/logos/badge.svg)](https://docs.rs/logos)
+[![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
 
 _Create ridiculously fast Lexers._
 
@@ -71,7 +71,7 @@ To achieve those, **Logos**:
 
 For more examples and documentation, please refer to the
 [Logos handbook](https://maciejhirsz.github.io/logos/) or the
-[crate documentation](https://docs.rs/logos2/latest/logos/).
+[crate documentation](https://docs.rs/logos/latest/logos/).
 
 ## How fast?
 
