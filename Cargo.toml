@@ -34,7 +34,7 @@ msrv = "1.65.0"  # Needed to duplicate, because cargo-msrv does not support work
 
 [package.metadata.release]
 pre-release-replacements = [
-  {file="book/src/getting-started.md", search="logos = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos2 = \"{{version}}\"", exactly=1},
+  {file="book/src/getting-started.md", search="logos = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos = \"{{version}}\"", exactly=1},
 ]
 shared-version = true
 
