@@ -209,7 +209,6 @@ impl Source for [u8] {
     }
 }
 
-
 #[cfg(feature = "std")]
 use std::ops::Deref;
 
@@ -235,7 +234,8 @@ where
 
     unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
     where
-        Chunk: self::Chunk<'a> {
+        Chunk: self::Chunk<'a>,
+    {
         self.deref().read_unchecked(offset)
     }
 
