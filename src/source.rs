@@ -1,7 +1,7 @@
 //! This module contains a bunch of traits necessary for processing byte strings.
 //!
 //! Most notable are:
-//! * `Source` - implemented by default for `&str` and `&[u8]`, used by the `Lexer`.
+//! * `Source` - implemented by default for `&str`, `&[u8]` and wrapper types, used by the `Lexer`.
 //! * `Slice` - slices of `Source`, returned by `Lexer::slice`.
 
 use std::fmt::Debug;
@@ -206,6 +206,53 @@ impl Source for [u8] {
     #[inline]
     fn is_boundary(&self, index: usize) -> bool {
         index <= self.len()
+    }
+}
+
+
+#[cfg(feature = "std")]
+use std::ops::Deref;
+
+#[cfg(feature = "std")]
+impl<T> Source for T
+where
+    T: Deref,
+    <T as Deref>::Target: Source,
+{
+    type Slice<'a> = <T::Target as Source>::Slice<'a>
+        where T: 'a;
+
+    fn len(&self) -> usize {
+        self.deref().len()
+    }
+
+    fn read<'a, Chunk>(&'a self, offset: usize) -> Option<Chunk>
+    where
+        Chunk: self::Chunk<'a>,
+    {
+        self.deref().read(offset)
+    }
+
+    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
+    where
+        Chunk: self::Chunk<'a> {
+        self.deref().read_unchecked(offset)
+    }
+
+    fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
+        self.deref().slice(range)
+    }
+
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_> {
+        self.deref().slice_unchecked(range)
+    }
+
+    fn is_boundary(&self, index: usize) -> bool {
+        self.deref().is_boundary(index)
+    }
+
+    fn find_boundary(&self, index: usize) -> usize {
+        self.deref().find_boundary(index)
     }
 }
 
