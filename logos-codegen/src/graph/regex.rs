@@ -165,7 +165,7 @@ fn is_ascii(class: &ClassUnicode) -> bool {
         let start = range.start() as u32;
         let end = range.end() as u32;
 
-        start < 128 && (end < 128 || end == 0x0010_FFFF)
+        start < 128 && end < 128
     })
 }
 
@@ -178,7 +178,7 @@ fn is_one_ascii(class: &ClassUnicode) -> bool {
     let start = range.start() as u32;
     let end = range.end() as u32;
 
-    start < 128 && (end < 128 || end == 0x0010_FFFF)
+    start < 128 && end < 128
 }
 
 #[cfg(test)]
