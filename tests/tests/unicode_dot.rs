@@ -1,7 +1,7 @@
-use crate::Logos;
+use logos::Logos as _;
+use logos_derive::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
-#[logos(crate = crate)]
 enum TestUnicodeDot {
     #[regex(".")]
     Dot,
@@ -24,7 +24,6 @@ fn test_unicode_dot_str_unicode() {
 }
 
 #[derive(Logos, Debug, PartialEq)]
-#[logos(crate = crate)]
 enum TestUnicodeDotBytes {
     #[regex(".", priority = 100)]
     Dot,

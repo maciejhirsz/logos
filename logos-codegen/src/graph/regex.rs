@@ -38,7 +38,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => then,
                 };
 
-                self.parse_mir(*mir, then, Some(miss), reserved, false)
+                self.parse_mir(*mir, then, Some(miss), reserved, true)
             }
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
