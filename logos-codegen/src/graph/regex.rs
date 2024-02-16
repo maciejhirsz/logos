@@ -74,7 +74,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                         }
                         None
                     }
-                    Mir::Class(Class::Unicode(class)) if is_one_ascii(&class) => {
+                    Mir::Class(Class::Unicode(class)) if is_one_ascii(&class, repeated) => {
                         cur -= 1;
                         ropebuf[cur] = class.ranges()[0].into();
                         None
@@ -161,22 +161,34 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     }
 }
 
+/// Return wether current class unicode is ascii.
+///
+/// Because unicode ranges are iterated in increasing order,
+/// it is only necessary to check the last range.
+///
+/// If the check is performed in a repetition,
+/// a fast path is used by checking if end of range is 0x0010_FFFF.
 fn is_ascii(class: &ClassUnicode, repeated: bool) -> bool {
     class.iter().last().map_or(true, |range| {
+        let start = range.start() as u32;
         let end = range.end() as u32;
-        end < 128 || (repeated && end == 0x0010_FFFF)
+        end < 128 || (repeated && start < 128 && end == 0x0010_FFFF)
     })
 }
 
-fn is_one_ascii(class: &ClassUnicode) -> bool {
+/// Return wether current class unicode is ascii and only contains
+/// one range.
+///
+/// See [`is_ascii`] function for more details.
+fn is_one_ascii(class: &ClassUnicode, repeated: bool) -> bool {
     if class.ranges().len() != 1 {
         return false;
     }
 
     let range = &class.ranges()[0];
+    let start = range.start() as u32;
     let end = range.end() as u32;
-
-    end < 128 || end == 0x0010_FFFF
+    end < 128 || (repeated && start < 128 && end == 0x0010_FFFF)
 }
 
 #[cfg(test)]
