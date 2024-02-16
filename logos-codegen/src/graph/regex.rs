@@ -7,7 +7,7 @@ use crate::mir::{Class, ClassUnicode, Literal, Mir};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
-        self.parse_mir(mir, then, None, None)
+        self.parse_mir(mir, then, None, None, false)
     }
 
     fn parse_mir(
@@ -16,6 +16,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         then: NodeId,
         miss: Option<NodeId>,
         reserved: Option<ReservedId>,
+        repeated: bool,
     ) -> NodeId {
         match mir {
             Mir::Empty => then,
@@ -29,7 +30,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => self.reserve(),
                 };
 
-                self.parse_mir(*mir, this.get(), Some(miss), Some(this))
+                self.parse_mir(*mir, this.get(), Some(miss), Some(this), true)
             }
             Mir::Maybe(mir) => {
                 let miss = match miss {
@@ -37,13 +38,13 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => then,
                 };
 
-                self.parse_mir(*mir, then, Some(miss), reserved)
+                self.parse_mir(*mir, then, Some(miss), reserved, false)
             }
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
 
                 for mir in alternation {
-                    let id = self.parse_mir(mir, then, None, None);
+                    let id = self.parse_mir(mir, then, None, None, repeated);
                     let alt = self.fork_off(id);
 
                     fork.merge(alt, self);
@@ -97,7 +98,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 for mir in concat.drain(1..).rev() {
                     if let Some(mir) = handle_bytes(self, mir, &mut then) {
-                        then = self.parse_mir(mir, then, None, None);
+                        then = self.parse_mir(mir, then, None, None, false);
                     }
                 }
 
@@ -107,10 +108,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                         self.insert_or_push(reserved, rope)
                     }
-                    Some(mir) => self.parse_mir(mir, then, miss, reserved),
+                    Some(mir) => self.parse_mir(mir, then, miss, reserved, false),
                 }
             }
-            Mir::Class(Class::Unicode(class)) if !is_ascii(&class) => {
+            Mir::Class(Class::Unicode(class)) if !is_ascii(&class, repeated) => {
                 let mut ropes = class
                     .iter()
                     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
@@ -160,12 +161,10 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     }
 }
 
-fn is_ascii(class: &ClassUnicode) -> bool {
-    class.iter().all(|range| {
-        let start = range.start() as u32;
+fn is_ascii(class: &ClassUnicode, repeated: bool) -> bool {
+    class.iter().last().map_or(true, |range| {
         let end = range.end() as u32;
-
-        start < 128 && end < 128
+        end < 128 || (repeated && end == 0x0010_FFFF)
     })
 }
 
@@ -175,10 +174,9 @@ fn is_one_ascii(class: &ClassUnicode) -> bool {
     }
 
     let range = &class.ranges()[0];
-    let start = range.start() as u32;
     let end = range.end() as u32;
 
-    start < 128 && (end < 128 || end == 0x0010_FFFF)
+    end < 128 || end == 0x0010_FFFF
 }
 
 #[cfg(test)]
