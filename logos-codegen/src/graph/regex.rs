@@ -160,25 +160,15 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     }
 }
 
+#[inline]
 fn is_ascii(class: &ClassUnicode) -> bool {
-    class.iter().all(|range| {
-        let start = range.start() as u32;
-        let end = range.end() as u32;
-
-        start < 128 && end < 128
-    })
+    class.is_ascii()
 }
 
+#[inline]
 fn is_one_ascii(class: &ClassUnicode) -> bool {
-    if class.ranges().len() != 1 {
-        return false;
-    }
-
-    let range = &class.ranges()[0];
-    let start = range.start() as u32;
-    let end = range.end() as u32;
-
-    start < 128 && end < 128
+    let ranges = class.ranges();
+    ranges.len() == 1 && ranges[0].end() < '\x7F'
 }
 
 #[cfg(test)]
