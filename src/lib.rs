@@ -30,6 +30,9 @@ extern crate core as std;
 pub use logos_derive::Logos;
 use std::fmt::Debug;
 
+#[cfg(test)]
+mod tests;
+
 mod lexer;
 pub mod source;
 
