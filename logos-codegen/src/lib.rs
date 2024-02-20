@@ -261,7 +261,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
             break;
         }
     }
-    
+
     debug!("Checking if any two tokens have the same priority");
 
     for &DisambiguationError(a, b) in graph.errors() {
