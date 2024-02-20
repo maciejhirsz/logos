@@ -16,6 +16,10 @@ mod mir;
 mod parser;
 mod util;
 
+#[macro_use]
+#[allow(missing_docs)]
+mod macros;
+
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
@@ -36,6 +40,8 @@ const REGEX_ATTR: &str = "regex";
 
 /// Generate a `Logos` implementation for the given struct, provided as a stream of rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
+    debug!("Reading input token streams");
+
     let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
 
     let name = &item.ident;
@@ -71,6 +77,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
             }
         }
     }
+
+    debug!("Iterating through enum variants");
 
     for variant in &mut item.variants {
         let field = match &mut variant.fields {
@@ -200,6 +208,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let mut root = Fork::new();
 
+    debug!("Parsing additional options (extras, source, ...)");
+
     let error_type = parser.error_type.take();
     let extras = parser.extras.take();
     let source = parser
@@ -252,6 +262,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
     }
 
+    debug!("Checking if any two tokens have the same priority");
+
     for &DisambiguationError(a, b) in graph.errors() {
         let a = graph[a].unwrap_leaf();
         let b = graph[b].unwrap_leaf();
@@ -282,6 +294,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let root = graph.push(root);
 
     graph.shake(root);
+
+    debug!("Generating code from graph: {graph:#?}");
 
     let generator = Generator::new(name, &this, root, &graph);
 
