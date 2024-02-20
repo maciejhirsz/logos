@@ -10,6 +10,10 @@ assert_cmd = "2.0.4"
 assert_fs = "1.0.7"
 predicates = "2.1.1"
 
+[features]
+# Enables debug messages
+debug = ["logos-codegen/debug"]
+
 [package]
 name = "logos-cli"
 authors.workspace = true

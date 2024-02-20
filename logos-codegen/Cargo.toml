@@ -10,6 +10,10 @@ syn = { version = "2.0.13", features = ["full"] }
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 
+[features]
+# Enables debug messages
+debug = []
+
 [lib]
 bench = false
 

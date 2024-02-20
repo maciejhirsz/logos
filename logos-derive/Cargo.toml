@@ -1,6 +1,10 @@
 [dependencies]
 logos-codegen = {version = "0.14.0", path = "../logos-codegen"}
 
+[features]
+# Enables debug messages
+debug = ["logos-codegen/debug"]
+
 [lib]
 bench = false
 proc-macro = true
