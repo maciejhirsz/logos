@@ -1,4 +1,4 @@
-use std::cmp::{Ord, Ordering};
+use std::cmp::Ordering;
 use std::fmt::{self, Debug, Display};
 
 use proc_macro2::{Span, TokenStream};

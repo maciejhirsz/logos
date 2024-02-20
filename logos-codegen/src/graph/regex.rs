@@ -194,7 +194,6 @@ fn is_one_ascii(class: &ClassUnicode, repeated: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::Node;
     use pretty_assertions::assert_eq;
 
     #[test]

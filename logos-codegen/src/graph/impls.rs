@@ -55,7 +55,7 @@ mod debug {
     use super::*;
     use crate::graph::rope::Miss;
     use crate::graph::Disambiguate;
-    use std::cmp::{Ord, Ordering};
+    use std::cmp::Ordering;
 
     impl Disambiguate for &str {
         fn cmp(left: &&str, right: &&str) -> Ordering {

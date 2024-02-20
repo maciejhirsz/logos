@@ -1,7 +1,7 @@
 [dependencies]
 beef = "0.5.0"
 fnv = "1.0.6"
-lazy_static = "1.4.0"
+once_cell = "1.19.0"
 proc-macro2 = "1.0.9"
 quote = "1.0.3"
 regex-syntax = "0.8.2"
