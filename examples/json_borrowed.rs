@@ -213,7 +213,7 @@ fn main() {
             let a = colors.next();
 
             Report::build(ReportKind::Error, &filename, 12)
-                .with_message(format!("Invalid JSON"))
+                .with_message("Invalid JSON".to_string())
                 .with_label(
                     Label::new((&filename, span))
                         .with_message(msg)
