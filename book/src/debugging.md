@@ -76,10 +76,10 @@ We also can try to identify how the token `fast` works by looking at `9`, first,
 
 ### Enabling 
 
-To enable this debugging output you can use the `debug` feature.
+To enable debugging output you can define a `debug` feature in your `Cargo.toml` file, like this:
 
-In your `Cargo.toml` you can
 ```
+// Cargo.toml
 [dependencies]
 logos = { version = "1.2.3", features = ["debug"] }
 ```
