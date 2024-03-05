@@ -1,6 +1,6 @@
 # Debugging
 
-Gain deeper insights into your code's behavior with this debugging section.
+Instructions on how to debug your Logos lexer.
 
 ## Visualizing Logos Graph 
 
