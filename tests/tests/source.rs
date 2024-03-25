@@ -19,11 +19,8 @@ impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
         self.0.read(offset)
     }
 
-    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
-    where
-        Chunk: logos::source::Chunk<'a>,
-    {
-        self.0.read_unchecked(offset)
+    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
+        self.0.read_byte_unchecked(offset)
     }
 
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {

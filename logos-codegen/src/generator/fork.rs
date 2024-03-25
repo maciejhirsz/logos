@@ -127,7 +127,7 @@ impl<'a> Generator<'a> {
         let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= max(min_read, 1) {
-            let read = ctx.read_unchecked(0);
+            let read = ctx.read_byte_unchecked();
 
             return (quote!(byte), quote!(let byte = unsafe { #read };));
         }

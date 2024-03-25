@@ -302,11 +302,8 @@ where
     }
 
     #[inline]
-    unsafe fn read_unchecked<Chunk>(&self, n: usize) -> Chunk
-    where
-        Chunk: source::Chunk<'source>,
-    {
-        self.source.read_unchecked(self.token_end + n)
+    unsafe fn read_byte_unchecked(&self, n: usize) -> u8 {
+        self.source.read_byte_unchecked(self.token_end + n)
     }
 
     /// Test a chunk at current position with a closure.
@@ -317,19 +314,6 @@ where
         F: FnOnce(T) -> bool,
     {
         match self.source.read::<T>(self.token_end) {
-            Some(chunk) => test(chunk),
-            None => false,
-        }
-    }
-
-    /// Test a chunk at current position offset by `n` with a closure.
-    #[inline]
-    fn test_at<T, F>(&self, n: usize, test: F) -> bool
-    where
-        T: source::Chunk<'source>,
-        F: FnOnce(T) -> bool,
-    {
-        match self.source.read::<T>(self.token_end + n) {
             Some(chunk) => test(chunk),
             None => false,
         }
