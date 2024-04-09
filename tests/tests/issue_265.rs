@@ -108,9 +108,7 @@ mod jeertmans {
     fn environment_begin() {
         assert_lex(
             r"\begin{equation}",
-            &[
-                (Ok(Token::EnvironmentBegin), r"\begin", 0..6),
-            ],
+            &[(Ok(Token::EnvironmentBegin), r"\begin", 0..6)],
         );
     }
 
@@ -118,9 +116,7 @@ mod jeertmans {
     fn environment_end() {
         assert_lex(
             r"\end{equation}",
-            &[
-                (Ok(Token::EnvironmentEnd), r"\end", 0..4),
-            ],
+            &[(Ok(Token::EnvironmentEnd), r"\end", 0..4)],
         );
     }
 }
