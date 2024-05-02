@@ -194,7 +194,7 @@ where
     fn clone(&self) -> Self {
         Lexer {
             extras: self.extras.clone(),
-            token: self.token.clone(),
+            token: ManuallyDrop::new(None),
             ..*self
         }
     }
