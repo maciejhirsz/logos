@@ -21,16 +21,28 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         match mir {
             Mir::Empty => then,
             Mir::Loop(mir) => {
-                let miss = match miss {
-                    Some(id) => self.merge(id, then),
-                    None => then,
-                };
-                let this = match reserved {
-                    Some(rid) => rid,
-                    None => self.reserve(),
-                };
+                let reserved_first = reserved.unwrap_or_else(|| self.reserve());
 
-                self.parse_mir(*mir, this.get(), Some(miss), Some(this), true)
+                let (new_then, new_miss);
+                if let Some(old_miss) = miss {
+                    // We have to separate the first iteration from the other iterations,
+                    // because the `old_miss` path must only be taken if we miss the first
+                    // iteration.
+                    let reserved_next = self.reserve();
+                    new_then = self.parse_mir(
+                        (*mir).clone(),
+                        reserved_next.get(),
+                        Some(then),
+                        Some(reserved_next),
+                        true,
+                    );
+                    new_miss = self.merge(old_miss, then);
+                } else {
+                    new_then = reserved_first.get();
+                    new_miss = then;
+                }
+
+                self.parse_mir(*mir, new_then, Some(new_miss), Some(reserved_first), true)
             }
             Mir::Maybe(mir) => {
                 let miss = match miss {

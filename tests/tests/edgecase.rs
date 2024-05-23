@@ -432,10 +432,10 @@ mod loop_in_loop {
                 (Ok(Token::Foo), "foooo", 22..27),
                 (Ok(Token::Foo), "foofffffoo", 28..38),
                 (Ok(Token::Foo), "f", 39..40),
-                (Ok(Token::Foo), "ff", 41..43),
-                (Ok(Token::Foo), "ff", 44..46),
+                (Err(()), "ff", 41..43),
+                (Err(()), "ff", 44..46),
                 (Err(()), "o", 46..47),
-                (Ok(Token::Foo), "ffoof", 48..53),
+                (Err(()), "ffoof", 48..53),
                 (Err(()), "o", 53..54),
             ],
         );
