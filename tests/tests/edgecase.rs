@@ -424,13 +424,19 @@ mod loop_in_loop {
     #[test]
     fn test_a_loop_in_a_loop() {
         assert_lex(
-            "foo ffoo ffffooffoooo foooo foofffffoo",
+            "foo ffoo ffffooffoooo foooo foofffffoo f ff ffo ffoofo",
             &[
                 (Ok(Token::Foo), "foo", 0..3),
                 (Ok(Token::Foo), "ffoo", 4..8),
                 (Ok(Token::Foo), "ffffooffoooo", 9..21),
                 (Ok(Token::Foo), "foooo", 22..27),
                 (Ok(Token::Foo), "foofffffoo", 28..38),
+                (Ok(Token::Foo), "f", 39..40),
+                (Ok(Token::Foo), "ff", 41..43),
+                (Ok(Token::Foo), "ff", 44..46),
+                (Err(()), "o", 46..47),
+                (Ok(Token::Foo), "ffoof", 48..53),
+                (Err(()), "o", 53..54),
             ],
         );
     }
