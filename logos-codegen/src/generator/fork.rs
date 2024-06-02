@@ -87,8 +87,17 @@ impl<'a> Generator<'a> {
             })
             .collect::<TokenStream>();
 
-        let jumps = &jumps;
+        let may_error = table.iter().any(|&idx| idx == 0);
+
+        let jumps = jumps.as_slice();
         let table = table.iter().copied().map(|idx| &jumps[idx as usize]);
+
+        let jumps = if may_error { jumps } else { &jumps[1..] };
+        let error_branch = if may_error {
+            Some(quote!(Jump::__ => #miss))
+        } else {
+            None
+        };
 
         quote! {
             enum Jump {
@@ -105,7 +114,7 @@ impl<'a> Generator<'a> {
 
             match LUT[#byte as usize] {
                 #branches
-                Jump::__ => #miss,
+                #error_branch
             }
         }
     }
