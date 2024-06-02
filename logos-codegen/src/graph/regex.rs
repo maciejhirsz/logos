@@ -7,12 +7,12 @@ use crate::mir::{Class, ClassUnicode, Literal, Mir};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
-        self.parse_mir(mir, then, None, None, false)
+        self.parse_mir(&mir, then, None, None, false)
     }
 
     fn parse_mir(
         &mut self,
-        mir: Mir,
+        mir: &Mir,
         then: NodeId,
         miss: Option<NodeId>,
         reserved: Option<ReservedId>,
@@ -21,16 +21,28 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         match mir {
             Mir::Empty => then,
             Mir::Loop(mir) => {
-                let miss = match miss {
-                    Some(id) => self.merge(id, then),
-                    None => then,
-                };
-                let this = match reserved {
-                    Some(rid) => rid,
-                    None => self.reserve(),
-                };
+                let reserved_first = reserved.unwrap_or_else(|| self.reserve());
 
-                self.parse_mir(*mir, this.get(), Some(miss), Some(this), true)
+                let (new_then, new_miss);
+                if let Some(old_miss) = miss {
+                    // We have to separate the first iteration from the other iterations,
+                    // because the `old_miss` path must only be taken if we miss the first
+                    // iteration.
+                    let reserved_next = self.reserve();
+                    new_then = self.parse_mir(
+                        mir,
+                        reserved_next.get(),
+                        Some(then),
+                        Some(reserved_next),
+                        true,
+                    );
+                    new_miss = self.merge(old_miss, then);
+                } else {
+                    new_then = reserved_first.get();
+                    new_miss = then;
+                }
+
+                self.parse_mir(mir, new_then, Some(new_miss), Some(reserved_first), true)
             }
             Mir::Maybe(mir) => {
                 let miss = match miss {
@@ -38,7 +50,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => then,
                 };
 
-                self.parse_mir(*mir, then, Some(miss), reserved, true)
+                self.parse_mir(mir, then, Some(miss), reserved, true)
             }
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
@@ -57,7 +69,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
             }
-            Mir::Concat(mut concat) => {
+            Mir::Concat(concat) => {
                 // We'll be writing from the back, so need to allocate enough
                 // space here. Worst case scenario is all unicode codepoints
                 // producing 4 byte utf8 sequences
@@ -66,52 +78,50 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 let mut end = ropebuf.len();
                 let mut then = then;
 
-                let mut handle_bytes = |graph: &mut Self, mir, then: &mut NodeId| match mir {
+                let mut handle_bytes = |graph: &mut Self, mir: &Mir, then: &mut NodeId| match mir {
                     Mir::Literal(Literal(bytes)) => {
                         cur -= bytes.len();
                         for (i, byte) in bytes.iter().enumerate() {
                             ropebuf[cur + i] = byte.into();
                         }
-                        None
+                        true
                     }
-                    Mir::Class(Class::Unicode(class)) if is_one_ascii(&class, repeated) => {
+                    Mir::Class(Class::Unicode(class)) if is_one_ascii(class, repeated) => {
                         cur -= 1;
                         ropebuf[cur] = class.ranges()[0].into();
-                        None
+                        true
                     }
                     Mir::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
                         cur -= 1;
                         ropebuf[cur] = class.ranges()[0].into();
-                        None
+                        true
                     }
-                    mir => {
+                    _ => {
                         if end > cur {
                             let rope = Rope::new(&ropebuf[cur..end], *then);
 
                             *then = graph.push(rope);
                             end = cur;
                         }
-
-                        Some(mir)
+                        false
                     }
                 };
 
-                for mir in concat.drain(1..).rev() {
-                    if let Some(mir) = handle_bytes(self, mir, &mut then) {
+                for mir in concat[1..].iter().rev() {
+                    if !handle_bytes(self, mir, &mut then) {
                         then = self.parse_mir(mir, then, None, None, false);
                     }
                 }
 
-                match handle_bytes(self, concat.remove(0), &mut then) {
-                    None => {
-                        let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
-
-                        self.insert_or_push(reserved, rope)
-                    }
-                    Some(mir) => self.parse_mir(mir, then, miss, reserved, false),
+                let first_mir = &concat[0];
+                if handle_bytes(self, first_mir, &mut then) {
+                    let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
+                    self.insert_or_push(reserved, rope)
+                } else {
+                    self.parse_mir(first_mir, then, miss, reserved, false)
                 }
             }
-            Mir::Class(Class::Unicode(class)) if !is_ascii(&class, repeated) => {
+            Mir::Class(Class::Unicode(class)) if !is_ascii(class, repeated) => {
                 let mut ropes = class
                     .iter()
                     .flat_map(|range| Utf8Sequences::new(range.start(), range.end()))
