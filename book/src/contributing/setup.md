@@ -30,7 +30,7 @@ Finally, launch a terminal (i.e., command-line) session and go to the
 A good way to see if you code can compile is to use the eponym command:
 
 ```bash
-cargo check --worspace
+cargo check --workspace
 ```
 
 ## Formatting and linting your code
