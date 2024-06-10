@@ -53,9 +53,6 @@ impl<'a> Generator<'a> {
         let rendered = Self::fast_loop_macro();
         let meta = Meta::analyze(root, graph);
 
-        #[cfg(feature = "debug")]
-        dbg!(graph);
-
         Generator {
             name,
             this,
