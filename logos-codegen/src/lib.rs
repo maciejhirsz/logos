@@ -295,7 +295,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     graph.shake(root);
 
-    debug!("Generating code from graph: {graph:#?}");
+    debug!("Generating code from graph:\n{graph:#?}");
 
     let generator = Generator::new(name, &this, root, &graph);
 

@@ -10,6 +10,7 @@
 + [Using `Extras`](./extras.md)
 + [Using callbacks](./callbacks.md)
 + [Common regular expressions](./common-regex.md)
++ [Debugging](./debugging.md)
 + [Examples](./examples.md)
   + [Brainfuck interpreter](./examples/brainfuck.md)
   + [JSON parser](./examples/json.md)
