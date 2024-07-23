@@ -82,7 +82,7 @@ impl Meta {
 
         match &graph[this] {
             Node::Fork(fork) => {
-                min_read = usize::max_value();
+                min_read = usize::MAX;
                 for (_, id) in fork.branches() {
                     let meta = self.first_pass(id, this, graph, stack);
 
@@ -101,7 +101,7 @@ impl Meta {
                         min_read = min(min_read, meta.min_read);
                     }
                 }
-                if min_read == usize::max_value() {
+                if min_read == usize::MAX {
                     min_read = 0;
                 }
             }
@@ -144,7 +144,7 @@ impl Meta {
 
         match &graph[id] {
             Node::Fork(fork) => {
-                min_read = usize::max_value();
+                min_read = usize::MAX;
                 for (_, id) in fork.branches() {
                     let meta = &self[id];
 
@@ -154,7 +154,7 @@ impl Meta {
                         min_read = min(min_read, meta.min_read + 1);
                     }
                 }
-                if min_read == usize::max_value() {
+                if min_read == usize::MAX {
                     min_read = 0;
                 }
             }
