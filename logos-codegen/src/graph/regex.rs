@@ -5,8 +5,6 @@ use regex_syntax::utf8::Utf8Sequences;
 use crate::graph::{Disambiguate, Fork, Graph, Node, NodeId, Range, ReservedId, Rope};
 use crate::mir::{Class, ClassUnicode, Literal, Mir};
 
-use super::rope;
-
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
         self.parse_mir(&mir, then, None, None, false)
@@ -79,7 +77,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 let mut handle_bytes = |graph: &mut Self, mir: &Mir, then: &mut NodeId| match mir {
                     Mir::Literal(Literal(bytes)) => {
-                        ropebuf.extend(bytes.iter().rev().map(|byte| Into::<Range>::into(byte)));
+                        ropebuf.extend(bytes.iter().rev().map(Into::<Range>::into));
                         true
                     }
                     Mir::Class(Class::Unicode(class)) if is_one_ascii(class, repeated) => {
