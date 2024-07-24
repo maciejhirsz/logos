@@ -90,7 +90,8 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     }
                     _ => {
                         if !ropebuf.is_empty() {
-                            let rope = Rope::new(ropebuf.iter().cloned().rev().collect::<Vec<_>>(), *then);
+                            let rope =
+                                Rope::new(ropebuf.iter().cloned().rev().collect::<Vec<_>>(), *then);
 
                             *then = graph.push(rope);
                             ropebuf = Vec::with_capacity(concat.len() * 4);
@@ -107,7 +108,8 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 let first_mir = &concat[0];
                 if handle_bytes(self, first_mir, &mut then) {
-                    let rope = Rope::new(ropebuf.iter().cloned().rev().collect::<Vec<_>>(), then).miss(miss);
+                    let rope = Rope::new(ropebuf.iter().cloned().rev().collect::<Vec<_>>(), then)
+                        .miss(miss);
                     self.insert_or_push(reserved, rope)
                 } else {
                     self.parse_mir(first_mir, then, miss, reserved, false)
@@ -195,6 +197,8 @@ fn is_one_ascii(class: &ClassUnicode, repeated: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroU32;
+
     use super::*;
     use crate::graph::Node;
     use pretty_assertions::assert_eq;
@@ -234,12 +238,20 @@ mod tests {
     fn long_concat_389() {
         let mut graph = Graph::new();
 
-        let mir = Mir::utf8("abcdefghijklmn*").unwrap();
+        let mir = Mir::utf8("abcdefghijklmnopqrstuvwxyz*").unwrap();
 
-        assert_eq!(mir.priority(), 26);
+        assert_eq!(mir.priority(), 50);
 
         let leaf = graph.push(Node::Leaf("LEAF"));
         let id = graph.regex(mir, leaf);
+        let sub_id = NodeId(NonZeroU32::new(2).unwrap());
+
+        assert_eq!(
+            graph[id],
+            Node::Rope(Rope::new("abcdefghijklmnopqrstuvwxy", sub_id))
+        );
+
+        assert_eq!(graph[sub_id], Node::Rope(Rope::new("z", sub_id).miss(leaf)))
     }
 
     #[test]
