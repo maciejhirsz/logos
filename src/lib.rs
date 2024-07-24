@@ -23,6 +23,8 @@
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
+extern crate core;
+
 #[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
 use core::fmt::Debug;
