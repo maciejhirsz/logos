@@ -1,5 +1,5 @@
 [workspace]
-members = [ "fuzz","logos-cli", "logos-codegen", "logos-derive", "tests"]
+members = ["logos-cli", "logos-codegen", "logos-derive", "tests", "fuzz"]
 resolver = "2"
 
 [workspace.package]
