@@ -10,9 +10,11 @@
 
 mod error;
 mod generator;
-mod graph;
+#[cfg(not(feature = "fuzzing"))] mod graph;
+#[cfg(feature = "fuzzing")] pub mod graph;
 mod leaf;
-mod mir;
+#[cfg(not(feature = "fuzzing"))] mod mir;
+#[cfg(feature = "fuzzing")] pub mod mir;
 mod parser;
 mod util;
 

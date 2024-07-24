@@ -1,0 +1,18 @@
+[package]
+name = "fuzz"
+authors.workspace = true
+categories.workspace = true
+description.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+afl = "0.15"
+arbitrary = "1.3"
+logos-codegen = { path = "../logos-codegen", features = ["fuzzing"] }
