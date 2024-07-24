@@ -1,5 +1,8 @@
 use afl::fuzz;
-use logos_codegen::{graph::{Graph, Node}, mir::Mir};
+use logos_codegen::{
+    graph::{Graph, Node},
+    mir::Mir,
+};
 
 fn main() {
     fuzz!(|regex: String| {
