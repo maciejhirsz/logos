@@ -23,12 +23,9 @@
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
-#[cfg(not(feature = "std"))]
-extern crate core as std;
-
 #[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 mod lexer;
 pub mod source;
