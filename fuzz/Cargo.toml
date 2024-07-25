@@ -1,5 +1,5 @@
 [package]
-name = "fuzz"
+name = "logos-fuzz"
 authors.workspace = true
 categories.workspace = true
 description.workspace = true
