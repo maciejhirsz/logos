@@ -235,26 +235,6 @@ mod tests {
     }
 
     #[test]
-    fn long_concat_389() {
-        let mut graph = Graph::new();
-
-        let mir = Mir::utf8("abcdefghijklmnopqrstuvwxyz*").unwrap();
-
-        assert_eq!(mir.priority(), 50);
-
-        let leaf = graph.push(Node::Leaf("LEAF"));
-        let id = graph.regex(mir, leaf);
-        let sub_id = NodeId(NonZeroU32::new(2).unwrap());
-
-        assert_eq!(
-            graph[id],
-            Node::Rope(Rope::new("abcdefghijklmnopqrstuvwxy", sub_id))
-        );
-
-        assert_eq!(graph[sub_id], Node::Rope(Rope::new("z", sub_id).miss(leaf)))
-    }
-
-    #[test]
     fn repeat() {
         let mut graph = Graph::new();
 
@@ -290,5 +270,25 @@ mod tests {
             graph[id],
             Node::Fork(Fork::new().branch('a'..='z', leaf).miss(leaf)),
         );
+    }
+
+    #[test]
+    fn long_concat_389() {
+        let mut graph = Graph::new();
+
+        let mir = Mir::utf8("abcdefghijklmnopqrstuvwxyz*").unwrap();
+
+        assert_eq!(mir.priority(), 50);
+
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let id = graph.regex(mir, leaf);
+        let sub_id = NodeId(NonZeroU32::new(2).unwrap());
+
+        assert_eq!(
+            graph[id],
+            Node::Rope(Rope::new("abcdefghijklmnopqrstuvwxy", sub_id))
+        );
+
+        assert_eq!(graph[sub_id], Node::Rope(Rope::new("z", sub_id).miss(leaf)))
     }
 }
