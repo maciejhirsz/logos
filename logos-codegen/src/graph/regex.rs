@@ -72,7 +72,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
             Mir::Concat(concat) => {
                 // Take an initial guess at the capacity - estimates a little worse than an average case
                 // scenario by assuming every concat element is singular but has a full code-point unicode literal.
-                // The only way to get the actual size of the Vec is if 
+                // The only way to get the actual size of the Vec is if every sub-concat node is added up.
                 let mut ropebuf: Vec<Range> = Vec::with_capacity(concat.len() * 4);
                 let mut then = then;
 
