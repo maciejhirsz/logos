@@ -33,7 +33,7 @@ fn test_clone_ub() {
     let mut lexer = Token::lexer("a");
     assert_eq!(lexer.next(), Some(Ok(Token::Evil(Evil::default()))));
 
-    // In logos 0.14.0, this causes use-after-free (UB),
+    // In logos 0.14.1, this causes use-after-free (UB),
     // because `Clone` dereferences the value returned by the last call to `lexer.next()`,
     // which got deallocated.
     // A real-life example where this could happen is with `Rc`.
@@ -51,7 +51,7 @@ fn test_clone_leak() {
     };
     assert_eq!(evil.0.get(), 0);
 
-    // In logos 0.14.0, this causes a memory leak because `evil` is cloned with `lexer`.
+    // In logos 0.14.1, this causes a memory leak because `evil` is cloned with `lexer`.
     // This produces `evil.0.get() == 1`. It will fail even on `cargo test`.
     let mut lexer2 = lexer.clone();
     assert_eq!(evil.0.get(), 0);
