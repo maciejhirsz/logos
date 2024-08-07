@@ -1,6 +1,9 @@
 # Fuzzing
 
-**Logos**' has a fuzzing crate powered by [afl.rs](https://github.com/rust-fuzz/afl.rs) that
+
+Fuzzing is a technique to test a piece of software by injecting randomly generated inputs. This can be pretty useful to discover bugs, as pointed out in [#407](https://github.com/maciejhirsz/logos/pull/407).
+
+**Logos**' fuzzing crate is powered by [afl.rs](https://github.com/rust-fuzz/afl.rs) that
 finds panics in Logos' methods.
 
 ## Usage
