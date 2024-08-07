@@ -8,23 +8,44 @@ finds panics in **Logos**' methods.
 
 ## Usage
 
-Make sure you have `cargo-afl` installed. [See the rust-fuzz afl setup guide for installation information](https://rust-fuzz.github.io/book/afl/setup.html).
+First, make sure you have `cargo-afl` installed,
+[see the rust-fuzz afl setup guide for installation information](https://rust-fuzz.github.io/book/afl/setup.html).
 
-All of these commands assume your current directory is in the `fuzz` folder.
+Next, change your current working directory to be the `fuzz` folder.
 
-To build the fuzz target, run `cargo afl build`.
+### Building
 
-To start the fuzzer in the `fuzz` folder, run:
+Before fuzzing, you need to build the target with:
 
-```sh
+```bash
+cargo afl build
+```
+
+### Fuzzy testing
+
+The recommended way the run tests is with:
+
+```bash
 cargo afl fuzz -i in -o out ../target/debug/logos-fuzz
 ```
 
-To replay any crashes, run:
+Note that it may run for a (very) long time before
+it encounter any bug.
 
-```sh
+## Replaying a Crash
+
+If you happen to find a bug that crashes the program,
+you can reply it with
+
+```bash
 cargo afl run logos-fuzz < out/default/crashes/crash_file
 ```
 
-If you find a meaningful crash with a vague error message, send a PR to
-help improve the developer experience of Logos.
+### Reporting a Bug
+
+If you encounter a crash and you feel the error message
+is not appropriate,
+please report it by opening
+[an issue](https://github.com/maciejhirsz/logos/issues/new).
+Don't forget to include your crash file so we can later
+reproduce it.
