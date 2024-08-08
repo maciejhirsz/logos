@@ -25,9 +25,9 @@
 
 extern crate core;
 
+use core::fmt::Debug;
 #[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
-use core::fmt::Debug;
 
 mod lexer;
 pub mod source;
