@@ -4,8 +4,8 @@
 //! * `Source` - implemented by default for `&str`, `&[u8]` and wrapper types, used by the `Lexer`.
 //! * `Slice` - slices of `Source`, returned by `Lexer::slice`.
 
-use std::fmt::Debug;
-use std::ops::Range;
+use core::fmt::Debug;
+use core::ops::{Deref, Range};
 
 /// Trait for types the `Lexer` can read from.
 ///
@@ -201,10 +201,6 @@ impl Source for [u8] {
     }
 }
 
-#[cfg(feature = "std")]
-use std::ops::Deref;
-
-#[cfg(feature = "std")]
 impl<T> Source for T
 where
     T: Deref,

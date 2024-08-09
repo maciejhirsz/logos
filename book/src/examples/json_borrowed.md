@@ -4,7 +4,7 @@ The previous parser owned its data by allocating strings. This can require quite
 some memory space, and using borrowed string slices can help use saving space, while
 also maybe increasing performances.
 
-If you are familiar with Rust's concept of litefime,
+If you are familiar with Rust's concept of lifetimes,
 using `&str` string slices instead of owned `String`
 is straightforward:
 

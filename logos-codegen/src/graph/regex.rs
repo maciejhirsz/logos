@@ -70,38 +70,32 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                 self.insert_or_push(reserved, Rope::new(pattern, then).miss(miss))
             }
             Mir::Concat(concat) => {
-                // We'll be writing from the back, so need to allocate enough
-                // space here. Worst case scenario is all unicode codepoints
-                // producing 4 byte utf8 sequences
-                let mut ropebuf = vec![Range::from(0); concat.len() * 4];
-                let mut cur = ropebuf.len();
-                let mut end = ropebuf.len();
+                // Take an initial guess at the capacity - estimates a little worse than an average case
+                // scenario by assuming every concat element is singular but has a full code-point unicode literal.
+                // The only way to get the actual size of the Vec is if every sub-concat node is added up.
+                let mut ropebuf: Vec<Range> = Vec::with_capacity(concat.len() * 4);
                 let mut then = then;
 
                 let mut handle_bytes = |graph: &mut Self, mir: &Mir, then: &mut NodeId| match mir {
                     Mir::Literal(Literal(bytes)) => {
-                        cur -= bytes.len();
-                        for (i, byte) in bytes.iter().enumerate() {
-                            ropebuf[cur + i] = byte.into();
-                        }
+                        ropebuf.extend(bytes.iter().rev().map(Into::<Range>::into));
                         true
                     }
                     Mir::Class(Class::Unicode(class)) if is_one_ascii(class, repeated) => {
-                        cur -= 1;
-                        ropebuf[cur] = class.ranges()[0].into();
+                        ropebuf.push(class.ranges()[0].into());
                         true
                     }
                     Mir::Class(Class::Bytes(class)) if class.ranges().len() == 1 => {
-                        cur -= 1;
-                        ropebuf[cur] = class.ranges()[0].into();
+                        ropebuf.push(class.ranges()[0].into());
                         true
                     }
                     _ => {
-                        if end > cur {
-                            let rope = Rope::new(&ropebuf[cur..end], *then);
+                        if !ropebuf.is_empty() {
+                            let rope =
+                                Rope::new(ropebuf.iter().cloned().rev().collect::<Vec<_>>(), *then);
 
                             *then = graph.push(rope);
-                            end = cur;
+                            ropebuf = Vec::with_capacity(concat.len() * 4);
                         }
                         false
                     }
@@ -115,7 +109,8 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 let first_mir = &concat[0];
                 if handle_bytes(self, first_mir, &mut then) {
-                    let rope = Rope::new(&ropebuf[cur..end], then).miss(miss);
+                    let rope = Rope::new(ropebuf.iter().cloned().rev().collect::<Vec<_>>(), then)
+                        .miss(miss);
                     self.insert_or_push(reserved, rope)
                 } else {
                     self.parse_mir(first_mir, then, miss, reserved, false)
@@ -171,7 +166,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     }
 }
 
-/// Return wether current class unicode is ascii.
+/// Return whether current class unicode is ascii.
 ///
 /// Because unicode ranges are iterated in increasing order,
 /// it is only necessary to check the last range.
@@ -186,7 +181,7 @@ fn is_ascii(class: &ClassUnicode, repeated: bool) -> bool {
     })
 }
 
-/// Return wether current class unicode is ascii and only contains
+/// Return whether current class unicode is ascii and only contains
 /// one range.
 ///
 /// See [`is_ascii`] function for more details.
@@ -203,6 +198,8 @@ fn is_one_ascii(class: &ClassUnicode, repeated: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroU32;
+
     use super::*;
     use crate::graph::Node;
     use pretty_assertions::assert_eq;
@@ -274,5 +271,25 @@ mod tests {
             graph[id],
             Node::Fork(Fork::new().branch('a'..='z', leaf).miss(leaf)),
         );
+    }
+
+    #[test]
+    fn long_concat_389() {
+        let mut graph = Graph::new();
+
+        let mir = Mir::utf8("abcdefghijklmnopqrstuvwxyz*").unwrap();
+
+        assert_eq!(mir.priority(), 50);
+
+        let leaf = graph.push(Node::Leaf("LEAF"));
+        let id = graph.regex(mir, leaf);
+        let sub_id = NodeId(NonZeroU32::new(2).unwrap());
+
+        assert_eq!(
+            graph[id],
+            Node::Rope(Rope::new("abcdefghijklmnopqrstuvwxy", sub_id))
+        );
+
+        assert_eq!(graph[sub_id], Node::Rope(Rope::new("z", sub_id).miss(leaf)))
     }
 }
