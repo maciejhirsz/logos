@@ -18,3 +18,4 @@
 + [Contributing](./contributing.md)
   + [Setup](./contributing/setup.md)
   + [Internals](./contributing/internals.md)
+  + [Fuzzing](./contributing/fuzzing.md)
