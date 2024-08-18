@@ -151,21 +151,21 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         //   will panic if `Source::is_boundary` if false.
         // * Thus safety is continent on the correct implementation of the `is_boundary`
         //   method.
-        #[cfg(feature = "unsafe")]
+        #[cfg(feature = "allow_unsafe")]
         unsafe { self.source.slice_unchecked(self.span()) }
-        #[cfg(not(feature = "unsafe"))]
+        #[cfg(not(feature = "allow_unsafe"))]
         self.source.slice(self.span()).unwrap()
     }
 
     /// Get a slice of remaining source, starting at the end of current token.
     #[inline]
     pub fn remainder(&self) -> <Token::Source as Source>::Slice<'source> {
-        #[cfg(feature = "unsafe")]
+        #[cfg(feature = "allow_unsafe")]
         unsafe {
             self.source
                 .slice_unchecked(self.token_end..self.source.len())
         }
-        #[cfg(not(feature = "unsafe"))]
+        #[cfg(not(feature = "allow_unsafe"))]
         self.source.slice(self.token_end..self.source.len()).unwrap()
     }
 
