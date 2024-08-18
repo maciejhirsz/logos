@@ -70,6 +70,7 @@ pub trait Source {
     ///     assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     /// }
     /// ```
+    #[cfg(feature = "unsafe")]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_>;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
@@ -114,6 +115,7 @@ impl Source for str {
         self.get(range)
     }
 
+    #[cfg(feature = "unsafe")]
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &str {
         debug_assert!(
@@ -166,6 +168,7 @@ impl Source for [u8] {
         self.get(range)
     }
 
+    #[cfg(feature = "unsafe")]
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &[u8] {
         debug_assert!(
@@ -207,6 +210,7 @@ where
         self.deref().slice(range)
     }
 
+    #[cfg(feature = "unsafe")]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_> {
         self.deref().slice_unchecked(range)
     }

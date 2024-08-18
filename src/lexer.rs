@@ -140,16 +140,29 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Get a string slice of the current token.
     #[inline]
     pub fn slice(&self) -> <Token::Source as Source>::Slice<'source> {
+        // SAFETY: in bounds if `token_start` and `token_end` are in bounds.
+        // * `token_start` is initially zero and is set to `token_end` in `next`, so
+        //   it remains in bounds as long as `token_end` remains in bounds.
+        // * `token_end` is initially zero and is only incremented in `bump`. `bump`
+        //   will panic if `Source::is_boundary` if false.
+        // * Thus safety is continent on the correct implementation of the `is_boundary`
+        //   method.
+        #[cfg(feature = "unsafe")]
         unsafe { self.source.slice_unchecked(self.span()) }
+        #[cfg(not(feature = "unsafe"))]
+        self.source.slice(self.span()).unwrap()
     }
 
     /// Get a slice of remaining source, starting at the end of current token.
     #[inline]
     pub fn remainder(&self) -> <Token::Source as Source>::Slice<'source> {
+        #[cfg(feature = "unsafe")]
         unsafe {
             self.source
                 .slice_unchecked(self.token_end..self.source.len())
         }
+        #[cfg(not(feature = "unsafe"))]
+        self.source.slice(self.token_end..self.source.len()).unwrap()
     }
 
     /// Turn this lexer into a lexer for a new token type.
