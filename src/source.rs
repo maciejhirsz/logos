@@ -43,13 +43,6 @@ pub trait Source {
     where
         Chunk: self::Chunk<'a>;
 
-    /// Read a byte without doing bounds checks.
-    ///
-    /// # Safety
-    ///
-    /// Offset should not exceed bounds.
-    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8;
-
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
     ///
@@ -117,11 +110,6 @@ impl Source for str {
     }
 
     #[inline]
-    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
-        Chunk::from_ptr(self.as_ptr().add(offset))
-    }
-
-    #[inline]
     fn slice(&self, range: Range<usize>) -> Option<&str> {
         self.get(range)
     }
@@ -174,11 +162,6 @@ impl Source for [u8] {
     }
 
     #[inline]
-    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
-        Chunk::from_ptr(self.as_ptr().add(offset))
-    }
-
-    #[inline]
     fn slice(&self, range: Range<usize>) -> Option<&[u8]> {
         self.get(range)
     }
@@ -218,10 +201,6 @@ where
         Chunk: self::Chunk<'a>,
     {
         self.deref().read(offset)
-    }
-
-    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
-        self.deref().read_byte_unchecked(offset)
     }
 
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
