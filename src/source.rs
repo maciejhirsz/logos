@@ -102,12 +102,16 @@ impl Source for str {
     where
         Chunk: self::Chunk<'a>,
     {
+        #[cfg(feature = "unsafe")]
         if offset + (Chunk::SIZE - 1) < self.len() {
             // # Safety: we just performed a bound check.
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
         }
+
+        #[cfg(not(feature = "unsafe"))]
+        Chunk::from_slice(self.as_bytes().slice(offset..Chunk::SIZE + offset)?)
     }
 
     #[inline]
@@ -156,11 +160,15 @@ impl Source for [u8] {
     where
         Chunk: self::Chunk<'a>,
     {
+        #[cfg(feature = "unsafe")]
         if offset + (Chunk::SIZE - 1) < self.len() {
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
         }
+
+        #[cfg(not(feature = "unsafe"))]
+        Chunk::from_slice(self.slice(offset..Chunk::SIZE + offset)?)
     }
 
     #[inline]
@@ -236,15 +244,26 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     /// # Safety
     ///
     /// Raw byte pointer should point to a valid location in source.
+    #[cfg(feature = "allow_unsafe")]
     unsafe fn from_ptr(ptr: *const u8) -> Self;
+
+    /// Create a chunk from a slice.
+    /// Returns None if the slice is not long enough to produce the chunk.
+    fn from_slice(s: &'source [u8]) -> Option<Self>;
 }
 
 impl<'source> Chunk<'source> for u8 {
     const SIZE: usize = 1;
 
     #[inline]
+    #[cfg(feature = "allow_unsafe")]
     unsafe fn from_ptr(ptr: *const u8) -> Self {
         *ptr
+    }
+
+    #[inline]
+    fn from_slice(s: &'source [u8]) -> Option<Self> {
+        s.get(0).copied()
     }
 }
 
@@ -252,7 +271,13 @@ impl<'source, const N: usize> Chunk<'source> for &'source [u8; N] {
     const SIZE: usize = N;
 
     #[inline]
+    #[cfg(feature = "allow_unsafe")]
     unsafe fn from_ptr(ptr: *const u8) -> Self {
         &*(ptr as *const [u8; N])
+    }
+
+    #[inline]
+    fn from_slice(s: &'source [u8]) -> Option<Self> {
+        s.slice(0..Self::SIZE).and_then(|x| x.try_into().ok())
     }
 }

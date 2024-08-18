@@ -44,15 +44,15 @@ bench = false
 [features]
 # Enables debug messages
 debug = ["logos-derive?/debug"]
-default = ["export_derive", "std", "unsafe"]
+default = ["export_derive", "std", "allow_unsafe"]
 # Re-exports the `Logos` derive macro, so that end user only needs to
 # import this crate and `use logos::Logos` to get both the trait and
 # derive proc macro.
 export_derive = ["logos-derive"]
 # Should the crate use the standard library?
 std = []
-# Allow unsafe code for performance optimization?
-unsafe = []
+# Allow unsafe code?
+allow_unsafe = []
 
 [package.metadata.docs.rs]
 all-features = true

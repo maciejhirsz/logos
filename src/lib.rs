@@ -23,6 +23,8 @@
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
+#![cfg_attr(not(feature = "allow_unsafe"), forbid(unsafe_code))]
+
 extern crate core;
 
 use core::fmt::Debug;

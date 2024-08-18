@@ -3,7 +3,6 @@ use super::Logos;
 use crate::source::{self, Source};
 
 use core::fmt::{self, Debug};
-use core::mem::ManuallyDrop;
 use core::ops::{Deref, DerefMut};
 
 /// Byte range in the source.
@@ -13,7 +12,12 @@ pub type Span = core::ops::Range<usize>;
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
-    token: ManuallyDrop<Option<Result<Token, Token::Error>>>,
+
+    #[cfg(feature = "allow_unsafe")]
+    token: core::mem::ManuallyDrop<Option<Result<Token, Token::Error>>>,
+    #[cfg(not(feature = "allow_unsafe"))]
+    token: Option<Result<Token, Token::Error>>,
+
     token_start: usize,
     token_end: usize,
 
@@ -54,7 +58,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     pub fn with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
         Lexer {
             source,
-            token: ManuallyDrop::new(None),
+            token: Default::default(),
             extras,
             token_start: 0,
             token_end: 0,
@@ -176,7 +180,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     {
         Lexer {
             source: self.source,
-            token: ManuallyDrop::new(None),
+            token: Default::default(),
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
@@ -207,7 +211,7 @@ where
     fn clone(&self) -> Self {
         Lexer {
             extras: self.extras.clone(),
-            token: ManuallyDrop::new(None),
+            token: Default::default(),
             ..*self
         }
     }
@@ -229,7 +233,10 @@ where
         // Since we always immediately return a newly set token here,
         // we don't have to replace it with `None` or manually drop
         // it later.
-        unsafe { ManuallyDrop::take(&mut self.token) }
+        #[cfg(feature = "allow_unsafe")]
+        unsafe { core::mem::ManuallyDrop::take(&mut self.token) }
+        #[cfg(not(feature = "allow_unsafe"))]
+        { self.token.take() }
     }
 }
 
@@ -349,12 +356,15 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        self.token = ManuallyDrop::new(Some(Err(Token::Error::default())));
+        #[cfg(feature = "allow_unsafe")]
+        { self.token = core::mem::ManuallyDrop::new(Some(Err(Token::Error::default()))); }
+        #[cfg(not(feature = "allow_unsafe"))]
+        { self.token = Some(Err(Token::Error::default())); }
     }
 
     #[inline]
     fn end(&mut self) {
-        self.token = ManuallyDrop::new(None);
+        self.token = Default::default();
     }
 
     #[inline]
@@ -365,6 +375,9 @@ where
             <<Self as LexerInternal<'source>>::Token as Logos<'source>>::Error,
         >,
     ) {
-        self.token = ManuallyDrop::new(Some(token));
+        #[cfg(feature = "allow_unsafe")]
+        { self.token = core::mem::ManuallyDrop::new(Some(token)); }
+        #[cfg(not(feature = "allow_unsafe"))]
+        { self.token = Some(token) }
     }
 }
