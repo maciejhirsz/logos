@@ -52,7 +52,7 @@ export_derive = ["logos-derive"]
 # Should the crate use the standard library?
 std = []
 # Use safe alternatives for unsafe code (may impact performance)?
-forbid_unsafe = []
+forbid_unsafe = ["logos-derive?/forbid_unsafe"]
 
 [package.metadata.docs.rs]
 features = ["debug"]
