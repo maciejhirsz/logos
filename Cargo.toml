@@ -55,7 +55,7 @@ std = []
 forbid_unsafe = []
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["debug"]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 rustdoc-args = ["--cfg", "docsrs"]
 
