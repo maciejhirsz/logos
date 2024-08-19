@@ -65,10 +65,14 @@ impl Context {
         self.advance(1);
 
         #[cfg(not(feature = "forbid_unsafe"))]
-        { quote!(unsafe { lex.read_byte_unchecked(#at) })}
-        
+        {
+            quote!(unsafe { lex.read_byte_unchecked(#at) })
+        }
+
         #[cfg(feature = "forbid_unsafe")]
-        { quote!(lex.read_byte(#at)) }
+        {
+            quote!(lex.read_byte(#at))
+        }
     }
 
     pub fn read(&mut self, len: usize) -> TokenStream {
