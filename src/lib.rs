@@ -22,7 +22,6 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
-
 #![cfg_attr(not(feature = "allow_unsafe"), forbid(unsafe_code))]
 
 extern crate core;

@@ -263,7 +263,7 @@ impl<'source> Chunk<'source> for u8 {
 
     #[inline]
     fn from_slice(s: &'source [u8]) -> Option<Self> {
-        s.get(0).copied()
+        s.first().copied()
     }
 }
 

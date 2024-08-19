@@ -152,7 +152,9 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         // * Thus safety is continent on the correct implementation of the `is_boundary`
         //   method.
         #[cfg(feature = "allow_unsafe")]
-        unsafe { self.source.slice_unchecked(self.span()) }
+        unsafe {
+            self.source.slice_unchecked(self.span())
+        }
         #[cfg(not(feature = "allow_unsafe"))]
         self.source.slice(self.span()).unwrap()
     }
@@ -166,7 +168,9 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
                 .slice_unchecked(self.token_end..self.source.len())
         }
         #[cfg(not(feature = "allow_unsafe"))]
-        self.source.slice(self.token_end..self.source.len()).unwrap()
+        self.source
+            .slice(self.token_end..self.source.len())
+            .unwrap()
     }
 
     /// Turn this lexer into a lexer for a new token type.
@@ -234,9 +238,13 @@ where
         // we don't have to replace it with `None` or manually drop
         // it later.
         #[cfg(feature = "allow_unsafe")]
-        unsafe { core::mem::ManuallyDrop::take(&mut self.token) }
+        unsafe {
+            core::mem::ManuallyDrop::take(&mut self.token)
+        }
         #[cfg(not(feature = "allow_unsafe"))]
-        { self.token.take() }
+        {
+            self.token.take()
+        }
     }
 }
 
@@ -357,9 +365,13 @@ where
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
         #[cfg(feature = "allow_unsafe")]
-        { self.token = core::mem::ManuallyDrop::new(Some(Err(Token::Error::default()))); }
+        {
+            self.token = core::mem::ManuallyDrop::new(Some(Err(Token::Error::default())));
+        }
         #[cfg(not(feature = "allow_unsafe"))]
-        { self.token = Some(Err(Token::Error::default())); }
+        {
+            self.token = Some(Err(Token::Error::default()));
+        }
     }
 
     #[inline]
@@ -376,8 +388,12 @@ where
         >,
     ) {
         #[cfg(feature = "allow_unsafe")]
-        { self.token = core::mem::ManuallyDrop::new(Some(token)); }
+        {
+            self.token = core::mem::ManuallyDrop::new(Some(token));
+        }
         #[cfg(not(feature = "allow_unsafe"))]
-        { self.token = Some(token) }
+        {
+            self.token = Some(token)
+        }
     }
 }
