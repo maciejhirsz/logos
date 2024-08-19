@@ -48,7 +48,12 @@ pub trait Source {
     /// # Safety
     ///
     /// Offset should not exceed bounds.
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, offset: usize) -> u8;
+
+    /// Read a byte with bounds checking.
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
@@ -122,8 +127,15 @@ impl Source for str {
     }
 
     #[inline]
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
         Chunk::from_ptr(self.as_ptr().add(offset))
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self.as_bytes()[offset]
     }
 
     #[inline]
@@ -184,8 +196,15 @@ impl Source for [u8] {
     }
 
     #[inline]
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
         Chunk::from_ptr(self.as_ptr().add(offset))
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self[offset]
     }
 
     #[inline]
@@ -231,8 +250,14 @@ where
         self.deref().read(offset)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
         self.deref().read_byte_unchecked(offset)
+    }
+
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self.deref().read_byte(offset)
     }
 
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
@@ -270,6 +295,7 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
 
     /// Create a chunk from a slice.
     /// Returns None if the slice is not long enough to produce the chunk.
+    #[cfg(feature = "forbid_unsafe")]
     fn from_slice(s: &'source [u8]) -> Option<Self>;
 }
 
@@ -283,6 +309,7 @@ impl<'source> Chunk<'source> for u8 {
     }
 
     #[inline]
+    #[cfg(feature = "forbid_unsafe")]
     fn from_slice(s: &'source [u8]) -> Option<Self> {
         s.first().copied()
     }
@@ -298,6 +325,7 @@ impl<'source, const N: usize> Chunk<'source> for &'source [u8; N] {
     }
 
     #[inline]
+    #[cfg(feature = "forbid_unsafe")]
     fn from_slice(s: &'source [u8]) -> Option<Self> {
         s.slice(0..Self::SIZE).and_then(|x| x.try_into().ok())
     }

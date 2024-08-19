@@ -17,7 +17,12 @@ pub trait LexerInternal<'source> {
     fn read_at<T: Chunk<'source>>(&self, n: usize) -> Option<T>;
 
     /// Unchecked read a byte at current position, offset by `n`.
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, n: usize) -> u8;
+
+    /// Checked read a byte at current position, offset by `n`.
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, n: usize) -> u8;
 
     /// Test a chunk at current position with a closure.
     fn test<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, test: F) -> bool;

@@ -330,8 +330,15 @@ where
     }
 
     #[inline]
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, n: usize) -> u8 {
         self.source.read_byte_unchecked(self.token_end + n)
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, n: usize) -> u8 {
+        self.source.read_byte(self.token_end + n)
     }
 
     /// Test a chunk at current position with a closure.
