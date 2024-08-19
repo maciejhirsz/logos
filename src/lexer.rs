@@ -148,8 +148,8 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         // * `token_start` is initially zero and is set to `token_end` in `next`, so
         //   it remains in bounds as long as `token_end` remains in bounds.
         // * `token_end` is initially zero and is only incremented in `bump`. `bump`
-        //   will panic if `Source::is_boundary` if false.
-        // * Thus safety is continent on the correct implementation of the `is_boundary`
+        //   will panic if `Source::is_boundary` is false.
+        // * Thus safety is contingent on the correct implementation of the `is_boundary`
         //   method.
         #[cfg(feature = "allow_unsafe")]
         unsafe {
