@@ -329,6 +329,11 @@ where
         self.source.read(self.token_end + n)
     }
 
+    #[inline]
+    unsafe fn read_byte_unchecked(&self, n: usize) -> u8 {
+        self.source.read_byte_unchecked(self.token_end + n)
+    }
+
     /// Test a chunk at current position with a closure.
     #[inline]
     fn test<T, F>(&self, test: F) -> bool
