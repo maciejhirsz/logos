@@ -12,6 +12,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install rustfmt
+      run: |
+        rustup component add rustfmt
+    
     - name: Generate code coverage
       run: |
         cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
