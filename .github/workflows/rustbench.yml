@@ -31,7 +31,7 @@ jobs:
     - name: Run Benchmarks on changes
       run: |
         cargo bench --workspace --bench bench -- --save-baseline changes
-        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline changes-forbid-unsafe
+        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline changes/forbid-unsafe
 
     - uses: actions/checkout@v4
       with:
@@ -41,7 +41,11 @@ jobs:
     - name: Run Benchmarks before changes
       run: |
         cargo bench --workspace --bench bench -- --save-baseline before
-        cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline before-forbid-unsafe
+
+        # Skip benchmarking for forbid_unsafe feature if the PR base commit doesn't have the feature
+        if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
+          cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline before/forbid-unsafe
+        fi
 
     - name: Compare benchmarks
       run: |
@@ -53,7 +57,13 @@ jobs:
     - name: Compare benchmarks for forbid-unsafe
       run: |
         echo 'results<<EOF' >> $GITHUB_OUTPUT
-        critcmp before-forbid-unsafe changes-forbid-unsafe >> $GITHUB_OUTPUT
+        if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
+          critcmp before/forbid-unsafe changes/forbid-unsafe >> $GITHUB_OUTPUT
+        else 
+          echo 'PR base commit does not have the "forbid_unsafe" feature; comparing'
+          echo 'against the default features instead.'
+          critcmp before changes/forbid-unsafe >> $GITHUB_OUTPUT
+        fi
         echo 'EOF' >> $GITHUB_OUTPUT
       id: compare-forbid-unsafe
 
@@ -62,7 +72,7 @@ jobs:
       continue-on-error: true
       with:
         message: |
-          Benchmark results:
+          Benchmark results with default features:
           ```
           ${{ steps.compare.outputs.results }}
           ```
