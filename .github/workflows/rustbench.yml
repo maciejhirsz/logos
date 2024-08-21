@@ -79,7 +79,7 @@ jobs:
 
           Benchmark results with feature "forbid_unsafe":
           ```
-          ${{ steps.compare.outputs.results }}
+          ${{ steps.compare-forbid-unsafe.outputs.results }}
           ```
 
         comment_tag: benchmarks
