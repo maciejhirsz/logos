@@ -30,8 +30,8 @@ jobs:
 
     - name: Run Benchmarks on changes
       run: |
-        cargo bench --workspace --bench bench -- --save-baseline changes/default
-        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline changes/forbid-unsafe
+        cargo bench --workspace --bench bench -- --save-baseline default/changes
+        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline forbid-unsafe/changes
 
     - uses: actions/checkout@v4
       with:
@@ -40,17 +40,17 @@ jobs:
 
     - name: Run Benchmarks before changes
       run: |
-        cargo bench --workspace --bench bench -- --save-baseline before/default
+        cargo bench --workspace --bench bench -- --save-baseline default/before
 
         # Skip benchmarking for forbid_unsafe feature if the PR base commit doesn't have the feature
         if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
-          cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline before/forbid-unsafe
+          cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline forbid-unsafe/before
         fi
 
     - name: Compare benchmarks
       run: |
         echo 'results<<EOF' >> $GITHUB_OUTPUT
-        critcmp before/default changes/default >> $GITHUB_OUTPUT
+        critcmp default/before default/changes >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       id: compare
 
@@ -58,11 +58,11 @@ jobs:
       run: |
         echo 'results<<EOF' >> $GITHUB_OUTPUT
         if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
-          critcmp before/forbid-unsafe changes/forbid-unsafe >> $GITHUB_OUTPUT
+          critcmp forbid-unsafe/before forbid-unsafe/changes >> $GITHUB_OUTPUT
         else 
           echo 'PR base commit does not have the "forbid_unsafe" feature; comparing' >> $GITHUB_OUTPUT
           echo 'against the default features instead.' >> $GITHUB_OUTPUT
-          critcmp before/default changes/forbid-unsafe >> $GITHUB_OUTPUT
+          critcmp default/before forbid-unsafe/changes >> $GITHUB_OUTPUT
         fi
         echo 'EOF' >> $GITHUB_OUTPUT
       id: compare-forbid-unsafe
