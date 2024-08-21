@@ -60,8 +60,8 @@ jobs:
         if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
           critcmp before/forbid-unsafe changes/forbid-unsafe >> $GITHUB_OUTPUT
         else 
-          echo 'PR base commit does not have the "forbid_unsafe" feature; comparing'
-          echo 'against the default features instead.'
+          echo 'PR base commit does not have the "forbid_unsafe" feature; comparing' >> $GITHUB_OUTPUT
+          echo 'against the default features instead.' >> $GITHUB_OUTPUT
           critcmp before changes/forbid-unsafe >> $GITHUB_OUTPUT
         fi
         echo 'EOF' >> $GITHUB_OUTPUT
@@ -77,7 +77,7 @@ jobs:
           ${{ steps.compare.outputs.results }}
           ```
 
-          Benchmark results with forbid-unsafe:
+          Benchmark results with feature "forbid_unsafe":
           ```
           ${{ steps.compare.outputs.results }}
           ```
