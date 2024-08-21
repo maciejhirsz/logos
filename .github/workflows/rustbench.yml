@@ -30,8 +30,8 @@ jobs:
 
     - name: Run Benchmarks on changes
       run: |
-        cargo bench --workspace --bench bench -- --save-baseline default/changes
-        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline forbid-unsafe/changes
+        cargo bench --workspace --bench bench -- --save-baseline default_changes
+        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline forbid_unsafe_changes
 
     - uses: actions/checkout@v4
       with:
@@ -40,17 +40,17 @@ jobs:
 
     - name: Run Benchmarks before changes
       run: |
-        cargo bench --workspace --bench bench -- --save-baseline default/before
+        cargo bench --workspace --bench bench -- --save-baseline default_before
 
         # Skip benchmarking for forbid_unsafe feature if the PR base commit doesn't have the feature
         if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
-          cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline forbid-unsafe/before
+          cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline forbid_unsafe_before
         fi
 
     - name: Compare benchmarks
       run: |
         echo 'results<<EOF' >> $GITHUB_OUTPUT
-        critcmp default/before default/changes >> $GITHUB_OUTPUT
+        critcmp default_before default_changes >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       id: compare
 
@@ -58,11 +58,11 @@ jobs:
       run: |
         echo 'results<<EOF' >> $GITHUB_OUTPUT
         if [[ "$(grep forbid_unsafe Cargo.toml)" ]]; then
-          critcmp forbid-unsafe/before forbid-unsafe/changes >> $GITHUB_OUTPUT
+          critcmp forbid_unsafe_before forbid_unsafe_changes >> $GITHUB_OUTPUT
         else 
-          echo 'PR base commit does not have the "forbid_unsafe" feature; comparing' >> $GITHUB_OUTPUT
-          echo 'against the default features instead.' >> $GITHUB_OUTPUT
-          critcmp default/before forbid-unsafe/changes >> $GITHUB_OUTPUT
+          echo 'NOTE: PR base commit does not support the "forbid_unsafe" feature;' >> $GITHUB_OUTPUT
+          echo 'comparing forbid_unsafe against the default features on base instead.' >> $GITHUB_OUTPUT
+          critcmp default_before forbid_unsafe_changes >> $GITHUB_OUTPUT
         fi
         echo 'EOF' >> $GITHUB_OUTPUT
       id: compare-forbid-unsafe
