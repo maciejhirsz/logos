@@ -29,7 +29,9 @@ jobs:
         version: latest
 
     - name: Run Benchmarks on changes
-      run: cargo bench --workspace --bench bench -- --save-baseline changes
+      run: |
+        cargo bench --workspace --bench bench -- --save-baseline changes
+        cargo bench --workspace --bench bench -- --save-baseline changes-forbid-unsafe
 
     - uses: actions/checkout@v4
       with:
@@ -37,7 +39,9 @@ jobs:
         clean: false
 
     - name: Run Benchmarks before changes
-      run: cargo bench --workspace --bench bench -- --save-baseline before
+      run: |
+        cargo bench --workspace --bench bench -- --save-baseline before
+        cargo bench --workspace --bench bench -- --save-baseline before-forbid-unsafe
 
     - name: Compare benchmarks
       run: |
@@ -45,6 +49,13 @@ jobs:
         critcmp before changes >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       id: compare
+
+    - name: Compare benchmarks for forbid-unsafe
+      run: |
+        echo 'results<<EOF' >> $GITHUB_OUTPUT
+        critcmp before-forbid-unsafe changes-forbid-unsafe >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+      id: compare-forbid-unsafe
 
     - name: Comment PR with benchmarks
       uses: thollander/actions-comment-pull-request@v2
@@ -55,6 +66,12 @@ jobs:
           ```
           ${{ steps.compare.outputs.results }}
           ```
+
+          Benchmark results with forbid-unsafe:
+          ```
+          ${{ steps.compare.outputs.results }}
+          ```
+
         comment_tag: benchmarks
 
       id: comment
@@ -65,4 +82,9 @@ jobs:
         echo '### Benchmark results' >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
         echo '${{ steps.compare.outputs.results }}' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+        echo '### Benchmark results with forbid-unsafe' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo '${{ steps.compare-forbid-unsafe.outputs.results }}' >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
