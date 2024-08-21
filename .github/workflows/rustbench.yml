@@ -31,7 +31,7 @@ jobs:
     - name: Run Benchmarks on changes
       run: |
         cargo bench --workspace --bench bench -- --save-baseline changes
-        cargo bench --workspace --bench bench -- --save-baseline changes-forbid-unsafe
+        cargo bench --workspace --bench bench --features forbid_unsafe  -- --save-baseline changes-forbid-unsafe
 
     - uses: actions/checkout@v4
       with:
@@ -41,7 +41,7 @@ jobs:
     - name: Run Benchmarks before changes
       run: |
         cargo bench --workspace --bench bench -- --save-baseline before
-        cargo bench --workspace --bench bench -- --save-baseline before-forbid-unsafe
+        cargo bench --workspace --bench bench --features forbid_unsafe -- --save-baseline before-forbid-unsafe
 
     - name: Compare benchmarks
       run: |
