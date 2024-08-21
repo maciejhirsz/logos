@@ -51,11 +51,11 @@ default = ["export_derive", "std"]
 export_derive = ["logos-derive"]
 # Should the crate use the standard library?
 std = []
-# Allow unsafe code?
-allow_unsafe = []
+# Use safe alternatives for unsafe code (may impact performance)?
+forbid_unsafe = ["logos-derive?/forbid_unsafe"]
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["debug"]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 rustdoc-args = ["--cfg", "docsrs"]
 

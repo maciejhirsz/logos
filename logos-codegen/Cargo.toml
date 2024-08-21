@@ -16,6 +16,8 @@ rstest = "0.18.2"
 debug = []
 # Exports out internal methods for fuzzing
 fuzzing = []
+# Don't use or generate unsafe code
+forbid_unsafe = []
 
 [lib]
 bench = false

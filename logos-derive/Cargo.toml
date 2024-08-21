@@ -4,6 +4,8 @@ logos-codegen = {version = "0.14.1", path = "../logos-codegen"}
 [features]
 # Enables debug messages
 debug = ["logos-codegen/debug"]
+# Don't use or generate unsafe code
+forbid_unsafe = ["logos-codegen/forbid_unsafe"]
 
 [lib]
 bench = false

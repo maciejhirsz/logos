@@ -136,9 +136,9 @@ impl<'a> Generator<'a> {
         let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= max(min_read, 1) {
-            let read = ctx.read_byte_unchecked();
+            let read = ctx.read_byte();
 
-            return (quote!(byte), quote!(let byte = unsafe { #read };));
+            return (quote!(byte), quote!(let byte = #read;));
         }
 
         match min_read {

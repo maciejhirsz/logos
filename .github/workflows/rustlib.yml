@@ -22,7 +22,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Check rustdoc build
-      run: RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc --all-features -Zunstable-options -Zrustdoc-scrape-examples
+      run: RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc --features debug -Zunstable-options -Zrustdoc-scrape-examples
 
   tests:
     name: Tests
@@ -36,6 +36,9 @@ jobs:
         - macos-latest
         - ubuntu-latest
         - windows-latest
+        features:
+        - ""  # default features
+        - "--features forbid_unsafe"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -52,4 +55,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --workspace --verbose
+        args: --workspace --verbose ${{ matrix.features }}

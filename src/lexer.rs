@@ -13,9 +13,9 @@ pub type Span = core::ops::Range<usize>;
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
 
-    #[cfg(feature = "allow_unsafe")]
+    #[cfg(not(feature = "forbid_unsafe"))]
     token: core::mem::ManuallyDrop<Option<Result<Token, Token::Error>>>,
-    #[cfg(not(feature = "allow_unsafe"))]
+    #[cfg(feature = "forbid_unsafe")]
     token: Option<Result<Token, Token::Error>>,
 
     token_start: usize,
@@ -151,23 +151,23 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         //   will panic if `Source::is_boundary` is false.
         // * Thus safety is contingent on the correct implementation of the `is_boundary`
         //   method.
-        #[cfg(feature = "allow_unsafe")]
+        #[cfg(not(feature = "forbid_unsafe"))]
         unsafe {
             self.source.slice_unchecked(self.span())
         }
-        #[cfg(not(feature = "allow_unsafe"))]
+        #[cfg(feature = "forbid_unsafe")]
         self.source.slice(self.span()).unwrap()
     }
 
     /// Get a slice of remaining source, starting at the end of current token.
     #[inline]
     pub fn remainder(&self) -> <Token::Source as Source>::Slice<'source> {
-        #[cfg(feature = "allow_unsafe")]
+        #[cfg(not(feature = "forbid_unsafe"))]
         unsafe {
             self.source
                 .slice_unchecked(self.token_end..self.source.len())
         }
-        #[cfg(not(feature = "allow_unsafe"))]
+        #[cfg(feature = "forbid_unsafe")]
         self.source
             .slice(self.token_end..self.source.len())
             .unwrap()
@@ -237,11 +237,11 @@ where
         // Since we always immediately return a newly set token here,
         // we don't have to replace it with `None` or manually drop
         // it later.
-        #[cfg(feature = "allow_unsafe")]
+        #[cfg(not(feature = "forbid_unsafe"))]
         unsafe {
             core::mem::ManuallyDrop::take(&mut self.token)
         }
-        #[cfg(not(feature = "allow_unsafe"))]
+        #[cfg(feature = "forbid_unsafe")]
         {
             self.token.take()
         }
@@ -329,6 +329,18 @@ where
         self.source.read(self.token_end + n)
     }
 
+    #[inline]
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, n: usize) -> u8 {
+        self.source.read_byte_unchecked(self.token_end + n)
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, n: usize) -> u8 {
+        self.source.read_byte(self.token_end + n)
+    }
+
     /// Test a chunk at current position with a closure.
     #[inline]
     fn test<T, F>(&self, test: F) -> bool
@@ -364,11 +376,11 @@ where
     #[inline]
     fn error(&mut self) {
         self.token_end = self.source.find_boundary(self.token_end);
-        #[cfg(feature = "allow_unsafe")]
+        #[cfg(not(feature = "forbid_unsafe"))]
         {
             self.token = core::mem::ManuallyDrop::new(Some(Err(Token::Error::default())));
         }
-        #[cfg(not(feature = "allow_unsafe"))]
+        #[cfg(feature = "forbid_unsafe")]
         {
             self.token = Some(Err(Token::Error::default()));
         }
@@ -387,11 +399,11 @@ where
             <<Self as LexerInternal<'source>>::Token as Logos<'source>>::Error,
         >,
     ) {
-        #[cfg(feature = "allow_unsafe")]
+        #[cfg(not(feature = "forbid_unsafe"))]
         {
             self.token = core::mem::ManuallyDrop::new(Some(token));
         }
-        #[cfg(not(feature = "allow_unsafe"))]
+        #[cfg(feature = "forbid_unsafe")]
         {
             self.token = Some(token)
         }

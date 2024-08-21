@@ -19,14 +19,21 @@ impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
         self.0.read(offset)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
         self.0.read_byte_unchecked(offset)
+    }
+
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self.0.read_byte(offset)
     }
 
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
         self.0.slice(range)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_> {
         self.0.slice_unchecked(range)
     }
