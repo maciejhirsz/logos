@@ -12,6 +12,11 @@ use core::ops::{Deref, Range};
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
+/// 
+/// SAFETY: Unless the unsafe functions of this trait are disabled with the `forbid_unsafe`
+/// feature, the correctness of the unsafe functions of this trait depend on the correct
+/// implementation of the `len` and `find_boundary` functions so generated code does not request
+/// out-of-bounds access.
 #[allow(clippy::len_without_is_empty)]
 pub trait Source {
     /// A type this `Source` can be sliced into.
