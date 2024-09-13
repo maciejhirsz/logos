@@ -81,7 +81,7 @@ configuration to the one used by [docs.rs](https://docs.rs/logos/latest/logos/):
 
 ```bash
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc \
-    --all-features \
+    --features debug \
     -Zunstable-options \
     -Zrustdoc-scrape-examples \
     --no-deps \
