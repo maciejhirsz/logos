@@ -109,7 +109,7 @@ when appropriate.
 
 > [!NOTE]
 >
-> This section is only useful for **Logos**' maintainers.
+> This section is only useful to **Logos**' maintainers.
 
 First, make sure you are logged-in https://crates.io with: `cargo login`.
 If you don't have write access to **Logos**' crates, you can still
