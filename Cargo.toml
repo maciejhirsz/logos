@@ -13,7 +13,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/maciejhirsz/logos"
 rust-version = "1.70.0"
-version = "0.14.1"
+version = "0.14.2"
 
 [package]
 name = "logos"
@@ -64,7 +64,7 @@ bench = {lto = true}
 release = {lto = true}
 
 [dependencies]
-logos-derive = {version = "0.14.1", path = "./logos-derive", optional = true}
+logos-derive = {version = "0.14.2", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
 ariadne = {version = "0.2.0", features = ["auto-color"]}
