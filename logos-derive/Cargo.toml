@@ -1,5 +1,5 @@
 [dependencies]
-logos-codegen = {version = "0.14.1", path = "../logos-codegen"}
+logos-codegen = {version = "0.14.2", path = "../logos-codegen"}
 
 [features]
 # Enables debug messages
