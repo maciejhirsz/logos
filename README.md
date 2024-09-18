@@ -107,7 +107,7 @@ when appropriate.
 
 ### Releasing a new version
 
-> ![NOTE]
+> [!NOTE]
 >
 > This section is only useful for **Logos**' maintainers.
 
