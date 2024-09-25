@@ -67,7 +67,7 @@ release = {lto = true}
 logos-derive = {version = "0.14.2", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
-ariadne = {version = "0.2.0", features = ["auto-color"]}
+ariadne = {version = "0.4", features = ["auto-color"]}
 
 [[example]]
 doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
