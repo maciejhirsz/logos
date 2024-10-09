@@ -7,8 +7,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: redhat-actions/buildah-build@v2
         with:
-          platforms: linux/s390x
-          push: false
+          image: logos
+          archs: s390x
+          tags: debug
+          containerfiles: |
+            ./Dockerfile
