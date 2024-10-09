@@ -6,23 +6,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        # Using my fork because there seems to be a bug where it couldn't find `s390x/fedora:latest`
-      - uses: LecrisUT/run-on-arch-action@fix/arch-flag
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
         with:
-          distro: none
-          arch: s390x
-          base_image: "s390x/fedora:latest"
-          run: |
-            echo "::group::Debug stuff"
-            # Double-check we are in the appropriate environment
-            uname -a
-            echo "::endgroup::"
-            
-            echo "::group::Install rust environment"
-            dnf install -y cargo
-            echo "::endgroup::"
-            
-            echo "::group::Run cargo test"
-            # TODO: Help me with this section
-            cargo test --workspace --verbose
-            echo "::endgroup::"
+          platforms: linux/s390x
+          push: false
