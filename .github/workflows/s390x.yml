@@ -1,0 +1,16 @@
+on:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: redhat-actions/buildah-build@v2
+        with:
+          image: logos
+          archs: s390x
+          tags: debug
+          containerfiles: |
+            ./Dockerfile
