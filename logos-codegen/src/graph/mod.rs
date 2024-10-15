@@ -58,8 +58,17 @@ pub trait Disambiguate {
 
 /// Id of a Node in the graph. `NodeId` can be referencing an empty
 /// slot that is going to be populated later in time.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NodeId(NonZeroU32);
+
+impl Hash for NodeId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Always use little-endian byte order for hashing to avoid
+        // different code generation on big-endian platforms due to
+        // iteration over a HashMap
+        state.write(&self.0.get().to_le_bytes())
+    }
+}
 
 impl NodeId {
     fn get(self) -> usize {
