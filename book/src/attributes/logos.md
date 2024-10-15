@@ -19,7 +19,7 @@ enum Token {
 ```
 
 where `"regex literal"` can be any regex supported by
-[`#[regex]`](../common-regex,md), and `ExtrasType` can be of any type!
+[`#[regex]`](../common-regex.md), and `ExtrasType` can be of any type!
 
 An example usage of `skip` is provided in the [JSON parser example](../examples/json.md).
 
