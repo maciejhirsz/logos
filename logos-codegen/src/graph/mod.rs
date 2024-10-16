@@ -65,7 +65,8 @@ impl Hash for NodeId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Always use little-endian byte order for hashing to avoid
         // different code generation on big-endian platforms due to
-        // iteration over a HashMap
+        // iteration over a HashMap,
+        // see https://github.com/maciejhirsz/logos/issues/427.
         state.write(&self.0.get().to_le_bytes())
     }
 }
