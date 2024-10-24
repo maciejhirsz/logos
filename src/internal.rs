@@ -117,6 +117,25 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Skip {
     }
 }
 
+impl<'s, E, T: Logos<'s>> CallbackResult<'s, (), T> for Result<Skip, E>
+where
+    E: Into<T::Error>,
+{
+    #[inline]
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        match self {
+            Ok(_) => {
+                lex.trivia();
+                T::lex(lex);
+            }
+            Err(err) => lex.set(Err(err.into())),
+        }
+    }
+}
+
 impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Filter<P> {
     #[inline]
     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
