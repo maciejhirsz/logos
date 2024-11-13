@@ -33,7 +33,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [package.metadata]
-msrv = "1.70.0" # Needed to duplicate, because cargo-msrv does not support workspace
+msrv = "1.74.0" # Needed to duplicate, because cargo-msrv does not support workspace
 
 [package.metadata.release]
 pre-release-replacements = [
