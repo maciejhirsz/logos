@@ -3,7 +3,10 @@ members = ["logos-cli", "logos-codegen", "logos-derive", "tests", "fuzz"]
 resolver = "2"
 
 [workspace.package]
-authors = ["Maciej Hirsz <hello@maciej.codes>", "Jérome Eertmans (maintainer) <jeertmans@icloud.com>"]
+authors = [
+    "Maciej Hirsz <hello@maciej.codes>",
+    "Jérome Eertmans (maintainer) <jeertmans@icloud.com>",
+]
 categories = ["parsing", "text-processing"]
 description = "Create ridiculously fast Lexers"
 edition = "2021"
@@ -12,7 +15,7 @@ keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/maciejhirsz/logos"
-rust-version = "1.70.0"
+rust-version = "1.74.0"
 version = "0.14.2"
 
 [package]
@@ -30,7 +33,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [package.metadata]
-msrv = "1.70.0"  # Needed to duplicate, because cargo-msrv does not support workspace
+msrv = "1.70.0" # Needed to duplicate, because cargo-msrv does not support workspace
 
 [package.metadata.release]
 pre-release-replacements = [

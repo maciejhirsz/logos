@@ -29,7 +29,7 @@ jobs:
     strategy:
       matrix:
         rust:
-        - 1.70.0 # current MSRV
+        - 1.74.0 # current MSRV
         - 1.82.0 # precise capturing
         - stable
         - beta
