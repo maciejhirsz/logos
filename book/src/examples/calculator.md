@@ -1,10 +1,10 @@
 # Simple calculator
 
-When you implement an interpreter for a DSL or a programming language, the process typically involves the following steps:
+When you implement an interpreter for a [domain-specific language (DSL)](https://en.wikipedia.org/wiki/Domain-specific_language), or any programming language, the process typically involves the following steps:
 
 1. **Lexing**: Splitting the input into tokens via a lexer.
 
-2. **Parsing**: Converting the tokens into an [AST (abstract syntax tree)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) via a parser.
+2. **Parsing**: Converting the tokens into an [abstract syntax tree (AST)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) via a parser.
 
 3. **Evaluation**: Evaluating the AST to produce the result.
 
@@ -66,11 +66,11 @@ Add(
 
 Our calculator supports the following tokens:
 
-- Integer literals: `0`, `1`, `15`, etc.
+- Integer literals: `0`, `1`, `15`, etc;
 
-- Unary operator: `-`
+- Unary operator: `-`;
 
-- Binary operators: `+`, `-`, `*`, `/`
+- Binary operators: `+`, `-`, `*`, `/`;
 
 - Parenthesized expressions: `(3 + 5) * 2`, `((1 + 2) * 3 + 4) * 2 + 3 / 2`, etc.
 
@@ -80,7 +80,7 @@ Our calculator supports the following tokens:
 
 ## 3. Parser
 
-While it is easy enough to manually implement a parser in this case (e.g. [Pratt parsing](https://en.wikipedia.org/wiki/Operator-precedence_parser#Pratt_parsing)), let's just use [`chumsky`](https://github.com/zesterer/chumsky) crate, which is one of the most popular parser generator libraries in Rust.
+While it is easy enough to manually implement a parser in this case (e.g., [Pratt parsing](https://en.wikipedia.org/wiki/Operator-precedence_parser#Pratt_parsing)), let's just use [`chumsky`](https://github.com/zesterer/chumsky) crate, which is one of the most popular parser generator libraries in Rust.
 
 ### 3.1 AST Definition
 
@@ -94,13 +94,13 @@ Note that
 
 - We name the enum not `AST` but `Expr` because an AST is just nested expressions.
 
-- There is no `Parenthesized` variant because parentheses only affect the order of operations (i.e. precedence), which is reflected in the AST structure.
+- There is no `Parenthesized` variant because parentheses only affect the order of operations (i.e., precedence), which is reflected in the AST structure.
 
 - `Box` is used as [a recursive enum is not allowed in Rust](https://stackoverflow.com/questions/25296195/why-are-recursive-struct-types-illegal-in-rust).
 
 ### 3.2 Parser Implementation
 
-Next, we define the parser. The code may look a bit complicated if you are not familiar with parser combinator libraries, but it is actually quite simple. See [the official tutorial](https://github.com/zesterer/chumsky/blob/main/tutorial.md) for the details.
+Next, we define the parser. The code may look a bit complicated if you are not familiar with parser combinator libraries, but it is actually quite simple. See [Chumsky's official tutorial](https://github.com/zesterer/chumsky/blob/main/tutorial.md) for the details.
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/calculator.rs:parser}}
@@ -108,7 +108,7 @@ Next, we define the parser. The code may look a bit complicated if you are not f
 
 ## 4. Evaluator
 
-Evaluating the AST is straightforward. We just need to implement [DFS](https://en.wikipedia.org/wiki/Depth-first_search).
+Evaluating the AST is straightforward. We just implement it using [depth-first search (DFS)](https://en.wikipedia.org/wiki/Depth-first_search) such that the mathematical operations are processed in the correct order.
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/calculator.rs:evaluator}}
