@@ -68,11 +68,16 @@ logos-derive = {version = "0.14.2", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
 ariadne = {version = "0.4", features = ["auto-color"]}
+chumsky = {version = "0.9.3" }
 
 [[example]]
 doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
 name = "brainfuck"
 path = "examples/brainfuck.rs"
+
+[[example]]
+name = "calculator"
+path = "examples/calculator.rs"
 
 [[example]]
 name = "custom_error"
