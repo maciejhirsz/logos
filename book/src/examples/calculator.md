@@ -16,11 +16,13 @@ We use `logos` as the lexer generator and [`chumsky`](https://github.com/zestere
 
 ## 1. Try It
 
-Before diving into the implementation details, let's play with it.
+Before diving into the implementation details, let's play with it[^1].
 
 ```bash
 $ cargo run --example calculator '1 + 7 * (3 - 4) / 2'
 ```
+
+[^1]: You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 **Output**:
 
