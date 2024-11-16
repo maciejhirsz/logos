@@ -68,7 +68,7 @@ jobs:
       id: compare-forbid-unsafe
 
     - name: Comment PR with benchmarks
-      uses: thollander/actions-comment-pull-request@v2
+      uses: thollander/actions-comment-pull-request@v3
       continue-on-error: true
       with:
         message: |
