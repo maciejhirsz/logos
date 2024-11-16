@@ -1,5 +1,7 @@
 # Simple calculator
 
+<sub>This page (including the images) was contributed by [ynn](https://github.com/your-diary).</sub>
+
 When you implement an interpreter for a [domain-specific language (DSL)](https://en.wikipedia.org/wiki/Domain-specific_language), or any programming language, the process typically involves the following steps:
 
 1. **Lexing**: Splitting the input stream (i.e., source code string) into tokens via a lexer.
