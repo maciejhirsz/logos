@@ -2,7 +2,7 @@
 
 When you implement an interpreter for a [domain-specific language (DSL)](https://en.wikipedia.org/wiki/Domain-specific_language), or any programming language, the process typically involves the following steps:
 
-1. **Lexing**: Splitting the input into tokens via a lexer.
+1. **Lexing**: Splitting the input stream (i.e., source code string) into tokens via a lexer.
 
 2. **Parsing**: Converting the tokens into an [abstract syntax tree (AST)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) via a parser.
 
