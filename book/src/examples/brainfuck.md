@@ -24,7 +24,7 @@ Finally, we provide you the full code that you should be able to run with[^2]:
 cargo run --example brainfuck examples/hello_word.bf
 ```
 
-[^2] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
+[^2]: You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/brainfuck.rs:all}}

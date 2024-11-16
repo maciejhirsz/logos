@@ -14,6 +14,7 @@
 + [Unsafe Code](./unsafe.md)
 + [Examples](./examples.md)
   + [Brainfuck interpreter](./examples/brainfuck.md)
+  + [Simple calculator](./examples/calculator.md)
   + [JSON parser](./examples/json.md)
   + [JSON-borrowed parser](./examples/json_borrowed.md)
 + [Contributing](./contributing.md)
