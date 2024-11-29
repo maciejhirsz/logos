@@ -45,10 +45,19 @@ impl<'a> Generator<'a> {
                     callback(lex).construct(#constructor, lex);
                 }
             }
-            Some(Callback::Skip(_)) => {
+            Some(Callback::Skip(Err(_))) => {
                 quote! {
                     #bump
 
+                    lex.trivia();
+                    #name::lex(lex);
+                }
+            }
+            Some(Callback::Skip(Ok(tokens))) => {
+                quote! {
+                    #bump
+
+                    (#tokens)(lex);
                     lex.trivia();
                     #name::lex(lex);
                 }

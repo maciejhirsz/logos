@@ -20,7 +20,7 @@ pub struct Leaf<'t> {
 pub enum Callback {
     Label(TokenStream),
     Inline(Box<InlineCallback>),
-    Skip(Span),
+    Skip(Result<TokenStream, Span>),
 }
 
 #[derive(Clone)]
@@ -41,7 +41,10 @@ impl Callback {
         match self {
             Callback::Label(tokens) => tokens.span(),
             Callback::Inline(inline) => inline.span,
-            Callback::Skip(span) => *span,
+            Callback::Skip(skip) => match skip {
+                Ok(tokens) => tokens.span(),
+                Err(span) => *span,
+            },
         }
     }
 }
@@ -63,7 +66,7 @@ impl<'t> Leaf<'t> {
             span,
             priority: 0,
             field: MaybeVoid::Void,
-            callback: Some(Callback::Skip(span)),
+            callback: Some(Callback::Skip(Err(span))),
         }
     }
 

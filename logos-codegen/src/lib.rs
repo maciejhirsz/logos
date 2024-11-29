@@ -69,16 +69,16 @@ pub fn generate(input: TokenStream) -> TokenStream {
     {
         let errors = &mut parser.errors;
 
-        for literal in &parser.skips {
-            match literal.to_mir(&parser.subpatterns, IgnoreFlags::Empty, errors) {
+        for mut skip in parser.skips.drain(..) {
+            match skip.literal.to_mir(&parser.subpatterns, IgnoreFlags::Empty, errors) {
                 Ok(mir) => {
-                    let then = graph.push(Leaf::new_skip(literal.span()).priority(mir.priority()));
+                    let then = graph.push(Leaf::new_skip(skip.literal.span()).priority(skip.priority.take().unwrap_or_else(|| mir.priority())).callback(Some(skip.into_callback())));
                     let id = graph.regex(mir, then);
 
                     regex_ids.push(id);
                 }
                 Err(err) => {
-                    errors.err(err, literal.span());
+                    errors.err(err, skip.literal.span());
                 }
             }
         }
