@@ -1,3 +1,5 @@
+# Release process
+
 First, make sure you are logged-in https://crates.io with: `cargo login`.
 If you don't have write access to **Logos**' crates, you can still
 perform steps 1-4, and ask a maintainer with accesses to perform step 5.
