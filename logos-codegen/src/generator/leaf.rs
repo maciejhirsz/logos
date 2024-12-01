@@ -56,8 +56,14 @@ impl<'a> Generator<'a> {
             Some(Callback::Skip(Ok(tokens))) => {
                 quote! {
                     #bump
+
+                    trait SkipReturn {}
+                    impl SkipReturn for () {}
+                    impl SkipReturn for Skip {}
                     
-                    let callback: fn(&mut Lexer) -> () = #tokens;
+                    fn callback(lex: &mut Lexer) -> impl SkipReturn {
+                        (#tokens)(lex)
+                    }
 
                     callback(lex);
 
