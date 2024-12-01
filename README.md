@@ -25,48 +25,48 @@ To achieve those, **Logos**:
 ## Example
 
 ```rust
- use logos::Logos;
+use logos::Logos;
 
- #[derive(Logos, Debug, PartialEq)]
- #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
- enum Token {
-     // Tokens can be literal strings, of any length.
-     #[token("fast")]
-     Fast,
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
+enum Token {
+    // Tokens can be literal strings, of any length.
+    #[token("fast")]
+    Fast,
 
-     #[token(".")]
-     Period,
+    #[token(".")]
+    Period,
 
-     // Or regular expressions.
-     #[regex("[a-zA-Z]+")]
-     Text,
- }
+    // Or regular expressions.
+    #[regex("[a-zA-Z]+")]
+    Text,
+}
 
- fn main() {
-     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
+fn main() {
+    let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Text)));
-     assert_eq!(lex.span(), 0..6);
-     assert_eq!(lex.slice(), "Create");
+    assert_eq!(lex.next(), Some(Ok(Token::Text)));
+    assert_eq!(lex.span(), 0..6);
+    assert_eq!(lex.slice(), "Create");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Text)));
-     assert_eq!(lex.span(), 7..19);
-     assert_eq!(lex.slice(), "ridiculously");
+    assert_eq!(lex.next(), Some(Ok(Token::Text)));
+    assert_eq!(lex.span(), 7..19);
+    assert_eq!(lex.slice(), "ridiculously");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Fast)));
-     assert_eq!(lex.span(), 20..24);
-     assert_eq!(lex.slice(), "fast");
+    assert_eq!(lex.next(), Some(Ok(Token::Fast)));
+    assert_eq!(lex.span(), 20..24);
+    assert_eq!(lex.slice(), "fast");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Text)));
-     assert_eq!(lex.slice(), "Lexers");
-     assert_eq!(lex.span(), 25..31);
+    assert_eq!(lex.next(), Some(Ok(Token::Text)));
+    assert_eq!(lex.slice(), "Lexers");
+    assert_eq!(lex.span(), 25..31);
 
-     assert_eq!(lex.next(), Some(Ok(Token::Period)));
-     assert_eq!(lex.span(), 31..32);
-     assert_eq!(lex.slice(), ".");
+    assert_eq!(lex.next(), Some(Ok(Token::Period)));
+    assert_eq!(lex.span(), 31..32);
+    assert_eq!(lex.slice(), ".");
 
-     assert_eq!(lex.next(), None);
- }
+    assert_eq!(lex.next(), None);
+}
 ```
 
 For more examples and documentation, please refer to the
@@ -105,35 +105,7 @@ Please use the
 [pull requests](https://github.com/maciejhirsz/logos/pulls) tabs,
 when appropriate.
 
-### Releasing a new version
-
-> [!NOTE]
->
-> This section is only useful to **Logos**' maintainers.
-
-First, make sure you are logged-in https://crates.io with: `cargo login`.
-If you don't have write access to **Logos**' crates, you can still
-perform steps 1-4, and ask a maintainer with accesses to perform step 5.
-
-This project uses `cargo-release` to publish all packages with more ease.
-Note that, by default, every command runs in *dry mode*, and you need to append `--execute`
-to actually perform the action.
-
-Here are the following steps to release a new version:
-
-1. create a branch `release-x.y.z` from the `master` branch;
-2. run and commit `cargo release version --workspace <LEVEL>`;
-3. run and commit `cargo release replace --workspace`;
-4. push your branch and create a pull request;
-5. and, once your branch was merged to `master`, run the following:
-   ```bash
-   cargo release publish --package logos-codegen
-   cargo release publish --package logos-derive
-   cargo release publish --package logos-cli
-   cargo release publish --package logos
-   ```
-
-And voilà!
+To release a new version, follow the [RELEASE-PROCESS](RELEASE-PROCESS.md)
 
 ## License
 
