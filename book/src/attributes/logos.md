@@ -9,6 +9,7 @@ The syntax is as follows:
 ```rust,no_run,no_playground
 #[derive(Logos)]
 #[logos(skip "regex literal")]
+#[logos(skip("regex literal"[, callback, priority = <integer>]))]
 #[logos(extras = ExtrasType)]
 #[logos(error = ErrorType)]
 #[logos(crate = path::to::logos)]
