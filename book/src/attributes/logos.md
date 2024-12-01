@@ -13,6 +13,7 @@ The syntax is as follows:
 #[logos(error = ErrorType)]
 #[logos(crate = path::to::logos)]
 #[logos(source = SourceType)]
+#[logos(subpattern subpattern_name = "regex literal")]
 enum Token {
     /* ... */
 }
@@ -58,3 +59,52 @@ pattern literals match a non utf-8 bytes sequence. In this case, it will fall
 back to `&[u8]`. You can override this behavior by forcing one of the two
 source types. You can also specify any custom type that implements
 [`Source`](https://docs.rs/logos/latest/logos/source/trait.Source.html).
+
+## Subpatterns
+
+We can use subpatterns to reuse regular expressions in our tokens or other subpatterns.
+
+The syntax tu use a previously defined subpattern, like `#[logos(subpattern subpattern_name = "regex literal")]`,
+in a new regular expression is `"(?&subpattern_name)"`.
+
+For example:
+
+```rust,no_run,noplayground
+use logos::Logos;
+
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"\s+")]
+#[logos(subpattern alpha = r"[a-zA-Z]")]
+#[logos(subpattern digit = r"[0-9]")]
+#[logos(subpattern alphanum = r"(?&alpha)|(?&digit)")]
+enum Token {
+    #[regex("(?&alpha)+")]
+    Word,
+    #[regex("(?&digit)+")]
+    Number,
+    #[regex("(?&alphanum){2}")]
+    TwoAlphanum,
+    #[regex("(?&alphanum){3}")]
+    ThreeAlphanum,
+}
+
+fn main() {
+    let mut lex = Token::lexer("Word 1234 ab3 12");
+
+    assert_eq!(lex.next(), Some(Ok(Token::Word)));
+    assert_eq!(lex.slice(), "Word");
+
+    assert_eq!(lex.next(), Some(Ok(Token::Number)));
+    assert_eq!(lex.slice(), "1234");
+
+    assert_eq!(lex.next(), Some(Ok(Token::ThreeAlphanum)));
+    assert_eq!(lex.slice(), "ab3");
+
+    assert_eq!(lex.next(), Some(Ok(Token::TwoAlphanum)));
+    assert_eq!(lex.slice(), "12");
+
+    assert_eq!(lex.next(), None);
+}
+```
+
+(Note that the above supatterns are redundant as the same can be achieved with [existing character classes](https://docs.rs/regex/latest/regex/#ascii-character-classes))
