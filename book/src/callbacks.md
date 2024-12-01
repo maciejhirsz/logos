@@ -68,4 +68,4 @@ where regular expressions are too limiting. For specifics look at
 [`Lexer::remainder`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.remainder) and
 [`Lexer::bump`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.bump).
 
-Callbacks can also be used with #[logos(skip)], in which case they will ignore the return type of the callback.
+Callbacks can also be used with #[logos(skip)], in which case the callback should return `Skip` or `()`.
