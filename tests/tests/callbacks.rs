@@ -268,8 +268,7 @@ mod skip_callback_closure {
 
     #[derive(Logos, Debug, PartialEq)]
     #[logos(skip r"[ \r]")]
-    // TODO: type inference
-    #[logos(skip(r"\n", callback = |lex: &mut Lexer| { lex.extras.line_num += 1; }, priority = 3))]
+    #[logos(skip(r"\n", callback = |lex| { lex.extras.line_num += 1; }, priority = 3))]
     #[logos(extras = Extras)]
     enum Token {
         #[regex("[a-z]+")]

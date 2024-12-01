@@ -19,7 +19,7 @@ mod type_params;
 pub use self::definition::{Definition, Literal};
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
-use self::skip::Skip;
+pub use self::skip::{Skip, SkipCallback};
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
@@ -226,7 +226,7 @@ impl Parser {
                     self.err("Unexpected token in attribute", tokens.span());
                 }
                 Nested::Unnamed(tokens) => match position {
-                    0 => skip.callback = Some(tokens),
+                    0 => skip.callback = self.parse_skip_callback(tokens),
                     _ => {
                         self.err(
                             "\
@@ -351,6 +351,23 @@ impl Parser {
         let inline = InlineCallback { arg, body, span };
 
         Some(inline.into())
+    }
+    
+    fn parse_skip_callback(&mut self, tokens: TokenStream) -> Option<SkipCallback> {
+        let span = tokens.span();
+        Some(match self.parse_callback(tokens) {
+            Some(Callback::Inline(inline)) => SkipCallback::Inline(inline),
+            Some(Callback::Label(label)) => SkipCallback::Label(label),
+            Some(Callback::Skip(_)) => {
+                // Probably not reachable
+                return None;
+            }
+            Some(Callback::SkipCallback(cb)) => cb,
+            None => {
+                self.err("Not a valid callback", span);
+                return None;
+            }
+        })
     }
 
     /// Checks if `ty` is a declared generic param, if so replaces it
