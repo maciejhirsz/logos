@@ -36,7 +36,7 @@ The type `ErrorType` can be any type that implements `Clone`, `PartialEq`,
 `ErrorType` must implement the `Default` trait because invalid tokens, i.e.,
 literals that do not match any variant, will produce `Err(ErrorType::default())`.
 
-For example, here is an example using a custom error type:
+Here is an example using a custom error type:
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/custom_error.rs:all}}
@@ -56,5 +56,5 @@ with `#[logos(crate = path::to::logos)]`.
 By default, **Logos**'s lexer will accept `&str` as input, unless any of the
 pattern literals match a non utf-8 bytes sequence. In this case, it will fall
 back to `&[u8]`. You can override this behavior by forcing one of the two
-source types. You can also specify any custom time that implements
+source types. You can also specify any custom type that implements
 [`Source`](https://docs.rs/logos/latest/logos/source/trait.Source.html).
