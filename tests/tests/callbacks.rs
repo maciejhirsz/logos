@@ -216,3 +216,97 @@ mod return_result_skip {
         assert_eq!(lexer.next(), Some(Err(LexerError::UnterminatedComment)));
     }
 }
+
+mod skip_callback_function {
+    use super::*;
+
+    #[derive(Debug, Default, PartialEq, Clone)]
+    enum LexerError {
+        #[default]
+        Other,
+    }
+
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
+    #[logos(skip("<!--", skip_comment))]
+    #[logos(error = LexerError)]
+    enum Token<'src> {
+        #[regex(r"<[a-zA-Z0-9-]+>", |lex| &lex.slice()[1..lex.slice().len()-1])]
+        Tag(&'src str),
+    }
+
+    fn skip_comment<'src>(lexer: &mut Lexer<'src, Token<'src>>) {
+        let end = lexer
+            .remainder()
+            .find("-->").unwrap_or(lexer.remainder().len());
+        lexer.bump(end + 3);
+    }
+
+    #[test]
+    fn skip_callback_function() {
+        let mut lexer = Token::lexer("<foo> <!-- comment --> <bar>");
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("bar"))));
+        assert_eq!(lexer.next(), None);
+
+        let mut lexer = Token::lexer("<foo> <!-- unterminated comment");
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
+        // Errors not allowed from skips
+        assert_eq!(lexer.next(), None);
+    }
+}
+
+#[cfg(test)]
+mod skip_callback_closure {
+    use super::*;
+    
+    #[derive(Debug, Clone, Copy, Default)]
+    struct Extras {
+        line_num: usize,
+    }
+    
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \r]")]
+    #[logos(skip(r"\n", callback = |lex| { lex.extras.line_num += 1; }, priority = 3))]
+    #[logos(extras = Extras)]
+    enum Token {
+        #[regex("[a-z]+")]
+        Letters,
+        #[regex("[0-9]+")]
+        Numbers,
+    }
+    
+    #[test]
+    fn skip_callback_closure() {
+        let mut lexer = Token::lexer(concat!(
+            "abc 123\n",
+            "ab( |23\n",
+            "Abc 123\n",
+        ));
+        let mut tokens = Vec::new();
+        let mut error_lines: Vec<usize> = Vec::new();
+    
+        while let Some(token_result) = lexer.next() {
+            if let Ok(token) = token_result {
+                tokens.push(token);
+            } else {
+                error_lines.push(lexer.extras.line_num);
+            }
+        }
+
+        assert_eq!(tokens.as_slice(), &[
+            Token::Letters,
+            Token::Numbers,
+            Token::Letters,
+            Token::Numbers,
+            Token::Letters,
+            Token::Numbers,
+        ]);
+        assert_eq!(error_lines.as_slice(), &[
+            1,
+            1,
+            2
+        ]);
+    }
+    
+}

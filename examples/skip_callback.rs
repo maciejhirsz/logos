@@ -1,5 +1,9 @@
 fn main() {
-    let mut lexer = Token::lexer("abc 123\nab( |23\nAbc 123");
+    let mut lexer = Token::lexer(concat!(
+        "abc 123\n",
+        "ab( |23\n",
+        "Abc 123\n",
+    ));
     let mut out_tokens = Vec::new();
 
     while let Some(token_result) = lexer.next() {
