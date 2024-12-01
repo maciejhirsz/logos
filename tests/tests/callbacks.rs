@@ -220,16 +220,9 @@ mod return_result_skip {
 mod skip_callback_function {
     use super::*;
 
-    #[derive(Debug, Default, PartialEq, Clone)]
-    enum LexerError {
-        #[default]
-        Other,
-    }
-
     #[derive(Logos, Debug, PartialEq)]
     #[logos(skip r"[ \t\n\f]+")]
     #[logos(skip("<!--", skip_comment))]
-    #[logos(error = LexerError)]
     enum Token<'src> {
         #[regex(r"<[a-zA-Z0-9-]+>", |lex| &lex.slice()[1..lex.slice().len()-1])]
         Tag(&'src str),
@@ -239,8 +232,9 @@ mod skip_callback_function {
         let end = lexer
             .remainder()
             .find("-->")
+            .map(|id| id + 3)
             .unwrap_or(lexer.remainder().len());
-        lexer.bump(end + 3);
+        lexer.bump(end);
     }
 
     #[test]
@@ -252,7 +246,6 @@ mod skip_callback_function {
 
         let mut lexer = Token::lexer("<foo> <!-- unterminated comment");
         assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
-        // Errors not allowed from skips
         assert_eq!(lexer.next(), None);
     }
 }
