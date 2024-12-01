@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 
 use crate::generator::{Context, Generator};
 use crate::leaf::{Callback, Leaf};
@@ -54,10 +55,12 @@ impl<'a> Generator<'a> {
                 }
             }
             Some(Callback::Skip(Ok(tokens))) => {
+                let call = quote_spanned! { tokens.span() => (#tokens)(lex) };
                 quote! {
                     #bump
+                    
+                    #call;
 
-                    (#tokens)(lex);
                     lex.trivia();
                     #name::lex(lex);
                 }
