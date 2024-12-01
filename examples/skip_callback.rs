@@ -12,7 +12,7 @@ fn main() {
     }
 }
 
-use logos::{Lexer, Logos, Skip};
+use logos::{Lexer, Logos};
 
 #[derive(Debug, Clone, Copy, Default)]
 struct Extras {
@@ -21,7 +21,7 @@ struct Extras {
 
 #[derive(Logos, Debug, PartialEq)]
 #[logos(skip r"[ \r]")]
-#[logos(skip(r"\n", callback = newline_callback, priority = 3))]
+#[logos(skip(r"\n", newline_callback, priority = 3))]
 #[logos(extras = Extras)]
 enum Token {
     #[regex("[a-z]+")]
@@ -30,7 +30,6 @@ enum Token {
     Numbers,
 }
 
-fn newline_callback(lexer: &mut Lexer<Token>) -> Skip {
+fn newline_callback(lexer: &mut Lexer<Token>) {
     lexer.extras.line_num += 1;
-    Skip
 }
