@@ -238,7 +238,8 @@ mod skip_callback_function {
     fn skip_comment<'src>(lexer: &mut Lexer<'src, Token<'src>>) {
         let end = lexer
             .remainder()
-            .find("-->").unwrap_or(lexer.remainder().len());
+            .find("-->")
+            .unwrap_or(lexer.remainder().len());
         lexer.bump(end + 3);
     }
 
@@ -259,12 +260,12 @@ mod skip_callback_function {
 #[cfg(test)]
 mod skip_callback_closure {
     use super::*;
-    
+
     #[derive(Debug, Clone, Copy, Default)]
     struct Extras {
         line_num: usize,
     }
-    
+
     #[derive(Logos, Debug, PartialEq)]
     #[logos(skip r"[ \r]")]
     #[logos(skip(r"\n", callback = |lex| { lex.extras.line_num += 1; }, priority = 3))]
@@ -275,17 +276,13 @@ mod skip_callback_closure {
         #[regex("[0-9]+")]
         Numbers,
     }
-    
+
     #[test]
     fn skip_callback_closure() {
-        let mut lexer = Token::lexer(concat!(
-            "abc 123\n",
-            "ab( |23\n",
-            "Abc 123\n",
-        ));
+        let mut lexer = Token::lexer(concat!("abc 123\n", "ab( |23\n", "Abc 123\n",));
         let mut tokens = Vec::new();
         let mut error_lines: Vec<usize> = Vec::new();
-    
+
         while let Some(token_result) = lexer.next() {
             if let Ok(token) = token_result {
                 tokens.push(token);
@@ -294,19 +291,17 @@ mod skip_callback_closure {
             }
         }
 
-        assert_eq!(tokens.as_slice(), &[
-            Token::Letters,
-            Token::Numbers,
-            Token::Letters,
-            Token::Numbers,
-            Token::Letters,
-            Token::Numbers,
-        ]);
-        assert_eq!(error_lines.as_slice(), &[
-            1,
-            1,
-            2
-        ]);
+        assert_eq!(
+            tokens.as_slice(),
+            &[
+                Token::Letters,
+                Token::Numbers,
+                Token::Letters,
+                Token::Numbers,
+                Token::Letters,
+                Token::Numbers,
+            ]
+        );
+        assert_eq!(error_lines.as_slice(), &[1, 1, 2]);
     }
-    
 }
