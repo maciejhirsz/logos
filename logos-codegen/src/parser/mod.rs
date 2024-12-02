@@ -352,7 +352,7 @@ impl Parser {
 
         Some(inline.into())
     }
-    
+
     fn parse_skip_callback(&mut self, tokens: TokenStream) -> Option<SkipCallback> {
         let span = tokens.span();
         Some(match self.parse_callback(tokens) {

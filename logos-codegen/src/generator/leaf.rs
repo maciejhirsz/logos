@@ -49,7 +49,7 @@ impl<'a> Generator<'a> {
             Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
                 quote! {
                     #bump
-                    
+
                     trait SkipReturn {}
                     impl SkipReturn for () {}
                     impl SkipReturn for Skip {}
@@ -57,7 +57,7 @@ impl<'a> Generator<'a> {
                     fn callback(lex: &mut Lexer) -> impl SkipReturn {
                         #label(lex)
                     }
-                    
+
                     callback(lex);
 
                     lex.trivia();
@@ -74,7 +74,7 @@ impl<'a> Generator<'a> {
                     trait SkipReturn {}
                     impl SkipReturn for () {}
                     impl SkipReturn for Skip {}
-                    
+
                     fn callback(#arg: &mut Lexer) -> impl SkipReturn {
                         #body
                     }
