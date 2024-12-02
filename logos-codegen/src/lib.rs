@@ -233,7 +233,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let make_error_impl = match parser.error_callback.take() {
         Some(leaf::Callback::Label(label)) => Some(quote! {
-            fn make_error(lex: &#logos_path::Lexer<'s, Self>) -> #error_type {
+            fn make_error(lex: &mut #logos_path::Lexer<'s, Self>) -> #error_type {
                 #label(lex)
             }
         }),
@@ -241,7 +241,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
             let leaf::InlineCallback { arg, body, .. } = *inline;
 
             Some(quote! {
-                fn make_error(#arg: &#logos_path::Lexer<'s, Self>) -> #error_type {
+                fn make_error(#arg: &mut #logos_path::Lexer<'s, Self>) -> #error_type {
                     #body
                 }
             })
