@@ -49,10 +49,8 @@ fn word_callback(lex: &mut Lexer<Token>) -> (usize, usize) {
 /// Simple tokens to retrieve words and their location.
 #[derive(Debug, Logos)]
 #[logos(extras = (usize, usize))]
+#[logos(skip(r"\n", newline_callback))]
 enum Token {
-    #[regex(r"\n", newline_callback)]
-    Newline,
-
     #[regex(r"\w+", word_callback)]
     Word((usize, usize)),
 }
