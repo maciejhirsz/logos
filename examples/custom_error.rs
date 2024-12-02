@@ -14,8 +14,9 @@ use std::num::ParseIntError;
 #[derive(Default, Debug, Clone, PartialEq)]
 enum LexingError {
     InvalidInteger(String),
+    NonAsciiCharacter(char),
     #[default]
-    NonAsciiCharacter,
+    Other,
 }
 
 /// Error type returned by calling `lex.slice().parse()` to u8.
@@ -29,8 +30,15 @@ impl From<ParseIntError> for LexingError {
     }
 }
 
+impl LexingError {
+    fn from_lexer<'src>(lex: &mut logos::Lexer<'src, Token>) -> Self {
+        LexingError::NonAsciiCharacter(lex.slice().chars().next().unwrap())
+    }
+}
+
 #[derive(Debug, Logos, PartialEq)]
 #[logos(error = LexingError)]
+#[logos(error_callback = LexingError::from_lexer)]
 #[logos(skip r"[ \t]+")]
 enum Token {
     #[regex(r"[a-zA-Z]+")]
@@ -58,7 +66,7 @@ fn main() {
     assert_eq!(lex.next(), Some(Ok(Token::Word)));
     assert_eq!(lex.slice(), "J");
 
-    assert_eq!(lex.next(), Some(Err(LexingError::NonAsciiCharacter)));
+    assert_eq!(lex.next(), Some(Err(LexingError::NonAsciiCharacter('é'))));
     assert_eq!(lex.slice(), "é");
 
     assert_eq!(lex.next(), Some(Ok(Token::Word)));

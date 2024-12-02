@@ -34,7 +34,8 @@ The type `ErrorType` can be any type that implements `Clone`, `PartialEq`,
 `Default` and `From<E>` for each callback's error type.
 
 `ErrorType` must implement the `Default` trait because invalid tokens, i.e.,
-literals that do not match any variant, will produce `Err(ErrorType::default())`.
+literals that do not match any variant, will produce `Err(ErrorType::default())`,
+unless you specify a different constructor with `#[logos(error_callback = ...)]`.
 
 For example, here is an example using a custom error type:
 
