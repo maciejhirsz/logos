@@ -362,7 +362,7 @@ impl Parser {
                 // Probably not reachable
                 return None;
             }
-            Some(Callback::SkipCallback(cb)) => cb,
+            Some(Callback::CallbackAndSkip(cb)) => cb,
             None => {
                 self.err("Not a valid callback", span);
                 return None;

@@ -46,7 +46,7 @@ impl<'a> Generator<'a> {
                     callback(lex).construct(#constructor, lex);
                 }
             }
-            Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
+            Some(Callback::CallbackAndSkip(SkipCallback::Label(label))) => {
                 quote! {
                     #bump
 
@@ -64,7 +64,7 @@ impl<'a> Generator<'a> {
                     #name::lex(lex);
                 }
             }
-            Some(Callback::SkipCallback(SkipCallback::Inline(inline))) => {
+            Some(Callback::CallbackAndSkip(SkipCallback::Inline(inline))) => {
                 let arg = &inline.arg;
                 let body = &inline.body;
 

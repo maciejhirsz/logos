@@ -21,7 +21,7 @@ pub struct Leaf<'t> {
 pub enum Callback {
     Label(TokenStream),
     Inline(Box<InlineCallback>),
-    SkipCallback(SkipCallback),
+    CallbackAndSkip(SkipCallback),
     Skip(Span),
 }
 
@@ -43,7 +43,7 @@ impl Callback {
         match self {
             Callback::Label(tokens) => tokens.span(),
             Callback::Inline(inline) => inline.span,
-            Callback::SkipCallback(callback) => callback.span(),
+            Callback::CallbackAndSkip(callback) => callback.span(),
             Callback::Skip(skip) => *skip,
         }
     }
@@ -106,7 +106,7 @@ impl Debug for Leaf<'_> {
             Some(Callback::Label(ref label)) => write!(f, " ({})", label),
             Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
             Some(Callback::Skip(_)) => f.write_str(" (<skip>)"),
-            Some(Callback::SkipCallback(_)) => f.write_str("(<skip callback>)"),
+            Some(Callback::CallbackAndSkip(_)) => f.write_str("(<skip callback>)"),
             None => Ok(()),
         }
     }

@@ -84,7 +84,7 @@ impl Skip {
 
     pub fn into_callback(self) -> Callback {
         match self.callback {
-            Some(callback) => Callback::SkipCallback(callback),
+            Some(callback) => Callback::CallbackAndSkip(callback),
             None => Callback::Skip(self.literal.span()),
         }
     }
