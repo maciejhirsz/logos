@@ -122,7 +122,7 @@ pub struct ForkIter<'a> {
     lut: &'a [Option<NodeId>; 256],
 }
 
-impl<'a> Iterator for ForkIter<'a> {
+impl Iterator for ForkIter<'_> {
     type Item = (Range, NodeId);
 
     fn next(&mut self) -> Option<Self::Item> {
