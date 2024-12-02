@@ -231,6 +231,24 @@ pub fn generate(input: TokenStream) -> TokenStream {
         .take()
         .unwrap_or_else(|| parse_quote!(::logos));
 
+    let make_error_impl = match parser.error_callback.take() {
+        Some(leaf::Callback::Label(label)) => Some(quote! {
+            fn make_error(lex: &#logos_path::Lexer<'s, Self>) -> #error_type {
+                #label(lex)
+            }
+        }),
+        Some(leaf::Callback::Inline(inline)) => {
+            let leaf::InlineCallback { arg, body, .. } = *inline;
+
+            Some(quote! {
+                fn make_error(#arg: &#logos_path::Lexer<'s, Self>) -> #error_type {
+                    #body
+                }
+            })
+        }
+        _ => None,
+    };
+
     let generics = parser.generics();
     let this = quote!(#name #generics);
 
@@ -246,6 +264,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 fn lex(lex: &mut #logos_path::Lexer<'s, Self>) {
                     #body
                 }
+
+                #make_error_impl
             }
         }
     };

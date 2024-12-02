@@ -378,11 +378,11 @@ where
         self.token_end = self.source.find_boundary(self.token_end);
         #[cfg(not(feature = "forbid_unsafe"))]
         {
-            self.token = core::mem::ManuallyDrop::new(Some(Err(Token::Error::default())));
+            self.token = core::mem::ManuallyDrop::new(Some(Err(Token::make_error(&self))));
         }
         #[cfg(feature = "forbid_unsafe")]
         {
-            self.token = Some(Err(Token::Error::default()));
+            self.token = Some(Err(Token::make_error(&self)));
         }
     }
 

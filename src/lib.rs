@@ -76,6 +76,12 @@ pub trait Logos<'source>: Sized {
     ) -> Lexer<'source, Self> {
         Lexer::with_extras(source, extras)
     }
+
+    /// Create a new error. The default implementation uses `Error::default()`. If you want to make
+    /// your own, use `#[logos(error_callback = ...)]`
+    fn make_error(_lexer: &Lexer<'source, Self>) -> Self::Error {
+        Self::Error::default()
+    }
 }
 
 /// Type that can be returned from a callback, informing the `Lexer`, to skip

@@ -29,6 +29,7 @@ pub struct Parser {
     pub skips: Vec<Literal>,
     pub extras: MaybeVoid,
     pub error_type: MaybeVoid,
+    pub error_callback: Option<Callback>,
     pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
     types: TypeParams,
@@ -116,6 +117,25 @@ impl Parser {
                     }
                     _ => {
                         parser.err("Expected: #[logos(error = SomeType)]", span);
+                    }
+                }),
+                ("error_callback", |parser, span, value| match value {
+                    NestedValue::Assign(value) => {
+                        let callback = match parser.parse_callback(value) {
+                            Some(callback) => callback,
+                            None => {
+                                parser.err("Not a valid callback", span);
+                                return;
+                            }
+                        };
+                        if let Some(previous) = parser.error_callback.replace(callback) {
+                            parser
+                                .err("Error callback can be defined only once", span)
+                                .err("Previous definition here", previous.span());
+                        }
+                    }
+                    _ => {
+                        parser.err("Expected #[logos(error_callback = ...)]", span);
                     }
                 }),
                 ("extras", |parser, span, value| match value {
