@@ -2,7 +2,7 @@
 anyhow = "1.0.57"
 clap = {version = "3.1.18", features = ["derive"]}
 fs-err = "2.7.0"
-logos-codegen = {version = "0.14.2", path = "../logos-codegen"}
+logos-codegen = {version = "0.14.3", path = "../logos-codegen"}
 proc-macro2 = "1.0.39"
 
 [dev-dependencies]
