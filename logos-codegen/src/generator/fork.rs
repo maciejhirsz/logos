@@ -10,7 +10,7 @@ use crate::util::ToIdent;
 
 type Targets = Map<NodeId, Vec<Range>>;
 
-impl<'a> Generator<'a> {
+impl Generator<'_> {
     pub fn generate_fork(&mut self, this: NodeId, fork: &Fork, mut ctx: Context) -> TokenStream {
         let mut targets: Targets = Map::default();
 

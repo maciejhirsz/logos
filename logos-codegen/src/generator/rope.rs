@@ -4,7 +4,7 @@ use quote::quote;
 use crate::generator::{Context, Generator};
 use crate::graph::Rope;
 
-impl<'a> Generator<'a> {
+impl Generator<'_> {
     pub fn generate_rope(&mut self, rope: &Rope, mut ctx: Context) -> TokenStream {
         let miss = ctx.miss(rope.miss.first(), self);
         let read = ctx.read(rope.pattern.len());

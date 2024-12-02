@@ -241,8 +241,10 @@ where
     T: Deref,
     <T as Deref>::Target: Source,
 {
-    type Slice<'a> = <T::Target as Source>::Slice<'a>
-        where T: 'a;
+    type Slice<'a>
+        = <T::Target as Source>::Slice<'a>
+    where
+        T: 'a;
 
     fn len(&self) -> usize {
         self.deref().len()
@@ -304,6 +306,7 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     fn from_slice(s: &'source [u8]) -> Option<Self>;
 }
 
+#[allow(clippy::needless_lifetimes)]
 impl<'source> Chunk<'source> for u8 {
     const SIZE: usize = 1;
 

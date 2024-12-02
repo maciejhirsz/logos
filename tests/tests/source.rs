@@ -6,7 +6,10 @@ use logos_derive::Logos;
 struct RefSource<'s, S: ?Sized + Source>(&'s S);
 
 impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
-    type Slice<'a> = S::Slice<'a> where 's: 'a;
+    type Slice<'a>
+        = S::Slice<'a>
+    where
+        's: 'a;
 
     fn len(&self) -> usize {
         self.0.len()
