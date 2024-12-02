@@ -46,10 +46,10 @@ impl<'a> Generator<'a> {
                     callback(lex).construct(#constructor, lex);
                 }
             }
-            Some(Callback::Skip(SkipCallback::Label(label))) => {
+            Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
                 quote! {
                     #bump
-
+                    
                     trait SkipReturn {}
                     impl SkipReturn for () {}
                     impl SkipReturn for Skip {}
@@ -57,14 +57,14 @@ impl<'a> Generator<'a> {
                     fn callback(lex: &mut Lexer) -> impl SkipReturn {
                         #label(lex)
                     }
-
+                    
                     callback(lex);
 
                     lex.trivia();
                     #name::lex(lex);
                 }
             }
-            Some(Callback::Skip(SkipCallback::Inline(inline))) => {
+            Some(Callback::SkipCallback(SkipCallback::Inline(inline))) => {
                 let arg = &inline.arg;
                 let body = &inline.body;
 
@@ -74,7 +74,7 @@ impl<'a> Generator<'a> {
                     trait SkipReturn {}
                     impl SkipReturn for () {}
                     impl SkipReturn for Skip {}
-
+                    
                     fn callback(#arg: &mut Lexer) -> impl SkipReturn {
                         #body
                     }
@@ -85,7 +85,7 @@ impl<'a> Generator<'a> {
                     #name::lex(lex);
                 }
             }
-            Some(Callback::SkipEmpty(_)) => {
+            Some(Callback::Skip(_)) => {
                 quote! {
                     #bump
 

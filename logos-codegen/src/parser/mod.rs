@@ -352,17 +352,17 @@ impl Parser {
 
         Some(inline.into())
     }
-
+    
     fn parse_skip_callback(&mut self, tokens: TokenStream) -> Option<SkipCallback> {
         let span = tokens.span();
         Some(match self.parse_callback(tokens) {
             Some(Callback::Inline(inline)) => SkipCallback::Inline(inline),
             Some(Callback::Label(label)) => SkipCallback::Label(label),
-            Some(Callback::SkipEmpty(_)) => {
+            Some(Callback::Skip(_)) => {
                 // Probably not reachable
                 return None;
             }
-            Some(Callback::Skip(cb)) => cb,
+            Some(Callback::SkipCallback(cb)) => cb,
             None => {
                 self.err("Not a valid callback", span);
                 return None;
