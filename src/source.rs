@@ -306,7 +306,8 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     fn from_slice(s: &'source [u8]) -> Option<Self>;
 }
 
-impl Chunk<'_> for u8 {
+#[allow(clippy::needless_lifetimes)]
+impl<'source> Chunk<'source> for u8 {
     const SIZE: usize = 1;
 
     #[inline]
