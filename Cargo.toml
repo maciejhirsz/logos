@@ -83,7 +83,7 @@ name = "calculator"
 path = "examples/calculator.rs"
 
 [[example]]
-name = "contexts"
+name = "string-interpolation"
 path = "examples/string-interpolation.rs"
 
 [[example]]
