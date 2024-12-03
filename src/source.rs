@@ -241,8 +241,10 @@ where
     T: Deref,
     <T as Deref>::Target: Source,
 {
-    type Slice<'a> = <T::Target as Source>::Slice<'a>
-        where T: 'a;
+    type Slice<'a>
+        = <T::Target as Source>::Slice<'a>
+    where
+        T: 'a;
 
     fn len(&self) -> usize {
         self.deref().len()
