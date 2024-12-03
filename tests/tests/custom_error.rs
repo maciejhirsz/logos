@@ -36,8 +36,7 @@ fn parse_number(input: &str) -> Result<u32, LexingError> {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(error = LexingError)]
-#[logos(error_callback = LexingError::unrecognised_character)]
+#[logos(error(LexingError, LexingError::unrecognised_character))]
 enum Token<'a> {
     #[regex(r"[0-9]+", |lex| parse_number(lex.slice()))]
     Number(u32),

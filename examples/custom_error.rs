@@ -37,8 +37,7 @@ impl LexingError {
 }
 
 #[derive(Debug, Logos, PartialEq)]
-#[logos(error = LexingError)]
-#[logos(error_callback = LexingError::from_lexer)]
+#[logos(error(LexingError, LexingError::from_lexer))]
 #[logos(skip r"[ \t]+")]
 enum Token {
     #[regex(r"[a-zA-Z]+")]
