@@ -12,78 +12,42 @@ It is important to note that:
 
 ## Example
 
-The following example demonstrates how to use `morph` to handle C-style block comments by dynamically switching contexts:
+The following example demonstrates how to use `morph` to handle a C-style language that also supports python blocks:
 
 ```rust
-use logos::Logos;
+#[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(skip r"\s+")]
+enum CToken {
+    /* Tokens supporting C syntax */
+    // ...
+    #[regex(r#"extern\s+"python"\s*\{"#, python_block_callback)]
+    PythonBlock(Vec<PythonToken>),
+}
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(skip r"\s+")]
-enum GlobalContext {
-    #[regex("[a-zA-Z]+")]
-    Word,
-    #[token(",")]
-    Comma,
-    #[token(".")]
-    Period,
-    #[token("/*")]
-    BlockCommentStart,
+enum PythonToken {
+    #[token("}")]
+    ExitPythonBlock,
+    /* Tokens supporting Python syntax */
+    // ...
 }
 
-#[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[^*]+")]
-#[logos(skip r"\*")]
-enum BlockCommentContext {
-    #[token("*/")]
-    BlockCommentEnd,
-}
-
-fn main() {
-    let mut lex = GlobalContext::lexer(
-        "\
-        Lorem ipsum /***inline** comment*/ dolor sit amet,
-        /* Multiline\n\
-        * comment *** \n\
-        ***/\n\
-        consectetur /***/ adipiscing.\n\
-        ",
-    );
-
-    while let Some(result) = lex.next() {
-        match result {
-            Ok(token) => match token {
-                GlobalContext::BlockCommentStart => {
-                    // We transition to the BlockCommentContext.
-                    let mut lex2 = lex.morph::<BlockCommentContext>();
-                    // There is only one possible token in this context and that
-                    // is `MultilineCommentEnd`, so only one `next` is all we need.
-                    // The rest of the content of the comment will be skipped.
-                    lex2.next();
-                    // We switch back to the GlobalContext.
-                    lex = lex2.morph();
-                }
-                _ => println!("{:?}: {}", token, lex.slice()),
-            },
-            Err(()) => panic!("Some error occurred during lexing"),
+fn python_block_callback(lex: &mut Lexer<CToken>) -> Option<Vec<PythonToken>> {
+    let mut python_lexer = lex.clone().morph::<PythonToken>();
+    let mut tokens = Vec::new();
+    while let Some(token) = python_lexer.next() {
+        match token {
+            Ok(PythonToken::ExitPythonBlock) => break,
+            Err(_) => return None,
+            Ok(tok) => tokens.push(tok),
         }
     }
+    *lex = python_lexer.morph();
+    Some(tokens)
 }
 ```
 
-### Output:
-
-```
-Word: Lorem
-Word: ipsum
-Word: dolor
-Word: sit
-Word: amet
-Comma: ,
-Word: consectetur
-Word: adipiscing
-Period: .
-```
-
-The same outcome should be achievable using the [`skip`](./attributes/logos.html) attribute with a complex regex, but I find this method more robust.
+Note that if we want to use `morph` inside a callback we need to be able to clone the original lexer, as `morph` needs to take ownership but the callback receives only a reference to the lexer.
 
 For a more in depth example check out [String interpolation](./examples/string-interpolation.md).
