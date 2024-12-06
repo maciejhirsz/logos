@@ -1,6 +1,6 @@
 # String interpolation
 
-String interpolation is the ability to generate different strings are runtime, depending on the values of interpolated values. Many programming languages, like Python's `f-string`, provide built-in features for string interpolation. In this tutorial, we will see how we can build such a feature.
+String interpolation is the ability to generate different strings at runtime, depending on the values of interpolated values. Many programming languages provide built-in features for string interpolation, like Python's `f-string`. In this tutorial, we will see how we can build such a feature.
 
 The input for our program will be written in a custom grammar that supports variable definitions. For simplicity, only string variables are supported. In addition to string literals, we also support string interpolation, which allows the incorporation of the values of previously defined variables into the current string.
 
