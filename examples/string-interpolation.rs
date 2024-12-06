@@ -1,7 +1,9 @@
+/* ANCHOR: all */
 use std::collections::HashMap;
 
 use logos::{Lexer, Logos};
 
+/* ANCHOR: lexers */
 type SymbolTable = HashMap<String, String>;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
@@ -40,7 +42,9 @@ enum StringInterpolationContext {
     #[token("}")]
     InterpolationEnd,
 }
+/* ANCHOR_END: lexers */
 
+/* ANCHOR: variable_definition */
 fn get_string_content(lex: &mut Lexer<StringContext>) -> String {
     let mut s = String::new();
     while let Some(Ok(token)) = lex.next() {
@@ -67,7 +71,9 @@ fn variable_definition(lex: &mut Lexer<VariableDefinitionContext>) -> Option<(St
     }
     None
 }
+/* ANCHOR_END: variable_definition */
 
+/* ANCHOR: evaluate_interpolation */
 fn evaluate_interpolation(lex: &mut Lexer<StringContext>) -> Option<String> {
     let mut lex2 = lex.clone().morph::<StringInterpolationContext>();
     let mut interpolation = String::new();
@@ -88,14 +94,18 @@ fn evaluate_interpolation(lex: &mut Lexer<StringContext>) -> Option<String> {
     *lex = lex2.morph();
     Some(interpolation)
 }
+/* ANCHOR_END: evaluate_interpolation */
 
+/* ANCHOR: get_variable_value */
 fn get_variable_value(lex: &mut Lexer<StringInterpolationContext>) -> Option<String> {
     if let Some(value) = lex.extras.get(lex.slice()) {
         return Some(value.clone());
     }
     None
 }
+/* ANCHOR_END: get_variable_value */
 
+/* ANCHOR: main */
 fn test_variable_definition(
     expeected_id: &str,
     expeected_value: &str,
@@ -125,3 +135,5 @@ fn main() {
     test_variable_definition("greeting2", "Hi Mark Scott!", lex.next());
     test_variable_definition("greeting3", "Hi Mark Scott!!", lex.next());
 }
+/* ANCHOR_END: main */
+/* ANCHOR_END: all */

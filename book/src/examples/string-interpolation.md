@@ -37,44 +37,7 @@ To address this, many lexer generators offer the ability to have separate lexers
 For our example we'll use three lexers, one will handle the general syntax (variable definitions), another will handle the strings, and the third one will handle the interpolations:
 
 ```rust,no_run,noplayground
-type SymbolTable = HashMap<String, String>;
-
-#[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"\s+")]
-#[logos(extras = SymbolTable)]
-enum VariableDefinitionContext {
-    #[regex(r"[[:alpha:]][[:alnum:]]*", variable_definition)]
-    Id((String /* variable name */, String /* value */)),
-    #[token("=")]
-    Equals,
-    #[token("'")]
-    Quote,
-}
-
-#[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(extras = SymbolTable)]
-enum StringContext {
-    #[token("'")]
-    Quote,
-    #[regex("[^'$]+")]
-    Content,
-    #[token("${", evaluate_interpolation)]
-    InterpolationStart(String /* evaluated value of the interpolation */),
-    #[token("$")]
-    DollarSign,
-}
-
-#[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"\s+")]
-#[logos(extras = SymbolTable)]
-enum StringInterpolationContext {
-    #[regex(r"[[:alpha:]][[:alnum:]]*", get_variable_value)]
-    Id(String /* value for the given id */),
-    #[token("'")]
-    Quote,
-    #[token("}")]
-    InterpolationEnd,
-}
+{{#include ../../../examples/string-interpolation.rs:lexers}}
 ```
 
 The idea for our parser will be the following:
@@ -105,35 +68,7 @@ Additionally, we incorporated some [callbacks](./callbacks.md) to handle the hea
 Below is an example of how the main function of our parser would look like:
 
 ```rust,no_run,noplayground
-fn test_variable_definition(
-    expeected_id: &str,
-    expeected_value: &str,
-    token: Option<Result<VariableDefinitionContext, ()>>,
-) {
-    if let Some(Ok(VariableDefinitionContext::Id((id, value)))) = token {
-        assert_eq!(id, expeected_id);
-        assert_eq!(value, expeected_value);
-    } else {
-        panic!("Expected key: {} not found", expeected_id);
-    }
-}
-
-fn main() {
-    let mut lex = VariableDefinitionContext::lexer(
-        "\
-        name = 'Mark'\n\
-        greeting = 'Hi ${name}!'\n\
-        surname = 'Scott'\n\
-        greeting2 = 'Hi ${name ' ' surname}!'\n\
-        greeting3 = 'Hi ${name ' ${surname}!'}!'\n\
-        ",
-    );
-    test_variable_definition("name", "Mark", lex.next());
-    test_variable_definition("greeting", "Hi Mark!", lex.next());
-    test_variable_definition("surname", "Scott", lex.next());
-    test_variable_definition("greeting2", "Hi Mark Scott!", lex.next());
-    test_variable_definition("greeting3", "Hi Mark Scott!!", lex.next());
-}
+{{#include ../../../examples/string-interpolation.rs:main}}
 ```
 
 Now, let’s define the callbacks that make this functionality possible. In Logos, context switching is handled using the [`morph`](https://docs.rs/logos/0.11.0-rc2/logos/struct.Lexer.html#method.morph) method. This method takes ownership of the current Lexer and transforms it into a lexer for a new token type.
@@ -141,27 +76,7 @@ Now, let’s define the callbacks that make this functionality possible. In Logo
 ### `variable_definition`
 
 ```rust,no_run,noplayground
-fn variable_definition(lex: &mut Lexer<VariableDefinitionContext>) -> Option<(String, String)> {
-    let id = lex.slice().to_string();
-    if let Some(Ok(VariableDefinitionContext::Equals)) = lex.next() {
-        if let Some(Ok(VariableDefinitionContext::Quote)) = lex.next() {
-            let mut lex2 = lex.clone().morph::<StringContext>();
-            let mut value = String::new();
-            while let Some(Ok(token)) = lex2.next() {
-                match token {
-                    StringContext::Content => value.push_str(lex2.slice()),
-                    StringContext::DollarSign => value.push_str("$"),
-                    StringContext::InterpolationStart(eval) => value.push_str(&eval),
-                    StringContext::Quote => break,
-                }
-            }
-            *lex = lex2.morph();
-            lex.extras.insert(id.clone(), value.clone());
-            return Some((id, value));
-        }
-    }
-    None
-}
+{{#include ../../../examples/string-interpolation.rs:variable_definition}}
 ```
 
 This callback is triggered when the `VariableDefinitionContext` lexer finds an `Id` token.
@@ -169,8 +84,8 @@ This callback is triggered when the `VariableDefinitionContext` lexer finds an `
 - We extract the variable name using `lex.slice().to_string()`.
 - We expect an `Equals` (`=`) followed by a `Quote` (`'`) to signify the start of the string.
 - After that we clone the lexer and transition to `StringContext` using the `morph` method. Note that cloning is necessary because `morph` takes ownership of the lexer but callbacks only get a mutable reference to it.
-- In the `StringContext` we process the content of the string, concatenating all its parts into `value`.
-- Once the closing `Quote` (`'`) is found, we transitions back to `VariableDefinitionContext`.
+- In the `StringContext` we call the `get_string_content` function which parses the content of the string, concatenating all its parts into `value`.
+- Once the closing `Quote` (`'`) is found, we transition back to `VariableDefinitionContext`.
 - Lastly we insert the key-value pair into the symbol table and return the `(id, value)` touple which Logos will assign to the `Id` token.
 
 ### `evaluate_interpolation`
@@ -178,40 +93,14 @@ This callback is triggered when the `VariableDefinitionContext` lexer finds an `
 The `variable_definition` callback expects the `InterpolationStart` token to have the evaluated value already assigned to it. This is where the `evaluate_interpolation` callback comes in:
 
 ```rust,no_run,noplayground
-fn evaluate_interpolation(lex: &mut Lexer<StringContext>) -> Option<String> {
-    let mut lex2 = lex.clone().morph::<StringInterpolationContext>();
-    let mut interpolation = String::new();
-    while let Some(result) = lex2.next() {
-        match result {
-            Ok(token) => match token {
-                StringInterpolationContext::Id(value) => interpolation.push_str(&value),
-                StringInterpolationContext::Quote => {
-                    *lex = lex2.morph();
-                    while let Some(Ok(token)) = lex.next() {
-                        match token {
-                            StringContext::Content => interpolation.push_str(lex.slice()),
-                            StringContext::DollarSign => interpolation.push_str("$"),
-                            StringContext::InterpolationStart(eval) => interpolation.push_str(&eval),
-                            StringContext::Quote => break,
-                        }
-                    }
-                    lex2 = lex.clone().morph();
-                }
-                StringInterpolationContext::InterpolationEnd => break,
-            },
-            Err(()) => panic!("Interpolation error"),
-        }
-    }
-    *lex = lex2.morph();
-    Some(interpolation)
-}
+{{#include ../../../examples/string-interpolation.rs:evaluate_interpolation}}
 ```
 
 This callback is triggered when the `StringContext` lexer finds an `InterpolationStart` (`${`) token, signaling that an interpolation expression is beginning.
 
 - We immediately transition to `StringInterpolationContext` using `morph`.
 - If we find an `Id` we append its value to the `interpolation` string.
-- A `Quote` (`'`) in this context signals the beginning of a new string nested inside the interpolation. We switch back to `StringContext` and continue parsing as we did in the `variable_definition` callback.
+- A `Quote` (`'`) in this context signals the beginning of a new string nested inside the interpolation. We switch back to `StringContext` and parse the nested string using the `get_string_content` function defined previously.
   - Note that the recursion happens here, as finding a new `InterpolationStart` token would create a new call to `evaluate_interpolation`.
 - If we find `InterpolationEnd` (`}`), the interpolation expression is complete. We switch back to `StringContext` and return the `interpolation` string so it gets assigned to the `InterpolationStart` token.
 
@@ -220,18 +109,16 @@ This callback is triggered when the `StringContext` lexer finds an `Interpolatio
 Lastly we have the `get_variable_value` callback. This callback's only job is to assign `Id` tokens in the `StringInterpolationContext` the value of the appropriate variable found in the symbol table.
 
 ```rust,no_run,noplayground
-fn get_variable_value(lex: &mut Lexer<StringInterpolationContext>) -> Option<String> {
-    if let Some(value) = lex.extras.get(lex.slice()) {
-        return Some(value.clone());
-    }
-    None
-}
+{{#include ../../../examples/string-interpolation.rs:get_variable_value}}
 ```
 
 ## Putting it all together
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs}}
+{{#include ../../../examples/string-interpolation.rs:all}}
 ```
 
-The only change here was extracting the `StringContext` paring logic into a separate function `get_string_content` to avoid code duplication.
+As with the other examples you may run it by cloning the [logos repository](https://github.com/maciejhirsz/logos) and executing this command:
+```bash
+cargo run --example string-interpolation
+```
