@@ -216,7 +216,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Parsing additional options (extras, source, ...)");
 
-    let error_type = parser.error_type.take();
+    let (error_type, error_callback) = parser::ErrorType::unwrap(parser.error_type.take());
     let extras = parser.extras.take();
     let source = parser
         .source
@@ -230,6 +230,24 @@ pub fn generate(input: TokenStream) -> TokenStream {
         .logos_path
         .take()
         .unwrap_or_else(|| parse_quote!(::logos));
+
+    let make_error_impl = match error_callback {
+        Some(leaf::Callback::Label(label)) => Some(quote! {
+            fn make_error(lex: &mut #logos_path::Lexer<'s, Self>) -> #error_type {
+                #label(lex)
+            }
+        }),
+        Some(leaf::Callback::Inline(inline)) => {
+            let leaf::InlineCallback { arg, body, .. } = *inline;
+
+            Some(quote! {
+                fn make_error(#arg: &mut #logos_path::Lexer<'s, Self>) -> #error_type {
+                    #body
+                }
+            })
+        }
+        _ => None,
+    };
 
     let generics = parser.generics();
     let this = quote!(#name #generics);
@@ -246,6 +264,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 fn lex(lex: &mut #logos_path::Lexer<'s, Self>) {
                     #body
                 }
+
+                #make_error_impl
             }
         }
     };
