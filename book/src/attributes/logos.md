@@ -33,10 +33,6 @@ This can be changed by using `#[logos(error = ErrorType)]` attribute on the enum
 The type `ErrorType` can be any type that implements `Clone`, `PartialEq`,
 `Default` and `From<E>` for each callback's error type.
 
-`ErrorType` must implement the `Default` trait because invalid tokens, i.e.,
-literals that do not match any variant, will produce `Err(ErrorType::default())`,
-unless you provide a callback with the alternate syntax `#[logos(error(ErrorType, callback = ...))]`
-
 For example, here is an example using a custom error type:
 
 ```rust,no_run,noplayground
@@ -46,6 +42,24 @@ For example, here is an example using a custom error type:
 You can add error variants to `LexingError`,
 and implement `From<E>` for each error type `E` that could
 be returned by a callback. See [callbacks](../callbacks.md).
+
+`ErrorType` must implement the `Default` trait because invalid tokens, i.e.,
+literals that do not match any variant, will produce `Err(ErrorType::default())`.
+
+Alternatively, you can provide a callback with the alternate syntax
+`#[logos(error(ErrorType, callback = ...))]`, which allows you to include information
+from the lexer such as the span where the error occurred:
+
+```rust,no_run,noplayground
+#[derive(Logos)]
+#[logos(error(Range<usize>, callback = |lex| lex.span()))]
+enum Token {
+    #[token("a")]
+    A,
+    #[token("b")]
+    B,
+}
+```
 
 ## Specifying path to logos
 
