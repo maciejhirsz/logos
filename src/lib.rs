@@ -78,6 +78,7 @@ pub trait Logos<'source>: Sized {
     }
 
     #[inline(always)]
+    #[doc(hidden)]
     fn make_error(lexer: &mut Lexer<'source, Self>) {
         use internal::LexerInternal as _;
         lexer.set_error(Self::Error::default())
