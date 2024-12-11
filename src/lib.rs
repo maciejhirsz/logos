@@ -79,6 +79,7 @@ pub trait Logos<'source>: Sized {
 
     /// Create a new error. The default implementation uses `Error::default()`. If you want to make
     /// your own, use `#[logos(error_callback = ...)]`
+    #[inline(always)]
     fn make_error(_lexer: &mut Lexer<'source, Self>) -> Self::Error {
         Self::Error::default()
     }
