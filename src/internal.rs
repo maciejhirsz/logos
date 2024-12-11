@@ -37,8 +37,6 @@ pub trait LexerInternal<'source> {
     /// Guarantee that `token_end` is at char boundary for `&str`.
     fn error(&mut self);
 
-    fn set_error(&mut self, error: <Self::Token as Logos<'source>>::Error);
-
     fn end(&mut self);
 
     fn set(

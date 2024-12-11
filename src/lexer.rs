@@ -380,18 +380,6 @@ where
     }
 
     #[inline]
-    fn set_error(&mut self, error: Token::Error) {
-        #[cfg(not(feature = "forbid_unsafe"))]
-        {
-            self.token = core::mem::ManuallyDrop::new(Some(Err(error)));
-        }
-        #[cfg(feature = "forbid_unsafe")]
-        {
-            self.token = Some(Err(error));
-        }
-    }
-
-    #[inline]
     fn end(&mut self) {
         self.token = Default::default();
     }
