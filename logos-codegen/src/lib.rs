@@ -233,16 +233,22 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let make_error_impl = match error_callback {
         Some(leaf::Callback::Label(label)) => Some(quote! {
-            fn make_error(lex: &mut #logos_path::Lexer<'s, Self>) -> #error_type {
-                #label(lex)
+            #[inline]
+            fn make_error(mut lex: &mut #logos_path::Lexer<'s, Self>) {
+                use #logos_path::internal::LexerInternal;
+                let error = #label(&mut lex);
+                lex.set_error(error);
             }
         }),
         Some(leaf::Callback::Inline(inline)) => {
             let leaf::InlineCallback { arg, body, .. } = *inline;
 
             Some(quote! {
-                fn make_error(#arg: &mut #logos_path::Lexer<'s, Self>) -> #error_type {
-                    #body
+                #[inline]
+                fn make_error(#arg: &mut #logos_path::Lexer<'s, Self>) {
+                    use #logos_path::internal::LexerInternal;
+                    let error = #body;
+                    #arg.set_error(error)
                 }
             })
         }
