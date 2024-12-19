@@ -22,7 +22,7 @@ where `literal` can be any `&str` or `&[u8]` string literal,
 and `flag` can by of: `case`, `ascii_case`. Only `literal` is **required**,
 others are optional.
 
-You can stack any number of `#[token]` and or `#[regex`] attributes on top of
+You can stack any number of `#[token]` and or `#[regex]` attributes on top of
 the same variant.
 
 ```admonish info
