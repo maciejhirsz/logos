@@ -20,11 +20,11 @@ do backtracking. This means that anytime a byte is read from the input source,
 it will never be read again. This implementation choice comes at a cost: not
 all valid regexes are supported by **Logos**[^1].
 
-For reference, **Logos** parses regexes using `regex-syntax = 0.6`, and
+For reference, **Logos** parses regexes using `regex-syntax = 0.8.2`, and
 transforms its high-level intermediate representation (HIR) into some
 medium intermediate representation (MIR). From HIR, MIR does not support
 the following
-[`HirKind`](https://docs.rs/regex-syntax/0.6.0/regex_syntax/hir/enum.HirKind.html)s:
+[`HirKind`](https://docs.rs/regex-syntax/0.8.2/regex_syntax/hir/enum.HirKind.html)s:
 
 + Non-greedy repetitions, i.e., matching as little as possible as given pattern.
 + `".*"` and `".+"` repetition patterns, because they will potentially consume
