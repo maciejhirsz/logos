@@ -1,6 +1,7 @@
 use super::internal::LexerInternal;
 use super::Logos;
 use crate::source::{self, Source};
+use crate::utils;
 
 use core::fmt::{self, Debug};
 use core::ops::{Deref, DerefMut};
@@ -378,11 +379,11 @@ where
         self.token_end = self.source.find_boundary(self.token_end);
         #[cfg(not(feature = "forbid_unsafe"))]
         {
-            self.token = core::mem::ManuallyDrop::new(Some(Err(Token::Error::default())));
+            self.token = core::mem::ManuallyDrop::new(Some(Err(utils::error_from_lexer(self))));
         }
         #[cfg(feature = "forbid_unsafe")]
         {
-            self.token = Some(Err(Token::Error::default()));
+            self.token = Some(Err(utils::error_from_lexer(self)));
         }
     }
 

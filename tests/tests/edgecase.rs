@@ -324,12 +324,24 @@ mod type_params {
     use super::*;
     use std::num::ParseIntError;
 
-    #[derive(Debug, Clone, PartialEq, Default)]
-    struct LexingError;
+    #[derive(Debug, Clone, PartialEq)]
+    enum LexingError {
+        ParseIntError(ParseIntError),
+        Other { source: String, span: logos::Span },
+    }
+
+    impl<'source, Extras> logos::DefaultLexerError<'source, str, Extras> for LexingError {
+        fn from_lexer<'e>(source: &'source str, span: logos::Span, _: &'e Extras) -> Self {
+            LexingError::Other {
+                source: source.to_owned(),
+                span,
+            }
+        }
+    }
 
     impl From<ParseIntError> for LexingError {
-        fn from(_: ParseIntError) -> Self {
-            LexingError
+        fn from(e: ParseIntError) -> Self {
+            LexingError::ParseIntError(e)
         }
     }
 
