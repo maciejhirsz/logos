@@ -1,35 +1,45 @@
+use logos::DefaultLexerError;
 use logos_derive::Logos;
 use std::num::{IntErrorKind, ParseIntError};
 use tests::assert_lex;
 
-#[derive(Debug, Clone, PartialEq, Default)]
-enum LexingError {
+#[derive(Debug, Clone, PartialEq)]
+enum CustomError {
     NumberTooLong,
     NumberNotEven(u32),
-    #[default]
-    Other,
+    Unknown,
+    Generic { source: String, span: logos::Span },
 }
 
-impl From<ParseIntError> for LexingError {
-    fn from(value: ParseIntError) -> Self {
-        match value.kind() {
-            IntErrorKind::PosOverflow => LexingError::NumberTooLong,
-            _ => LexingError::Other,
+impl<'source, Extras> DefaultLexerError<'source, str, Extras> for CustomError {
+    fn from_lexer<'e>(source: &'source str, span: logos::Span, _: &'e Extras) -> Self {
+        CustomError::Generic {
+            source: source.to_owned(),
+            span,
         }
     }
 }
 
-fn parse_number(input: &str) -> Result<u32, LexingError> {
+impl From<ParseIntError> for CustomError {
+    fn from(value: ParseIntError) -> Self {
+        match value.kind() {
+            IntErrorKind::PosOverflow => CustomError::NumberTooLong,
+            _ => CustomError::Unknown,
+        }
+    }
+}
+
+fn parse_number(input: &str) -> Result<u32, CustomError> {
     let num = input.parse::<u32>()?;
-    if num % 2 == 0 {
+    if input.parse::<u32>()? % 2 == 0 {
         Ok(num)
     } else {
-        Err(LexingError::NumberNotEven(num))
+        Err(CustomError::NumberNotEven(num))
     }
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(error = LexingError)]
+#[logos(error = CustomError)]
 enum Token<'a> {
     #[regex(r"[0-9]+", |lex| parse_number(lex.slice()))]
     Number(u32),
@@ -39,19 +49,27 @@ enum Token<'a> {
 
 #[test]
 fn test() {
+    let source = "123abc1234xyz1111111111111111111111111111111111111111111111111111111,";
     assert_lex(
-        "123abc1234xyz1111111111111111111111111111111111111111111111111111111,",
+        source,
         &[
-            (Err(LexingError::NumberNotEven(123)), "123", 0..3),
+            (Err(CustomError::NumberNotEven(123)), "123", 0..3),
             (Ok(Token::Identifier("abc")), "abc", 3..6),
             (Ok(Token::Number(1234)), "1234", 6..10),
             (Ok(Token::Identifier("xyz")), "xyz", 10..13),
             (
-                Err(LexingError::NumberTooLong),
+                Err(CustomError::NumberTooLong),
                 "1111111111111111111111111111111111111111111111111111111",
                 13..68,
             ),
-            (Err(LexingError::Other), ",", 68..69),
+            (
+                Err(CustomError::Generic {
+                    source: source.into(),
+                    span: 68..69,
+                }),
+                ",",
+                68..69,
+            ),
         ],
     );
 }

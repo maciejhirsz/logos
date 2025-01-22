@@ -1,5 +1,5 @@
 use crate::source::Chunk;
-use crate::{Filter, FilterResult, Lexer, Logos, Skip};
+use crate::{utils, Filter, FilterResult, Lexer, Logos, Skip};
 
 /// Trait used by the functions contained in the `Lexicon`.
 ///
@@ -72,7 +72,7 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for bool {
     {
         match self {
             true => lex.set(Ok(c(()))),
-            false => lex.set(Err(T::Error::default())),
+            false => lex.set(Err(utils::error_from_lexer(lex))),
         }
     }
 }
@@ -85,7 +85,7 @@ impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Option<P> {
     {
         match self {
             Some(product) => lex.set(Ok(c(product))),
-            None => lex.set(Err(T::Error::default())),
+            None => lex.set(Err(utils::error_from_lexer(lex))),
         }
     }
 }

@@ -1,12 +1,17 @@
-use logos::{Lexer, Logos as _, Skip};
+use logos::{DefaultLexerError, Lexer, Logos as _, Skip};
 use logos_derive::Logos;
 use tests::assert_lex;
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum LexingError {
     ParseNumberError,
-    #[default]
     Other,
+}
+
+impl<'source> DefaultLexerError<'source, str, ()> for LexingError {
+    fn from_lexer<'e>(_: &'source str, _: logos::Span, _: &'e ()) -> Self {
+        LexingError::Other
+    }
 }
 
 impl From<std::num::ParseIntError> for LexingError {
@@ -176,11 +181,19 @@ mod any_token_callback {
 mod return_result_skip {
     use super::*;
 
-    #[derive(Debug, Default, PartialEq, Clone)]
+    #[derive(Debug, PartialEq, Clone)]
     enum LexerError {
         UnterminatedComment,
-        #[default]
-        Other,
+        Other { source: String, span: logos::Span },
+    }
+
+    impl<'source, Extras> DefaultLexerError<'source, str, Extras> for LexerError {
+        fn from_lexer<'e>(source: &'source str, span: logos::Span, _: &'e Extras) -> Self {
+            LexerError::Other {
+                source: source.to_owned(),
+                span,
+            }
+        }
     }
 
     #[derive(Logos, Debug, PartialEq)]
