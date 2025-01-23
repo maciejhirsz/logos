@@ -201,7 +201,6 @@ mod tests {
     use std::num::NonZeroU32;
 
     use super::*;
-    use crate::graph::Node;
     use pretty_assertions::assert_eq;
 
     #[test]
