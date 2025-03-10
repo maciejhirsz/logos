@@ -33,9 +33,6 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[package.metadata]
-msrv = "1.74.0" # Needed to duplicate, because cargo-msrv does not support workspace
-
 [package.metadata.release]
 pre-release-replacements = [
   {file="book/src/getting-started.md", search="logos = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos = \"{{version}}\"", exactly=1},
