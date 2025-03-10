@@ -24,7 +24,7 @@ jobs:
         bins: cargo-codspeed
 
     - name: Build the benchmark target(s)
-      run: cargo codspeed build
+      run: cargo codspeed build --workspace
 
     - name: Run the benchmarks
       uses: CodSpeedHQ/action@v3
