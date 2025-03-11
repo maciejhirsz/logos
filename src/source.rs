@@ -4,14 +4,19 @@
 //! * `Source` - implemented by default for `&str`, `&[u8]` and wrapper types, used by the `Lexer`.
 //! * `Slice` - slices of `Source`, returned by `Lexer::slice`.
 
-use std::fmt::Debug;
-use std::ops::Range;
+use core::fmt::Debug;
+use core::ops::{Deref, Range};
 
 /// Trait for types the `Lexer` can read from.
 ///
 /// Most notably this is implemented for `&str`. It is unlikely you will
 /// ever want to use this Trait yourself, unless implementing a new `Source`
 /// the `Lexer` can use.
+///
+/// SAFETY: Unless the unsafe functions of this trait are disabled with the `forbid_unsafe`
+/// feature, the correctness of the unsafe functions of this trait depend on the correct
+/// implementation of the `len` and `find_boundary` functions so generated code does not request
+/// out-of-bounds access.
 #[allow(clippy::len_without_is_empty)]
 pub trait Source {
     /// A type this `Source` can be sliced into.
@@ -43,14 +48,17 @@ pub trait Source {
     where
         Chunk: self::Chunk<'a>;
 
-    /// Read a chunk of bytes into an array without doing bounds checks.
+    /// Read a byte without doing bounds checks.
     ///
     /// # Safety
     ///
     /// Offset should not exceed bounds.
-    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
-    where
-        Chunk: self::Chunk<'a>;
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8;
+
+    /// Read a byte with bounds checking.
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8;
 
     /// Get a slice of the source at given range. This is analogous to
     /// `slice::get(range)`.
@@ -79,6 +87,7 @@ pub trait Source {
     ///     assert_eq!(<str as Source>::slice_unchecked(&foo, 51..59), "Eschaton");
     /// }
     /// ```
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_>;
 
     /// For `&str` sources attempts to find the closest `char` boundary at which source
@@ -110,20 +119,28 @@ impl Source for str {
     where
         Chunk: self::Chunk<'a>,
     {
+        #[cfg(not(feature = "forbid_unsafe"))]
         if offset + (Chunk::SIZE - 1) < self.len() {
             // # Safety: we just performed a bound check.
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
         }
+
+        #[cfg(feature = "forbid_unsafe")]
+        Chunk::from_slice(self.as_bytes().slice(offset..Chunk::SIZE + offset)?)
     }
 
     #[inline]
-    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
-    where
-        Chunk: self::Chunk<'a>,
-    {
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
         Chunk::from_ptr(self.as_ptr().add(offset))
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self.as_bytes()[offset]
     }
 
     #[inline]
@@ -131,6 +148,7 @@ impl Source for str {
         self.get(range)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &str {
         debug_assert!(
@@ -171,19 +189,27 @@ impl Source for [u8] {
     where
         Chunk: self::Chunk<'a>,
     {
+        #[cfg(not(feature = "forbid_unsafe"))]
         if offset + (Chunk::SIZE - 1) < self.len() {
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
         }
+
+        #[cfg(feature = "forbid_unsafe")]
+        Chunk::from_slice(self.slice(offset..Chunk::SIZE + offset)?)
     }
 
     #[inline]
-    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
-    where
-        Chunk: self::Chunk<'a>,
-    {
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
         Chunk::from_ptr(self.as_ptr().add(offset))
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self[offset]
     }
 
     #[inline]
@@ -191,6 +217,7 @@ impl Source for [u8] {
         self.get(range)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     #[inline]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> &[u8] {
         debug_assert!(
@@ -209,17 +236,15 @@ impl Source for [u8] {
     }
 }
 
-#[cfg(feature = "std")]
-use std::ops::Deref;
-
-#[cfg(feature = "std")]
 impl<T> Source for T
 where
     T: Deref,
     <T as Deref>::Target: Source,
 {
-    type Slice<'a> = <T::Target as Source>::Slice<'a>
-        where T: 'a;
+    type Slice<'a>
+        = <T::Target as Source>::Slice<'a>
+    where
+        T: 'a;
 
     fn len(&self) -> usize {
         self.deref().len()
@@ -232,17 +257,21 @@ where
         self.deref().read(offset)
     }
 
-    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
-    where
-        Chunk: self::Chunk<'a>,
-    {
-        self.deref().read_unchecked(offset)
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
+        self.deref().read_byte_unchecked(offset)
+    }
+
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self.deref().read_byte(offset)
     }
 
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
         self.deref().slice(range)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_> {
         self.deref().slice_unchecked(range)
     }
@@ -268,15 +297,29 @@ pub trait Chunk<'source>: Sized + Copy + PartialEq + Eq {
     /// # Safety
     ///
     /// Raw byte pointer should point to a valid location in source.
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn from_ptr(ptr: *const u8) -> Self;
+
+    /// Create a chunk from a slice.
+    /// Returns None if the slice is not long enough to produce the chunk.
+    #[cfg(feature = "forbid_unsafe")]
+    fn from_slice(s: &'source [u8]) -> Option<Self>;
 }
 
+#[allow(clippy::needless_lifetimes)]
 impl<'source> Chunk<'source> for u8 {
     const SIZE: usize = 1;
 
     #[inline]
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn from_ptr(ptr: *const u8) -> Self {
         *ptr
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn from_slice(s: &'source [u8]) -> Option<Self> {
+        s.first().copied()
     }
 }
 
@@ -284,7 +327,14 @@ impl<'source, const N: usize> Chunk<'source> for &'source [u8; N] {
     const SIZE: usize = N;
 
     #[inline]
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn from_ptr(ptr: *const u8) -> Self {
         &*(ptr as *const [u8; N])
+    }
+
+    #[inline]
+    #[cfg(feature = "forbid_unsafe")]
+    fn from_slice(s: &'source [u8]) -> Option<Self> {
+        s.slice(0..Self::SIZE).and_then(|x| x.try_into().ok())
     }
 }

@@ -21,7 +21,7 @@ jobs:
         components: clippy
 
     - name: Check clippy
-      run: cargo clippy --all-features -- -D warnings
+      run: cargo clippy --features debug -- -D warnings
 
   rustfmt:
     name: Rustfmt

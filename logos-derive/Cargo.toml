@@ -1,5 +1,11 @@
 [dependencies]
-logos-codegen = {version = "0.14.0", path = "../logos-codegen"}
+logos-codegen = {version = "0.15.0", path = "../logos-codegen"}
+
+[features]
+# Enables debug messages
+debug = ["logos-codegen/debug"]
+# Don't use or generate unsafe code
+forbid_unsafe = ["logos-codegen/forbid_unsafe"]
 
 [lib]
 bench = false

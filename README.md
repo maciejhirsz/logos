@@ -2,10 +2,11 @@
 
 # Logos
 
-![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
+[![Book](https://github.com/maciejhirsz/logos/actions/workflows/pages.yml/badge.svg?branch=master)](https://logos.maciej.codes/)
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Docs](https://docs.rs/logos/badge.svg)](https://docs.rs/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
+[![Code coverage](https://codecov.io/gh/maciejhirsz/logos/branch/master/graph/badge.svg)](https://codecov.io/gh/maciejhirsz/logos)
 
 _Create ridiculously fast Lexers._
 
@@ -25,48 +26,48 @@ To achieve those, **Logos**:
 ## Example
 
 ```rust
- use logos::Logos;
+use logos::Logos;
 
- #[derive(Logos, Debug, PartialEq)]
- #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
- enum Token {
-     // Tokens can be literal strings, of any length.
-     #[token("fast")]
-     Fast,
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
+enum Token {
+    // Tokens can be literal strings, of any length.
+    #[token("fast")]
+    Fast,
 
-     #[token(".")]
-     Period,
+    #[token(".")]
+    Period,
 
-     // Or regular expressions.
-     #[regex("[a-zA-Z]+")]
-     Text,
- }
+    // Or regular expressions.
+    #[regex("[a-zA-Z]+")]
+    Text,
+}
 
- fn main() {
-     let mut lex = Token::lexer("Create ridiculously fast Lexers.");
+fn main() {
+    let mut lex = Token::lexer("Create ridiculously fast Lexers.");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Text)));
-     assert_eq!(lex.span(), 0..6);
-     assert_eq!(lex.slice(), "Create");
+    assert_eq!(lex.next(), Some(Ok(Token::Text)));
+    assert_eq!(lex.span(), 0..6);
+    assert_eq!(lex.slice(), "Create");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Text)));
-     assert_eq!(lex.span(), 7..19);
-     assert_eq!(lex.slice(), "ridiculously");
+    assert_eq!(lex.next(), Some(Ok(Token::Text)));
+    assert_eq!(lex.span(), 7..19);
+    assert_eq!(lex.slice(), "ridiculously");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Fast)));
-     assert_eq!(lex.span(), 20..24);
-     assert_eq!(lex.slice(), "fast");
+    assert_eq!(lex.next(), Some(Ok(Token::Fast)));
+    assert_eq!(lex.span(), 20..24);
+    assert_eq!(lex.slice(), "fast");
 
-     assert_eq!(lex.next(), Some(Ok(Token::Text)));
-     assert_eq!(lex.slice(), "Lexers");
-     assert_eq!(lex.span(), 25..31);
+    assert_eq!(lex.next(), Some(Ok(Token::Text)));
+    assert_eq!(lex.slice(), "Lexers");
+    assert_eq!(lex.span(), 25..31);
 
-     assert_eq!(lex.next(), Some(Ok(Token::Period)));
-     assert_eq!(lex.span(), 31..32);
-     assert_eq!(lex.slice(), ".");
+    assert_eq!(lex.next(), Some(Ok(Token::Period)));
+    assert_eq!(lex.span(), 31..32);
+    assert_eq!(lex.slice(), ".");
 
-     assert_eq!(lex.next(), None);
- }
+    assert_eq!(lex.next(), None);
+}
 ```
 
 For more examples and documentation, please refer to the
@@ -94,6 +95,18 @@ test strings                           ... bench:         553 ns/iter (+/- 34) =
 
 If you'd like to contribute to Logos, then consider reading the
 [Contributing guide](https://maciejhirsz.github.io/logos/contributing).
+
+## Contributing
+
+**Logos** welcome any kind of contribution: bug reports, suggestions,
+or new features!
+
+Please use the
+[issues](https://github.com/maciejhirsz/logos/issues) or
+[pull requests](https://github.com/maciejhirsz/logos/pulls) tabs,
+when appropriate.
+
+To release a new version, follow the [RELEASE-PROCESS](RELEASE-PROCESS.md)
 
 ## License
 

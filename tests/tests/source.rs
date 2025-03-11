@@ -6,7 +6,10 @@ use logos_derive::Logos;
 struct RefSource<'s, S: ?Sized + Source>(&'s S);
 
 impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
-    type Slice<'a> = S::Slice<'a> where 's: 'a;
+    type Slice<'a>
+        = S::Slice<'a>
+    where
+        's: 'a;
 
     fn len(&self) -> usize {
         self.0.len()
@@ -19,17 +22,21 @@ impl<'s, S: ?Sized + Source> Source for RefSource<'s, S> {
         self.0.read(offset)
     }
 
-    unsafe fn read_unchecked<'a, Chunk>(&'a self, offset: usize) -> Chunk
-    where
-        Chunk: logos::source::Chunk<'a>,
-    {
-        self.0.read_unchecked(offset)
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, offset: usize) -> u8 {
+        self.0.read_byte_unchecked(offset)
+    }
+
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, offset: usize) -> u8 {
+        self.0.read_byte(offset)
     }
 
     fn slice(&self, range: Range<usize>) -> Option<Self::Slice<'_>> {
         self.0.slice(range)
     }
 
+    #[cfg(not(feature = "forbid_unsafe"))]
     unsafe fn slice_unchecked(&self, range: Range<usize>) -> Self::Slice<'_> {
         self.0.slice_unchecked(range)
     }

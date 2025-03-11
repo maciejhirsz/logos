@@ -8,8 +8,15 @@ version = "0.1.0"
 logos-derive = {path = "../logos-derive"}
 logos = {path = "../", default-features = false, features = ["std"]}
 
+[features]
+forbid_unsafe = [
+    "logos-derive/forbid_unsafe",
+    "logos/forbid_unsafe"
+]
+
 [dev-dependencies]
-criterion = "0.4"
+codspeed-criterion-compat = "2.7.0"
+criterion = "0.5"
 
 [package.metadata.release]
 release = false

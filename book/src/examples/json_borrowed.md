@@ -4,7 +4,7 @@ The previous parser owned its data by allocating strings. This can require quite
 some memory space, and using borrowed string slices can help use saving space, while
 also maybe increasing performances.
 
-If you are familiar with Rust's concept of litefime,
+If you are familiar with Rust's concept of lifetimes,
 using `&str` string slices instead of owned `String`
 is straightforward:
 
@@ -13,13 +13,13 @@ is straightforward:
 - enum Token {
 + enum Token<'source> {
 @ 62,63c58,59
--     #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| lex.slice().to_owned())]
+-     #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex| lex.slice().to_owned())]
 -     String(String),
-+     #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| lex.slice())]
++     #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex| lex.slice())]
 +     String(&'source str),
 @ 70c66
 - enum Value {
-- enum Value<'source> {
++ enum Value<'source> {
 @ 78c74
 -     String(String),
 +     String(&'source str),

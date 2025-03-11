@@ -22,13 +22,13 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
+#![cfg_attr(feature = "forbid_unsafe", forbid(unsafe_code))]
 
-#[cfg(not(feature = "std"))]
-extern crate core as std;
+extern crate core;
 
+use core::fmt::Debug;
 #[cfg(feature = "export_derive")]
 pub use logos_derive::Logos;
-use std::fmt::Debug;
 
 mod lexer;
 pub mod source;

@@ -1,4 +1,4 @@
-use logos::{Lexer, Logos as _};
+use logos::{Lexer, Logos as _, Skip};
 use logos_derive::Logos;
 use tests::assert_lex;
 
@@ -170,5 +170,49 @@ mod any_token_callback {
                 Ok(Token::Float),
             ]
         );
+    }
+}
+
+mod return_result_skip {
+    use super::*;
+
+    #[derive(Debug, Default, PartialEq, Clone)]
+    enum LexerError {
+        UnterminatedComment,
+        #[default]
+        Other,
+    }
+
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
+    #[logos(error = LexerError)]
+    enum Token<'src> {
+        #[regex(r"<[a-zA-Z0-9-]+>", |lex| &lex.slice()[1..lex.slice().len()-1])]
+        Tag(&'src str),
+
+        #[token("<!--", skip_comment)]
+        Comment,
+    }
+
+    fn skip_comment<'src>(lexer: &mut Lexer<'src, Token<'src>>) -> Result<Skip, LexerError> {
+        let end = lexer
+            .remainder()
+            .find("-->")
+            .ok_or(LexerError::UnterminatedComment)?;
+        lexer.bump(end + 3);
+
+        Ok(Skip)
+    }
+
+    #[test]
+    fn return_result_skip() {
+        let mut lexer = Token::lexer("<foo> <!-- comment --> <bar>");
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("bar"))));
+        assert_eq!(lexer.next(), None);
+
+        let mut lexer = Token::lexer("<foo> <!-- unterminated comment");
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
+        assert_eq!(lexer.next(), Some(Err(LexerError::UnterminatedComment)));
     }
 }

@@ -16,14 +16,16 @@ pub trait LexerInternal<'source> {
     /// Read a chunk at current position, offset by `n`.
     fn read_at<T: Chunk<'source>>(&self, n: usize) -> Option<T>;
 
-    /// Unchecked read a chunk at current position, offset by `n`.
-    unsafe fn read_unchecked<T: Chunk<'source>>(&self, n: usize) -> T;
+    /// Unchecked read a byte at current position, offset by `n`.
+    #[cfg(not(feature = "forbid_unsafe"))]
+    unsafe fn read_byte_unchecked(&self, n: usize) -> u8;
+
+    /// Checked read a byte at current position, offset by `n`.
+    #[cfg(feature = "forbid_unsafe")]
+    fn read_byte(&self, n: usize) -> u8;
 
     /// Test a chunk at current position with a closure.
     fn test<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, test: F) -> bool;
-
-    /// Test a chunk at current position offset by `n` with a closure.
-    fn test_at<T: Chunk<'source>, F: FnOnce(T) -> bool>(&self, n: usize, test: F) -> bool;
 
     /// Bump the position by `size`.
     fn bump_unchecked(&mut self, size: usize);
@@ -112,6 +114,25 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Skip {
     {
         lex.trivia();
         T::lex(lex);
+    }
+}
+
+impl<'s, E, T: Logos<'s>> CallbackResult<'s, (), T> for Result<Skip, E>
+where
+    E: Into<T::Error>,
+{
+    #[inline]
+    fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
+    where
+        Constructor: Fn(()) -> T,
+    {
+        match self {
+            Ok(_) => {
+                lex.trivia();
+                T::lex(lex);
+            }
+            Err(err) => lex.set(Err(err.into())),
+        }
     }
 }
 
