@@ -1,6 +1,15 @@
 name: Code Coverage
 
-on: [push]
+on:
+  pull_request:
+    paths:
+    - '**.rs'
+    - .github/workflows/coverage.yml
+    - '**/Cargo.toml'
+  push:
+    branches: [master]
+  workflow_dispatch:
+
 jobs:
   test:
     name: Coverage
@@ -12,6 +21,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install rustfmt
+      run: |
+        rustup component add rustfmt
+    
     - name: Generate code coverage
       run: |
         cargo +nightly tarpaulin --verbose --features debug --workspace --timeout 120 --out Xml
@@ -19,4 +32,5 @@ jobs:
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v5
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true

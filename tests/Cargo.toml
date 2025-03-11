@@ -15,7 +15,8 @@ forbid_unsafe = [
 ]
 
 [dev-dependencies]
-criterion = "0.4"
+codspeed-criterion-compat = "2.7.0"
+criterion = "0.5"
 
 [package.metadata.release]
 release = false

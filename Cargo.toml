@@ -1,5 +1,6 @@
 [workspace]
-members = ["logos-cli", "logos-codegen", "logos-derive", "tests", "fuzz"]
+members = ["logos-cli", "logos-codegen", "logos-derive", "tests"]
+exclude = ["fuzz"]
 resolver = "2"
 
 [workspace.package]
@@ -31,9 +32,6 @@ readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-
-[package.metadata]
-msrv = "1.74.0" # Needed to duplicate, because cargo-msrv does not support workspace
 
 [package.metadata.release]
 pre-release-replacements = [
@@ -81,6 +79,10 @@ path = "examples/brainfuck.rs"
 [[example]]
 name = "calculator"
 path = "examples/calculator.rs"
+
+[[example]]
+name = "string-interpolation"
+path = "examples/string-interpolation.rs"
 
 [[example]]
 name = "custom_error"
