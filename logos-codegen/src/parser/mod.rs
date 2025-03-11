@@ -358,11 +358,13 @@ impl Parser {
         Some(match self.parse_callback(tokens) {
             Some(Callback::Inline(inline)) => SkipCallback::Inline(inline),
             Some(Callback::Label(label)) => SkipCallback::Label(label),
-            Some(Callback::Skip(_)) => {
-                // Probably not reachable
+            Some(Callback::Skip(_) | Callback::SkipCallback(_)) => {
+                self.err(
+                    "internal error: `parse_callback` should only return Some(Callback::{Inline, Label}) or None.",
+                    Span::call_site(),
+                );
                 return None;
             }
-            Some(Callback::SkipCallback(cb)) => cb,
             None => {
                 self.err("Not a valid callback", span);
                 return None;
