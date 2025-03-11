@@ -7,7 +7,7 @@ on:
     - .github/workflows/rustbench.yml
     - '**/Cargo.toml'
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
