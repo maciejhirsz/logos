@@ -7,7 +7,7 @@ on:
     - .github/workflows/coverage.yml
     - '**/Cargo.toml'
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
