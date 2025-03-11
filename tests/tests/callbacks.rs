@@ -261,7 +261,7 @@ mod skip_callback_closure {
 
     #[derive(Logos, Debug, PartialEq)]
     #[logos(skip r"[ \r]")]
-    #[logos(skip(r"\n", callback = |lex| { lex.extras.line_num += 1; }, priority = 3))]
+    #[logos(skip(r"\n", callback = |lex| { lex.extras.line_num += 1; }))]
     #[logos(extras = Extras)]
     enum Token {
         #[regex("[a-z]+")]
@@ -296,5 +296,49 @@ mod skip_callback_closure {
             ]
         );
         assert_eq!(error_lines.as_slice(), &[1, 1, 2]);
+    }
+}
+
+#[cfg(test)]
+mod skip_equal_priorities {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    // Ignore all other characters (. doesn't match newlines)
+    #[logos(skip("(.|\n)", priority = 1))]
+    enum Token<'s> {
+        #[regex(r"[0-9]+")]
+        Numbers(&'s str),
+        #[regex(r"[!@#$%^&*]")]
+        Op(&'s str),
+    }
+
+    #[test]
+    fn skip_equal_priorities() {
+        let tokens: Result<Vec<Token>, _> = Lexer::new(
+            "123all letters are considered comments456
+            *other characters too& % 789😊! @ 012anything not a number or an op345 678 ^ 901",
+        )
+        .collect();
+
+        assert_eq!(
+            tokens.as_ref().map(Vec::as_slice),
+            Ok([
+                Token::Numbers("123"),
+                Token::Numbers("456"),
+                Token::Op("*"),
+                Token::Op("&"),
+                Token::Op("%"),
+                Token::Numbers("789"),
+                Token::Op("!"),
+                Token::Op("@"),
+                Token::Numbers("012"),
+                Token::Numbers("345"),
+                Token::Numbers("678"),
+                Token::Op("^"),
+                Token::Numbers("901"),
+            ]
+            .as_slice())
+        );
     }
 }
