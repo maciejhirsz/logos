@@ -1,5 +1,5 @@
 # Workflow for building and deploying a mdBook site to GitHub Pages
-name: GitHub Pages
+name: Book
 
 on:
   # Runs on pushes targeting the default branch
