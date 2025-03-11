@@ -19,7 +19,7 @@ is straightforward:
 +     String(&'source str),
 @ 70c66
 - enum Value {
-- enum Value<'source> {
++ enum Value<'source> {
 @ 78c74
 -     String(String),
 +     String(&'source str),
