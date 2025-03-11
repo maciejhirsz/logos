@@ -359,11 +359,9 @@ impl Parser {
             Some(Callback::Inline(inline)) => SkipCallback::Inline(inline),
             Some(Callback::Label(label)) => SkipCallback::Label(label),
             Some(Callback::Skip(_) | Callback::SkipCallback(_)) => {
-                self.err(
-                    "internal error: `parse_callback` should only return Some(Callback::{Inline, Label}) or None.",
-                    Span::call_site(),
-                );
-                return None;
+                unreachable!(
+                    "internal error: `parse_callback` should only return Some(Callback::{{Inline, Label}}) or None.",
+                )
             }
             None => {
                 self.err("Not a valid callback", span);
