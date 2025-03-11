@@ -1,5 +1,6 @@
 [workspace]
-members = ["logos-cli", "logos-codegen", "logos-derive", "tests", "fuzz"]
+members = ["logos-cli", "logos-codegen", "logos-derive", "tests"]
+exclude = ["fuzz"]
 resolver = "2"
 
 [workspace.package]
@@ -16,7 +17,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/maciejhirsz/logos"
 rust-version = "1.74.0"
-version = "0.14.2"
+version = "0.15.0"
 
 [package]
 name = "logos"
@@ -31,9 +32,6 @@ readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-
-[package.metadata]
-msrv = "1.74.0" # Needed to duplicate, because cargo-msrv does not support workspace
 
 [package.metadata.release]
 pre-release-replacements = [
@@ -67,7 +65,7 @@ bench = {lto = true}
 release = {lto = true}
 
 [dependencies]
-logos-derive = {version = "0.14.2", path = "./logos-derive", optional = true}
+logos-derive = {version = "0.15.0", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
 ariadne = {version = "0.4", features = ["auto-color"]}

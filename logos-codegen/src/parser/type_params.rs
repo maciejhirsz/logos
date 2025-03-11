@@ -16,7 +16,7 @@ impl TypeParams {
         if self.lifetime {
             let span = lt.span();
 
-            errors.err("Logos types can only have one lifetime can be set", span);
+            errors.err("Logos types can only have one lifetime", span);
         }
 
         self.lifetime = true;

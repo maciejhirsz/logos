@@ -5,7 +5,7 @@ use crate::generator::{Context, Generator};
 use crate::leaf::{Callback, Leaf};
 use crate::util::MaybeVoid;
 
-impl<'a> Generator<'a> {
+impl Generator<'_> {
     pub fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
         let bump = ctx.bump();
 
