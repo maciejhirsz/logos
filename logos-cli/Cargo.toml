@@ -2,13 +2,17 @@
 anyhow = "1.0.57"
 clap = {version = "3.1.18", features = ["derive"]}
 fs-err = "2.7.0"
-logos-codegen = {version = "0.14.0", path = "../logos-codegen"}
+logos-codegen = {version = "0.15.0", path = "../logos-codegen"}
 proc-macro2 = "1.0.39"
 
 [dev-dependencies]
 assert_cmd = "2.0.4"
 assert_fs = "1.0.7"
 predicates = "2.1.1"
+
+[features]
+# Enables debug messages
+debug = ["logos-codegen/debug"]
 
 [package]
 name = "logos-cli"

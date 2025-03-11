@@ -59,20 +59,19 @@ impl Context {
         self.available.saturating_sub(self.at)
     }
 
-    pub fn read_unchecked(&mut self, len: usize) -> TokenStream {
+    pub fn read_byte(&mut self) -> TokenStream {
         let at = self.at;
 
-        match len {
-            0 => {
-                self.advance(1);
+        self.advance(1);
 
-                quote!(lex.read_unchecked::<u8>(#at))
-            }
-            l => {
-                self.advance(l);
+        #[cfg(not(feature = "forbid_unsafe"))]
+        {
+            quote!(unsafe { lex.read_byte_unchecked(#at) })
+        }
 
-                quote!(lex.read_unchecked::<&[u8; #l]>(#at))
-            }
+        #[cfg(feature = "forbid_unsafe")]
+        {
+            quote!(lex.read_byte(#at))
         }
     }
 

@@ -65,11 +65,8 @@ fn main() {
     let mut lex = Token::lexer(src.as_str());
 
     while let Some(token) = lex.next() {
-        match token {
-            Ok(Token::Word((line, column))) => {
-                println!("Word '{}' found at ({}, {})", lex.slice(), line, column);
-            }
-            _ => (),
+        if let Ok(Token::Word((line, column))) = token {
+            println!("Word '{}' found at ({}, {})", lex.slice(), line, column);
         }
     }
 }

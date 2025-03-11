@@ -1,9 +1,13 @@
 [workspace]
 members = ["logos-cli", "logos-codegen", "logos-derive", "tests"]
+exclude = ["fuzz"]
 resolver = "2"
 
 [workspace.package]
-authors = ["Maciej Hirsz <hello@maciej.codes>", "Jérome Eertmans (maintainer) <jeertmans@icloud.com>"]
+authors = [
+    "Maciej Hirsz <hello@maciej.codes>",
+    "Jérome Eertmans (maintainer) <jeertmans@icloud.com>",
+]
 categories = ["parsing", "text-processing"]
 description = "Create ridiculously fast Lexers"
 edition = "2021"
@@ -12,8 +16,8 @@ keywords = ["lexer", "lexical", "tokenizer", "parser", "no_std"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/maciejhirsz/logos"
-rust-version = "1.65.0"
-version = "0.14.0"
+rust-version = "1.74.0"
+version = "0.15.0"
 
 [package]
 name = "logos"
@@ -29,9 +33,6 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[package.metadata]
-msrv = "1.65.0"  # Needed to duplicate, because cargo-msrv does not support workspace
-
 [package.metadata.release]
 pre-release-replacements = [
   {file="book/src/getting-started.md", search="logos = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos = \"{{version}}\"", exactly=1},
@@ -42,6 +43,8 @@ shared-version = true
 bench = false
 
 [features]
+# Enables debug messages
+debug = ["logos-derive?/debug"]
 default = ["export_derive", "std"]
 # Re-exports the `Logos` derive macro, so that end user only needs to
 # import this crate and `use logos::Logos` to get both the trait and
@@ -49,9 +52,11 @@ default = ["export_derive", "std"]
 export_derive = ["logos-derive"]
 # Should the crate use the standard library?
 std = []
+# Use safe alternatives for unsafe code (may impact performance)?
+forbid_unsafe = ["logos-derive?/forbid_unsafe"]
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["debug"]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -60,15 +65,24 @@ bench = {lto = true}
 release = {lto = true}
 
 [dependencies]
-logos-derive = {version = "0.14.0", path = "./logos-derive", optional = true}
+logos-derive = {version = "0.15.0", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
-ariadne = {version = "0.2.0", features = ["auto-color"]}
+ariadne = {version = "0.4", features = ["auto-color"]}
+chumsky = {version = "0.9.3" }
 
 [[example]]
 doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
 name = "brainfuck"
 path = "examples/brainfuck.rs"
+
+[[example]]
+name = "calculator"
+path = "examples/calculator.rs"
+
+[[example]]
+name = "string-interpolation"
+path = "examples/string-interpolation.rs"
 
 [[example]]
 name = "custom_error"

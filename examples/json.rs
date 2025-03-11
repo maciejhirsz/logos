@@ -59,7 +59,7 @@ enum Token {
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap())]
     Number(f64),
 
-    #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| lex.slice().to_owned())]
+    #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex| lex.slice().to_owned())]
     String(String),
 }
 /* ANCHOR_END: tokens */
@@ -85,7 +85,7 @@ enum Value {
 
 /* ANCHOR: value */
 /// Parse a token stream into a JSON value.
-fn parse_value<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
+fn parse_value(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
     if let Some(token) = lexer.next() {
         match token {
             Ok(Token::Bool(b)) => Ok(Value::Bool(b)),
@@ -110,7 +110,7 @@ fn parse_value<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
 /// a valid terminator is found.
 ///
 /// > NOTE: we assume '[' was consumed.
-fn parse_array<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
+fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
     let mut array = Vec::new();
     let span = lexer.span();
     let mut awaits_comma = false;
@@ -164,7 +164,7 @@ fn parse_array<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
 /// a valid terminator is found.
 ///
 /// > NOTE: we assume '{' was consumed.
-fn parse_object<'source>(lexer: &mut Lexer<'source, Token>) -> Result<Value> {
+fn parse_object(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
     let mut map = HashMap::new();
     let span = lexer.span();
     let mut awaits_comma = false;
@@ -217,7 +217,7 @@ fn main() {
             let a = colors.next();
 
             Report::build(ReportKind::Error, &filename, 12)
-                .with_message(format!("Invalid JSON"))
+                .with_message("Invalid JSON".to_string())
                 .with_label(
                     Label::new((&filename, span))
                         .with_message(msg)

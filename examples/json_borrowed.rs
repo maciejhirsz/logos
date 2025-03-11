@@ -55,7 +55,7 @@ enum Token<'source> {
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap())]
     Number(f64),
 
-    #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| lex.slice())]
+    #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex| lex.slice())]
     String(&'source str),
 }
 /* ANCHOR_END: tokens */
@@ -213,7 +213,7 @@ fn main() {
             let a = colors.next();
 
             Report::build(ReportKind::Error, &filename, 12)
-                .with_message(format!("Invalid JSON"))
+                .with_message("Invalid JSON".to_string())
                 .with_label(
                     Label::new((&filename, span))
                         .with_message(msg)
