@@ -2,10 +2,11 @@
 
 # Logos
 
-![Test](https://github.com/maciejhirsz/logos/workflows/Test/badge.svg?branch=master)
+[![Book](https://github.com/maciejhirsz/logos/actions/workflows/pages.yml/badge.svg?branch=master)](https://logos.maciej.codes/)
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Docs](https://docs.rs/logos/badge.svg)](https://docs.rs/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
+[![Code coverage](https://codecov.io/gh/maciejhirsz/logos)](https://codecov.io/gh/maciejhirsz/logos/branch/master/graph/badge.svg)
 
 _Create ridiculously fast Lexers._
 
