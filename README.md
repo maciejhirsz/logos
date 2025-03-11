@@ -6,7 +6,7 @@
 [![Crates.io version shield](https://img.shields.io/crates/v/logos.svg)](https://crates.io/crates/logos)
 [![Docs](https://docs.rs/logos/badge.svg)](https://docs.rs/logos)
 [![Crates.io license shield](https://img.shields.io/crates/l/logos.svg)](https://crates.io/crates/logos)
-[![Code coverage](https://codecov.io/gh/maciejhirsz/logos)](https://codecov.io/gh/maciejhirsz/logos/branch/master/graph/badge.svg)
+[![Code coverage](https://codecov.io/gh/maciejhirsz/logos/branch/master/graph/badge.svg)](https://codecov.io/gh/maciejhirsz/logos)
 
 _Create ridiculously fast Lexers._
 
