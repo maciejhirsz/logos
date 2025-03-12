@@ -146,13 +146,16 @@ impl Parser {
                             parser.skips.push(skip);
                         } else {
                             parser.err(
-                                "Expected #[logos(skip(...))] or #[logos(skip \"regex literal\")]",
+                                "Expected #[logos(skip(\"regex literal\"[, [callback = ] callback, priority = priority]))]",
                                 token_span,
                             );
                         }
                     }
                     _ => {
-                        parser.err("Expected: #[logos(skip \"regex literal\")]", span);
+                        parser.err(
+                            "Expected: #[logos(skip \"regex literal\")] or #[logos(skip(...))]",
+                            span,
+                        );
                     }
                 }),
                 ("source", |parser, span, value| match value {
