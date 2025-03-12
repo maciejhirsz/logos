@@ -342,3 +342,80 @@ mod skip_equal_priorities {
         );
     }
 }
+
+mod skip_all_callback_types {
+    use super::*;
+
+    #[derive(Logos)]
+    #[logos(extras = Vec<&'static str>)]
+    #[logos(error = &'static str)]
+    #[logos(skip "a")]
+    #[logos(skip("b", callback = |lex| lex.extras.push("inline_callback")))]
+    #[logos(skip("c", labelled_callback))]
+    #[logos(skip("d", labelled_skip_callback))]
+    #[logos(skip("e|f", labelled_result_callback))]
+    #[logos(skip("g|h", labelled_skip_result_callback))]
+    enum Token {}
+
+    fn labelled_callback(lex: &mut Lexer<'_, Token>) -> () {
+        lex.extras.push("labelled_callback")
+    }
+    fn labelled_skip_callback(lex: &mut Lexer<'_, Token>) -> Skip {
+        lex.extras.push("labelled_skip_callback");
+        Skip
+    }
+    fn labelled_result_callback(lex: &mut Lexer<'_, Token>) -> Result<(), &'static str> {
+        lex.extras.push("labelled_result_callback");
+
+        match lex.slice() {
+            "e" => Ok(()),
+            "f" => Err("f"),
+            _ => unreachable!(),
+        }
+    }
+    fn labelled_skip_result_callback(lex: &mut Lexer<'_, Token>) -> Result<Skip, &'static str> {
+        lex.extras.push("labelled_skip_result_callback");
+
+        match lex.slice() {
+            "g" => Ok(Skip),
+            "h" => Err("h"),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn skip_all_callback_types() {
+        let mut lexer = Lexer::<Token>::new("abcdefghhgfedcba");
+
+        let mut errors = Vec::new();
+
+        for result in &mut lexer {
+            match result {
+                Ok(_tok) => unreachable!(),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        assert_eq!(&errors, &["f", "h", "h", "f"]);
+        println!("{:#?}", &lexer.extras);
+        assert_eq!(
+            &lexer.extras,
+            &[
+                "inline_callback",
+                "labelled_callback",
+                "labelled_skip_callback",
+                "labelled_result_callback",
+                "labelled_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_result_callback",
+                "labelled_result_callback",
+                "labelled_skip_callback",
+                "labelled_callback",
+                "inline_callback",
+            ]
+        );
+    }
+}
