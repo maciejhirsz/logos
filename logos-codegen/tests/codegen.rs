@@ -3,6 +3,7 @@ use std::{error::Error, io, path::PathBuf};
 #[rstest::rstest]
 #[case("simple")]
 #[case("no_error_lut")]
+#[case("skip_callback")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let mut fixture_dir = PathBuf::new();
     fixture_dir.push(env!("CARGO_MANIFEST_DIR"));
