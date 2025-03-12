@@ -314,7 +314,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let body = generator.generate();
     impl_logos(quote! {
-        use #logos_path::internal::{LexerInternal, CallbackResult};
+        use #logos_path::internal::{LexerInternal, CallbackResult, SkipCallbackResult};
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 

@@ -50,39 +50,27 @@ impl Generator<'_> {
                 quote! {
                     #bump
 
-                    trait SkipReturn {}
-                    impl SkipReturn for () {}
-                    impl SkipReturn for Skip {}
-
-                    fn callback(lex: &mut Lexer) -> impl SkipReturn {
-                        #label(lex)
-                    }
-
-                    callback(lex);
-
-                    lex.trivia();
-                    #name::lex(lex);
+                    #label(lex).construct_skip(lex);
                 }
             }
             Some(Callback::SkipCallback(SkipCallback::Inline(inline))) => {
                 let arg = &inline.arg;
                 let body = &inline.body;
 
+                #[cfg(not(rust_1_82))]
+                let ret = quote!(impl SkipCallbackResult<'s, #this>);
+
+                #[cfg(rust_1_82)]
+                let ret = quote!(impl SkipCallbackResult<'s, #this> + use<'s>);
+
                 quote! {
                     #bump
 
-                    trait SkipReturn {}
-                    impl SkipReturn for () {}
-                    impl SkipReturn for Skip {}
-
-                    fn callback(#arg: &mut Lexer) -> impl SkipReturn {
+                    fn callback<'s>(#arg: &mut Lexer) -> #ret {
                         #body
                     }
 
-                    callback(lex);
-
-                    lex.trivia();
-                    #name::lex(lex);
+                    callback(lex).construct_skip(lex);
                 }
             }
             Some(Callback::Skip(_)) => {

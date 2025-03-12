@@ -54,6 +54,22 @@ pub trait CallbackResult<'s, P, T: Logos<'s>> {
         Constructor: Fn(P) -> T;
 }
 
+pub trait SkipCallbackResult<'s, T: Logos<'s>>
+where
+    Self: Sized,
+{
+    fn into_result(self) -> Result<Skip, T::Error>;
+    fn construct_skip(self, lex: &mut Lexer<'s, T>) {
+        match self.into_result() {
+            Ok(Skip) => {
+                lex.trivia();
+                T::lex(lex);
+            }
+            Err(e) => lex.set(Err(e.into())),
+        }
+    }
+}
+
 impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for P {
     #[inline]
     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
@@ -222,6 +238,42 @@ impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for FilterResult<T, T::Error> {
                 T::lex(lex);
             }
             FilterResult::Error(err) => lex.set(Err(err)),
+        }
+    }
+}
+
+impl<'s, T: Logos<'s>> SkipCallbackResult<'s, T> for () {
+    fn into_result(self) -> Result<Skip, T::Error> {
+        Ok(Skip)
+    }
+}
+
+impl<'s, T: Logos<'s>> SkipCallbackResult<'s, T> for Skip {
+    fn into_result(self) -> Result<Skip, T::Error> {
+        Ok(self)
+    }
+}
+
+impl<'s, T: Logos<'s>, E> SkipCallbackResult<'s, T> for Result<(), E>
+where
+    E: Into<T::Error>,
+{
+    fn into_result(self) -> Result<Skip, T::Error> {
+        match self {
+            Ok(_) => Ok(Skip),
+            Err(e) => Err(e.into()),
+        }
+    }
+}
+
+impl<'s, T: Logos<'s>, E> SkipCallbackResult<'s, T> for Result<Skip, E>
+where
+    E: Into<T::Error>,
+{
+    fn into_result(self) -> Result<Skip, T::Error> {
+        match self {
+            Ok(skip) => Ok(skip),
+            Err(e) => Err(e.into()),
         }
     }
 }
