@@ -289,8 +289,12 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     A definition of variant `{a}` can match the same input as another definition of variant `{b}`.\n\
                     \n\
                     hint: Consider giving one definition a higher priority: \
-                    #[regex(..., priority = {disambiguate})]\
+                    #[{attr}(..., priority = {disambiguate})]\
                     ",
+                    attr = match a.callback {
+                        Some(_) => "regex",
+                        None => "skip"
+                    }
                 ),
                 a.span
             );
