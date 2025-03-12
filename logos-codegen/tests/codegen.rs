@@ -12,7 +12,10 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     fixture_dir.push(fixture);
 
     let input = fixture_dir.join("input.rs");
+    #[cfg(rust_1_82)]
     fixture_dir.push("output.rs");
+    #[cfg(not(rust_1_82))]
+    fixture_dir.push("output-pre_1_82.rs");
     let output_file = fixture_dir;
 
     let input = std::fs::read_to_string(input)?;
