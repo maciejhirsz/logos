@@ -72,7 +72,7 @@ impl Skip {
                         "\
                         Unknown nested attribute: {}\n\
                         \n\
-                        Expected: callback\
+                        Expected: callback or priority\
                         ",
                         unknown
                     ),

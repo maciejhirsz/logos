@@ -107,7 +107,7 @@ impl Debug for Leaf<'_> {
             Some(Callback::Label(ref label)) => write!(f, " ({})", label),
             Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
             Some(Callback::Skip(_)) => f.write_str(" (<skip>)"),
-            Some(Callback::SkipCallback(_)) => f.write_str("(<skip callback>)"),
+            Some(Callback::SkipCallback(_)) => f.write_str(" (<skip callback>)"),
             None => Ok(()),
         }
     }
