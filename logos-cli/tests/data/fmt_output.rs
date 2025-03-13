@@ -7,7 +7,7 @@ impl<'s> ::logos::Logos<'s> for Token {
     type Extras = ();
     type Source = str;
     fn lex(lex: &mut ::logos::Lexer<'s, Self>) {
-        use logos::internal::{CallbackResult, LexerInternal};
+        use logos::internal::{CallbackResult, LexerInternal, SkipCallbackResult};
         type Lexer<'s> = ::logos::Lexer<'s, Token>;
         fn _end<'s>(lex: &mut Lexer<'s>) {
             lex.end()

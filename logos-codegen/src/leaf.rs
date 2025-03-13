@@ -5,6 +5,7 @@ use proc_macro2::{Span, TokenStream};
 use syn::{spanned::Spanned, Ident};
 
 use crate::graph::{Disambiguate, Node};
+use crate::parser::SkipCallback;
 use crate::util::MaybeVoid;
 
 #[derive(Clone)]
@@ -20,6 +21,8 @@ pub struct Leaf<'t> {
 pub enum Callback {
     Label(TokenStream),
     Inline(Box<InlineCallback>),
+    #[allow(clippy::enum_variant_names)]
+    SkipCallback(SkipCallback),
     Skip(Span),
 }
 
@@ -41,7 +44,8 @@ impl Callback {
         match self {
             Callback::Label(tokens) => tokens.span(),
             Callback::Inline(inline) => inline.span,
-            Callback::Skip(span) => *span,
+            Callback::SkipCallback(callback) => callback.span(),
+            Callback::Skip(skip) => *skip,
         }
     }
 }
@@ -103,6 +107,7 @@ impl Debug for Leaf<'_> {
             Some(Callback::Label(ref label)) => write!(f, " ({})", label),
             Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
             Some(Callback::Skip(_)) => f.write_str(" (<skip>)"),
+            Some(Callback::SkipCallback(_)) => f.write_str(" (<skip callback>)"),
             None => Ok(()),
         }
     }
