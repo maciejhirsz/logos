@@ -65,7 +65,7 @@ where
                 lex.trivia();
                 T::lex(lex);
             }
-            Err(e) => lex.set(Err(e.into())),
+            Err(e) => lex.set(Err(e)),
         }
     }
 }
