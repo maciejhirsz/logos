@@ -1,6 +1,6 @@
 use std::{error::Error, path::PathBuf};
 
-use insta::assert_yaml_snapshot;
+use insta::assert_snapshot;
 
 #[rstest::rstest]
 #[case("simple")]
@@ -17,14 +17,12 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let input = fixture_dir.join("input.rs");
     let input = std::fs::read_to_string(input)?;
 
-    let generated = logos_codegen::generate(input.parse()?);
-    let generated: syn::ItemImpl = syn::parse2(generated)?;
-    let generated = syn_serde::Syn::to_adapter(&generated);
+    let generated = logos_codegen::generate(input.parse()?).to_string();
 
     if cfg!(rust_1_82) {
-        assert_yaml_snapshot!(format!("{fixture}-1_82"), generated);
+        assert_snapshot!(format!("{fixture}-1_82"), generated);
     } else {
-        assert_yaml_snapshot!(format!("{fixture}-pre_1_82"), generated);
+        assert_snapshot!(format!("{fixture}-pre_1_82"), generated);
     }
 
     Ok(())
