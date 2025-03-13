@@ -9,6 +9,10 @@
 #[logos(skip("f", |_| {}, callback = |_| {}))]
 #[logos(skip("g", callback(|_| {})))]
 #[logos(skip("h", |_| {}, unknown()))]
+#[logos(skip = "aaaa")]
+#[logos(skip(#))]
+#[logos(skip 0)]
+#[logos(skip "i", |_|)]
 pub enum Token {
     #[regex("a")]
     A,
