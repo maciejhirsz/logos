@@ -1,0 +1,2993 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: generated
+---
+- ident: impl
+- punct:
+    op: "<"
+    spacing: alone
+- punct:
+    op: "'"
+    spacing: joint
+- ident: s
+- punct:
+    op: ">"
+    spacing: alone
+- punct:
+    op: ":"
+    spacing: joint
+- punct:
+    op: ":"
+    spacing: alone
+- ident: logos
+- punct:
+    op: ":"
+    spacing: joint
+- punct:
+    op: ":"
+    spacing: alone
+- ident: Logos
+- punct:
+    op: "<"
+    spacing: alone
+- punct:
+    op: "'"
+    spacing: joint
+- ident: s
+- punct:
+    op: ">"
+    spacing: alone
+- ident: for
+- ident: Token
+- group:
+    delimiter: brace
+    stream:
+      - ident: type
+      - ident: Error
+      - punct:
+          op: "="
+          spacing: alone
+      - punct:
+          op: "&"
+          spacing: joint
+      - punct:
+          op: "'"
+          spacing: joint
+      - ident: static
+      - ident: str
+      - punct:
+          op: ;
+          spacing: alone
+      - ident: type
+      - ident: Extras
+      - punct:
+          op: "="
+          spacing: alone
+      - ident: Vec
+      - punct:
+          op: "<"
+          spacing: joint
+      - punct:
+          op: "&"
+          spacing: joint
+      - punct:
+          op: "'"
+          spacing: joint
+      - ident: static
+      - ident: str
+      - punct:
+          op: ">"
+          spacing: alone
+      - punct:
+          op: ;
+          spacing: alone
+      - ident: type
+      - ident: Source
+      - punct:
+          op: "="
+          spacing: alone
+      - ident: str
+      - punct:
+          op: ;
+          spacing: alone
+      - ident: fn
+      - ident: lex
+      - group:
+          delimiter: parenthesis
+          stream:
+            - ident: lex
+            - punct:
+                op: ":"
+                spacing: alone
+            - punct:
+                op: "&"
+                spacing: alone
+            - ident: mut
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - ident: logos
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - ident: Lexer
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ","
+                spacing: alone
+            - ident: Self
+            - punct:
+                op: ">"
+                spacing: alone
+      - group:
+          delimiter: brace
+          stream:
+            - ident: use
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - ident: logos
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - ident: internal
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: LexerInternal
+                  - punct:
+                      op: ","
+                      spacing: alone
+                  - ident: CallbackResult
+                  - punct:
+                      op: ","
+                      spacing: alone
+                  - ident: SkipCallbackResult
+            - punct:
+                op: ;
+                spacing: alone
+            - ident: type
+            - ident: Lexer
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - punct:
+                op: "="
+                spacing: alone
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - ident: logos
+            - punct:
+                op: ":"
+                spacing: joint
+            - punct:
+                op: ":"
+                spacing: alone
+            - ident: Lexer
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ","
+                spacing: alone
+            - ident: Token
+            - punct:
+                op: ">"
+                spacing: alone
+            - punct:
+                op: ;
+                spacing: alone
+            - ident: fn
+            - ident: _end
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: end
+                  - group:
+                      delimiter: parenthesis
+                      stream: []
+            - ident: fn
+            - ident: _error
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: bump_unchecked
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - lit: "1"
+                  - punct:
+                      op: ;
+                      spacing: alone
+                  - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: error
+                  - group:
+                      delimiter: parenthesis
+                      stream: []
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - ident: macro_rules
+            - punct:
+                op: "!"
+                spacing: alone
+            - ident: _fast_loop
+            - group:
+                delimiter: brace
+                stream:
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - punct:
+                            op: $
+                            spacing: alone
+                        - ident: lex
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: ident
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - punct:
+                            op: $
+                            spacing: alone
+                        - ident: test
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: ident
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - punct:
+                            op: $
+                            spacing: alone
+                        - ident: miss
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: expr
+                  - punct:
+                      op: "="
+                      spacing: joint
+                  - punct:
+                      op: ">"
+                      spacing: alone
+                  - group:
+                      delimiter: brace
+                      stream:
+                        - ident: while
+                        - ident: let
+                        - ident: Some
+                        - group:
+                            delimiter: parenthesis
+                            stream:
+                              - ident: arr
+                        - punct:
+                            op: "="
+                            spacing: alone
+                        - punct:
+                            op: $
+                            spacing: alone
+                        - ident: lex
+                        - punct:
+                            op: "."
+                            spacing: alone
+                        - ident: read
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - punct:
+                            op: "<"
+                            spacing: alone
+                        - punct:
+                            op: "&"
+                            spacing: alone
+                        - group:
+                            delimiter: bracket
+                            stream:
+                              - ident: u8
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - lit: "16"
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: parenthesis
+                            stream: []
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: if
+                              - punct:
+                                  op: $
+                                  spacing: alone
+                              - ident: test
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: arr
+                                    - group:
+                                        delimiter: bracket
+                                        stream:
+                                          - lit: "0"
+                              - group:
+                                  delimiter: brace
+                                  stream:
+                                    - ident: if
+                                    - punct:
+                                        op: $
+                                        spacing: alone
+                                    - ident: test
+                                    - group:
+                                        delimiter: parenthesis
+                                        stream:
+                                          - ident: arr
+                                          - group:
+                                              delimiter: bracket
+                                              stream:
+                                                - lit: "1"
+                                    - group:
+                                        delimiter: brace
+                                        stream:
+                                          - ident: if
+                                          - punct:
+                                              op: $
+                                              spacing: alone
+                                          - ident: test
+                                          - group:
+                                              delimiter: parenthesis
+                                              stream:
+                                                - ident: arr
+                                                - group:
+                                                    delimiter: bracket
+                                                    stream:
+                                                      - lit: "2"
+                                          - group:
+                                              delimiter: brace
+                                              stream:
+                                                - ident: if
+                                                - punct:
+                                                    op: $
+                                                    spacing: alone
+                                                - ident: test
+                                                - group:
+                                                    delimiter: parenthesis
+                                                    stream:
+                                                      - ident: arr
+                                                      - group:
+                                                          delimiter: bracket
+                                                          stream:
+                                                            - lit: "3"
+                                                - group:
+                                                    delimiter: brace
+                                                    stream:
+                                                      - ident: if
+                                                      - punct:
+                                                          op: $
+                                                          spacing: alone
+                                                      - ident: test
+                                                      - group:
+                                                          delimiter: parenthesis
+                                                          stream:
+                                                            - ident: arr
+                                                            - group:
+                                                                delimiter: bracket
+                                                                stream:
+                                                                  - lit: "4"
+                                                      - group:
+                                                          delimiter: brace
+                                                          stream:
+                                                            - ident: if
+                                                            - punct:
+                                                                op: $
+                                                                spacing: alone
+                                                            - ident: test
+                                                            - group:
+                                                                delimiter: parenthesis
+                                                                stream:
+                                                                  - ident: arr
+                                                                  - group:
+                                                                      delimiter: bracket
+                                                                      stream:
+                                                                        - lit: "5"
+                                                            - group:
+                                                                delimiter: brace
+                                                                stream:
+                                                                  - ident: if
+                                                                  - punct:
+                                                                      op: $
+                                                                      spacing: alone
+                                                                  - ident: test
+                                                                  - group:
+                                                                      delimiter: parenthesis
+                                                                      stream:
+                                                                        - ident: arr
+                                                                        - group:
+                                                                            delimiter: bracket
+                                                                            stream:
+                                                                              - lit: "6"
+                                                                  - group:
+                                                                      delimiter: brace
+                                                                      stream:
+                                                                        - ident: if
+                                                                        - punct:
+                                                                            op: $
+                                                                            spacing: alone
+                                                                        - ident: test
+                                                                        - group:
+                                                                            delimiter: parenthesis
+                                                                            stream:
+                                                                              - ident: arr
+                                                                              - group:
+                                                                                  delimiter: bracket
+                                                                                  stream:
+                                                                                    - lit: "7"
+                                                                        - group:
+                                                                            delimiter: brace
+                                                                            stream:
+                                                                              - ident: if
+                                                                              - punct:
+                                                                                  op: $
+                                                                                  spacing: alone
+                                                                              - ident: test
+                                                                              - group:
+                                                                                  delimiter: parenthesis
+                                                                                  stream:
+                                                                                    - ident: arr
+                                                                                    - group:
+                                                                                        delimiter: bracket
+                                                                                        stream:
+                                                                                          - lit: "8"
+                                                                              - group:
+                                                                                  delimiter: brace
+                                                                                  stream:
+                                                                                    - ident: if
+                                                                                    - punct:
+                                                                                        op: $
+                                                                                        spacing: alone
+                                                                                    - ident: test
+                                                                                    - group:
+                                                                                        delimiter: parenthesis
+                                                                                        stream:
+                                                                                          - ident: arr
+                                                                                          - group:
+                                                                                              delimiter: bracket
+                                                                                              stream:
+                                                                                                - lit: "9"
+                                                                                    - group:
+                                                                                        delimiter: brace
+                                                                                        stream:
+                                                                                          - ident: if
+                                                                                          - punct:
+                                                                                              op: $
+                                                                                              spacing: alone
+                                                                                          - ident: test
+                                                                                          - group:
+                                                                                              delimiter: parenthesis
+                                                                                              stream:
+                                                                                                - ident: arr
+                                                                                                - group:
+                                                                                                    delimiter: bracket
+                                                                                                    stream:
+                                                                                                      - lit: "10"
+                                                                                          - group:
+                                                                                              delimiter: brace
+                                                                                              stream:
+                                                                                                - ident: if
+                                                                                                - punct:
+                                                                                                    op: $
+                                                                                                    spacing: alone
+                                                                                                - ident: test
+                                                                                                - group:
+                                                                                                    delimiter: parenthesis
+                                                                                                    stream:
+                                                                                                      - ident: arr
+                                                                                                      - group:
+                                                                                                          delimiter: bracket
+                                                                                                          stream:
+                                                                                                            - lit: "11"
+                                                                                                - group:
+                                                                                                    delimiter: brace
+                                                                                                    stream:
+                                                                                                      - ident: if
+                                                                                                      - punct:
+                                                                                                          op: $
+                                                                                                          spacing: alone
+                                                                                                      - ident: test
+                                                                                                      - group:
+                                                                                                          delimiter: parenthesis
+                                                                                                          stream:
+                                                                                                            - ident: arr
+                                                                                                            - group:
+                                                                                                                delimiter: bracket
+                                                                                                                stream:
+                                                                                                                  - lit: "12"
+                                                                                                      - group:
+                                                                                                          delimiter: brace
+                                                                                                          stream:
+                                                                                                            - ident: if
+                                                                                                            - punct:
+                                                                                                                op: $
+                                                                                                                spacing: alone
+                                                                                                            - ident: test
+                                                                                                            - group:
+                                                                                                                delimiter: parenthesis
+                                                                                                                stream:
+                                                                                                                  - ident: arr
+                                                                                                                  - group:
+                                                                                                                      delimiter: bracket
+                                                                                                                      stream:
+                                                                                                                        - lit: "13"
+                                                                                                            - group:
+                                                                                                                delimiter: brace
+                                                                                                                stream:
+                                                                                                                  - ident: if
+                                                                                                                  - punct:
+                                                                                                                      op: $
+                                                                                                                      spacing: alone
+                                                                                                                  - ident: test
+                                                                                                                  - group:
+                                                                                                                      delimiter: parenthesis
+                                                                                                                      stream:
+                                                                                                                        - ident: arr
+                                                                                                                        - group:
+                                                                                                                            delimiter: bracket
+                                                                                                                            stream:
+                                                                                                                              - lit: "14"
+                                                                                                                  - group:
+                                                                                                                      delimiter: brace
+                                                                                                                      stream:
+                                                                                                                        - ident: if
+                                                                                                                        - punct:
+                                                                                                                            op: $
+                                                                                                                            spacing: alone
+                                                                                                                        - ident: test
+                                                                                                                        - group:
+                                                                                                                            delimiter: parenthesis
+                                                                                                                            stream:
+                                                                                                                              - ident: arr
+                                                                                                                              - group:
+                                                                                                                                  delimiter: bracket
+                                                                                                                                  stream:
+                                                                                                                                    - lit: "15"
+                                                                                                                        - group:
+                                                                                                                            delimiter: brace
+                                                                                                                            stream:
+                                                                                                                              - punct:
+                                                                                                                                  op: $
+                                                                                                                                  spacing: alone
+                                                                                                                              - ident: lex
+                                                                                                                              - punct:
+                                                                                                                                  op: "."
+                                                                                                                                  spacing: alone
+                                                                                                                              - ident: bump_unchecked
+                                                                                                                              - group:
+                                                                                                                                  delimiter: parenthesis
+                                                                                                                                  stream:
+                                                                                                                                    - lit: "16"
+                                                                                                                              - punct:
+                                                                                                                                  op: ;
+                                                                                                                                  spacing: alone
+                                                                                                                              - ident: continue
+                                                                                                                              - punct:
+                                                                                                                                  op: ;
+                                                                                                                                  spacing: alone
+                                                                                                                        - punct:
+                                                                                                                            op: $
+                                                                                                                            spacing: alone
+                                                                                                                        - ident: lex
+                                                                                                                        - punct:
+                                                                                                                            op: "."
+                                                                                                                            spacing: alone
+                                                                                                                        - ident: bump_unchecked
+                                                                                                                        - group:
+                                                                                                                            delimiter: parenthesis
+                                                                                                                            stream:
+                                                                                                                              - lit: "15"
+                                                                                                                        - punct:
+                                                                                                                            op: ;
+                                                                                                                            spacing: alone
+                                                                                                                        - ident: return
+                                                                                                                        - punct:
+                                                                                                                            op: $
+                                                                                                                            spacing: alone
+                                                                                                                        - ident: miss
+                                                                                                                        - punct:
+                                                                                                                            op: ;
+                                                                                                                            spacing: alone
+                                                                                                                  - punct:
+                                                                                                                      op: $
+                                                                                                                      spacing: alone
+                                                                                                                  - ident: lex
+                                                                                                                  - punct:
+                                                                                                                      op: "."
+                                                                                                                      spacing: alone
+                                                                                                                  - ident: bump_unchecked
+                                                                                                                  - group:
+                                                                                                                      delimiter: parenthesis
+                                                                                                                      stream:
+                                                                                                                        - lit: "14"
+                                                                                                                  - punct:
+                                                                                                                      op: ;
+                                                                                                                      spacing: alone
+                                                                                                                  - ident: return
+                                                                                                                  - punct:
+                                                                                                                      op: $
+                                                                                                                      spacing: alone
+                                                                                                                  - ident: miss
+                                                                                                                  - punct:
+                                                                                                                      op: ;
+                                                                                                                      spacing: alone
+                                                                                                            - punct:
+                                                                                                                op: $
+                                                                                                                spacing: alone
+                                                                                                            - ident: lex
+                                                                                                            - punct:
+                                                                                                                op: "."
+                                                                                                                spacing: alone
+                                                                                                            - ident: bump_unchecked
+                                                                                                            - group:
+                                                                                                                delimiter: parenthesis
+                                                                                                                stream:
+                                                                                                                  - lit: "13"
+                                                                                                            - punct:
+                                                                                                                op: ;
+                                                                                                                spacing: alone
+                                                                                                            - ident: return
+                                                                                                            - punct:
+                                                                                                                op: $
+                                                                                                                spacing: alone
+                                                                                                            - ident: miss
+                                                                                                            - punct:
+                                                                                                                op: ;
+                                                                                                                spacing: alone
+                                                                                                      - punct:
+                                                                                                          op: $
+                                                                                                          spacing: alone
+                                                                                                      - ident: lex
+                                                                                                      - punct:
+                                                                                                          op: "."
+                                                                                                          spacing: alone
+                                                                                                      - ident: bump_unchecked
+                                                                                                      - group:
+                                                                                                          delimiter: parenthesis
+                                                                                                          stream:
+                                                                                                            - lit: "12"
+                                                                                                      - punct:
+                                                                                                          op: ;
+                                                                                                          spacing: alone
+                                                                                                      - ident: return
+                                                                                                      - punct:
+                                                                                                          op: $
+                                                                                                          spacing: alone
+                                                                                                      - ident: miss
+                                                                                                      - punct:
+                                                                                                          op: ;
+                                                                                                          spacing: alone
+                                                                                                - punct:
+                                                                                                    op: $
+                                                                                                    spacing: alone
+                                                                                                - ident: lex
+                                                                                                - punct:
+                                                                                                    op: "."
+                                                                                                    spacing: alone
+                                                                                                - ident: bump_unchecked
+                                                                                                - group:
+                                                                                                    delimiter: parenthesis
+                                                                                                    stream:
+                                                                                                      - lit: "11"
+                                                                                                - punct:
+                                                                                                    op: ;
+                                                                                                    spacing: alone
+                                                                                                - ident: return
+                                                                                                - punct:
+                                                                                                    op: $
+                                                                                                    spacing: alone
+                                                                                                - ident: miss
+                                                                                                - punct:
+                                                                                                    op: ;
+                                                                                                    spacing: alone
+                                                                                          - punct:
+                                                                                              op: $
+                                                                                              spacing: alone
+                                                                                          - ident: lex
+                                                                                          - punct:
+                                                                                              op: "."
+                                                                                              spacing: alone
+                                                                                          - ident: bump_unchecked
+                                                                                          - group:
+                                                                                              delimiter: parenthesis
+                                                                                              stream:
+                                                                                                - lit: "10"
+                                                                                          - punct:
+                                                                                              op: ;
+                                                                                              spacing: alone
+                                                                                          - ident: return
+                                                                                          - punct:
+                                                                                              op: $
+                                                                                              spacing: alone
+                                                                                          - ident: miss
+                                                                                          - punct:
+                                                                                              op: ;
+                                                                                              spacing: alone
+                                                                                    - punct:
+                                                                                        op: $
+                                                                                        spacing: alone
+                                                                                    - ident: lex
+                                                                                    - punct:
+                                                                                        op: "."
+                                                                                        spacing: alone
+                                                                                    - ident: bump_unchecked
+                                                                                    - group:
+                                                                                        delimiter: parenthesis
+                                                                                        stream:
+                                                                                          - lit: "9"
+                                                                                    - punct:
+                                                                                        op: ;
+                                                                                        spacing: alone
+                                                                                    - ident: return
+                                                                                    - punct:
+                                                                                        op: $
+                                                                                        spacing: alone
+                                                                                    - ident: miss
+                                                                                    - punct:
+                                                                                        op: ;
+                                                                                        spacing: alone
+                                                                              - punct:
+                                                                                  op: $
+                                                                                  spacing: alone
+                                                                              - ident: lex
+                                                                              - punct:
+                                                                                  op: "."
+                                                                                  spacing: alone
+                                                                              - ident: bump_unchecked
+                                                                              - group:
+                                                                                  delimiter: parenthesis
+                                                                                  stream:
+                                                                                    - lit: "8"
+                                                                              - punct:
+                                                                                  op: ;
+                                                                                  spacing: alone
+                                                                              - ident: return
+                                                                              - punct:
+                                                                                  op: $
+                                                                                  spacing: alone
+                                                                              - ident: miss
+                                                                              - punct:
+                                                                                  op: ;
+                                                                                  spacing: alone
+                                                                        - punct:
+                                                                            op: $
+                                                                            spacing: alone
+                                                                        - ident: lex
+                                                                        - punct:
+                                                                            op: "."
+                                                                            spacing: alone
+                                                                        - ident: bump_unchecked
+                                                                        - group:
+                                                                            delimiter: parenthesis
+                                                                            stream:
+                                                                              - lit: "7"
+                                                                        - punct:
+                                                                            op: ;
+                                                                            spacing: alone
+                                                                        - ident: return
+                                                                        - punct:
+                                                                            op: $
+                                                                            spacing: alone
+                                                                        - ident: miss
+                                                                        - punct:
+                                                                            op: ;
+                                                                            spacing: alone
+                                                                  - punct:
+                                                                      op: $
+                                                                      spacing: alone
+                                                                  - ident: lex
+                                                                  - punct:
+                                                                      op: "."
+                                                                      spacing: alone
+                                                                  - ident: bump_unchecked
+                                                                  - group:
+                                                                      delimiter: parenthesis
+                                                                      stream:
+                                                                        - lit: "6"
+                                                                  - punct:
+                                                                      op: ;
+                                                                      spacing: alone
+                                                                  - ident: return
+                                                                  - punct:
+                                                                      op: $
+                                                                      spacing: alone
+                                                                  - ident: miss
+                                                                  - punct:
+                                                                      op: ;
+                                                                      spacing: alone
+                                                            - punct:
+                                                                op: $
+                                                                spacing: alone
+                                                            - ident: lex
+                                                            - punct:
+                                                                op: "."
+                                                                spacing: alone
+                                                            - ident: bump_unchecked
+                                                            - group:
+                                                                delimiter: parenthesis
+                                                                stream:
+                                                                  - lit: "5"
+                                                            - punct:
+                                                                op: ;
+                                                                spacing: alone
+                                                            - ident: return
+                                                            - punct:
+                                                                op: $
+                                                                spacing: alone
+                                                            - ident: miss
+                                                            - punct:
+                                                                op: ;
+                                                                spacing: alone
+                                                      - punct:
+                                                          op: $
+                                                          spacing: alone
+                                                      - ident: lex
+                                                      - punct:
+                                                          op: "."
+                                                          spacing: alone
+                                                      - ident: bump_unchecked
+                                                      - group:
+                                                          delimiter: parenthesis
+                                                          stream:
+                                                            - lit: "4"
+                                                      - punct:
+                                                          op: ;
+                                                          spacing: alone
+                                                      - ident: return
+                                                      - punct:
+                                                          op: $
+                                                          spacing: alone
+                                                      - ident: miss
+                                                      - punct:
+                                                          op: ;
+                                                          spacing: alone
+                                                - punct:
+                                                    op: $
+                                                    spacing: alone
+                                                - ident: lex
+                                                - punct:
+                                                    op: "."
+                                                    spacing: alone
+                                                - ident: bump_unchecked
+                                                - group:
+                                                    delimiter: parenthesis
+                                                    stream:
+                                                      - lit: "3"
+                                                - punct:
+                                                    op: ;
+                                                    spacing: alone
+                                                - ident: return
+                                                - punct:
+                                                    op: $
+                                                    spacing: alone
+                                                - ident: miss
+                                                - punct:
+                                                    op: ;
+                                                    spacing: alone
+                                          - punct:
+                                              op: $
+                                              spacing: alone
+                                          - ident: lex
+                                          - punct:
+                                              op: "."
+                                              spacing: alone
+                                          - ident: bump_unchecked
+                                          - group:
+                                              delimiter: parenthesis
+                                              stream:
+                                                - lit: "2"
+                                          - punct:
+                                              op: ;
+                                              spacing: alone
+                                          - ident: return
+                                          - punct:
+                                              op: $
+                                              spacing: alone
+                                          - ident: miss
+                                          - punct:
+                                              op: ;
+                                              spacing: alone
+                                    - punct:
+                                        op: $
+                                        spacing: alone
+                                    - ident: lex
+                                    - punct:
+                                        op: "."
+                                        spacing: alone
+                                    - ident: bump_unchecked
+                                    - group:
+                                        delimiter: parenthesis
+                                        stream:
+                                          - lit: "1"
+                                    - punct:
+                                        op: ;
+                                        spacing: alone
+                                    - ident: return
+                                    - punct:
+                                        op: $
+                                        spacing: alone
+                                    - ident: miss
+                                    - punct:
+                                        op: ;
+                                        spacing: alone
+                              - ident: return
+                              - punct:
+                                  op: $
+                                  spacing: alone
+                              - ident: miss
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                        - ident: while
+                        - punct:
+                            op: $
+                            spacing: alone
+                        - ident: lex
+                        - punct:
+                            op: "."
+                            spacing: alone
+                        - ident: test
+                        - group:
+                            delimiter: parenthesis
+                            stream:
+                              - punct:
+                                  op: $
+                                  spacing: alone
+                              - ident: test
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - punct:
+                                  op: $
+                                  spacing: alone
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: "1"
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                        - punct:
+                            op: $
+                            spacing: alone
+                        - ident: miss
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto5_x
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: labelled_callback
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: construct_skip
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto7_x
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: labelled_skip_callback
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: construct_skip
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto1_x
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: trivia
+                  - group:
+                      delimiter: parenthesis
+                      stream: []
+                  - punct:
+                      op: ;
+                      spacing: alone
+                  - ident: Token
+                  - punct:
+                      op: ":"
+                      spacing: joint
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - ident: lex
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto9_x
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: labelled_result_callback
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: construct_skip
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto3_x
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: fn
+                  - ident: callback
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - punct:
+                            op: "&"
+                            spacing: alone
+                        - ident: mut
+                        - ident: Lexer
+                  - punct:
+                      op: "-"
+                      spacing: joint
+                  - punct:
+                      op: ">"
+                      spacing: alone
+                  - ident: impl
+                  - ident: SkipCallbackResult
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ","
+                      spacing: alone
+                  - ident: Token
+                  - punct:
+                      op: ">"
+                      spacing: alone
+                  - punct:
+                      op: +
+                      spacing: alone
+                  - ident: use
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+                  - group:
+                      delimiter: brace
+                      stream:
+                        - ident: lex
+                        - punct:
+                            op: "."
+                            spacing: alone
+                        - ident: extras
+                        - punct:
+                            op: "."
+                            spacing: alone
+                        - ident: push
+                        - group:
+                            delimiter: parenthesis
+                            stream:
+                              - lit: "\"inline_callback\""
+                  - ident: callback
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: construct_skip
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto11_x
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: labelled_skip_result_callback
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: construct_skip
+                  - group:
+                      delimiter: parenthesis
+                      stream:
+                        - ident: lex
+                  - punct:
+                      op: ;
+                      spacing: alone
+            - punct:
+                op: "#"
+                spacing: alone
+            - group:
+                delimiter: bracket
+                stream:
+                  - ident: inline
+            - ident: fn
+            - ident: goto13
+            - punct:
+                op: "<"
+                spacing: alone
+            - punct:
+                op: "'"
+                spacing: joint
+            - ident: s
+            - punct:
+                op: ">"
+                spacing: alone
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "&"
+                      spacing: alone
+                  - ident: mut
+                  - ident: Lexer
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - punct:
+                      op: "'"
+                      spacing: joint
+                  - ident: s
+                  - punct:
+                      op: ">"
+                      spacing: alone
+            - group:
+                delimiter: brace
+                stream:
+                  - ident: enum
+                  - ident: Jump
+                  - group:
+                      delimiter: brace
+                      stream:
+                        - ident: __
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: J5
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: J7
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: J1
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: J9
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: J3
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: J11
+                        - punct:
+                            op: ","
+                            spacing: alone
+                  - ident: const
+                  - ident: LUT
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - group:
+                      delimiter: bracket
+                      stream:
+                        - ident: Jump
+                        - punct:
+                            op: ;
+                            spacing: alone
+                        - lit: "256"
+                  - punct:
+                      op: "="
+                      spacing: alone
+                  - group:
+                      delimiter: brace
+                      stream:
+                        - ident: use
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - punct:
+                            op: "*"
+                            spacing: alone
+                        - punct:
+                            op: ;
+                            spacing: alone
+                        - group:
+                            delimiter: bracket
+                            stream:
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J1
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J3
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J5
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J7
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J9
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J9
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J11
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: J11
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                              - punct:
+                                  op: ","
+                                  spacing: alone
+                              - ident: __
+                  - punct:
+                      op: ;
+                      spacing: alone
+                  - ident: let
+                  - ident: byte
+                  - punct:
+                      op: "="
+                      spacing: alone
+                  - ident: match
+                  - ident: lex
+                  - punct:
+                      op: "."
+                      spacing: alone
+                  - ident: read
+                  - punct:
+                      op: ":"
+                      spacing: joint
+                  - punct:
+                      op: ":"
+                      spacing: alone
+                  - punct:
+                      op: "<"
+                      spacing: alone
+                  - ident: u8
+                  - punct:
+                      op: ">"
+                      spacing: alone
+                  - group:
+                      delimiter: parenthesis
+                      stream: []
+                  - group:
+                      delimiter: brace
+                      stream:
+                        - ident: Some
+                        - group:
+                            delimiter: parenthesis
+                            stream:
+                              - ident: byte
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - ident: byte
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: None
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - ident: return
+                        - ident: _end
+                        - group:
+                            delimiter: parenthesis
+                            stream:
+                              - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                  - punct:
+                      op: ;
+                      spacing: alone
+                  - ident: match
+                  - ident: LUT
+                  - group:
+                      delimiter: bracket
+                      stream:
+                        - ident: byte
+                        - ident: as
+                        - ident: usize
+                  - group:
+                      delimiter: brace
+                      stream:
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: J5
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: 1usize
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - ident: goto5_x
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: J7
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: 1usize
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - ident: goto7_x
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: J1
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: 1usize
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - ident: goto1_x
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: J9
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: 1usize
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - ident: goto9_x
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: J3
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: 1usize
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - ident: goto3_x
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: J11
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - group:
+                            delimiter: brace
+                            stream:
+                              - ident: lex
+                              - punct:
+                                  op: "."
+                                  spacing: alone
+                              - ident: bump_unchecked
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - lit: 1usize
+                              - punct:
+                                  op: ;
+                                  spacing: alone
+                              - ident: goto11_x
+                              - group:
+                                  delimiter: parenthesis
+                                  stream:
+                                    - ident: lex
+                        - punct:
+                            op: ","
+                            spacing: alone
+                        - ident: Jump
+                        - punct:
+                            op: ":"
+                            spacing: joint
+                        - punct:
+                            op: ":"
+                            spacing: alone
+                        - ident: __
+                        - punct:
+                            op: "="
+                            spacing: joint
+                        - punct:
+                            op: ">"
+                            spacing: alone
+                        - ident: _error
+                        - group:
+                            delimiter: parenthesis
+                            stream:
+                              - ident: lex
+            - ident: goto13
+            - group:
+                delimiter: parenthesis
+                stream:
+                  - ident: lex
