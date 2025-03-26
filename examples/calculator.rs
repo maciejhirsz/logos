@@ -80,7 +80,9 @@ impl Expr {
 
 #[allow(clippy::let_and_return)]
 /* ANCHOR: parser */
-fn parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
+fn parser<'src>(
+) -> impl Parser<'src, &'src [Token], Expr, chumsky::extra::Err<chumsky::error::Simple<'src, Token>>>
+{
     recursive(|p| {
         let atom = {
             let parenthesized = p
@@ -96,40 +98,34 @@ fn parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
 
         let unary = just(Token::Minus)
             .repeated()
-            .then(atom)
-            .foldr(|_op, rhs| Expr::Neg(Box::new(rhs)));
+            .foldr(atom, |_op, rhs| Expr::Neg(Box::new(rhs)));
 
-        let binary_1 = unary
-            .clone()
-            .then(
-                just(Token::Multiply)
-                    .or(just(Token::Divide))
-                    .then(unary)
-                    .repeated(),
-            )
-            .foldl(|lhs, (op, rhs)| match op {
+        let binary_1 = unary.clone().foldl(
+            just(Token::Multiply)
+                .or(just(Token::Divide))
+                .then(unary)
+                .repeated(),
+            |lhs, (op, rhs)| match op {
                 Token::Multiply => Expr::Mul(Box::new(lhs), Box::new(rhs)),
                 Token::Divide => Expr::Div(Box::new(lhs), Box::new(rhs)),
                 _ => unreachable!(),
-            });
+            },
+        );
 
-        let binary_2 = binary_1
-            .clone()
-            .then(
-                just(Token::Plus)
-                    .or(just(Token::Minus))
-                    .then(binary_1)
-                    .repeated(),
-            )
-            .foldl(|lhs, (op, rhs)| match op {
+        let binary_2 = binary_1.clone().foldl(
+            just(Token::Plus)
+                .or(just(Token::Minus))
+                .then(binary_1)
+                .repeated(),
+            |lhs, (op, rhs)| match op {
                 Token::Plus => Expr::Add(Box::new(lhs), Box::new(rhs)),
                 Token::Minus => Expr::Sub(Box::new(lhs), Box::new(rhs)),
                 _ => unreachable!(),
-            });
+            },
+        );
 
         binary_2
     })
-    .then_ignore(end())
 }
 /* ANCHOR_END: parser */
 
@@ -156,7 +152,7 @@ fn main() {
     }
 
     //parses the tokens to construct an AST
-    let ast = match parser().parse(tokens) {
+    let ast = match parser().parse(&tokens).into_result() {
         Ok(expr) => {
             println!("[AST]\n{:#?}", expr);
             expr
