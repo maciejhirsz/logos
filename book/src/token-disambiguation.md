@@ -30,5 +30,5 @@ Generally speaking, equivalent regex patterns have the same priority. E.g.,
 When two different patterns have the same priority,
 **Logos** will issue an compilation error.
 To prevent this from happening, you can manually set the priority of a given
-pattern with, e.g., `#token("foobar", priority = 20)`.
+pattern with, e.g., `#[token("foobar", priority = 20)]`.
 ```
