@@ -216,3 +216,206 @@ mod return_result_skip {
         assert_eq!(lexer.next(), Some(Err(LexerError::UnterminatedComment)));
     }
 }
+
+mod skip_callback_function {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \t\n\f]+")]
+    #[logos(skip("<!--", skip_comment))]
+    enum Token<'src> {
+        #[regex(r"<[a-zA-Z0-9-]+>", |lex| &lex.slice()[1..lex.slice().len()-1])]
+        Tag(&'src str),
+    }
+
+    fn skip_comment<'src>(lexer: &mut Lexer<'src, Token<'src>>) {
+        let end = lexer
+            .remainder()
+            .find("-->")
+            .map(|id| id + 3)
+            .unwrap_or(lexer.remainder().len());
+        lexer.bump(end);
+    }
+
+    #[test]
+    fn skip_callback_function() {
+        let mut lexer = Token::lexer("<foo> <!-- comment --> <bar>");
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("bar"))));
+        assert_eq!(lexer.next(), None);
+
+        let mut lexer = Token::lexer("<foo> <!-- unterminated comment");
+        assert_eq!(lexer.next(), Some(Ok(Token::Tag("foo"))));
+        assert_eq!(lexer.next(), None);
+    }
+}
+
+#[cfg(test)]
+mod skip_callback_closure {
+    use super::*;
+
+    #[derive(Debug, Clone, Copy, Default)]
+    struct Extras {
+        line_num: usize,
+    }
+
+    #[derive(Logos, Debug, PartialEq)]
+    #[logos(skip r"[ \r]")]
+    #[logos(skip(r"\n", callback = |lex| { lex.extras.line_num += 1; }))]
+    #[logos(extras = Extras)]
+    enum Token {
+        #[regex("[a-z]+")]
+        Letters,
+        #[regex("[0-9]+")]
+        Numbers,
+    }
+
+    #[test]
+    fn skip_callback_closure() {
+        let mut lexer = Token::lexer(concat!("abc 123\n", "ab( |23\n", "Abc 123\n",));
+        let mut tokens = Vec::new();
+        let mut error_lines: Vec<usize> = Vec::new();
+
+        while let Some(token_result) = lexer.next() {
+            if let Ok(token) = token_result {
+                tokens.push(token);
+            } else {
+                error_lines.push(lexer.extras.line_num);
+            }
+        }
+
+        assert_eq!(
+            tokens.as_slice(),
+            &[
+                Token::Letters,
+                Token::Numbers,
+                Token::Letters,
+                Token::Numbers,
+                Token::Letters,
+                Token::Numbers,
+            ]
+        );
+        assert_eq!(error_lines.as_slice(), &[1, 1, 2]);
+    }
+}
+
+#[cfg(test)]
+mod skip_equal_priorities {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    // Ignore all other characters (. doesn't match newlines)
+    #[logos(skip("(.|\n)", priority = 1))]
+    enum Token<'s> {
+        #[regex(r"[0-9]+")]
+        Numbers(&'s str),
+        #[regex(r"[!@#$%^&*]")]
+        Op(&'s str),
+    }
+
+    #[test]
+    fn skip_equal_priorities() {
+        let tokens: Result<Vec<Token>, _> = Lexer::new(
+            "123all letters are considered comments456
+            *other characters too& % 789😊! @ 012anything not a number or an op345 678 ^ 901",
+        )
+        .collect();
+
+        assert_eq!(
+            tokens.as_ref().map(Vec::as_slice),
+            Ok([
+                Token::Numbers("123"),
+                Token::Numbers("456"),
+                Token::Op("*"),
+                Token::Op("&"),
+                Token::Op("%"),
+                Token::Numbers("789"),
+                Token::Op("!"),
+                Token::Op("@"),
+                Token::Numbers("012"),
+                Token::Numbers("345"),
+                Token::Numbers("678"),
+                Token::Op("^"),
+                Token::Numbers("901"),
+            ]
+            .as_slice())
+        );
+    }
+}
+
+mod skip_all_callback_types {
+    use super::*;
+
+    #[derive(Logos)]
+    #[logos(extras = Vec<&'static str>)]
+    #[logos(error = &'static str)]
+    #[logos(skip "a")]
+    #[logos(skip("b", callback = |lex| lex.extras.push("inline_callback")))]
+    #[logos(skip("c", labelled_callback))]
+    #[logos(skip("d", labelled_skip_callback))]
+    #[logos(skip("e|f", labelled_result_callback))]
+    #[logos(skip("g|h", labelled_skip_result_callback))]
+    enum Token {}
+
+    fn labelled_callback(lex: &mut Lexer<'_, Token>) -> () {
+        lex.extras.push("labelled_callback")
+    }
+    fn labelled_skip_callback(lex: &mut Lexer<'_, Token>) -> Skip {
+        lex.extras.push("labelled_skip_callback");
+        Skip
+    }
+    fn labelled_result_callback(lex: &mut Lexer<'_, Token>) -> Result<(), &'static str> {
+        lex.extras.push("labelled_result_callback");
+
+        match lex.slice() {
+            "e" => Ok(()),
+            "f" => Err("f"),
+            _ => unreachable!(),
+        }
+    }
+    fn labelled_skip_result_callback(lex: &mut Lexer<'_, Token>) -> Result<Skip, &'static str> {
+        lex.extras.push("labelled_skip_result_callback");
+
+        match lex.slice() {
+            "g" => Ok(Skip),
+            "h" => Err("h"),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn skip_all_callback_types() {
+        let mut lexer = Lexer::<Token>::new("abcdefghhgfedcba");
+
+        let mut errors = Vec::new();
+
+        for result in &mut lexer {
+            match result {
+                Ok(_tok) => unreachable!(),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        assert_eq!(&errors, &["f", "h", "h", "f"]);
+        println!("{:#?}", &lexer.extras);
+        assert_eq!(
+            &lexer.extras,
+            &[
+                "inline_callback",
+                "labelled_callback",
+                "labelled_skip_callback",
+                "labelled_result_callback",
+                "labelled_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_skip_result_callback",
+                "labelled_result_callback",
+                "labelled_result_callback",
+                "labelled_skip_callback",
+                "labelled_callback",
+                "inline_callback",
+            ]
+        );
+    }
+}
