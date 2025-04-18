@@ -69,7 +69,7 @@ logos-derive = {version = "0.15.0", path = "./logos-derive", optional = true}
 
 [dev-dependencies]
 ariadne = {version = "0.4", features = ["auto-color"]}
-chumsky = {version = "0.9.3" }
+chumsky = {version = "0.10.0" }
 
 [[example]]
 doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
