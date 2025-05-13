@@ -118,7 +118,7 @@ impl Parser {
                                         .err("DOT path can be defined only once", span)
                                         .err("Previous definition here", previous.span());
                                 }
-                            },
+                            }
                             Ok(_) => {
                                 parser.err("Expected a &str", span);
                             }

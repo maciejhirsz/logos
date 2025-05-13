@@ -311,7 +311,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     if let Err(e) = std::fs::write(path, s) {
                         debug!("Error writing dot file: {}", e);
                     }
-                },
+                }
                 Err(e) => {
                     debug!("Error generating dot string: {}", e);
                 }
