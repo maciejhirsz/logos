@@ -301,6 +301,24 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     graph.shake(root);
 
+    #[cfg(feature = "graphviz")]
+    {
+        debug!("Generating dot graph");
+
+        if let Some(path) = parser.dot_path {
+            match graph.get_dot() {
+                Ok(s) => {
+                    if let Err(e) = std::fs::write(path, s) {
+                        debug!("Error writing dot file: {}", e);
+                    }
+                },
+                Err(e) => {
+                    debug!("Error generating dot string: {}", e);
+                }
+            }
+        }
+    }
+
     debug!("Generating code from graph:\n{graph:#?}");
 
     let generator = Generator::new(name, &this, root, &graph);

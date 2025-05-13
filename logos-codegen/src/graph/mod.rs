@@ -7,6 +7,8 @@ use std::ops::Index;
 
 use fnv::FnvHasher;
 
+#[cfg(feature = "graphviz")]
+mod dot;
 mod fork;
 mod impls;
 mod meta;

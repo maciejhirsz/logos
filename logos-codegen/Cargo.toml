@@ -21,6 +21,8 @@ debug = []
 fuzzing = []
 # Don't use or generate unsafe code
 forbid_unsafe = []
+# Enables graphviz DOT file generation
+graphviz = []
 
 [lib]
 bench = false

@@ -54,6 +54,8 @@ export_derive = ["logos-derive"]
 std = []
 # Use safe alternatives for unsafe code (may impact performance)?
 forbid_unsafe = ["logos-derive?/forbid_unsafe"]
+# Enables graphviz DOT file generation
+graphviz = ["logos-derive?/graphviz"]
 
 [package.metadata.docs.rs]
 features = ["debug"]

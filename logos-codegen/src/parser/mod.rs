@@ -31,6 +31,8 @@ pub struct Parser {
     pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
+    #[cfg(feature = "graphviz")]
+    pub dot_path: Option<String>,
     types: TypeParams,
 }
 
@@ -102,6 +104,36 @@ impl Parser {
                     NestedValue::Assign(logos_path) => parser.logos_path = Some(logos_path),
                     _ => {
                         parser.err("Expected: #[logos(crate = path::to::logos)]", span);
+                    }
+                }),
+                ("dot_path", |parser, span, value| match value {
+                    #[cfg(feature = "graphviz")]
+                    NestedValue::Assign(value) => {
+                        let span = value.span();
+
+                        match syn::parse2::<Literal>(value) {
+                            Ok(Literal::Utf8(str)) => {
+                                if let Some(previous) = parser.dot_path.replace(str.value()) {
+                                    parser
+                                        .err("DOT path can be defined only once", span)
+                                        .err("Previous definition here", previous.span());
+                                }
+                            },
+                            Ok(_) => {
+                                parser.err("Expected a &str", span);
+                            }
+                            Err(e) => {
+                                parser.err(e.to_string(), span);
+                            }
+                        }
+                    }
+                    #[cfg(feature = "graphviz")]
+                    _ => {
+                        parser.err("Expected #[logos(dot_path = \"path/to/output/dot\")]", span);
+                    }
+                    #[cfg(not(feature = "graphviz"))]
+                    _ => {
+                        parser.err("Enable the 'graphviz' feature to generate dot files", span);
                     }
                 }),
                 ("error", |parser, span, value| match value {
