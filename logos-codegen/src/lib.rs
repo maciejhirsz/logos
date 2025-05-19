@@ -301,19 +301,39 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     graph.shake(root);
 
-    #[cfg(feature = "graphviz")]
+    #[cfg(feature = "debug")]
     {
-        debug!("Generating dot graph");
+        debug!("Generating graphs");
 
-        if let Some(path) = parser.dot_path {
-            match graph.get_dot() {
-                Ok(s) => {
-                    if let Err(e) = std::fs::write(path, s) {
-                        debug!("Error writing dot file: {}", e);
+        if let Some(path) = parser.export_dir {
+            let dir_path = std::path::Path::new(path.trim_end_matches('/'));
+            match std::fs::create_dir_all(&dir_path) {
+                Ok(()) => {
+                    match graph.get_dot() {
+                        Ok(s) => {
+                            let dot_path = dir_path.join("graph.dot");
+                            if let Err(e) = std::fs::write(dot_path, s) {
+                                debug!("Error writing dot graph: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            debug!("Error generating dot graph: {}", e);
+                        }
+                    }
+                    match graph.get_mmd() {
+                        Ok(s) => {
+                            let mermaid_path = dir_path.join("graph.mmd");
+                            if let Err(e) = std::fs::write(mermaid_path, s) {
+                                debug!("Error writing mermaid graph: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            debug!("Error generating mermaid graph: {}", e);
+                        }
                     }
                 }
                 Err(e) => {
-                    debug!("Error generating dot string: {}", e);
+                    debug!("Error creating graph export dir: {}", e);
                 }
             }
         }

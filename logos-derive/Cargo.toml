@@ -6,8 +6,6 @@ logos-codegen = {version = "0.15.0", path = "../logos-codegen"}
 debug = ["logos-codegen/debug"]
 # Don't use or generate unsafe code
 forbid_unsafe = ["logos-codegen/forbid_unsafe"]
-# Enables graphviz DOT file generation
-graphviz = ["logos-codegen/graphviz"]
 
 [lib]
 bench = false
