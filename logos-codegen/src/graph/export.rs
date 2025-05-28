@@ -10,6 +10,13 @@ struct NodeIdStrings {
 }
 
 impl NodeIdStrings {
+    fn new() -> Self {
+        Self {
+            next: 0,
+            mappings: HashMap::new(),
+        }
+    }
+    
     /// Get a unique string for a node.
     fn get_unique(&mut self) -> String {
         let next = self.next;
@@ -183,10 +190,7 @@ impl<Leaf: Display> Graph<Leaf> {
             .enumerate()
             .filter_map(|(i, n)| n.as_ref().map(|n| (i, n)));
 
-        let mut ids = NodeIdStrings {
-            next: 0,
-            mappings: HashMap::new(),
-        };
+        let mut ids = NodeIdStrings::new();
 
         Fmt::write_header(&mut s)?;
         for (id, node) in entries {
