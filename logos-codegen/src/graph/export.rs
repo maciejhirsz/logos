@@ -261,7 +261,17 @@ impl Rope {
                 Fmt::write_link(s, &id, &link_id)?;
                 Fmt::write_link(s, &link_id, ids.node(node))
             }
-            Miss::Any(node) => Fmt::write_link(s, &id, ids.node(node)),
+            Miss::Any(node) => {
+                let link_id = ids.get_unique();
+                Fmt::write_node(
+                    s,
+                    &link_id,
+                    "MISS",
+                    NodeColor::Red,
+                )?;
+                Fmt::write_link(s, &id, &link_id)?;
+                Fmt::write_link(s, &link_id, ids.node(node))
+            },
             Miss::None => Ok(()),
         }
     }
