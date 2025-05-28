@@ -156,9 +156,6 @@ impl ExportFormat for MMD {
             match c {
                 '"' => Iter::Str("&quot".chars()),
                 '\\' => Iter::Str("\\\\".chars()),
-                '\n' => Iter::Str("\\\\n".chars()),
-                '\t' => Iter::Str("\\\\t".chars()),
-                '\r' => Iter::Str("\\\\r".chars()),
                 _ => Iter::Char(Some(c)),
             }
         }
