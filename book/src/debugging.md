@@ -93,6 +93,21 @@ alphabetic characters after the word "fast", but rather a whitespace,
 the token `::Fast` will be recognized.
 Then, the graph will look for further potential continuation (here, `[g-z] => 4`)
 
+## Visual Representation
+
+Logos can generate Mermaid charts and DOT graphs to visualize the lexer’s state transitions.
+
+Specify an export directory with the `export_dir` attribute to save these graphs:
+```rust,no_run,noplayground
+#[derive(Logos)]
+#[logos(export_dir = "path/to/export/graphs")]
+enum Token {
+    // ..
+}
+```
+
+![graph](/assets/debug_graph_example.png)
+
 ## Enabling 
 
 To enable debugging output you can define a `debug` feature in your
