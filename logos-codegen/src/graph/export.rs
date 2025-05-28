@@ -224,7 +224,7 @@ impl Fork {
             Fmt::write_link(s, &link_id, ids.node(node))?;
         }
         if let Some(miss) = self.miss {
-            Fmt::write_link(s, &id, ids.node(miss));
+            Fmt::write_link(s, &id, ids.node(miss))?;
         }
         Ok(())
     }
