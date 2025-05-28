@@ -102,7 +102,14 @@ Specify an export directory with the `export_dir` attribute to save these graphs
 #[derive(Logos)]
 #[logos(export_dir = "path/to/export/graphs")]
 enum Token {
-    // ..
+    #[token("fast")]
+    Fast,
+
+    #[token(".")]
+    Period,
+
+    #[regex("[a-zA-Z]+")]
+    Text,
 }
 ```
 
