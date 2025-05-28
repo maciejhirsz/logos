@@ -16,7 +16,7 @@ impl NodeIdStrings {
             mappings: HashMap::new(),
         }
     }
-    
+
     /// Get a unique string for a node.
     fn get_unique(&mut self) -> String {
         let next = self.next;
@@ -263,15 +263,10 @@ impl Rope {
             }
             Miss::Any(node) => {
                 let link_id = ids.get_unique();
-                Fmt::write_node(
-                    s,
-                    &link_id,
-                    "MISS",
-                    NodeColor::Red,
-                )?;
+                Fmt::write_node(s, &link_id, "MISS", NodeColor::Red)?;
                 Fmt::write_link(s, &id, &link_id)?;
                 Fmt::write_link(s, &link_id, ids.node(node))
-            },
+            }
             Miss::None => Ok(()),
         }
     }
@@ -280,7 +275,172 @@ impl Rope {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graph::{Fork, NodeId, Range, Rope};
 
     #[test]
-    fn t() {}
+    fn range_fmt_single_ascii_byte() {
+        let r = Range {
+            start: 0x6C,
+            end: 0x6C,
+        };
+        assert_eq!(DOT::fmt_range(&r), "'l'");
+        assert_eq!(MMD::fmt_range(&r), "'l'");
+    }
+
+    #[test]
+    fn range_fmt_ascii_bytes() {
+        let r = Range {
+            start: 0x61,
+            end: 0x7A,
+        };
+        assert_eq!(DOT::fmt_range(&r), "'a'..='z'");
+        assert_eq!(MMD::fmt_range(&r), "'a'..='z'");
+    }
+
+    #[test]
+    fn range_fmt_single_escaped_ascii_byte() {
+        let r = Range {
+            start: 0x22,
+            end: 0x22,
+        };
+        assert_eq!(DOT::fmt_range(&r), "'\\\\\\\"'");
+        assert_eq!(MMD::fmt_range(&r), "'\\\\&quot'");
+
+        let r = Range {
+            start: 0x5C,
+            end: 0x5C,
+        };
+        assert_eq!(DOT::fmt_range(&r), "'\\\\\\\\'");
+        assert_eq!(MMD::fmt_range(&r), "'\\\\\\\\'");
+    }
+
+    #[test]
+    fn range_fmt_single_hex_byte() {
+        let r = Range {
+            start: 0x0A,
+            end: 0x0A,
+        };
+        assert_eq!(DOT::fmt_range(&r), "0A");
+        assert_eq!(MMD::fmt_range(&r), "0A");
+    }
+
+    #[test]
+    fn range_fmt_hex_bytes() {
+        let r = Range {
+            start: 0x0A,
+            end: 0x10,
+        };
+        assert_eq!(DOT::fmt_range(&r), "0A..=10");
+        assert_eq!(MMD::fmt_range(&r), "0A..=10");
+    }
+
+    #[test]
+    fn node_id_strings() {
+        let mut ids = NodeIdStrings::new();
+        let node_1 = ids.idx(1).to_owned();
+        let node_2 = ids.idx(2).to_owned();
+        let temp = ids.get_unique().to_owned();
+        let node_1_again = ids.node(NodeId::new(1)).to_owned();
+        assert_eq!(node_1, node_1_again);
+        assert_ne!(node_2, temp);
+        assert_ne!(node_1, node_2);
+        assert_ne!(node_1, temp);
+    }
+
+    #[test]
+    fn fork() {
+        let n = Fork::new()
+            .branch(
+                Range {
+                    start: 0x61,
+                    end: 0x79,
+                },
+                NodeId::new(2),
+            )
+            .branch(
+                Range {
+                    start: 0x7A,
+                    end: 0x7A,
+                },
+                NodeId::new(3),
+            );
+
+        let mut dot = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        assert_eq!(dot, "n0[label=\"Fork\",color=blue];n1[label=\"'a'..='y'\",color=orange];n0->n1;n1->n2;n3[label=\"'z'\",color=orange];n0->n3;n3->n4;");
+
+        let mut mmd = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        assert_eq!(mmd, "n0[\"Fork\"]\nstyle n0 stroke:#2962FF\nn1[\"'a'..='y'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn1-->n2\nn3[\"'z'\"]\nstyle n3 stroke:#FF6D00\nn0-->n3\nn3-->n4\n");
+    }
+
+    #[test]
+    fn fork_with_miss() {
+        let n = Fork::new()
+            .branch(
+                Range {
+                    start: 0x61,
+                    end: 0x7A,
+                },
+                NodeId::new(2),
+            )
+            .miss(NodeId::new(3));
+
+        let mut dot = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        assert_eq!(dot, "n0[label=\"Fork\",color=blue];n1[label=\"'a'..='z'\",color=orange];n0->n1;n1->n2;n0->n3;");
+
+        let mut mmd = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        assert_eq!(mmd, "n0[\"Fork\"]\nstyle n0 stroke:#2962FF\nn1[\"'a'..='z'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn1-->n2\nn0-->n3\n");
+    }
+
+    #[test]
+    fn rope() {
+        let n = Rope::new("rope", NodeId::new(1));
+
+        let mut dot = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        assert_eq!(dot, "n0[label=\"Rope\",color=blue];n1[label=\"'r'\",color=orange];n0->n1;n2[label=\"'o'\",color=orange];n1->n2;n3[label=\"'p'\",color=orange];n2->n3;n4[label=\"'e'\",color=orange];n3->n4;n4->n5;");
+
+        let mut mmd = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        assert_eq!(mmd, "n0[\"Rope\"]\nstyle n0 stroke:#2962FF\nn1[\"'r'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn2[\"'o'\"]\nstyle n2 stroke:#FF6D00\nn1-->n2\nn3[\"'p'\"]\nstyle n3 stroke:#FF6D00\nn2-->n3\nn4[\"'e'\"]\nstyle n4 stroke:#FF6D00\nn3-->n4\nn4-->n5\n");
+    }
+
+    #[test]
+    fn rope_with_miss_first() {
+        let n = Rope::new("ee", NodeId::new(1)).miss(NodeId::new(2));
+
+        let mut dot = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        assert_eq!(dot, "n0[label=\"Rope\",color=blue];n1[label=\"'e'\",color=orange];n0->n1;n2[label=\"'e'\",color=orange];n1->n2;n2->n3;n4[label=\"NOT 'e'\",color=red];n0->n4;n4->n5;");
+
+        let mut mmd = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        assert_eq!(mmd, "n0[\"Rope\"]\nstyle n0 stroke:#2962FF\nn1[\"'e'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn2[\"'e'\"]\nstyle n2 stroke:#FF6D00\nn1-->n2\nn2-->n3\nn4[\"NOT 'e'\"]\nstyle n4 stroke:#D50000\nn0-->n4\nn4-->n5\n");
+    }
+
+    #[test]
+    fn rope_with_miss_any() {
+        let n = Rope::new("ee", NodeId::new(1)).miss_any(NodeId::new(2));
+
+        let mut dot = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        assert_eq!(dot, "n0[label=\"Rope\",color=blue];n1[label=\"'e'\",color=orange];n0->n1;n2[label=\"'e'\",color=orange];n1->n2;n2->n3;n4[label=\"MISS\",color=red];n0->n4;n4->n5;");
+
+        let mut mmd = String::new();
+        let mut ids = NodeIdStrings::new();
+        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        assert_eq!(mmd, "n0[\"Rope\"]\nstyle n0 stroke:#2962FF\nn1[\"'e'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn2[\"'e'\"]\nstyle n2 stroke:#FF6D00\nn1-->n2\nn2-->n3\nn4[\"MISS\"]\nstyle n4 stroke:#D50000\nn0-->n4\nn4-->n5\n");
+    }
 }
