@@ -114,6 +114,14 @@ impl<'a> Generator<'a> {
 
             let bump = if enters_loop || !ctx.can_backtrack() {
                 ctx.switch(self.graph[id].miss())
+            } else if let Some(miss_id) = self.graph[id].miss() {
+                if let Node::Leaf(_) = self.graph[miss_id] {
+                    // if the node have a 'miss' and the 'miss' is a leaf, we can backtrack to it.
+                    // updating in case it have changed.
+                    ctx.switch(Some(miss_id))
+                } else {
+                    None
+                }
             } else {
                 None
             };
