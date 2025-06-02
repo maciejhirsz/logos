@@ -57,7 +57,4 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Check that tests run
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --workspace --verbose ${{ matrix.features }}
+      run: cargo test --workspace --verbose ${{ matrix.features }}
