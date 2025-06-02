@@ -87,7 +87,7 @@ impl Generator<'_> {
             })
             .collect::<TokenStream>();
 
-        let may_error = table.iter().any(|&idx| idx == 0);
+        let may_error = table.contains(&0);
 
         let jumps = jumps.as_slice();
         let table = table.iter().copied().map(|idx| &jumps[idx as usize]);
