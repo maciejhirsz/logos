@@ -1,4 +1,4 @@
-use std::{error::Error, io, path::PathBuf};
+use std::{error::Error, path::PathBuf};
 
 #[rstest::rstest]
 #[case("simple")]

@@ -1,7 +1,8 @@
 [package]
+edition.workspace = true
 name = "logos-fuzz"
-edition = "2021"
 publish = false
+rust-version.workspace = true
 
 [dependencies]
 afl = "0.15"

@@ -2,7 +2,8 @@
 edition.workspace = true
 name = "tests"
 publish = false
-version = "0.1.0"
+rust-version.workspace = true
+version = "0.0.0"
 
 [dependencies]
 logos-derive = {path = "../logos-derive"}
@@ -15,8 +16,7 @@ forbid_unsafe = [
 ]
 
 [dev-dependencies]
-codspeed-criterion-compat = "2.7.0"
-criterion = "0.5"
+criterion = { version = "2.10.1", package = "codspeed-criterion-compat" }
 
 [package.metadata.release]
 release = false
