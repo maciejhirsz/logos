@@ -307,7 +307,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
         if let Some(path) = parser.export_dir {
             let dir_path = std::path::Path::new(path.trim_end_matches('/'));
-            match std::fs::create_dir_all(&dir_path) {
+            match std::fs::create_dir_all(dir_path) {
                 Ok(()) => {
                     match graph.get_dot() {
                         Ok(s) => {

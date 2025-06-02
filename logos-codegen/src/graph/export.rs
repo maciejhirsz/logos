@@ -82,7 +82,7 @@ impl Range {
     fn fmt_with_escape<I: Iterator<Item = char>>(&self, escape: impl Fn(char) -> I) -> String {
         let fmt_byte = |b: u8| -> String {
             if (0x20..0x7F).contains(&b) {
-                let escaped = (b as char).escape_default().flat_map(|c| escape(c));
+                let escaped = (b as char).escape_default().flat_map(&escape);
                 format!("'{}'", escaped.collect::<String>())
             } else {
                 format!("{:02X}", b)
@@ -97,9 +97,9 @@ impl Range {
     }
 }
 
-struct DOT;
+struct Dot;
 
-impl ExportFormat for DOT {
+impl ExportFormat for Dot {
     fn write_header(s: &mut String) -> std::fmt::Result {
         write!(s, "digraph {{")?;
         write!(s, "node[shape=box];")?;
@@ -123,9 +123,9 @@ impl ExportFormat for DOT {
     }
 }
 
-struct MMD;
+struct Mmd;
 
-impl ExportFormat for MMD {
+impl ExportFormat for Mmd {
     fn write_header(s: &mut String) -> std::fmt::Result {
         writeln!(s, "flowchart TB")
     }
@@ -173,12 +173,12 @@ impl ExportFormat for MMD {
 impl<Leaf: Display> Graph<Leaf> {
     /// Writes the `Graph` to a dot file.
     pub fn get_dot(&self) -> Result<String, std::fmt::Error> {
-        self.export_graph::<DOT>()
+        self.export_graph::<Dot>()
     }
 
     /// Writes the `Graph` to a mermaid file.
     pub fn get_mmd(&self) -> Result<String, std::fmt::Error> {
-        self.export_graph::<MMD>()
+        self.export_graph::<Mmd>()
     }
 
     fn export_graph<Fmt: ExportFormat>(&self) -> Result<String, std::fmt::Error> {
@@ -243,7 +243,7 @@ impl Rope {
         let mut previous = id.clone();
         for range in self.pattern.iter() {
             let link_id = ids.get_unique();
-            Fmt::write_node(s, &link_id, &Fmt::fmt_range(&range), NodeColor::Orange)?;
+            Fmt::write_node(s, &link_id, &Fmt::fmt_range(range), NodeColor::Orange)?;
             Fmt::write_link(s, &previous, &link_id)?;
             previous = link_id;
         }
@@ -255,7 +255,7 @@ impl Rope {
                 Fmt::write_node(
                     s,
                     &link_id,
-                    &format!("NOT {}", Fmt::fmt_range(&self.pattern.first().unwrap())),
+                    &format!("NOT {}", Fmt::fmt_range(self.pattern.first().unwrap())),
                     NodeColor::Red,
                 )?;
                 Fmt::write_link(s, &id, &link_id)?;
