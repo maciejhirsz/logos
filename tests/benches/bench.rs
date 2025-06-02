@@ -1,6 +1,4 @@
-use codspeed_criterion_compat::{
-    black_box, criterion_group, criterion_main, Criterion, Throughput,
-};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use logos_derive::Logos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
