@@ -119,6 +119,11 @@ You can also specify the name of the file to export to.
 #[logos(export_dir = "export/graph.mmd")]
 ```
 
+To render the graphs, you can install a plugin in your IDE or use an online tool.
+
+See the [graphviz](https://graphviz.org/doc/info/command.html) and [mermaid](https://mermaid.js.org/config/usage.html)
+documentations for more details.
+
 ![graph](/assets/debug_graph_example.png)
 
 ## Enabling 
