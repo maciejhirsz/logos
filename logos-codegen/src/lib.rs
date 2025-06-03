@@ -320,7 +320,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         match graph.get_dot() {
                             Ok(s) => {
                                 let dot_path = if path.extension().is_none() {
-                                    path.join("graph.dot")
+                                    path.join(format!("{}.dot", name.to_string().to_lowercase()))
                                 } else {
                                     path.to_path_buf()
                                 };
@@ -338,7 +338,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         match graph.get_mermaid() {
                             Ok(s) => {
                                 let mermaid_path = if path.extension().is_none() {
-                                    path.join("graph.mmd")
+                                    path.join(format!("{}.mmd", name.to_string().to_lowercase()))
                                 } else {
                                     path.to_path_buf()
                                 };
