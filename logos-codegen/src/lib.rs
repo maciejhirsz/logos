@@ -31,6 +31,8 @@ use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
 use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
+use std::ffi::OsStr;
+use std::path::Path;
 use util::MaybeVoid;
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
@@ -306,29 +308,47 @@ pub fn generate(input: TokenStream) -> TokenStream {
         debug!("Generating graphs");
 
         if let Some(path) = parser.export_dir {
-            let dir_path = std::path::Path::new(path.trim_end_matches('/'));
-            match std::fs::create_dir_all(dir_path) {
+            let path = Path::new(&path);
+            let dir = if path.extension().is_none() {
+                path
+            } else {
+                path.parent().unwrap_or(Path::new(""))
+            };
+            match std::fs::create_dir_all(dir) {
                 Ok(()) => {
-                    match graph.get_dot() {
-                        Ok(s) => {
-                            let dot_path = dir_path.join("graph.dot");
-                            if let Err(e) = std::fs::write(dot_path, s) {
-                                debug!("Error writing dot graph: {}", e);
+                    if path.extension() == Some(OsStr::new("dot")) || path.extension().is_none() {
+                        match graph.get_dot() {
+                            Ok(s) => {
+                                let dot_path = if path.extension().is_none() {
+                                    path.join("graph.dot")
+                                } else {
+                                    path.to_path_buf()
+                                };
+                                if let Err(e) = std::fs::write(dot_path, s) {
+                                    debug!("Error writing dot graph: {}", e);
+                                }
                             }
-                        }
-                        Err(e) => {
-                            debug!("Error generating dot graph: {}", e);
+                            Err(e) => {
+                                debug!("Error generating dot graph: {}", e);
+                            }
                         }
                     }
-                    match graph.get_mermaid() {
-                        Ok(s) => {
-                            let mermaid_path = dir_path.join("graph.mmd");
-                            if let Err(e) = std::fs::write(mermaid_path, s) {
-                                debug!("Error writing mermaid graph: {}", e);
+
+                    if path.extension() == Some(OsStr::new("mmd")) || path.extension().is_none() {
+                        match graph.get_mermaid() {
+                            Ok(s) => {
+                                let mermaid_path = if path.extension().is_none() {
+                                    path.join("graph.mmd")
+                                } else {
+                                    path.to_path_buf()
+                                };
+                                if let Err(e) = std::fs::write(mermaid_path, s) {
+                                    debug!("Error writing mermaid graph: {}", e);
+                                }
                             }
-                        }
-                        Err(e) => {
-                            debug!("Error generating mermaid graph: {}", e);
+                            Err(e) => {
+                                debug!("Error generating mermaid graph: {}", e);
+                            }
                         }
                     }
                 }
