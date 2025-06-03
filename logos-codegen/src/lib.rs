@@ -31,8 +31,6 @@ use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
 use parser::{IgnoreFlags, Mode, Parser};
 use quote::ToTokens;
-use std::ffi::OsStr;
-use std::path::Path;
 use util::MaybeVoid;
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
@@ -308,15 +306,17 @@ pub fn generate(input: TokenStream) -> TokenStream {
         debug!("Generating graphs");
 
         if let Some(path) = parser.export_dir {
-            let path = Path::new(&path);
+            let path = std::path::Path::new(&path);
             let dir = if path.extension().is_none() {
                 path
             } else {
-                path.parent().unwrap_or(Path::new(""))
+                path.parent().unwrap_or(std::path::Path::new(""))
             };
             match std::fs::create_dir_all(dir) {
                 Ok(()) => {
-                    if path.extension() == Some(OsStr::new("dot")) || path.extension().is_none() {
+                    if path.extension() == Some(std::ffi::OsStr::new("dot"))
+                        || path.extension().is_none()
+                    {
                         match graph.get_dot() {
                             Ok(s) => {
                                 let dot_path = if path.extension().is_none() {
@@ -334,7 +334,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     }
 
-                    if path.extension() == Some(OsStr::new("mmd")) || path.extension().is_none() {
+                    if path.extension() == Some(std::ffi::OsStr::new("mmd"))
+                        || path.extension().is_none()
+                    {
                         match graph.get_mermaid() {
                             Ok(s) => {
                                 let mermaid_path = if path.extension().is_none() {
