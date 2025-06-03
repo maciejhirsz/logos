@@ -320,7 +320,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                             debug!("Error generating dot graph: {}", e);
                         }
                     }
-                    match graph.get_mmd() {
+                    match graph.get_mermaid() {
                         Ok(s) => {
                             let mermaid_path = dir_path.join("graph.mmd");
                             if let Err(e) = std::fs::write(mermaid_path, s) {

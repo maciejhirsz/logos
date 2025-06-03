@@ -123,9 +123,9 @@ impl ExportFormat for Dot {
     }
 }
 
-struct Mmd;
+struct Mermaid;
 
-impl ExportFormat for Mmd {
+impl ExportFormat for Mermaid {
     fn write_header(s: &mut String) -> std::fmt::Result {
         writeln!(s, "flowchart TB")
     }
@@ -177,8 +177,8 @@ impl<Leaf: Display> Graph<Leaf> {
     }
 
     /// Writes the `Graph` to a mermaid file.
-    pub fn get_mmd(&self) -> Result<String, std::fmt::Error> {
-        self.export_graph::<Mmd>()
+    pub fn get_mermaid(&self) -> Result<String, std::fmt::Error> {
+        self.export_graph::<Mermaid>()
     }
 
     fn export_graph<Fmt: ExportFormat>(&self) -> Result<String, std::fmt::Error> {
@@ -283,8 +283,8 @@ mod tests {
             start: 0x6C,
             end: 0x6C,
         };
-        assert_eq!(DOT::fmt_range(&r), "'l'");
-        assert_eq!(MMD::fmt_range(&r), "'l'");
+        assert_eq!(Dot::fmt_range(&r), "'l'");
+        assert_eq!(Mermaid::fmt_range(&r), "'l'");
     }
 
     #[test]
@@ -293,8 +293,8 @@ mod tests {
             start: 0x61,
             end: 0x7A,
         };
-        assert_eq!(DOT::fmt_range(&r), "'a'..='z'");
-        assert_eq!(MMD::fmt_range(&r), "'a'..='z'");
+        assert_eq!(Dot::fmt_range(&r), "'a'..='z'");
+        assert_eq!(Mermaid::fmt_range(&r), "'a'..='z'");
     }
 
     #[test]
@@ -303,15 +303,15 @@ mod tests {
             start: 0x22,
             end: 0x22,
         };
-        assert_eq!(DOT::fmt_range(&r), "'\\\\\\\"'");
-        assert_eq!(MMD::fmt_range(&r), "'\\\\&quot'");
+        assert_eq!(Dot::fmt_range(&r), "'\\\\\\\"'");
+        assert_eq!(Mermaid::fmt_range(&r), "'\\\\&quot'");
 
         let r = Range {
             start: 0x5C,
             end: 0x5C,
         };
-        assert_eq!(DOT::fmt_range(&r), "'\\\\\\\\'");
-        assert_eq!(MMD::fmt_range(&r), "'\\\\\\\\'");
+        assert_eq!(Dot::fmt_range(&r), "'\\\\\\\\'");
+        assert_eq!(Mermaid::fmt_range(&r), "'\\\\\\\\'");
     }
 
     #[test]
@@ -320,8 +320,8 @@ mod tests {
             start: 0x0A,
             end: 0x0A,
         };
-        assert_eq!(DOT::fmt_range(&r), "0A");
-        assert_eq!(MMD::fmt_range(&r), "0A");
+        assert_eq!(Dot::fmt_range(&r), "0A");
+        assert_eq!(Mermaid::fmt_range(&r), "0A");
     }
 
     #[test]
@@ -330,8 +330,8 @@ mod tests {
             start: 0x0A,
             end: 0x10,
         };
-        assert_eq!(DOT::fmt_range(&r), "0A..=10");
-        assert_eq!(MMD::fmt_range(&r), "0A..=10");
+        assert_eq!(Dot::fmt_range(&r), "0A..=10");
+        assert_eq!(Mermaid::fmt_range(&r), "0A..=10");
     }
 
     #[test]
@@ -367,12 +367,12 @@ mod tests {
 
         let mut dot = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        n.write_graph::<Dot>(&mut dot, &mut ids, 0).unwrap();
         assert_eq!(dot, "n0[label=\"Fork\",color=blue];n1[label=\"'a'..='y'\",color=orange];n0->n1;n1->n2;n3[label=\"'z'\",color=orange];n0->n3;n3->n4;");
 
         let mut mmd = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        n.write_graph::<Mermaid>(&mut mmd, &mut ids, 0).unwrap();
         assert_eq!(mmd, "n0[\"Fork\"]\nstyle n0 stroke:#2962FF\nn1[\"'a'..='y'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn1-->n2\nn3[\"'z'\"]\nstyle n3 stroke:#FF6D00\nn0-->n3\nn3-->n4\n");
     }
 
@@ -390,12 +390,12 @@ mod tests {
 
         let mut dot = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        n.write_graph::<Dot>(&mut dot, &mut ids, 0).unwrap();
         assert_eq!(dot, "n0[label=\"Fork\",color=blue];n1[label=\"'a'..='z'\",color=orange];n0->n1;n1->n2;n0->n3;");
 
         let mut mmd = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        n.write_graph::<Mermaid>(&mut mmd, &mut ids, 0).unwrap();
         assert_eq!(mmd, "n0[\"Fork\"]\nstyle n0 stroke:#2962FF\nn1[\"'a'..='z'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn1-->n2\nn0-->n3\n");
     }
 
@@ -405,12 +405,12 @@ mod tests {
 
         let mut dot = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        n.write_graph::<Dot>(&mut dot, &mut ids, 0).unwrap();
         assert_eq!(dot, "n0[label=\"Rope\",color=blue];n1[label=\"'r'\",color=orange];n0->n1;n2[label=\"'o'\",color=orange];n1->n2;n3[label=\"'p'\",color=orange];n2->n3;n4[label=\"'e'\",color=orange];n3->n4;n4->n5;");
 
         let mut mmd = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        n.write_graph::<Mermaid>(&mut mmd, &mut ids, 0).unwrap();
         assert_eq!(mmd, "n0[\"Rope\"]\nstyle n0 stroke:#2962FF\nn1[\"'r'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn2[\"'o'\"]\nstyle n2 stroke:#FF6D00\nn1-->n2\nn3[\"'p'\"]\nstyle n3 stroke:#FF6D00\nn2-->n3\nn4[\"'e'\"]\nstyle n4 stroke:#FF6D00\nn3-->n4\nn4-->n5\n");
     }
 
@@ -420,12 +420,12 @@ mod tests {
 
         let mut dot = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        n.write_graph::<Dot>(&mut dot, &mut ids, 0).unwrap();
         assert_eq!(dot, "n0[label=\"Rope\",color=blue];n1[label=\"'e'\",color=orange];n0->n1;n2[label=\"'e'\",color=orange];n1->n2;n2->n3;n4[label=\"NOT 'e'\",color=red];n0->n4;n4->n5;");
 
         let mut mmd = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        n.write_graph::<Mermaid>(&mut mmd, &mut ids, 0).unwrap();
         assert_eq!(mmd, "n0[\"Rope\"]\nstyle n0 stroke:#2962FF\nn1[\"'e'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn2[\"'e'\"]\nstyle n2 stroke:#FF6D00\nn1-->n2\nn2-->n3\nn4[\"NOT 'e'\"]\nstyle n4 stroke:#D50000\nn0-->n4\nn4-->n5\n");
     }
 
@@ -435,12 +435,12 @@ mod tests {
 
         let mut dot = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<DOT>(&mut dot, &mut ids, 0).unwrap();
+        n.write_graph::<Dot>(&mut dot, &mut ids, 0).unwrap();
         assert_eq!(dot, "n0[label=\"Rope\",color=blue];n1[label=\"'e'\",color=orange];n0->n1;n2[label=\"'e'\",color=orange];n1->n2;n2->n3;n4[label=\"MISS\",color=red];n0->n4;n4->n5;");
 
         let mut mmd = String::new();
         let mut ids = NodeIdStrings::new();
-        n.write_graph::<MMD>(&mut mmd, &mut ids, 0).unwrap();
+        n.write_graph::<Mermaid>(&mut mmd, &mut ids, 0).unwrap();
         assert_eq!(mmd, "n0[\"Rope\"]\nstyle n0 stroke:#2962FF\nn1[\"'e'\"]\nstyle n1 stroke:#FF6D00\nn0-->n1\nn2[\"'e'\"]\nstyle n2 stroke:#FF6D00\nn1-->n2\nn2-->n3\nn4[\"MISS\"]\nstyle n4 stroke:#D50000\nn0-->n4\nn4-->n5\n");
     }
 }
