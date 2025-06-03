@@ -41,6 +41,7 @@ jobs:
         features:
         - ""  # default features
         - "--features forbid_unsafe"
+        - "--features debug"
 
     runs-on: ${{ matrix.os }}
     steps:
