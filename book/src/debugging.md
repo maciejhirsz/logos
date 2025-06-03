@@ -100,7 +100,7 @@ Logos can generate Mermaid charts and DOT graphs to visualize the lexer’s stat
 Specify an export directory with the `export_dir` attribute to save these graphs:
 ```rust,no_run,noplayground
 #[derive(Logos)]
-#[logos(export_dir = "path/to/export/graphs")]
+#[logos(export_dir = "path/to/export/dir")]
 enum Token {
     #[token("fast")]
     Fast,
@@ -111,6 +111,12 @@ enum Token {
     #[regex("[a-zA-Z]+")]
     Text,
 }
+```
+
+You can also specify the name of the file to export to.
+
+```rust,no_run,noplayground
+#[logos(export_dir = "export/graph.mmd")]
 ```
 
 ![graph](/assets/debug_graph_example.png)
