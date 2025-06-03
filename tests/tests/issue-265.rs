@@ -1,6 +1,5 @@
 use logos_derive::Logos;
 use tests::assert_lex;
-// use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
 pub enum Token {
