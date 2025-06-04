@@ -127,7 +127,7 @@ struct Mermaid;
 
 impl ExportFormat for Mermaid {
     fn write_header(s: &mut String) -> std::fmt::Result {
-        write!(s, "flowchart TB\n")
+        writeln!(s, "flowchart TB")
     }
 
     fn write_footer(_s: &mut String) -> std::fmt::Result {
@@ -135,12 +135,12 @@ impl ExportFormat for Mermaid {
     }
 
     fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor) -> std::fmt::Result {
-        write!(s, "{}[\"{}\"]\n", id, label)?;
-        write!(s, "style {} stroke:{}\n", id, color.fmt_mmd())
+        writeln!(s, "{}[\"{}\"]", id, label)?;
+        writeln!(s, "style {} stroke:{}", id, color.fmt_mmd())
     }
 
     fn write_link(s: &mut String, from: &str, to: &str) -> std::fmt::Result {
-        write!(s, "{}-->{}\n", from, to)
+        writeln!(s, "{}-->{}", from, to)
     }
 
     fn fmt_range(r: &Range) -> String {
