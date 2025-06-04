@@ -23,7 +23,8 @@ pub fn test_export(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let _ = logos_codegen::generate(input.parse()?);
 
     let generated_dot = std::fs::read_to_string(format!("export_tmp/{}.dot", fixture))?;
-    let generated_mermaid = std::fs::read_to_string(format!("export_tmp/{}.mmd", fixture))?;
+    // filter out '\r' characters before comparison
+    let generated_mermaid = std::fs::read_to_string(format!("export_tmp/{}.mmd", fixture))?.chars().filter(|c| *c != '\r').collect::<String>();
 
     if std::env::var("BLESS_EXPORT").is_ok_and(|value| value == "1") {
         std::fs::write(&output_file_dot, &generated_dot)?;
