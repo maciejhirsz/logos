@@ -23,8 +23,7 @@ pub fn test_export(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let _ = logos_codegen::generate(input.parse()?);
 
     let generated_dot = std::fs::read_to_string(format!("export_tmp/{}.dot", fixture))?;
-    // filter out '\r' characters before comparison
-    let generated_mermaid = std::fs::read_to_string(format!("export_tmp/{}.mmd", fixture))?.chars().filter(|c| *c != '\r').collect::<String>();
+    let generated_mermaid = std::fs::read_to_string(format!("export_tmp/{}.mmd", fixture))?;
 
     if std::env::var("BLESS_EXPORT").is_ok_and(|value| value == "1") {
         std::fs::write(&output_file_dot, &generated_dot)?;
@@ -37,7 +36,7 @@ pub fn test_export(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     }
 
     assert_eq!(generated_dot, output_dot, "Export test failed: `{fixture}`, run tests again with env var `BLESS_EXPORT=1` to bless these changes");
-    assert_eq!(generated_mermaid, output_mermaid, "Export test failed: `{fixture}`, run tests again with env var `BLESS_EXPORT=1` to bless these changes");
+    assert_eq!(generated_mermaid.replace("\r\n", "\n"), output_mermaid.replace("\r\n", "\n"), "Export test failed: `{fixture}`, run tests again with env var `BLESS_EXPORT=1` to bless these changes");
 
     // cleanup
     let _ = std::fs::remove_dir_all("export_tmp");
