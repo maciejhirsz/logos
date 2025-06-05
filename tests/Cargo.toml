@@ -14,6 +14,10 @@ forbid_unsafe = [
     "logos-derive/forbid_unsafe",
     "logos/forbid_unsafe"
 ]
+debug = [
+    "logos-derive/debug",
+    "logos/debug"
+]
 
 [dev-dependencies]
 criterion = { version = "2.10.1", package = "codspeed-criterion-compat" }

@@ -7,6 +7,8 @@ use std::ops::Index;
 
 use fnv::FnvHasher;
 
+#[cfg(feature = "debug")]
+mod export;
 mod fork;
 mod impls;
 mod meta;

@@ -301,6 +301,66 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     graph.shake(root);
 
+    #[cfg(feature = "debug")]
+    {
+        debug!("Generating graphs");
+
+        if let Some(path) = parser.export_dir {
+            let path = std::path::Path::new(&path);
+            let dir = if path.extension().is_none() {
+                path
+            } else {
+                path.parent().unwrap_or(std::path::Path::new(""))
+            };
+            match std::fs::create_dir_all(dir) {
+                Ok(()) => {
+                    if path.extension() == Some(std::ffi::OsStr::new("dot"))
+                        || path.extension().is_none()
+                    {
+                        match graph.get_dot() {
+                            Ok(s) => {
+                                let dot_path = if path.extension().is_none() {
+                                    path.join(format!("{}.dot", name.to_string().to_lowercase()))
+                                } else {
+                                    path.to_path_buf()
+                                };
+                                if let Err(e) = std::fs::write(dot_path, s) {
+                                    debug!("Error writing dot graph: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                debug!("Error generating dot graph: {}", e);
+                            }
+                        }
+                    }
+
+                    if path.extension() == Some(std::ffi::OsStr::new("mmd"))
+                        || path.extension().is_none()
+                    {
+                        match graph.get_mermaid() {
+                            Ok(s) => {
+                                let mermaid_path = if path.extension().is_none() {
+                                    path.join(format!("{}.mmd", name.to_string().to_lowercase()))
+                                } else {
+                                    path.to_path_buf()
+                                };
+                                if let Err(e) = std::fs::write(mermaid_path, s) {
+                                    debug!("Error writing mermaid graph: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                debug!("Error generating mermaid graph: {}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    debug!("Error creating graph export dir: {}", e);
+                }
+            }
+        }
+    }
+
     debug!("Generating code from graph:\n{graph:#?}");
 
     let generator = Generator::new(name, &this, root, &graph);
