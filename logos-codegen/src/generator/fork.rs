@@ -136,6 +136,12 @@ impl Generator<'_> {
         let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= max(min_read, 1) {
+            // SAFETY: The read_byte below is safe because the if statement
+            // above checks it's still within bounds.
+            #[cfg(not(feature = "forbid_unsafe"))]
+            let read = unsafe { ctx.read_byte() };
+
+            #[cfg(feature = "forbid_unsafe")]
             let read = ctx.read_byte();
 
             return (quote!(byte), quote!(let byte = #read;));
