@@ -112,17 +112,12 @@ impl<'a> Generator<'a> {
             let meta = &self.meta[id];
             let enters_loop = !meta.loop_entry_from.is_empty();
 
-            let bump = if enters_loop || !ctx.can_backtrack() {
-                ctx.switch(self.graph[id].miss())
+            ctx.switch(self.graph[id].miss());
+
+            let bump = if enters_loop || meta.min_read == 0 {
+                ctx.bump()
             } else {
                 None
-            };
-
-            let bump = match (bump, enters_loop, meta.min_read) {
-                (Some(t), _, _) => Some(t),
-                (None, true, _) => ctx.bump(),
-                (None, false, 0) => ctx.bump(),
-                (None, false, _) => None,
             };
 
             if meta.min_read == 0 || ctx.remainder() < meta.min_read {
