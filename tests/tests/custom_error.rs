@@ -6,6 +6,7 @@ use tests::assert_lex;
 enum LexingError {
     NumberTooLong,
     NumberNotEven(u32),
+    UnrecognisedCharacter(char),
     #[default]
     Other,
 }
@@ -19,6 +20,12 @@ impl From<ParseIntError> for LexingError {
     }
 }
 
+impl LexingError {
+    fn unrecognised_character<'src>(lexer: &mut logos::Lexer<'src, Token<'src>>) -> Self {
+        Self::UnrecognisedCharacter(lexer.slice().chars().next().unwrap())
+    }
+}
+
 fn parse_number(input: &str) -> Result<u32, LexingError> {
     let num = input.parse::<u32>()?;
     if num % 2 == 0 {
@@ -29,7 +36,7 @@ fn parse_number(input: &str) -> Result<u32, LexingError> {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
-#[logos(error = LexingError)]
+#[logos(error(LexingError, LexingError::unrecognised_character))]
 enum Token<'a> {
     #[regex(r"[0-9]+", |lex| parse_number(lex.slice()))]
     Number(u32),
@@ -51,7 +58,7 @@ fn test() {
                 "1111111111111111111111111111111111111111111111111111111",
                 13..68,
             ),
-            (Err(LexingError::Other), ",", 68..69),
+            (Err(LexingError::UnrecognisedCharacter(',')), ",", 68..69),
         ],
     );
 }
