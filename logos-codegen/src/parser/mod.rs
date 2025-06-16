@@ -12,12 +12,14 @@ use crate::LOGOS_ATTR;
 mod definition;
 mod ignore_flags;
 mod nested;
+mod skip;
 mod subpattern;
 mod type_params;
 
 pub use self::definition::{Definition, Literal};
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
+pub use self::skip::{Skip, SkipCallback};
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
@@ -26,7 +28,7 @@ pub struct Parser {
     pub errors: Errors,
     pub mode: Mode,
     pub source: Option<TokenStream>,
-    pub skips: Vec<Literal>,
+    pub skips: Vec<Skip>,
     pub extras: MaybeVoid,
     pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
@@ -170,11 +172,25 @@ impl Parser {
                 ("skip", |parser, span, value| match value {
                     NestedValue::Literal(lit) => {
                         if let Some(literal) = parser.parse_literal(Lit::new(lit)) {
-                            parser.skips.push(literal);
+                            parser.skips.push(Skip::new(literal));
+                        }
+                    }
+                    NestedValue::Group(tokens) => {
+                        let token_span = tokens.span();
+                        if let Some(skip) = parser.parse_skip(tokens) {
+                            parser.skips.push(skip);
+                        } else {
+                            parser.err(
+                                "Expected #[logos(skip(\"regex literal\"[, [callback = ] callback, priority = priority]))]",
+                                token_span,
+                            );
                         }
                     }
                     _ => {
-                        parser.err("Expected: #[logos(skip \"regex literal\")]", span);
+                        parser.err(
+                            "Expected: #[logos(skip \"regex literal\")] or #[logos(skip(...))]",
+                            span,
+                        );
                     }
                 }),
                 ("source", |parser, span, value| match value {
@@ -225,6 +241,48 @@ impl Parser {
                 }
             }
         }
+    }
+
+    pub fn parse_skip(&mut self, stream: TokenStream) -> Option<Skip> {
+        // We don't call parse_attr here because we only want to parse what is inside the parentheses
+        let mut nested = AttributeParser::new(stream);
+
+        let literal = match nested.parsed::<Lit>()? {
+            Ok(lit) => self.parse_literal(lit)?,
+            Err(err) => {
+                self.err(err.to_string(), err.span());
+
+                return None;
+            }
+        };
+
+        let mut skip = Skip::new(literal);
+
+        for (position, next) in nested.enumerate() {
+            match next {
+                Nested::Unexpected(tokens) => {
+                    self.err("Unexpected token in attribute", tokens.span());
+                }
+                Nested::Unnamed(tokens) => match position {
+                    0 => skip.callback = self.parse_skip_callback(tokens),
+                    _ => {
+                        self.err(
+                            "\
+                            Expected a named argument at this position\n\
+                            \n\
+                            hint: If you are trying to define a callback here use: callback = ...\
+                            ",
+                            tokens.span(),
+                        );
+                    }
+                },
+                Nested::Named(name, value) => {
+                    skip.named_attr(name, value, self);
+                }
+            }
+        }
+
+        Some(skip)
     }
 
     pub fn parse_literal(&mut self, lit: Lit) -> Option<Literal> {
@@ -331,6 +389,23 @@ impl Parser {
         let inline = InlineCallback { arg, body, span };
 
         Some(inline.into())
+    }
+
+    fn parse_skip_callback(&mut self, tokens: TokenStream) -> Option<SkipCallback> {
+        let span = tokens.span();
+        Some(match self.parse_callback(tokens) {
+            Some(Callback::Inline(inline)) => SkipCallback::Inline(inline),
+            Some(Callback::Label(label)) => SkipCallback::Label(label),
+            Some(Callback::Skip(_) | Callback::SkipCallback(_)) => {
+                unreachable!(
+                    "internal error: `parse_callback` should only return Some(Callback::{{Inline, Label}}) or None.",
+                )
+            }
+            None => {
+                self.err("Not a valid callback", span);
+                return None;
+            }
+        })
     }
 
     /// Checks if `ty` is a declared generic param, if so replaces it

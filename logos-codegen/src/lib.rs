@@ -69,16 +69,23 @@ pub fn generate(input: TokenStream) -> TokenStream {
     {
         let errors = &mut parser.errors;
 
-        for literal in &parser.skips {
-            match literal.to_mir(&parser.subpatterns, IgnoreFlags::Empty, errors) {
+        for mut skip in parser.skips.drain(..) {
+            match skip
+                .literal
+                .to_mir(&parser.subpatterns, IgnoreFlags::Empty, errors)
+            {
                 Ok(mir) => {
-                    let then = graph.push(Leaf::new_skip(literal.span()).priority(mir.priority()));
+                    let then = graph.push(
+                        Leaf::new_skip(skip.literal.span())
+                            .priority(skip.priority.take().unwrap_or_else(|| mir.priority()))
+                            .callback(Some(skip.into_callback())),
+                    );
                     let id = graph.regex(mir, then);
 
                     regex_ids.push(id);
                 }
                 Err(err) => {
-                    errors.err(err, literal.span());
+                    errors.err(err, skip.literal.span());
                 }
             }
         }
@@ -282,8 +289,12 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     A definition of variant `{a}` can match the same input as another definition of variant `{b}`.\n\
                     \n\
                     hint: Consider giving one definition a higher priority: \
-                    #[regex(..., priority = {disambiguate})]\
+                    #[{attr}(..., priority = {disambiguate})]\
                     ",
+                    attr = match a.callback {
+                        Some(_) => "regex",
+                        None => "skip"
+                    }
                 ),
                 a.span
             );
@@ -367,7 +378,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let body = generator.generate();
     impl_logos(quote! {
-        use #logos_path::internal::{LexerInternal, CallbackResult};
+        use #logos_path::internal::{LexerInternal, CallbackResult, SkipCallbackResult};
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
