@@ -1,5 +1,5 @@
-use std::{error::Error, path::PathBuf};
 use insta::assert_snapshot;
+use std::{error::Error, path::PathBuf};
 
 #[rstest::rstest]
 #[case("simple")]
