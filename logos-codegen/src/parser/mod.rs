@@ -33,6 +33,8 @@ pub struct Parser {
     pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
+    #[cfg(feature = "debug")]
+    pub export_dir: Option<String>,
     types: TypeParams,
 }
 
@@ -118,6 +120,39 @@ impl Parser {
                     }
                     _ => {
                         parser.err("Expected: #[logos(error = SomeType)]", span);
+                    }
+                }),
+                ("export_dir", |parser, span, value| match value {
+                    #[cfg(feature = "debug")]
+                    NestedValue::Assign(value) => {
+                        let span = value.span();
+
+                        match syn::parse2::<Literal>(value) {
+                            Ok(Literal::Utf8(str)) => {
+                                if let Some(previous) = parser.export_dir.replace(str.value()) {
+                                    parser
+                                        .err("Export dir can be defined only once", span)
+                                        .err("Previous definition here", previous.span());
+                                }
+                            }
+                            Ok(_) => {
+                                parser.err("Expected a &str", span);
+                            }
+                            Err(e) => {
+                                parser.err(e.to_string(), span);
+                            }
+                        }
+                    }
+                    #[cfg(feature = "debug")]
+                    _ => {
+                        parser.err(
+                            "Expected #[logos(export_dir = \"path/to/export/dir\")]",
+                            span,
+                        );
+                    }
+                    #[cfg(not(feature = "debug"))]
+                    _ => {
+                        parser.err("Enable the 'debug' feature to export graphs", span);
                     }
                 }),
                 ("extras", |parser, span, value| match value {

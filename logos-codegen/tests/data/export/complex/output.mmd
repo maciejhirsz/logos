@@ -1,0 +1,78 @@
+flowchart TB
+n0["Letter"]
+style n0 stroke:#00C853
+n1["Struct"]
+style n1 stroke:#00C853
+n2["Str"]
+style n2 stroke:#00C853
+n3["StrPrefixed"]
+style n3 stroke:#00C853
+n4["Fork"]
+style n4 stroke:#2962FF
+n5["'a'..='z'"]
+style n5 stroke:#FF6D00
+n4-->n5
+n5-->n4
+n4-->n3
+n6["Rope"]
+style n6 stroke:#2962FF
+n7["'c'"]
+style n7 stroke:#FF6D00
+n6-->n7
+n8["'t'"]
+style n8 stroke:#FF6D00
+n7-->n8
+n8-->n9
+na["MISS"]
+style na stroke:#D50000
+n6-->na
+na-->n4
+n9["Fork"]
+style n9 stroke:#2962FF
+nb["'a'..='z'"]
+style nb stroke:#FF6D00
+n9-->nb
+nb-->n4
+n9-->n1
+nc["Rope"]
+style nc stroke:#2962FF
+nd["'t'"]
+style nd stroke:#FF6D00
+nc-->nd
+ne["'r'"]
+style ne stroke:#FF6D00
+nd-->ne
+ne-->nf
+n10["NOT 't'"]
+style n10 stroke:#D50000
+nc-->n10
+n10-->n0
+nf["Fork"]
+style nf stroke:#2962FF
+n11["'a'..='t'"]
+style n11 stroke:#FF6D00
+nf-->n11
+n11-->n4
+n12["'u'"]
+style n12 stroke:#FF6D00
+nf-->n12
+n12-->n6
+n13["'v'..='z'"]
+style n13 stroke:#FF6D00
+nf-->n13
+n13-->n4
+nf-->n2
+n14["Fork"]
+style n14 stroke:#2962FF
+n15["'a'..='r'"]
+style n15 stroke:#FF6D00
+n14-->n15
+n15-->n0
+n16["'s'"]
+style n16 stroke:#FF6D00
+n14-->n16
+n16-->nc
+n17["'t'..='z'"]
+style n17 stroke:#FF6D00
+n14-->n17
+n17-->n0

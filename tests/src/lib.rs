@@ -77,6 +77,19 @@
 //!
 //! }
 //! ```
+//!
+//! Multiple export dirs should not compile.
+//! When debug is not enabled, this also should not compile.
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos)]
+//! #[logos(export_dir = "target/tmp")]
+//! #[logos(export_dir = "target/tmp")]
+//! enum Token {}
+//! ```
 use logos::source::Source;
 use logos::Logos;
 

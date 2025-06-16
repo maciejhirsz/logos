@@ -1,5 +1,4 @@
 use std::{error::Error, path::PathBuf};
-
 use insta::assert_snapshot;
 
 #[rstest::rstest]
@@ -12,6 +11,7 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     fixture_dir.push(env!("CARGO_MANIFEST_DIR"));
     fixture_dir.push("tests");
     fixture_dir.push("data");
+    fixture_dir.push("codegen");
     fixture_dir.push(fixture);
 
     let input = fixture_dir.join("input.rs");
