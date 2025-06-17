@@ -20,7 +20,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup rust toolchain, cache and cargo-codspeed binary
-      uses: moonrepo/setup-rust@v0
+      uses: moonrepo/setup-rust@v1
       with:
         channel: stable
         cache-target: release

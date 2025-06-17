@@ -1,0 +1,10 @@
+#[derive(Logos)]
+#[logos(extras = Vec<&'static str>)]
+#[logos(error = &'static str)]
+#[logos(skip "a")]
+#[logos(skip("b", callback = |lex| lex.extras.push("inline_callback")))]
+#[logos(skip("c", labelled_callback))]
+#[logos(skip("d", labelled_skip_callback))]
+#[logos(skip("e|f", labelled_result_callback))]
+#[logos(skip("g|h", labelled_skip_result_callback))]
+enum Token {}

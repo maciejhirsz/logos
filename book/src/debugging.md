@@ -93,6 +93,39 @@ alphabetic characters after the word "fast", but rather a whitespace,
 the token `::Fast` will be recognized.
 Then, the graph will look for further potential continuation (here, `[g-z] => 4`)
 
+## Visual Representation
+
+Logos can generate Mermaid charts and DOT graphs to visualize the lexer’s state transitions.
+
+Specify an export directory with the `export_dir` attribute to save these graphs:
+```rust,no_run,noplayground
+#[derive(Logos)]
+#[logos(export_dir = "path/to/export/dir")]
+enum Token {
+    #[token("fast")]
+    Fast,
+
+    #[token(".")]
+    Period,
+
+    #[regex("[a-zA-Z]+")]
+    Text,
+}
+```
+
+You can also specify the name of the file to export to.
+
+```rust,no_run,noplayground
+#[logos(export_dir = "export/graph.mmd")]
+```
+
+To render the graphs, you can install a plugin in your IDE or use an online tool.
+
+See the [graphviz](https://graphviz.org/doc/info/command.html) and [mermaid](https://mermaid.js.org/config/usage.html)
+documentations for more details.
+
+![graph](/assets/debug_graph_example.png)
+
 ## Enabling 
 
 To enable debugging output you can define a `debug` feature in your

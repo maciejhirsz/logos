@@ -59,20 +59,22 @@ impl Context {
         self.available.saturating_sub(self.at)
     }
 
+    /// Reads the next byte without checking bounds.
+    ///
+    /// # Safety
+    /// The caller must ensure that the next byte is within bounds.
+    #[cfg(not(feature = "forbid_unsafe"))]
+    pub unsafe fn read_byte(&mut self) -> TokenStream {
+        let at = self.at;
+        self.advance(1);
+        quote!(unsafe { lex.read_byte_unchecked(#at) })
+    }
+
+    #[cfg(feature = "forbid_unsafe")]
     pub fn read_byte(&mut self) -> TokenStream {
         let at = self.at;
-
         self.advance(1);
-
-        #[cfg(not(feature = "forbid_unsafe"))]
-        {
-            quote!(unsafe { lex.read_byte_unchecked(#at) })
-        }
-
-        #[cfg(feature = "forbid_unsafe")]
-        {
-            quote!(lex.read_byte(#at))
-        }
+        quote!(lex.read_byte(#at))
     }
 
     pub fn read(&mut self, len: usize) -> TokenStream {

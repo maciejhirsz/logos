@@ -87,7 +87,7 @@ impl Generator<'_> {
             })
             .collect::<TokenStream>();
 
-        let may_error = table.iter().any(|&idx| idx == 0);
+        let may_error = table.contains(&0);
 
         let jumps = jumps.as_slice();
         let table = table.iter().copied().map(|idx| &jumps[idx as usize]);
@@ -136,6 +136,12 @@ impl Generator<'_> {
         let min_read = self.meta[this].min_read;
 
         if ctx.remainder() >= max(min_read, 1) {
+            // SAFETY: The read_byte below is safe because the if statement
+            // above checks it's still within bounds.
+            #[cfg(not(feature = "forbid_unsafe"))]
+            let read = unsafe { ctx.read_byte() };
+
+            #[cfg(feature = "forbid_unsafe")]
             let read = ctx.read_byte();
 
             return (quote!(byte), quote!(let byte = #read;));
