@@ -242,7 +242,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
         Some(leaf::Callback::Label(label)) => Some(quote! {
             #[inline]
             fn make_error(mut lex: &mut #logos_path::Lexer<'s, Self>) {
-                use #logos_path::internal::LexerInternal;
+                use #logos_path::{Lexer, internal::LexerInternal};
+
                 let error = #label(&mut lex);
                 lex.set(Err(error));
             }
@@ -254,7 +255,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 #[inline]
                 fn make_error(#arg: &mut #logos_path::Lexer<'s, Self>) {
                     use #logos_path::internal::LexerInternal;
-                    let error = #body;
+
+                    let error = { #body };
                     #arg.set(Err(error))
                 }
             })

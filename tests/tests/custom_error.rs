@@ -1,3 +1,4 @@
+use logos::Lexer;
 use logos_derive::Logos;
 use std::num::{IntErrorKind, ParseIntError};
 use tests::assert_lex;
@@ -60,5 +61,47 @@ fn test() {
             ),
             (Err(LexingError::UnrecognisedCharacter(',')), ",", 68..69),
         ],
+    );
+}
+
+#[derive(Logos, Debug, PartialEq)]
+#[logos(extras = Vec<&'static str>)]
+#[logos(error(&'static str, callback = |lex| { lex.extras.push("a"); "a" }))]
+enum TokenA {}
+
+#[derive(Logos, Debug, PartialEq)]
+#[logos(extras = Vec<&'static str>)]
+#[logos(error(&'static str, callback = callback_b))]
+enum TokenB {}
+
+fn callback_b(lexer: &mut Lexer<'_, TokenB>) -> &'static str {
+    lexer.extras.push("b");
+    "b"
+}
+
+#[test]
+fn error_callback_test() {
+    let mut lexer_a = Lexer::<TokenA>::new("aaaaaaaaaaaaaaa");
+    let mut tokens = 0;
+    while let Some(Err("a")) = lexer_a.next() {
+        tokens += 1;
+    }
+    assert_eq!(lexer_a.next(), None);
+    assert_eq!(tokens, 15);
+
+    let mut lexer_b = Lexer::<TokenB>::with_extras("bbbbbbbbbb", lexer_a.extras);
+    let mut tokens = 0;
+    while let Some(Err("b")) = lexer_b.next() {
+        tokens += 1;
+    }
+    assert_eq!(lexer_b.next(), None);
+    assert_eq!(tokens, 10);
+
+    assert_eq!(
+        &[
+            "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "b", "b",
+            "b", "b", "b", "b", "b", "b", "b", "b"
+        ],
+        lexer_b.extras.as_slice()
     );
 }
