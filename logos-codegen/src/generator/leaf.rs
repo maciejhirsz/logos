@@ -3,6 +3,7 @@ use quote::quote;
 
 use crate::generator::{Context, Generator};
 use crate::leaf::{Callback, Leaf};
+use crate::parser::SkipCallback;
 use crate::util::MaybeVoid;
 
 impl Generator<'_> {
@@ -43,6 +44,33 @@ impl Generator<'_> {
                     }
 
                     callback(lex).construct(#constructor, lex);
+                }
+            }
+            Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
+                quote! {
+                    #bump
+
+                    #label(lex).construct_skip(lex);
+                }
+            }
+            Some(Callback::SkipCallback(SkipCallback::Inline(inline))) => {
+                let arg = &inline.arg;
+                let body = &inline.body;
+
+                #[cfg(not(rust_1_82))]
+                let ret = quote!(impl SkipCallbackResult<'s, #this>);
+
+                #[cfg(rust_1_82)]
+                let ret = quote!(impl SkipCallbackResult<'s, #this> + use<'s>);
+
+                quote! {
+                    #bump
+
+                    fn callback<'s>(#arg: &mut Lexer) -> #ret {
+                        #body
+                    }
+
+                    callback(lex).construct_skip(lex);
                 }
             }
             Some(Callback::Skip(_)) => {
