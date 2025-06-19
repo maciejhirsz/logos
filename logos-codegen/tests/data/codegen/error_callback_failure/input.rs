@@ -1,0 +1,13 @@
+#[derive(Logos)]
+#[logos(error = &'static str)]
+#[logos(error = String)]
+#[logos(error = )]
+#[logos(error(0))]
+#[logos(error((), callback0))]
+#[logos(error((), |_| {}, callback1))]
+#[logos(error "bad syntax0")]
+#[logos(error((), callback = |_|))]
+#[logos(error((), callback "bad syntax1"))]
+#[logos(error((), callback = callback2, callback = callback3))]
+#[logos(error((), callback = callback4, unknown_attribute = callback5))]
+enum TokenA {}
