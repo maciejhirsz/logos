@@ -1,6 +1,5 @@
 use logos::Logos;
 
-
 #[derive(Logos, Debug)]
 pub enum Token {
     #[token(r"\")]
@@ -16,7 +15,6 @@ pub enum Token {
     #[regex(r"\\[a-zA-Z]+")]
     MacroName,
 }
-
 
 macro_rules! assert_token_positions {
 ($source:expr, $token:pat, $($pos:expr),+ $(,)?) => {
