@@ -97,7 +97,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         let field = match &mut variant.fields {
             Fields::Unit => MaybeVoid::Void,
             Fields::Unnamed(fields) => {
-                if fields.unnamed.len() != 1 {
+                let [ref mut field] = *fields.unnamed.iter_mut().collect::<Box<[_]>>() else {
                     parser.err(
                         format!(
                             "Logos currently only supports variants with one field, found {}",
@@ -106,14 +106,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         fields.span(),
                     );
                     continue;
-                }
+                };
 
-                let ty = &mut fields
-                    .unnamed
-                    .first_mut()
-                    .expect("Already checked len; qed")
-                    .ty;
-                let ty = parser.get_type(ty);
+                let ty = parser.get_type(&mut field.ty);
 
                 MaybeVoid::Some(ty)
             }
