@@ -9,6 +9,8 @@ use std::{error::Error, path::PathBuf};
 #[case("error_callback0")]
 #[case("error_callback1")]
 #[case("error_callback_failure")]
+#[case("tuple_variant_failure0")]
+#[case("tuple_variant_failure1")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let mut fixture_dir = PathBuf::new();
     fixture_dir.push(env!("CARGO_MANIFEST_DIR"));
