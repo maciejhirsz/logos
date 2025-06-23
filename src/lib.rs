@@ -76,6 +76,13 @@ pub trait Logos<'source>: Sized {
     ) -> Lexer<'source, Self> {
         Lexer::with_extras(source, extras)
     }
+
+    #[inline(always)]
+    #[doc(hidden)]
+    fn make_error(lexer: &mut Lexer<'source, Self>) {
+        use internal::LexerInternal as _;
+        lexer.set(Err(Self::Error::default()))
+    }
 }
 
 /// Type that can be returned from a callback, informing the `Lexer`, to skip
