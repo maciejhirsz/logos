@@ -105,6 +105,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         ),
                         fields.span(),
                     );
+                    continue;
                 }
 
                 let ty = &mut fields
