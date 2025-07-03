@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use proc_macro2::{Ident, Span};
 use syn::{spanned::Spanned, LitByteStr, LitStr};
 
@@ -16,6 +18,22 @@ pub struct Definition {
 pub enum Literal {
     Utf8(LitStr),
     Bytes(LitByteStr),
+}
+
+impl Literal {
+    pub fn escape(&self) -> String {
+        match self {
+            Literal::Utf8(lit_str) => lit_str.value(),
+            Literal::Bytes(lit_byte_str) => {
+                let mut pattern = String::new();
+                for byte in lit_byte_str.value() {
+                    write!(pattern, "\\x{:02X}", byte)
+                        .expect("Writing to a string should not fail");
+                }
+                pattern
+            },
+        }
+    }
 }
 
 impl Definition {
@@ -92,21 +110,6 @@ impl Definition {
 }
 
 impl Literal {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        match self {
-            Literal::Utf8(string) => string.value().into_bytes(),
-            Literal::Bytes(bytes) => bytes.value(),
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            Literal::Utf8(lit_str) => lit_str.value(),
-            // TODO: Handle this w/ escapes (see to_regex_string below) or disallow
-            Literal::Bytes(_) => unimplemented!("byte patterns are unimplemented"),
-        }
-    }
-
     pub fn span(&self) -> Span {
         match self {
             Literal::Utf8(string) => string.span(),

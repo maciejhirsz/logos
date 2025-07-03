@@ -72,7 +72,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
             // TODO Subpatterns
 
-            let pattern = match Pattern::compile(&skip.literal.to_string()) {
+            let pattern = match Pattern::compile(&skip.literal) {
                 Ok(pattern) => pattern,
                 Err(err) => {
                     parser.err(err, skip.literal.span());
@@ -158,8 +158,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     }
                     // TODO subpatterns
 
-                    let literal_pat = definition.literal.to_string();
-                    let pattern = match Pattern::compile(&escape(&literal_pat)) {
+                    let pattern = match Pattern::compile_lit(&definition.literal) {
                         Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
@@ -167,9 +166,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
+                    let literal_len = match &definition.literal {
+                        parser::Literal::Utf8(lit_str) => lit_str.value().len(),
+                        parser::Literal::Bytes(lit_byte_str) => lit_byte_str.value().len(),
+                    };
+
                     pats.push(
                     leaf(definition.literal.span(), pattern)
-                        .priority(definition.priority.unwrap_or(literal_pat.len() * 2))
+                        .priority(definition.priority.unwrap_or(literal_len * 2))
                         .callback(definition.callback),
                     );
                 }
@@ -187,7 +191,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     }
                     // TODO subpatterns
 
-                    let pattern = match Pattern::compile(&definition.literal.to_string()) {
+                    let pattern = match Pattern::compile(&definition.literal) {
                         Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());

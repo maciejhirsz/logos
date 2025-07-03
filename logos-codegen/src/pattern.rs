@@ -2,8 +2,9 @@ use std::ops::Index;
 
 use regex_automata::dfa::dense::DFA;
 use regex_automata::nfa::thompson::NFA;
+use std::fmt::Write;
 
-use crate::leaf::Leaf;
+use crate::{leaf::Leaf, parser::Literal};
 
 use regex_syntax::{hir::{Hir, HirKind}, Parser};
 
@@ -13,11 +14,19 @@ pub struct Pattern {
 }
 
 impl Pattern {
-    pub fn compile(source: &str) -> Result<Pattern, String> {
-        // TODO: Can support non-utf8 patterns through this parser
+    pub fn compile(source: &Literal) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
-        let hir = Parser::new().parse(source)
+        let hir = Parser::new().parse(&source.escape())
             .map_err(|err| format!("{}", err))?;
+
+        Ok(Pattern { hir })
+    }
+
+    pub fn compile_lit(source: &Literal) -> Result<Pattern, String> {
+        let hir = match source {
+            Literal::Utf8(lit_str) => Hir::literal(lit_str.value().as_bytes()),
+            Literal::Bytes(lit_byte_str) => Hir::literal(lit_byte_str.value()),
+        };
 
         Ok(Pattern { hir })
     }
