@@ -1,15 +1,17 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug, Display};
+use std::ops::Index;
 
 use proc_macro2::{Span, TokenStream};
 use syn::{spanned::Spanned, Ident};
 
-use crate::graph::{Disambiguate, Node};
 use crate::parser::SkipCallback;
+use crate::pattern::Pattern;
 use crate::util::MaybeVoid;
 
 #[derive(Clone)]
 pub struct Leaf<'t> {
+    pub pattern: Pattern,
     pub ident: Option<&'t Ident>,
     pub span: Span,
     pub priority: usize,
@@ -51,8 +53,9 @@ impl Callback {
 }
 
 impl<'t> Leaf<'t> {
-    pub fn new(ident: &'t Ident, span: Span) -> Self {
+    pub fn new(ident: &'t Ident, span: Span, pattern: Pattern) -> Self {
         Leaf {
+            pattern,
             ident: Some(ident),
             span,
             priority: 0,
@@ -61,8 +64,9 @@ impl<'t> Leaf<'t> {
         }
     }
 
-    pub fn new_skip(span: Span) -> Self {
+    pub fn new_skip(span: Span, pattern: Pattern) -> Self {
         Leaf {
+            pattern,
             ident: None,
             span,
             priority: 0,
@@ -85,17 +89,9 @@ impl<'t> Leaf<'t> {
         self.priority = priority;
         self
     }
-}
 
-impl Disambiguate for Leaf<'_> {
-    fn cmp(left: &Leaf, right: &Leaf) -> Ordering {
+    pub fn compare_priority(left: &Self, right: &Self) -> Ordering {
         Ord::cmp(&left.priority, &right.priority)
-    }
-}
-
-impl<'t> From<Leaf<'t>> for Node<Leaf<'t>> {
-    fn from(leaf: Leaf<'t>) -> Self {
-        Node::Leaf(leaf)
     }
 }
 
@@ -119,5 +115,65 @@ impl Display for Leaf<'_> {
             Some(ident) => Display::fmt(ident, f),
             None => f.write_str("<skip>"),
         }
+    }
+}
+
+/// Disambiguation error during the attempt to merge two leaf
+/// nodes with the same priority
+#[derive(Debug)]
+pub struct DisambiguationError(pub LeafId, pub LeafId);
+
+#[derive(Debug)]
+pub struct Leaves<'a> {
+    leaves: Vec<Leaf<'a>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LeafId(pub u32);
+
+impl From<usize> for LeafId {
+    fn from(value: usize) -> Self {
+        value.try_into().expect("More than 2^32 nodes")
+    }
+}
+
+impl<'a> Leaves<'a> {
+    pub fn new() -> Self {
+        Leaves { leaves: Vec::new() }
+    }
+
+    pub fn push(&mut self, leaf: Leaf<'a>)
+    {
+        let idx = match self.leaves
+            .binary_search_by_key(&leaf.priority, |leaf| leaf.priority)
+        {
+            Ok(idx) => idx,
+            Err(idx) => idx,
+        };
+        self.leaves.insert(idx, leaf);
+    }
+
+    pub fn errors(&self) -> Vec<DisambiguationError> {
+        let mut errors = Vec::new();
+        for i in 0..self.leaves.len()-1 {
+            if self.leaves[i].priority == self.leaves[i+1].priority {
+                errors.push(DisambiguationError(i.into(), (i + 1).into()));
+            }
+        }
+
+        errors
+    }
+}
+
+impl<'a> Index<LeafId> for Leaves<'a> {
+    type Output = Leaf<'a>;
+    fn index(&self, index: LeafId) -> &Self::Output {
+        &self.leaves[index.0 as usize]
+    }
+}
+
+impl<'a> From<Leaves<'a>> for Vec<Leaf<'a>> {
+    fn from(value: Leaves<'a>) -> Self {
+        value.leaves
     }
 }

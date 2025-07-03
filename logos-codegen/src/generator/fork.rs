@@ -177,46 +177,4 @@ impl Generator<'_> {
         }
     }
 
-    fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
-        let miss = ctx.miss(fork.miss, self);
-        let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
-        let test = self.generate_test(ranges);
-
-        quote! {
-            _fast_loop!(lex, #test, #miss);
-        }
-    }
-
-    pub fn fast_loop_macro() -> TokenStream {
-        quote! {
-            macro_rules! _fast_loop {
-                ($lex:ident, $test:ident, $miss:expr) => {
-                    // Do one bounds check for multiple bytes till EOF
-                    while let Some(arr) = $lex.read::<&[u8; 16]>() {
-                        if $test(arr[0])  { if $test(arr[1])  { if $test(arr[2])  { if $test(arr[3]) {
-                        if $test(arr[4])  { if $test(arr[5])  { if $test(arr[6])  { if $test(arr[7]) {
-                        if $test(arr[8])  { if $test(arr[9])  { if $test(arr[10]) { if $test(arr[11]) {
-                        if $test(arr[12]) { if $test(arr[13]) { if $test(arr[14]) { if $test(arr[15]) {
-
-                        $lex.bump_unchecked(16); continue;     } $lex.bump_unchecked(15); return $miss; }
-                        $lex.bump_unchecked(14); return $miss; } $lex.bump_unchecked(13); return $miss; }
-                        $lex.bump_unchecked(12); return $miss; } $lex.bump_unchecked(11); return $miss; }
-                        $lex.bump_unchecked(10); return $miss; } $lex.bump_unchecked(9); return $miss;  }
-                        $lex.bump_unchecked(8); return $miss;  } $lex.bump_unchecked(7); return $miss;  }
-                        $lex.bump_unchecked(6); return $miss;  } $lex.bump_unchecked(5); return $miss;  }
-                        $lex.bump_unchecked(4); return $miss;  } $lex.bump_unchecked(3); return $miss;  }
-                        $lex.bump_unchecked(2); return $miss;  } $lex.bump_unchecked(1); return $miss;  }
-
-                        return $miss;
-                    }
-
-                    while $lex.test($test) {
-                        $lex.bump_unchecked(1);
-                    }
-
-                    $miss
-                };
-            }
-        }
-    }
 }

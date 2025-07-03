@@ -2,7 +2,6 @@ use proc_macro2::TokenStream;
 use syn::Ident;
 
 use crate::error::Errors;
-use crate::mir::Mir;
 use crate::parser::definition::{bytes_to_regex_string, Literal};
 
 #[derive(Default)]
@@ -30,14 +29,15 @@ impl Subpatterns {
         let fixed = self.fix(&lit, errors);
 
         // Validate the literal as proper regex. If it's not, emit an error.
-        let mir = match &lit {
-            Literal::Utf8(_) => Mir::utf8(&fixed),
-            Literal::Bytes(_) => Mir::binary(&fixed),
-        };
-
-        if let Err(err) = mir {
-            errors.err(err, lit.span());
-        };
+        // TODO
+        // let mir = match &lit {
+        //     Literal::Utf8(_) => Mir::utf8(&fixed),
+        //     Literal::Bytes(_) => Mir::binary(&fixed),
+        // };
+        //
+        // if let Err(err) = mir {
+        //     errors.err(err, lit.span());
+        // };
 
         self.map.push((param, fixed));
     }
