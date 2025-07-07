@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Display};
 use std::ops::Index;
 
 use proc_macro2::{Span, TokenStream};
+use regex_automata::PatternID;
 use syn::{spanned::Spanned, Ident};
 
 use crate::parser::SkipCallback;
@@ -128,12 +129,18 @@ pub struct Leaves<'a> {
     leaves: Vec<Leaf<'a>>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LeafId(pub u32);
 
 impl From<usize> for LeafId {
     fn from(value: usize) -> Self {
-        value.try_into().expect("More than 2^32 nodes")
+        LeafId(value.try_into().expect("More than 2^32 nodes"))
+    }
+}
+
+impl From<PatternID> for LeafId {
+    fn from(value: PatternID) -> Self {
+        value.as_usize().into()
     }
 }
 
@@ -162,6 +169,10 @@ impl<'a> Leaves<'a> {
         }
 
         errors
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=&Leaf<'a>> {
+        self.leaves.iter()
     }
 }
 

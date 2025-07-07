@@ -71,6 +71,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         for skip in mem::take(&mut parser.skips) {
 
             // TODO Subpatterns
+            // TODO custom priority
 
             let pattern = match Pattern::compile(&skip.literal) {
                 Ok(pattern) => pattern,
@@ -157,6 +158,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         // TODO
                     }
                     // TODO subpatterns
+                    // TODO custom priority
 
                     let pattern = match Pattern::compile_lit(&definition.literal) {
                         Ok(pattern) => pattern,
@@ -190,6 +192,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         // TODO
                     }
                     // TODO subpatterns
+                    // TODO custom priority
 
                     let pattern = match Pattern::compile(&definition.literal) {
                         Ok(pattern) => pattern,
@@ -240,7 +243,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                 type Source = #source;
 
-                fn lex(lex: &mut #logos_path::Lexer<'s, Self>) {
+                fn lex(lex: &mut #logos_path::Lexer<'s, Self>) -> Option<Result<Self, Self::Error>> {
                     #body
                 }
             }
@@ -341,7 +344,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         // }
     }
 
-    debug!("Generating code from pats:\n{pats:#?}");
+    debug!("Generating graph from pats:\n{pats:#?}");
 
     let graph = match Graph::try_new(pats) {
         Ok(nfa) => nfa,
@@ -352,23 +355,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
     };
 
+    debug!("Generating code from graph:\n{:#?}", graph.dfa());
+
     let generator = Generator::new(name, &this, &graph);
 
     let body = generator.generate();
     impl_logos(quote! {
-        use #logos_path::internal::{LexerInternal, CallbackResult, SkipCallbackResult};
+        use #logos_path::internal::LexerInternal;
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
-
-        fn _end<'s>(lex: &mut Lexer<'s>) {
-            lex.end()
-        }
-
-        fn _error<'s>(lex: &mut Lexer<'s>) {
-            lex.bump_unchecked(1);
-
-            lex.error();
-        }
 
         #body
     })

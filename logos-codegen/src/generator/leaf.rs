@@ -1,15 +1,13 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::generator::{Context, Generator};
+use crate::generator::Generator;
 use crate::leaf::{Callback, Leaf};
 use crate::parser::SkipCallback;
 use crate::util::MaybeVoid;
 
 impl Generator<'_> {
-    pub fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
-        let bump = ctx.bump();
-
+    pub fn generate_leaf(&self, leaf: &Leaf) -> TokenStream {
         let ident = &leaf.ident;
         let name = self.name;
         let this = self.this;
@@ -22,7 +20,6 @@ impl Generator<'_> {
 
         match &leaf.callback {
             Some(Callback::Label(callback)) => quote! {
-                #bump
                 #callback(lex).construct(#constructor, lex);
             },
             Some(Callback::Inline(inline)) => {
@@ -36,8 +33,6 @@ impl Generator<'_> {
                 let ret = quote!(impl CallbackResult<'s, #ty, #this> + use<'s>);
 
                 quote! {
-                    #bump
-
                     #[inline]
                     fn callback<'s>(#arg: &mut Lexer<'s>) -> #ret {
                         #body
@@ -48,8 +43,6 @@ impl Generator<'_> {
             }
             Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
                 quote! {
-                    #bump
-
                     #label(lex).construct_skip(lex);
                 }
             }
@@ -64,8 +57,6 @@ impl Generator<'_> {
                 let ret = quote!(impl SkipCallbackResult<'s, #this> + use<'s>);
 
                 quote! {
-                    #bump
-
                     fn callback<'s>(#arg: &mut Lexer) -> #ret {
                         #body
                     }
@@ -75,20 +66,18 @@ impl Generator<'_> {
             }
             Some(Callback::Skip(_)) => {
                 quote! {
-                    #bump
-
+                    println!("Trivia");
                     lex.trivia();
-                    #name::lex(lex);
+                    offset = lex.offset();
+                    state = START;
                 }
             }
             None if matches!(leaf.field, MaybeVoid::Void) => quote! {
-                #bump
-                lex.set(Ok(#name::#ident));
+                return Some(Ok(#name::#ident));
             },
             None => quote! {
-                #bump
                 let token = #name::#ident(lex.slice());
-                lex.set(Ok(token));
+                return Some(Ok(token));
             },
         }
     }

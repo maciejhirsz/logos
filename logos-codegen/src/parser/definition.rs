@@ -27,8 +27,11 @@ impl Literal {
             Literal::Bytes(lit_byte_str) => {
                 let mut pattern = String::new();
                 for byte in lit_byte_str.value() {
-                    write!(pattern, "\\x{:02X}", byte)
-                        .expect("Writing to a string should not fail");
+                    if byte <= 127 {
+                        write!(pattern, "{}", byte as char)
+                    } else {
+                        write!(pattern, "\\x{:02X}", byte)
+                    }.expect("Writing to a string should not fail");
                 }
                 pattern
             },
