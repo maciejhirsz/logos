@@ -102,9 +102,13 @@ impl<'a> Generator<'a> {
         for (byte_class, next_state) in &transitions.normal {
             let next_ident = self.get_ident(&next_state);
             let patterns = byte_class.ranges.iter().map(|range| {
-                let start = range.start();
-                let end = range.end();
-                quote! { Some(#start ..= #end) }
+                let start = byte_to_tokens(*range.start());
+                let end = byte_to_tokens(*range.end());
+                if range.len() == 1 {
+                    quote! { Some(#start) }
+                } else {
+                    quote! { Some(#start ..= #end) }
+                }
             });
             inner_cases.append_all(quote! {
                 #(#patterns)|* => {
@@ -135,11 +139,11 @@ impl<'a> Generator<'a> {
             }
         };
 
+                // println!("In state {} (lex: {}-{})", stringify!(#this_ident), lex.token_start, lex.token_end);
+                // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
         quote! {
             LogosState::#this_ident => {
                 #setup
-                println!("In state {} (lex: {}-{})", stringify!(#this_ident), lex.token_start, lex.token_end);
-                println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
                 match lex.read::<u8>(offset) {
                     #inner_cases
                     _ => { #otherwise }
@@ -148,4 +152,27 @@ impl<'a> Generator<'a> {
         }
     }
 
+}
+
+macro_rules! match_quote {
+    ($source:expr; $($byte:tt,)* ) => {match $source {
+        $( $byte => quote!($byte), )*
+        byte => quote!(#byte),
+    }}
+}
+
+fn byte_to_tokens(byte: u8) -> TokenStream {
+    match_quote! {
+        byte;
+        b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9',
+        b'a', b'b', b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j',
+        b'k', b'l', b'm', b'n', b'o', b'p', b'q', b'r', b's', b't',
+        b'u', b'v', b'w', b'x', b'y', b'z',
+        b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J',
+        b'K', b'L', b'M', b'N', b'O', b'P', b'Q', b'R', b'S', b'T',
+        b'U', b'V', b'W', b'X', b'Y', b'Z',
+        b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
+        b'{', b'}', b'[', b']', b'<', b'>', b'-', b'=', b'_', b'+',
+        b':', b';', b',', b'.', b'/', b'?', b'|', b'"', b'\'', b'\\',
+    }
 }

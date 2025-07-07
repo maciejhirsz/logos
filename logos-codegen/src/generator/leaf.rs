@@ -66,7 +66,6 @@ impl Generator<'_> {
             }
             Some(Callback::Skip(_)) => {
                 quote! {
-                    println!("Trivia");
                     lex.trivia();
                     offset = lex.offset();
                     state = START;

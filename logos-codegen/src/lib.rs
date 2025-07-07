@@ -158,7 +158,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         // TODO
                     }
                     // TODO subpatterns
-                    // TODO custom priority
 
                     let pattern = match Pattern::compile_lit(&definition.literal) {
                         Ok(pattern) => pattern,
@@ -202,10 +201,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    let priority = pattern.priority();
+                    let pat_priority = pattern.priority();
                     pats.push(
                     leaf(definition.literal.span(), pattern)
-                        .priority(priority)
+                        .priority(definition.priority.unwrap_or(pat_priority))
                         .callback(definition.callback),
                     );
                 }
