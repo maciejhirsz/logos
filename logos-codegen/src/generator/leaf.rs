@@ -2,8 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::generator::Generator;
-use crate::leaf::{Callback, Leaf};
-use crate::parser::SkipCallback;
+use crate::leaf::{Callback, CallbackKind, InlineCallback, Leaf};
 use crate::util::MaybeVoid;
 
 impl Generator<'_> {
@@ -11,73 +10,63 @@ impl Generator<'_> {
         let ident = &leaf.ident;
         let name = self.name;
         let this = self.this;
-        let ty = &leaf.field;
 
-        let constructor = match leaf.field {
-            MaybeVoid::Some(_) => quote!(#name::#ident),
-            MaybeVoid::Void => quote!(|()| #name::#ident),
-        };
+        let callback_op = leaf.callback.as_ref().map(|cb| match cb {
+            Callback::Label(ident) => (
+                ident.clone(),
+                quote!(),
+            ),
+            Callback::Inline(inline_callback) => {
+                let ident = quote!(callback);
 
-        match &leaf.callback {
-            Some(Callback::Label(callback)) => quote! {
-                #callback(lex).construct(#constructor, lex);
-            },
-            Some(Callback::Inline(inline)) => {
-                let arg = &inline.arg;
-                let body = &inline.body;
+                let arg = &inline_callback.arg;
+                let body = &inline_callback.body;
 
-                #[cfg(not(rust_1_82))]
-                let ret = quote!(impl CallbackResult<'s, #ty, #this>);
-
-                #[cfg(rust_1_82)]
-                let ret = quote!(impl CallbackResult<'s, #ty, #this> + use<'s>);
-
-                quote! {
+                // TODO: shouldn't copy this code?
+                let decl = quote! {
                     #[inline]
-                    fn callback<'s>(#arg: &mut Lexer<'s>) -> #ret {
+                    fn callback<'s>(#arg: &mut Lexer<'s>)
+                        -> Option<Result<Self, Self::Error>>
+                    {
                         #body
                     }
+                };
+                (ident, decl)
+            },
+        });
 
-                    callback(lex).construct(#constructor, lex);
+        match (&leaf.kind, callback_op) {
+            (CallbackKind::Skip, Some((ident, decl))) => quote! {
+                #decl
+                let action = SkipCallbackResult::from(#ident(lex));
+                match action {
+                    SkipCallbackResult::Skip => {
+                        lex.trivia();
+                        offset = lex.offset();
+                        state = START;
+                    },
+                    SkipCallbackResult::Error(err) => {
+                        return Some(err.into());
+                    },
+                    SkipCallbackResult::DefaultError => {
+                        lex.error(offset);
+                        return Some(Err(Self::Error::default()));
+                    },
                 }
-            }
-            Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
-                quote! {
-                    #label(lex).construct_skip(lex);
-                }
-            }
-            Some(Callback::SkipCallback(SkipCallback::Inline(inline))) => {
-                let arg = &inline.arg;
-                let body = &inline.body;
-
-                #[cfg(not(rust_1_82))]
-                let ret = quote!(impl SkipCallbackResult<'s, #this>);
-
-                #[cfg(rust_1_82)]
-                let ret = quote!(impl SkipCallbackResult<'s, #this> + use<'s>);
-
-                quote! {
-                    fn callback<'s>(#arg: &mut Lexer) -> #ret {
-                        #body
-                    }
-
-                    callback(lex).construct_skip(lex);
-                }
-            }
-            Some(Callback::Skip(_)) => {
-                quote! {
-                    lex.trivia();
-                    offset = lex.offset();
-                    state = START;
-                }
-            }
-            None if matches!(leaf.field, MaybeVoid::Void) => quote! {
+            },
+            (CallbackKind::Skip, None) => quote! {
+                lex.trivia();
+                offset = lex.offset();
+                state = START;
+            },
+            (CallbackKind::Unit, None) => quote! {
                 return Some(Ok(#name::#ident));
             },
-            None => quote! {
+            (CallbackKind::Value(_), None) => quote! {
                 let token = #name::#ident(lex.slice());
                 return Some(Ok(token));
             },
+            _ => todo!(),
         }
     }
 }

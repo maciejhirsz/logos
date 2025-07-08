@@ -85,7 +85,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
             pats.push(
                 Leaf::new_skip(skip.literal.span(), pattern)
                     .priority(priority)
-                    .callback(Some(skip.into_callback())),
+                    .callback(skip.into_callback()),
             );
         }
     }

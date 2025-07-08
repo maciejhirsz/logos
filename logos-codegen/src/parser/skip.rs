@@ -7,14 +7,8 @@ use crate::parser::{Literal, Parser};
 
 pub struct Skip {
     pub literal: Literal,
-    pub callback: Option<SkipCallback>,
+    pub callback: Option<Callback>,
     pub priority: Option<usize>,
-}
-
-#[derive(Clone)]
-pub enum SkipCallback {
-    Label(TokenStream),
-    Inline(Box<InlineCallback>),
 }
 
 impl Skip {
@@ -46,7 +40,7 @@ impl Skip {
             }
             ("callback", NestedValue::Assign(tokens)) => {
                 let span = tokens.span();
-                let callback = match parser.parse_skip_callback(tokens) {
+                let callback = match parser.parse_callback(tokens) {
                     Some(callback) => callback,
                     None => {
                         parser.err("Not a valid callback", span);
@@ -82,19 +76,8 @@ impl Skip {
         }
     }
 
-    pub fn into_callback(self) -> Callback {
-        match self.callback {
-            Some(callback) => Callback::SkipCallback(callback),
-            None => Callback::Skip(self.literal.span()),
-        }
+    pub fn into_callback(self) -> Option<Callback> {
+        self.callback
     }
 }
 
-impl SkipCallback {
-    pub fn span(&self) -> Span {
-        match self {
-            Self::Label(label) => label.span(),
-            Self::Inline(inline) => inline.span,
-        }
-    }
-}

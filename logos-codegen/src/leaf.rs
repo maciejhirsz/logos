@@ -6,9 +6,15 @@ use proc_macro2::{Span, TokenStream};
 use regex_automata::PatternID;
 use syn::{spanned::Spanned, Ident};
 
-use crate::parser::SkipCallback;
 use crate::pattern::Pattern;
 use crate::util::MaybeVoid;
+
+#[derive(Clone)]
+pub enum CallbackKind {
+    Unit,
+    Value(TokenStream),
+    Skip,
+}
 
 #[derive(Clone)]
 pub struct Leaf<'t> {
@@ -16,7 +22,7 @@ pub struct Leaf<'t> {
     pub ident: Option<&'t Ident>,
     pub span: Span,
     pub priority: usize,
-    pub field: MaybeVoid,
+    pub kind: CallbackKind,
     pub callback: Option<Callback>,
 }
 
@@ -24,9 +30,6 @@ pub struct Leaf<'t> {
 pub enum Callback {
     Label(TokenStream),
     Inline(Box<InlineCallback>),
-    #[allow(clippy::enum_variant_names)]
-    SkipCallback(SkipCallback),
-    Skip(Span),
 }
 
 #[derive(Clone)]
@@ -47,8 +50,6 @@ impl Callback {
         match self {
             Callback::Label(tokens) => tokens.span(),
             Callback::Inline(inline) => inline.span,
-            Callback::SkipCallback(callback) => callback.span(),
-            Callback::Skip(skip) => *skip,
         }
     }
 }
@@ -60,7 +61,7 @@ impl<'t> Leaf<'t> {
             ident: Some(ident),
             span,
             priority: 0,
-            field: MaybeVoid::Void,
+            kind: CallbackKind::Unit,
             callback: None,
         }
     }
@@ -71,8 +72,8 @@ impl<'t> Leaf<'t> {
             ident: None,
             span,
             priority: 0,
-            field: MaybeVoid::Void,
-            callback: Some(Callback::Skip(span)),
+            kind: CallbackKind::Skip,
+            callback: None,
         }
     }
 
@@ -82,7 +83,10 @@ impl<'t> Leaf<'t> {
     }
 
     pub fn field(mut self, field: MaybeVoid) -> Self {
-        self.field = field;
+        self.kind = match field {
+            MaybeVoid::Some(field_ty) => CallbackKind::Value(field_ty),
+            MaybeVoid::Void => CallbackKind::Unit,
+        };
         self
     }
 
@@ -103,9 +107,7 @@ impl Debug for Leaf<'_> {
         match self.callback {
             Some(Callback::Label(ref label)) => write!(f, " ({})", label),
             Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
-            Some(Callback::Skip(_)) => f.write_str(" (<skip>)"),
-            Some(Callback::SkipCallback(_)) => f.write_str(" (<skip callback>)"),
-            None => Ok(()),
+            None => f.write_str(" (<none>)"),
         }
     }
 }

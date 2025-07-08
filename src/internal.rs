@@ -27,145 +27,155 @@ pub trait LexerInternal<'source> {
     fn end(&mut self, offset: usize);
 }
 
-// pub trait CallbackResult<'s, P, T: Logos<'s>> {
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(P) -> T;
-// }
-//
-// pub trait SkipCallbackResult<'s, T: Logos<'s>>
-// where
-//     Self: Sized,
-// {
-//     fn into_result(self) -> Result<Skip, T::Error>;
-//     fn construct_skip(self, lex: &mut Lexer<'s, T>) {
-//         match self.into_result() {
-//             Ok(Skip) => {
-//                 lex.trivia();
-//                 T::lex(lex);
-//             }
-//             Err(e) => lex.set(Err(e)),
-//         }
-//     }
-// }
-//
-// impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for P {
-//     #[inline]
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(P) -> T,
-//     {
-//         lex.set(Ok(c(self)))
-//     }
-// }
-//
-// impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for bool {
-//     #[inline]
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(()) -> T,
-//     {
-//         match self {
-//             true => lex.set(Ok(c(()))),
-//             false => lex.set(Err(T::Error::default())),
-//         }
-//     }
-// }
-//
-// impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Option<P> {
-//     #[inline]
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(P) -> T,
-//     {
-//         match self {
-//             Some(product) => lex.set(Ok(c(product))),
-//             None => lex.set(Err(T::Error::default())),
-//         }
-//     }
-// }
-//
-// impl<'s, P, E, T: Logos<'s>> CallbackResult<'s, P, T> for Result<P, E>
-// where
-//     E: Into<T::Error>,
-// {
-//     #[inline]
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(P) -> T,
-//     {
-//         match self {
-//             Ok(product) => lex.set(Ok(c(product))),
-//             Err(err) => lex.set(Err(err.into())),
-//         }
-//     }
-// }
-//
-// impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for Skip {
-//     #[inline]
-//     fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(()) -> T,
-//     {
-//         lex.trivia();
-//         T::lex(lex);
-//     }
-// }
-//
-// impl<'s, E, T: Logos<'s>> CallbackResult<'s, (), T> for Result<Skip, E>
-// where
-//     E: Into<T::Error>,
-// {
-//     #[inline]
-//     fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(()) -> T,
-//     {
-//         match self {
-//             Ok(_) => {
-//                 lex.trivia();
-//                 T::lex(lex);
-//             }
-//             Err(err) => lex.set(Err(err.into())),
-//         }
-//     }
-// }
-//
-// impl<'s, P, T: Logos<'s>> CallbackResult<'s, P, T> for Filter<P> {
-//     #[inline]
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(P) -> T,
-//     {
-//         match self {
-//             Filter::Emit(product) => lex.set(Ok(c(product))),
-//             Filter::Skip => {
-//                 lex.trivia();
-//                 T::lex(lex);
-//             }
-//         }
-//     }
-// }
-//
-// impl<'s, P, E, T: Logos<'s>> CallbackResult<'s, P, T> for FilterResult<P, E>
-// where
-//     E: Into<T::Error>,
-// {
-//     fn construct<Constructor>(self, c: Constructor, lex: &mut Lexer<'s, T>)
-//     where
-//         Constructor: Fn(P) -> T,
-//     {
-//         match self {
-//             FilterResult::Emit(product) => lex.set(Ok(c(product))),
-//             FilterResult::Skip => {
-//                 lex.trivia();
-//                 T::lex(lex);
-//             }
-//             FilterResult::Error(err) => lex.set(Err(err.into())),
-//         }
-//     }
-// }
-//
+pub enum UnitVariantCallbackResult<E> {
+    Emit,
+    Error(E),
+    DefaultError,
+    Skip,
+}
+
+impl<E> From<()> for UnitVariantCallbackResult<E> {
+    #[inline]
+    fn from(_value: ()) -> Self {
+        Self::Emit
+    }
+}
+
+impl<E> From<bool> for UnitVariantCallbackResult<E> {
+    #[inline]
+    fn from(value: bool) -> Self {
+        match value {
+            true => Self::Emit,
+            false => Self::DefaultError,
+        }
+    }
+}
+
+impl<E> From<Result<(), E>> for UnitVariantCallbackResult<E> {
+    #[inline]
+    fn from(value: Result<(), E>) -> Self {
+        match value {
+            Ok(()) => Self::Emit,
+            Err(err) => Self::Error(err),
+        }
+    }
+}
+
+impl<E> From<Skip> for UnitVariantCallbackResult<E> {
+    #[inline]
+    fn from(_value: Skip) -> Self {
+        Self::Skip
+    }
+}
+
+impl<E> From<Result<Skip, E>> for UnitVariantCallbackResult<E> {
+    #[inline]
+    fn from(value: Result<Skip, E>) -> Self {
+        match value {
+            Ok(Skip) => Self::Skip,
+            Err(err) => Self::Error(err),
+        }
+    }
+}
+
+pub enum FieldVariantCallbackResult<T, E> {
+    Emit(T),
+    Error(E),
+    ErrorDefault,
+    Skip,
+}
+
+impl <T, E> From<T> for FieldVariantCallbackResult<T, E> {
+    #[inline]
+    fn from(value: T) -> Self {
+        Self::Emit(value)
+    }
+}
+
+impl<T, E> From<Option<T>> for FieldVariantCallbackResult<T, E> {
+    #[inline]
+    fn from(value: Option<T>) -> Self {
+        match value {
+            Some(val) => Self::Emit(val),
+            None => Self::ErrorDefault,
+        }
+    }
+}
+
+impl<T, E> From<Result<T, E>> for FieldVariantCallbackResult<T, E> {
+    #[inline]
+    fn from(value: Result<T, E>) -> Self {
+        match value {
+            Ok(val) => Self::Emit(val),
+            Err(err) => Self::Error(err),
+        }
+    }
+}
+
+impl<T, E> From<Filter<T>> for FieldVariantCallbackResult<T, E> {
+    #[inline]
+    fn from(value: Filter<T>) -> Self {
+        match value {
+            Filter::Emit(val) => Self::Emit(val),
+            Filter::Skip => Self::Skip,
+        }
+    }
+}
+
+impl<T, E> From<FilterResult<T, E>> for FieldVariantCallbackResult<T, E> {
+    #[inline]
+    fn from(value: FilterResult<T, E>) -> Self {
+        match value {
+            FilterResult::Emit(val) => Self::Emit(val),
+            FilterResult::Skip => Self::Skip,
+            FilterResult::Error(err) => Self::Error(err),
+        }
+    }
+}
+
+
+enum SkipCallbackResult<E> {
+    Skip,
+    Error(E),
+    DefaultError,
+}
+
+impl<E> From<()> for SkipCallbackResult<E> {
+    #[inline]
+    fn from(_value: ()) -> Self {
+        Self::Skip
+    }
+}
+
+impl<E> From<Skip> for SkipCallbackResult<E> {
+    #[inline]
+    fn from(_value: Skip) -> Self {
+        Self::Skip
+    }
+}
+
+impl<E> From<Result<(), E>> for SkipCallbackResult<E> {
+    #[inline]
+    fn from(value: Result<(), E>) -> Self {
+        match value {
+            Ok(()) => Self::Skip,
+            Err(err) => Self::Error(err),
+        }
+    }
+}
+
+impl<E> From<Result<Skip, E>> for SkipCallbackResult<E> {
+    #[inline]
+    fn from(value: Result<Skip, E>) -> Self {
+        match value {
+            Ok(Skip) => Self::Skip,
+            Err(err) => Self::Error(err),
+        }
+    }
+}
+
+// TODO: allow callbacks returning Variants themselves
+
 // impl<'s, T: Logos<'s>> CallbackResult<'s, (), T> for T {
 //     #[inline]
 //     fn construct<Constructor>(self, _: Constructor, lex: &mut Lexer<'s, T>)
@@ -217,42 +227,6 @@ pub trait LexerInternal<'source> {
 //                 T::lex(lex);
 //             }
 //             FilterResult::Error(err) => lex.set(Err(err)),
-//         }
-//     }
-// }
-//
-// impl<'s, T: Logos<'s>> SkipCallbackResult<'s, T> for () {
-//     fn into_result(self) -> Result<Skip, T::Error> {
-//         Ok(Skip)
-//     }
-// }
-//
-// impl<'s, T: Logos<'s>> SkipCallbackResult<'s, T> for Skip {
-//     fn into_result(self) -> Result<Skip, T::Error> {
-//         Ok(self)
-//     }
-// }
-//
-// impl<'s, T: Logos<'s>, E> SkipCallbackResult<'s, T> for Result<(), E>
-// where
-//     E: Into<T::Error>,
-// {
-//     fn into_result(self) -> Result<Skip, T::Error> {
-//         match self {
-//             Ok(_) => Ok(Skip),
-//             Err(e) => Err(e.into()),
-//         }
-//     }
-// }
-//
-// impl<'s, T: Logos<'s>, E> SkipCallbackResult<'s, T> for Result<Skip, E>
-// where
-//     E: Into<T::Error>,
-// {
-//     fn into_result(self) -> Result<Skip, T::Error> {
-//         match self {
-//             Ok(skip) => Ok(skip),
-//             Err(e) => Err(e.into()),
 //         }
 //     }
 // }
