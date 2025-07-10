@@ -308,10 +308,8 @@ where
     /// Set the current token to appropriate `#[error]` variant.
     /// Guarantee that `token_end` is at char boundary for `&str`.
     #[inline]
-    fn error(&mut self, offset: usize) {
+    fn end_to_boundary(&mut self, offset: usize) {
         self.token_end = self.source.find_boundary(offset);
-        // let _error_token = Some(Result::<(), _>::Err(Token::Error::default()));
-        // todo!("how to return error token from here");
     }
 
     #[inline]

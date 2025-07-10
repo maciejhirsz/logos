@@ -71,7 +71,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
         for skip in mem::take(&mut parser.skips) {
 
             // TODO Subpatterns
-            // TODO custom priority
 
             let pattern = match Pattern::compile(&skip.literal) {
                 Ok(pattern) => pattern,
@@ -81,10 +80,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 }
             };
 
-            let priority = pattern.priority();
+            let default_priority = pattern.priority();
             pats.push(
                 Leaf::new_skip(skip.literal.span(), pattern)
-                    .priority(priority)
+                    .priority(skip.priority.unwrap_or(default_priority))
                     .callback(skip.into_callback()),
             );
         }
@@ -191,7 +190,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         // TODO
                     }
                     // TODO subpatterns
-                    // TODO custom priority
 
                     let pattern = match Pattern::compile(&definition.literal) {
                         Ok(pattern) => pattern,
@@ -201,10 +199,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    let pat_priority = pattern.priority();
+                    let default_priority = pattern.priority();
                     pats.push(
                     leaf(definition.literal.span(), pattern)
-                        .priority(definition.priority.unwrap_or(pat_priority))
+                        .priority(definition.priority.unwrap_or(default_priority))
                         .callback(definition.callback),
                     );
                 }
@@ -284,7 +282,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     #[cfg(feature = "debug")]
     {
-        // TODO
+        // TODO fix graphing code
         // debug!("Generating graphs");
         //
         // if let Some(path) = parser.export_dir {

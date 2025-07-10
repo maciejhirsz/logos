@@ -21,7 +21,7 @@ pub trait LexerInternal<'source> {
 
     /// Guarantee that `token_end` is at char boundary for `&str`.
     /// Called before returning the default error variant.
-    fn error(&mut self, offset: usize);
+    fn end_to_boundary(&mut self, offset: usize);
 
     /// Set `token_end` to an offset.
     fn end(&mut self, offset: usize);
@@ -83,7 +83,7 @@ impl<E, C: Into<E>> From<Result<Skip, C>> for UnitVariantCallbackResult<E> {
 pub enum FieldVariantCallbackResult<T, E> {
     Emit(T),
     Error(E),
-    ErrorDefault,
+    DefaultError,
     Skip,
 }
 
@@ -99,7 +99,7 @@ impl<T, E> From<Option<T>> for FieldVariantCallbackResult<T, E> {
     fn from(value: Option<T>) -> Self {
         match value {
             Some(val) => Self::Emit(val),
-            None => Self::ErrorDefault,
+            None => Self::DefaultError,
         }
     }
 }

@@ -41,6 +41,9 @@ impl Generator<'_> {
             state = START;
         };
 
+        // TODO: default error is possibly taking one too many chars.
+        // need to experiment with it
+
         match (&leaf.kind, callback_op) {
             (CallbackKind::Skip, None) => trivia,
             (CallbackKind::Skip, Some((ident, decl))) => quote! {
@@ -54,7 +57,7 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     SkipCallbackResult::DefaultError => {
-                        lex.error(offset);
+                        lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },
                 }
@@ -76,7 +79,7 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     UnitVariantCallbackResult::DefaultError => {
-                        lex.error(offset);
+                        lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },
                 }
@@ -99,7 +102,7 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     UnitVariantCallbackResult::DefaultError => {
-                        lex.error(offset);
+                        lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },
                 }
