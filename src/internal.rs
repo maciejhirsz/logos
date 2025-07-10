@@ -27,6 +27,8 @@ pub trait LexerInternal<'source> {
     fn end(&mut self, offset: usize);
 }
 
+//TODO: Seems to me that we are missing a way to return Ok(Token::Uint) or skip matched input,
+// similar to Filter<T> but for unit variants.
 pub enum UnitVariantCallbackResult<E> {
     Emit,
     Error(E),
@@ -51,12 +53,12 @@ impl<E> From<bool> for UnitVariantCallbackResult<E> {
     }
 }
 
-impl<E> From<Result<(), E>> for UnitVariantCallbackResult<E> {
+impl<E, C: Into<E>> From<Result<(), C>> for UnitVariantCallbackResult<E> {
     #[inline]
-    fn from(value: Result<(), E>) -> Self {
+    fn from(value: Result<(), C>) -> Self {
         match value {
             Ok(()) => Self::Emit,
-            Err(err) => Self::Error(err),
+            Err(err) => Self::Error(err.into()),
         }
     }
 }
@@ -68,12 +70,12 @@ impl<E> From<Skip> for UnitVariantCallbackResult<E> {
     }
 }
 
-impl<E> From<Result<Skip, E>> for UnitVariantCallbackResult<E> {
+impl<E, C: Into<E>> From<Result<Skip, C>> for UnitVariantCallbackResult<E> {
     #[inline]
-    fn from(value: Result<Skip, E>) -> Self {
+    fn from(value: Result<Skip, C>) -> Self {
         match value {
             Ok(Skip) => Self::Skip,
-            Err(err) => Self::Error(err),
+            Err(err) => Self::Error(err.into()),
         }
     }
 }
@@ -102,12 +104,12 @@ impl<T, E> From<Option<T>> for FieldVariantCallbackResult<T, E> {
     }
 }
 
-impl<T, E> From<Result<T, E>> for FieldVariantCallbackResult<T, E> {
+impl<T, E, C: Into<E>> From<Result<T, C>> for FieldVariantCallbackResult<T, E> {
     #[inline]
-    fn from(value: Result<T, E>) -> Self {
+    fn from(value: Result<T, C>) -> Self {
         match value {
             Ok(val) => Self::Emit(val),
-            Err(err) => Self::Error(err),
+            Err(err) => Self::Error(err.into()),
         }
     }
 }
@@ -122,19 +124,19 @@ impl<T, E> From<Filter<T>> for FieldVariantCallbackResult<T, E> {
     }
 }
 
-impl<T, E> From<FilterResult<T, E>> for FieldVariantCallbackResult<T, E> {
+impl<T, E, C: Into<E>> From<FilterResult<T, C>> for FieldVariantCallbackResult<T, E> {
     #[inline]
-    fn from(value: FilterResult<T, E>) -> Self {
+    fn from(value: FilterResult<T, C>) -> Self {
         match value {
             FilterResult::Emit(val) => Self::Emit(val),
             FilterResult::Skip => Self::Skip,
-            FilterResult::Error(err) => Self::Error(err),
+            FilterResult::Error(err) => Self::Error(err.into()),
         }
     }
 }
 
 
-enum SkipCallbackResult<E> {
+pub enum SkipCallbackResult<E> {
     Skip,
     Error(E),
     DefaultError,
@@ -154,22 +156,22 @@ impl<E> From<Skip> for SkipCallbackResult<E> {
     }
 }
 
-impl<E> From<Result<(), E>> for SkipCallbackResult<E> {
+impl<E, C: Into<E>> From<Result<(), C>> for SkipCallbackResult<E> {
     #[inline]
-    fn from(value: Result<(), E>) -> Self {
+    fn from(value: Result<(), C>) -> Self {
         match value {
             Ok(()) => Self::Skip,
-            Err(err) => Self::Error(err),
+            Err(err) => Self::Error(err.into()),
         }
     }
 }
 
-impl<E> From<Result<Skip, E>> for SkipCallbackResult<E> {
+impl<E, C: Into<E>> From<Result<Skip, C>> for SkipCallbackResult<E> {
     #[inline]
-    fn from(value: Result<Skip, E>) -> Self {
+    fn from(value: Result<Skip, C>) -> Self {
         match value {
             Ok(Skip) => Self::Skip,
-            Err(err) => Self::Error(err),
+            Err(err) => Self::Error(err.into()),
         }
     }
 }

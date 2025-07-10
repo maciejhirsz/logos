@@ -360,7 +360,12 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let body = generator.generate();
     impl_logos(quote! {
-        use #logos_path::internal::LexerInternal;
+        use #logos_path::internal::{
+            LexerInternal,
+            UnitVariantCallbackResult,
+            FieldVariantCallbackResult,
+            SkipCallbackResult
+        };
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 

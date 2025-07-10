@@ -22,7 +22,7 @@ impl Generator<'_> {
                 let arg = &inline_callback.arg;
                 let body = &inline_callback.body;
 
-                // TODO: shouldn't copy this code?
+                // TODO: shouldn't copy this callback code for every accept state?
                 let decl = quote! {
                     #[inline]
                     fn callback<'s>(#arg: &mut Lexer<'s>)
@@ -35,18 +35,23 @@ impl Generator<'_> {
             },
         });
 
+        let trivia = quote! {
+            lex.trivia();
+            offset = lex.offset();
+            state = START;
+        };
+
         match (&leaf.kind, callback_op) {
+            (CallbackKind::Skip, None) => trivia,
             (CallbackKind::Skip, Some((ident, decl))) => quote! {
                 #decl
-                let action = SkipCallbackResult::from(#ident(lex));
+                let action = SkipCallbackResult::<Self::Error>::from(#ident(lex));
                 match action {
                     SkipCallbackResult::Skip => {
-                        lex.trivia();
-                        offset = lex.offset();
-                        state = START;
+                        #trivia
                     },
                     SkipCallbackResult::Error(err) => {
-                        return Some(err.into());
+                        return Some(Err(err));
                     },
                     SkipCallbackResult::DefaultError => {
                         lex.error(offset);
@@ -54,19 +59,51 @@ impl Generator<'_> {
                     },
                 }
             },
-            (CallbackKind::Skip, None) => quote! {
-                lex.trivia();
-                offset = lex.offset();
-                state = START;
-            },
             (CallbackKind::Unit, None) => quote! {
                 return Some(Ok(#name::#ident));
+            },
+            (CallbackKind::Unit, Some((ident, decl))) => quote! {
+                #decl
+                let action = UnitVariantCallbackResult::<Self::Error>::from(#ident(lex));
+                match action {
+                    UnitVariantCallbackResult::Emit => {
+                        return Some(Ok(#name::#ident));
+                    },
+                    UnitVariantCallbackResult::Skip => {
+                        #trivia
+                    },
+                    UnitVariantCallbackResult::Error(err) => {
+                        return Some(Err(err));
+                    },
+                    UnitVariantCallbackResult::DefaultError => {
+                        lex.error(offset);
+                        return Some(Err(Self::Error::default()));
+                    },
+                }
             },
             (CallbackKind::Value(_), None) => quote! {
                 let token = #name::#ident(lex.slice());
                 return Some(Ok(token));
             },
-            _ => todo!(),
+            (CallbackKind::Value(ty), Some((ident, decl))) => quote! {
+                #decl
+                let action = FieldVariantCallbackResult::<#ty, Self::Error>::from(#ident(lex));
+                match action {
+                    UnitVariantCallbackResult::Emit(val) => {
+                        return Some(Ok(#name::#ident(val)));
+                    },
+                    UnitVariantCallbackResult::Skip => {
+                        #trivia
+                    },
+                    UnitVariantCallbackResult::Error(err) => {
+                        return Some(Err(err));
+                    },
+                    UnitVariantCallbackResult::DefaultError => {
+                        lex.error(offset);
+                        return Some(Err(Self::Error::default()));
+                    },
+                }
+            },
         }
     }
 }
