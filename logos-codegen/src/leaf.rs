@@ -1,6 +1,5 @@
 use std::cmp::{Ord, Ordering};
 use std::fmt::{self, Debug, Display};
-use std::ops::Index;
 
 use proc_macro2::{Span, TokenStream};
 use regex_automata::PatternID;
@@ -10,19 +9,18 @@ use crate::pattern::Pattern;
 use crate::util::MaybeVoid;
 
 #[derive(Clone)]
-pub enum CallbackKind {
-    Unit,
-    Value(TokenStream),
+pub enum VariantKind {
+    Unit(Ident),
+    Value(Ident, TokenStream),
     Skip,
 }
 
 #[derive(Clone)]
-pub struct Leaf<'t> {
+pub struct Leaf {
     pub pattern: Pattern,
-    pub ident: Option<&'t Ident>,
     pub span: Span,
     pub priority: usize,
-    pub kind: CallbackKind,
+    pub kind: VariantKind,
     pub callback: Option<Callback>,
 }
 
@@ -54,45 +52,27 @@ impl Callback {
     }
 }
 
-impl<'t> Leaf<'t> {
-    pub fn new(ident: &'t Ident, span: Span, pattern: Pattern) -> Self {
+impl Leaf {
+    pub fn new(span: Span, pattern: Pattern) -> Self {
         Leaf {
             pattern,
-            ident: Some(ident),
             span,
             priority: 0,
-            kind: CallbackKind::Unit,
+            kind: VariantKind::Skip,
             callback: None,
         }
     }
 
-    pub fn new_skip(span: Span, pattern: Pattern) -> Self {
-        Leaf {
-            pattern,
-            ident: None,
-            span,
-            priority: 0,
-            kind: CallbackKind::Skip,
-            callback: None,
-        }
+    pub fn variant_kind(self, kind: VariantKind) -> Self {
+        Self { kind, ..self }
     }
 
-    pub fn callback(mut self, callback: Option<Callback>) -> Self {
-        self.callback = callback;
-        self
+    pub fn callback(self, callback: Option<Callback>) -> Self {
+        Self { callback, ..self }
     }
 
-    pub fn field(mut self, field: MaybeVoid) -> Self {
-        self.kind = match field {
-            MaybeVoid::Some(field_ty) => CallbackKind::Value(field_ty),
-            MaybeVoid::Void => CallbackKind::Unit,
-        };
-        self
-    }
-
-    pub fn priority(mut self, priority: usize) -> Self {
-        self.priority = priority;
-        self
+    pub fn priority(self, priority: usize) -> Self {
+        Self { priority, ..self }
     }
 
     pub fn compare_priority(left: &Self, right: &Self) -> Ordering {
@@ -100,7 +80,7 @@ impl<'t> Leaf<'t> {
     }
 }
 
-impl Debug for Leaf<'_> {
+impl Debug for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "::{}", self)?;
 
@@ -112,81 +92,27 @@ impl Debug for Leaf<'_> {
     }
 }
 
-impl Display for Leaf<'_> {
+impl Display for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.ident {
-            Some(ident) => Display::fmt(ident, f),
-            None => f.write_str("<skip>"),
+        match &self.kind {
+            VariantKind::Unit(ident) | VariantKind::Value(ident, _) => Display::fmt(ident, f),
+            VariantKind::Skip => f.write_str("<skip>"),
         }
     }
 }
 
-/// Disambiguation error during the attempt to merge two leaf
-/// nodes with the same priority
-#[derive(Debug)]
-pub struct DisambiguationError(pub LeafId, pub LeafId);
-
-#[derive(Debug)]
-pub struct Leaves<'a> {
-    leaves: Vec<Leaf<'a>>,
-}
-
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LeafId(pub u32);
+pub struct LeafId(pub usize);
 
-impl From<usize> for LeafId {
-    fn from(value: usize) -> Self {
-        LeafId(value.try_into().expect("More than 2^32 nodes"))
+impl Default for LeafId {
+    fn default() -> Self {
+        LeafId(0)
     }
 }
 
 impl From<PatternID> for LeafId {
     fn from(value: PatternID) -> Self {
-        value.as_usize().into()
+        LeafId(value.as_usize())
     }
 }
 
-impl<'a> Leaves<'a> {
-    pub fn new() -> Self {
-        Leaves { leaves: Vec::new() }
-    }
-
-    pub fn push(&mut self, leaf: Leaf<'a>)
-    {
-        let idx = match self.leaves
-            .binary_search_by_key(&leaf.priority, |leaf| leaf.priority)
-        {
-            Ok(idx) => idx,
-            Err(idx) => idx,
-        };
-        self.leaves.insert(idx, leaf);
-    }
-
-    pub fn errors(&self) -> Vec<DisambiguationError> {
-        let mut errors = Vec::new();
-        for i in 0..self.leaves.len()-1 {
-            if self.leaves[i].priority == self.leaves[i+1].priority {
-                errors.push(DisambiguationError(i.into(), (i + 1).into()));
-            }
-        }
-
-        errors
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item=&Leaf<'a>> {
-        self.leaves.iter()
-    }
-}
-
-impl<'a> Index<LeafId> for Leaves<'a> {
-    type Output = Leaf<'a>;
-    fn index(&self, index: LeafId) -> &Self::Output {
-        &self.leaves[index.0 as usize]
-    }
-}
-
-impl<'a> From<Leaves<'a>> for Vec<Leaf<'a>> {
-    fn from(value: Leaves<'a>) -> Self {
-        value.leaves
-    }
-}

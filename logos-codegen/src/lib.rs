@@ -24,8 +24,8 @@ use std::mem;
 
 use error::{Error, Errors, SpannedError};
 use generator::Generator;
-use graph::Graph;
-use leaf::{DisambiguationError, Leaf, Leaves};
+use graph::{DisambiguationError, Graph};
+use leaf::Leaf;
 use parser::{IgnoreFlags, Mode, Parser};
 use pattern::Pattern;
 use quote::ToTokens;
@@ -38,6 +38,8 @@ use quote::quote;
 use syn::parse_quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
+
+use crate::leaf::VariantKind;
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -63,7 +65,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         parser.try_parse_logos(attr);
     }
 
-    let mut pats = Leaves::new();
+    let mut pats = Vec::new();
 
     {
         let errors = &mut parser.errors;
@@ -82,7 +84,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
             let default_priority = pattern.priority();
             pats.push(
-                Leaf::new_skip(skip.literal.span(), pattern)
+                Leaf::new(skip.literal.span(), pattern)
                     .priority(skip.priority.unwrap_or(default_priority))
                     .callback(skip.into_callback()),
             );
@@ -92,8 +94,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Iterating through enum variants");
 
     for variant in &mut item.variants {
-        let field = match &mut variant.fields {
-            Fields::Unit => MaybeVoid::Void,
+        let var_ident = variant.ident.clone();
+
+        let var_kind = match &mut variant.fields {
+            Fields::Unit => VariantKind::Unit(var_ident),
             Fields::Unnamed(fields) => {
                 if fields.unnamed.len() != 1 {
                     parser.err(
@@ -112,18 +116,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     .ty;
                 let ty = parser.get_type(ty);
 
-                MaybeVoid::Some(ty)
+                VariantKind::Value(var_ident, ty)
             }
             Fields::Named(fields) => {
                 parser.err("Logos doesn't support named fields yet.", fields.span());
 
-                MaybeVoid::Void
+                VariantKind::Skip
             }
         };
-
-        // Lazy leaf constructor to avoid cloning
-        let var_ident = &variant.ident;
-        let leaf = move |span, pattern| Leaf::new(var_ident, span, pattern).field(field.clone());
 
         for attr in &mut variant.attrs {
             let attr_name = match attr.path().get_ident() {
@@ -172,7 +172,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     };
 
                     pats.push(
-                    leaf(definition.literal.span(), pattern)
+                    Leaf::new(definition.literal.span(), pattern)
+                        .variant_kind(var_kind.clone())
                         .priority(definition.priority.unwrap_or(literal_len * 2))
                         .callback(definition.callback),
                     );
@@ -201,7 +202,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                     let default_priority = pattern.priority();
                     pats.push(
-                    leaf(definition.literal.span(), pattern)
+                    Leaf::new(definition.literal.span(), pattern)
+                        .variant_kind(var_kind.clone())
                         .priority(definition.priority.unwrap_or(default_priority))
                         .callback(definition.callback),
                     );
@@ -246,39 +248,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
             }
         }
     };
-
-    debug!("Checking if any two tokens have the same priority");
-
-    for DisambiguationError(a, b) in pats.errors() {
-        let a = &pats[a];
-        let b = &pats[b];
-        let disambiguate = a.priority + 1;
-
-        let mut err = |a: &Leaf, b: &Leaf| {
-            parser.err(
-                format!(
-                    "\
-                    A definition of variant `{a}` can match the same input as another definition of variant `{b}`.\n\
-                    \n\
-                    hint: Consider giving one definition a higher priority: \
-                    #[{attr}(..., priority = {disambiguate})]\
-                    ",
-                    attr = match a.callback {
-                        Some(_) => "regex",
-                        None => "skip"
-                    }
-                ),
-                a.span
-            );
-        };
-
-        err(a, b);
-        err(b, a);
-    }
-
-    if let Some(errors) = parser.errors.render() {
-        return impl_logos(errors);
-    }
 
     #[cfg(feature = "debug")]
     {
@@ -343,7 +312,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating graph from pats:\n{pats:#?}");
 
-    let graph = match Graph::try_new(pats) {
+    let graph = match Graph::new(pats) {
         Ok(nfa) => nfa,
         Err(msg) => {
             let mut errors = Errors::default();
@@ -351,6 +320,23 @@ pub fn generate(input: TokenStream) -> TokenStream {
             return impl_logos(errors.render().unwrap())
         }
     };
+
+    debug!("Checking if any two tokens have the same priority");
+
+    for DisambiguationError(matching) in graph.errors() {
+        // TODO: better error message pointing to each variant
+        let first = *matching.first().expect("DisambiguationError must have at least 2 leaves");
+        let variants = matching.into_iter().map(|leaf_id| format!("`{}`", graph.leaves()[leaf_id.0])).collect::<Vec<_>>().join(", ");
+        parser.err(
+            format!(
+                "The following variants can all match simultaneously: {variants}"),
+            graph.leaves()[first.0].span
+        );
+    }
+
+    if let Some(errors) = parser.errors.render() {
+        return impl_logos(errors);
+    }
 
     debug!("Generating code from graph:\n{:#?}", graph.dfa());
 

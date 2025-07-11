@@ -2,12 +2,11 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::generator::Generator;
-use crate::leaf::{Callback, CallbackKind, InlineCallback, Leaf};
+use crate::leaf::{Callback, VariantKind, InlineCallback, Leaf};
 use crate::util::MaybeVoid;
 
 impl Generator<'_> {
     pub fn generate_leaf(&self, leaf: &Leaf) -> TokenStream {
-        let ident = &leaf.ident;
         let name = self.name;
         let this = self.this;
 
@@ -45,8 +44,8 @@ impl Generator<'_> {
         // need to experiment with it
 
         match (&leaf.kind, callback_op) {
-            (CallbackKind::Skip, None) => trivia,
-            (CallbackKind::Skip, Some((ident, decl))) => quote! {
+            (VariantKind::Skip, None) => trivia,
+            (VariantKind::Skip, Some((ident, decl))) => quote! {
                 #decl
                 let action = SkipCallbackResult::<Self::Error>::from(#ident(lex));
                 match action {
@@ -62,12 +61,12 @@ impl Generator<'_> {
                     },
                 }
             },
-            (CallbackKind::Unit, None) => quote! {
+            (VariantKind::Unit(ident), None) => quote! {
                 return Some(Ok(#name::#ident));
             },
-            (CallbackKind::Unit, Some((ident, decl))) => quote! {
+            (VariantKind::Unit(ident), Some((cb_ident, decl))) => quote! {
                 #decl
-                let action = UnitVariantCallbackResult::<Self::Error>::from(#ident(lex));
+                let action = UnitVariantCallbackResult::<Self::Error>::from(#cb_ident(lex));
                 match action {
                     UnitVariantCallbackResult::Emit => {
                         return Some(Ok(#name::#ident));
@@ -84,24 +83,24 @@ impl Generator<'_> {
                     },
                 }
             },
-            (CallbackKind::Value(_), None) => quote! {
+            (VariantKind::Value(ident, _), None) => quote! {
                 let token = #name::#ident(lex.slice());
                 return Some(Ok(token));
             },
-            (CallbackKind::Value(ty), Some((ident, decl))) => quote! {
+            (VariantKind::Value(ident, ty), Some((cb_ident, decl))) => quote! {
                 #decl
-                let action = FieldVariantCallbackResult::<#ty, Self::Error>::from(#ident(lex));
+                let action = FieldVariantCallbackResult::<#ty, Self::Error>::from(#cb_ident(lex));
                 match action {
-                    UnitVariantCallbackResult::Emit(val) => {
+                    FieldVariantCallbackResult::Emit(val) => {
                         return Some(Ok(#name::#ident(val)));
                     },
-                    UnitVariantCallbackResult::Skip => {
+                    FieldVariantCallbackResult::Skip => {
                         #trivia
                     },
-                    UnitVariantCallbackResult::Error(err) => {
+                    FieldVariantCallbackResult::Error(err) => {
                         return Some(Err(err));
                     },
-                    UnitVariantCallbackResult::DefaultError => {
+                    FieldVariantCallbackResult::DefaultError => {
                         lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },

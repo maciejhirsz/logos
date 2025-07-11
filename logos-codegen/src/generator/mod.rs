@@ -7,7 +7,7 @@ use regex_automata::dfa::dense::DFA;
 use regex_automata::util::primitives::StateID;
 use syn::Ident;
 
-use crate::graph::{Graph, State};
+use crate::graph::{Graph, State, StateType};
 use crate::util::{MaybeVoid, ToIdent};
 
 // mod context;
@@ -25,7 +25,7 @@ pub struct Generator<'a> {
     /// Name of the type with any generics it might need
     this: &'a TokenStream,
     /// Reference to the graph with all of the nodes
-    graph: &'a Graph<'a>,
+    graph: &'a Graph,
     /// Function name identifiers
     idents: Map<State, Ident>,
 }
@@ -34,12 +34,12 @@ impl<'a> Generator<'a> {
     pub fn new(
         name: &'a Ident,
         this: &'a TokenStream,
-        graph: &'a Graph<'a>,
+        graph: &'a Graph,
     ) -> Self {
         let mut idents = Map::default();
 
         for state in graph.get_states() {
-            let mut name = format!("State{}", state.id.as_usize());
+            let mut name = format!("State{}", state.dfa_id.as_usize());
             if let Some(accept) = state.context {
                 write!(name, "Ctx{}", accept.0).expect("Failed to write to string");
             }
@@ -91,14 +91,14 @@ impl<'a> Generator<'a> {
     fn generate_match_case(&self, state: State) -> TokenStream {
         let this_ident = self.get_ident(&state);
         let mut setup = TokenStream::new();
-        if state.is_accept {
+        if let StateType::Accept(_) = self.graph.get_state_data(&state).state_type {
             setup.append_all(quote! {
                 lex.end(offset - 1);
             })
         };
 
         let mut inner_cases = TokenStream::new();
-        let transitions = self.graph.get_transitions(&state);
+        let transitions = self.graph.get_state_data(&state);
         for (byte_class, next_state) in &transitions.normal {
             let next_ident = self.get_ident(&next_state);
             let patterns = byte_class.ranges.iter().map(|range| {
@@ -131,10 +131,10 @@ impl<'a> Generator<'a> {
         }
 
         let otherwise = if let Some(leaf_id) = state.context {
-            self.generate_leaf(&self.graph.leaves()[leaf_id])
+            self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
             quote!{
-                lex.error(offset);
+                lex.end_to_boundary(offset);
                 return Some(Err(Self::Error::default()));
             }
         };
