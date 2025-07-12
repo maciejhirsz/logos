@@ -21,12 +21,23 @@ impl Generator<'_> {
                 let arg = &inline_callback.arg;
                 let body = &inline_callback.body;
 
+                let error = quote!(<#name as Logos<'s>>::Error);
+                let ret = match &leaf.kind {
+                    VariantKind::Unit(_) => quote! {
+                        impl Into<UnitVariantCallbackResult<#error>>
+                    },
+                    VariantKind::Value(_, ty) => quote! {
+                        impl Into<UnitVariantCallbackResult<#ty, #error>
+                    },
+                    VariantKind::Skip => quote! {
+                        impl Into<SkipCallbackResult<#error>
+                    },
+                };
+
                 // TODO: shouldn't copy this callback code for every accept state?
                 let decl = quote! {
                     #[inline]
-                    fn callback<'s>(#arg: &mut Lexer<'s>)
-                        -> Option<Result<Self, Self::Error>>
-                    {
+                    fn callback<'s>(#arg: &mut Lexer<'s>) -> #ret + use<'s> {
                         #body
                     }
                 };
@@ -40,14 +51,11 @@ impl Generator<'_> {
             state = START;
         };
 
-        // TODO: default error is possibly taking one too many chars.
-        // need to experiment with it
-
         match (&leaf.kind, callback_op) {
             (VariantKind::Skip, None) => trivia,
             (VariantKind::Skip, Some((ident, decl))) => quote! {
                 #decl
-                let action = SkipCallbackResult::<Self::Error>::from(#ident(lex));
+                let action: SkipCallbackResult::<Self::Error> = #ident(lex).into();
                 match action {
                     SkipCallbackResult::Skip => {
                         #trivia
@@ -65,7 +73,7 @@ impl Generator<'_> {
             },
             (VariantKind::Unit(ident), Some((cb_ident, decl))) => quote! {
                 #decl
-                let action = UnitVariantCallbackResult::<Self::Error>::from(#cb_ident(lex));
+                let action: UnitVariantCallbackResult::<Self::Error> = #cb_ident(lex).into();
                 match action {
                     UnitVariantCallbackResult::Emit => {
                         return Some(Ok(#name::#ident));
@@ -87,7 +95,7 @@ impl Generator<'_> {
             },
             (VariantKind::Value(ident, ty), Some((cb_ident, decl))) => quote! {
                 #decl
-                let action = FieldVariantCallbackResult::<#ty, Self::Error>::from(#cb_ident(lex));
+                let action: FieldVariantCallbackResult::<#ty, Self::Error> = #cb_ident(lex).into();
                 match action {
                     FieldVariantCallbackResult::Emit(val) => {
                         return Some(Ok(#name::#ident(val)));

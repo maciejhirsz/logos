@@ -353,6 +353,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
             FieldVariantCallbackResult,
             SkipCallbackResult
         };
+        use #logos_path::Logos;
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
