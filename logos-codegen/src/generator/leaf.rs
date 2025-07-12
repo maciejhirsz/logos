@@ -56,7 +56,6 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     SkipCallbackResult::DefaultError => {
-                        lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },
                 }
@@ -78,7 +77,6 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     UnitVariantCallbackResult::DefaultError => {
-                        lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },
                 }
@@ -101,7 +99,6 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     FieldVariantCallbackResult::DefaultError => {
-                        lex.end_to_boundary(offset);
                         return Some(Err(Self::Error::default()));
                     },
                 }

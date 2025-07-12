@@ -134,7 +134,7 @@ impl<'a> Generator<'a> {
             self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
             quote!{
-                lex.end_to_boundary(offset);
+                lex.end_to_boundary(offset + 1);
                 return Some(Err(Self::Error::default()));
             }
         };
