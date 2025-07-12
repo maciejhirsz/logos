@@ -14,9 +14,9 @@ pub struct Pattern {
 }
 
 impl Pattern {
-    pub fn compile(source: &Literal) -> Result<Pattern, String> {
+    pub fn compile(source: &str) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
-        let hir = Parser::new().parse(&source.escape())
+        let hir = Parser::new().parse(source)
             .map_err(|err| format!("{}", err))?;
 
         Ok(Pattern { hir })

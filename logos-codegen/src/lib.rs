@@ -41,6 +41,7 @@ use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
 use crate::leaf::VariantKind;
+use crate::parser::Subpatterns;
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -69,13 +70,11 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let mut pats = Vec::new();
 
     {
-        let errors = &mut parser.errors;
-
         for skip in mem::take(&mut parser.skips) {
 
-            // TODO Subpatterns
+            let Some(pattern_source) = parser.subpatterns.subst_subpatterns(&skip.literal.escape(), skip.literal.span(), &mut parser.errors) else { continue };
 
-            let pattern = match Pattern::compile(&skip.literal) {
+            let pattern = match Pattern::compile(&pattern_source) {
                 Ok(pattern) => pattern,
                 Err(err) => {
                     parser.err(err, skip.literal.span());
@@ -191,9 +190,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     if !definition.ignore_flags.is_empty() {
                         // TODO
                     }
-                    // TODO subpatterns
 
-                    let pattern = match Pattern::compile(&definition.literal) {
+                    let Some(pattern_source) = parser.subpatterns.subst_subpatterns(&definition.literal.escape(), definition.literal.span(), &mut parser.errors) else { continue };
+
+                    let pattern = match Pattern::compile(&pattern_source) {
                         Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
