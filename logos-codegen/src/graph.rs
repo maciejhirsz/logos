@@ -4,6 +4,17 @@ use regex_automata::{dfa::{dense::DFA, Automaton, StartKind}, nfa::thompson::NFA
 
 use crate::leaf::{Leaf, LeafId};
 
+#[derive(Debug)]
+pub struct Config {
+    pub prio_over_length: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config { prio_over_length: false }
+    }
+}
+
 /// Disambiguation error during the attempt to merge two leaf
 /// nodes with the same priority
 #[derive(Clone, Debug)]
@@ -90,6 +101,7 @@ impl ByteClass {
 
 #[derive(Debug)]
 pub struct Graph {
+    config: Config,
     leaves: Vec<Leaf>,
     dfa: OwnedDFA,
     edges: HashMap<State, StateData>,
@@ -160,31 +172,31 @@ impl Graph {
         self.errors.iter().cloned()
     }
 
-    pub fn new(leaves: Vec<Leaf>) -> Result<Self, String> {
+    pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
         let hirs = leaves.iter().map(|leaf| leaf.pattern.hir()).collect::<Vec<_>>();
 
         // TODO: utf8 mode here
-        let config = NFA::config()
+        let nfa_config = NFA::config()
             .shrink(true);
-        let nfa = NFA::compiler().configure(config).build_many_from_hir(&hirs).map_err(|err| format!("{}", err))?;
+        let nfa = NFA::compiler().configure(nfa_config).build_many_from_hir(&hirs).map_err(|err| format!("{}", err))?;
         if nfa.has_empty() {
             // TODO Better error handling
             return Err(String::from("Regex includes a zero length match"));
         }
-        let config = DFA::config()
+        let dfa_config = DFA::config()
             .accelerate(false)
             .byte_classes(false)
             .minimize(true)
             .match_kind(MatchKind::All)
             .start_kind(StartKind::Anchored);
-        let dfa = DFA::builder().configure(config).build_from_nfa(&nfa).map_err(|err| format!("{}", err))?;
+        let dfa = DFA::builder().configure(dfa_config).build_from_nfa(&nfa).map_err(|err| format!("{}", err))?;
 
 
         let start_id = dfa.universal_start_state(Anchored::Yes)
             .expect("Lookaround assertions are disabled, so there should be a universal start state");
         let root = State { dfa_id: start_id, context: None };
 
-        let mut graph = Self { leaves, dfa, edges: HashMap::new(), root, errors: Vec::new() };
+        let mut graph = Self { leaves, dfa, edges: HashMap::new(), root, errors: Vec::new(), config };
         let mut traverse = GraphTraverse::from_root(root);
 
         while let Some(state) = traverse.visit_stack.pop() {
@@ -233,9 +245,13 @@ impl Graph {
     }
 
     fn propagate_context(&mut self, prev: State, next_id: StateID, traverse: &mut GraphTraverse) -> State {
-        let next_state_type = traverse.get_state_type(next_id, self);
+        let mut next_state_type = traverse.get_state_type(next_id, self);
 
-        let context = match prev.filter_state_type(next_state_type, self) {
+        if self.config.prio_over_length {
+            next_state_type = prev.filter_state_type(next_state_type, self);
+        };
+
+        let context = match next_state_type {
             StateType::Normal => prev.context,
             StateType::Accept(leaf_id) => Some(leaf_id),
         };

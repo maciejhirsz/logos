@@ -39,6 +39,7 @@ use syn::parse_quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
 
+use crate::graph::Config;
 use crate::leaf::VariantKind;
 
 const LOGOS_ATTR: &str = "logos";
@@ -312,7 +313,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating graph from pats:\n{pats:#?}");
 
-    let graph = match Graph::new(pats) {
+    // TODO: make a way to change this default
+    let config = Config::default();
+    let graph = match Graph::new(pats, config) {
         Ok(nfa) => nfa,
         Err(msg) => {
             let mut errors = Errors::default();
