@@ -27,10 +27,10 @@ impl Generator<'_> {
                         impl Into<UnitVariantCallbackResult<#error>>
                     },
                     VariantKind::Value(_, ty) => quote! {
-                        impl Into<UnitVariantCallbackResult<#ty, #error>
+                        impl Into<FieldVariantCallbackResult<#ty, #error>>
                     },
                     VariantKind::Skip => quote! {
-                        impl Into<SkipCallbackResult<#error>
+                        impl Into<SkipCallbackResult<#error>>
                     },
                 };
 
