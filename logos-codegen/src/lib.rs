@@ -346,19 +346,24 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let generator = Generator::new(name, &this, &graph);
 
     let body = generator.generate();
-    impl_logos(quote! {
+    let imp = impl_logos(quote! {
         use #logos_path::internal::{
             LexerInternal,
-            UnitVariantCallbackResult,
-            FieldVariantCallbackResult,
-            SkipCallbackResult
+            CallbackRetVal,
+            CallbackResult,
+            SkipRetVal,
+            SkipResult,
         };
         use #logos_path::Logos;
 
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         #body
-    })
+    });
+
+    // println!("{}", imp);
+    // TokenStream::new()
+    imp
 }
 
 /// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.

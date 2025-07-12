@@ -21,16 +21,15 @@ impl Generator<'_> {
                 let arg = &inline_callback.arg;
                 let body = &inline_callback.body;
 
-                let error = quote!(<#name as Logos<'s>>::Error);
                 let ret = match &leaf.kind {
                     VariantKind::Unit(_) => quote! {
-                        impl Into<UnitVariantCallbackResult<#error>>
+                        impl CallbackRetVal<'s, (), #this>
                     },
                     VariantKind::Value(_, ty) => quote! {
-                        impl Into<FieldVariantCallbackResult<#ty, #error>>
+                        impl CallbackRetVal<'s, #ty, #this>
                     },
                     VariantKind::Skip => quote! {
-                        impl Into<SkipCallbackResult<#error>>
+                        impl SkipRetVal<'s, #this>
                     },
                 };
 
@@ -45,6 +44,12 @@ impl Generator<'_> {
             },
         });
 
+        let constructor = match &leaf.kind {
+            VariantKind::Unit(ident) => quote!(|()| #name::#ident),
+            VariantKind::Value(ident, _ty) => quote!(#name::#ident),
+            VariantKind::Skip => quote!(),
+        };
+
         let trivia = quote! {
             lex.trivia();
             offset = lex.offset();
@@ -55,37 +60,31 @@ impl Generator<'_> {
             (VariantKind::Skip, None) => trivia,
             (VariantKind::Skip, Some((ident, decl))) => quote! {
                 #decl
-                let action: SkipCallbackResult::<Self::Error> = #ident(lex).into();
+                let action = SkipRetVal::<'s, Self>::construct(#ident(lex));
                 match action {
-                    SkipCallbackResult::Skip => {
+                    SkipResult::Skip => {
                         #trivia
                     },
-                    SkipCallbackResult::Error(err) => {
+                    SkipResult::Error(err) => {
                         return Some(Err(err));
-                    },
-                    SkipCallbackResult::DefaultError => {
-                        return Some(Err(Self::Error::default()));
                     },
                 }
             },
             (VariantKind::Unit(ident), None) => quote! {
                 return Some(Ok(#name::#ident));
             },
-            (VariantKind::Unit(ident), Some((cb_ident, decl))) => quote! {
+            (VariantKind::Unit(_ident), Some((cb_ident, decl))) => quote! {
                 #decl
-                let action: UnitVariantCallbackResult::<Self::Error> = #cb_ident(lex).into();
+                let action = CallbackRetVal::<'s, (), Self>::construct(#cb_ident(lex), #constructor);
                 match action {
-                    UnitVariantCallbackResult::Emit => {
-                        return Some(Ok(#name::#ident));
+                    CallbackResult::Emit(tok) => {
+                        return Some(Ok(tok));
                     },
-                    UnitVariantCallbackResult::Skip => {
+                    CallbackResult::Skip => {
                         #trivia
                     },
-                    UnitVariantCallbackResult::Error(err) => {
+                    CallbackResult::Error(err) => {
                         return Some(Err(err));
-                    },
-                    UnitVariantCallbackResult::DefaultError => {
-                        return Some(Err(Self::Error::default()));
                     },
                 }
             },
@@ -93,21 +92,18 @@ impl Generator<'_> {
                 let token = #name::#ident(lex.slice());
                 return Some(Ok(token));
             },
-            (VariantKind::Value(ident, ty), Some((cb_ident, decl))) => quote! {
+            (VariantKind::Value(_ident, ty), Some((cb_ident, decl))) => quote! {
                 #decl
-                let action: FieldVariantCallbackResult::<#ty, Self::Error> = #cb_ident(lex).into();
+                let action = CallbackRetVal::<'s, #ty, Self>::construct(#cb_ident(lex), #constructor);
                 match action {
-                    FieldVariantCallbackResult::Emit(val) => {
-                        return Some(Ok(#name::#ident(val)));
+                    CallbackResult::Emit(tok) => {
+                        return Some(Ok(tok));
                     },
-                    FieldVariantCallbackResult::Skip => {
+                    CallbackResult::Skip => {
                         #trivia
                     },
-                    FieldVariantCallbackResult::Error(err) => {
+                    CallbackResult::Error(err) => {
                         return Some(Err(err));
-                    },
-                    FieldVariantCallbackResult::DefaultError => {
-                        return Some(Err(Self::Error::default()));
                     },
                 }
             },
