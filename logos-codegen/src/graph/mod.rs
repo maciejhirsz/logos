@@ -1,8 +1,12 @@
+use std::ascii::escape_default;
+use std::fmt;
 use std::{collections::{hash_map::Entry, HashMap, VecDeque}, iter, ops::RangeInclusive};
 
 use regex_automata::{dfa::{dense::DFA, Automaton, StartKind}, nfa::thompson::NFA, util::primitives::StateID, Anchored, MatchKind};
 
 use crate::leaf::{Leaf, LeafId};
+
+mod export;
 
 #[derive(Debug)]
 pub struct Config {
@@ -96,6 +100,24 @@ impl ByteClass {
             }
         }
         self.ranges.push(byte..=byte);
+    }
+}
+
+impl fmt::Display for ByteClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (idx, range) in self.ranges.iter().enumerate() {
+            if range.start() == range.end() {
+                write!(f, "{}", escape_default(*range.start()))?;
+            } else {
+                write!(f, "{}..={}", escape_default(*range.start()), escape_default(*range.end()))?;
+            }
+
+            if idx < self.ranges.len() - 1 {
+                write!(f, "|")?;
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -33,7 +33,7 @@ pub struct Parser {
     pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
-    #[cfg(feature = "debug")]
+    // #[cfg(feature = "debug")]
     pub export_dir: Option<String>,
     types: TypeParams,
 }
