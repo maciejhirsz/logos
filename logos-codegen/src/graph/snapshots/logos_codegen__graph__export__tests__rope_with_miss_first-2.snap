@@ -1,0 +1,22 @@
+---
+source: logos-codegen/src/graph/export.rs
+expression: mmd
+---
+flowchart TB
+n1024ctx0["State 1024 (ctx 0)"]
+style n1024ctx0 stroke:#00C853
+n1536ctx0["State 1536 (ctx 0)"]
+style n1536ctx0 stroke:#00C853
+n1536ctx0-->|"e"|n3072ctx0
+n2048["State 2048"]
+style n2048 stroke:#000000
+n2048-->|"f"|n2560
+n2560["State 2560"]
+style n2560 stroke:#000000
+n2560-->|"\\x00..=d|f..=\\xff"|n1024ctx0
+n2560-->|"e"|n1536ctx0
+n2560-->|"EOI"|n1024ctx0
+n3072ctx0["State 3072 (ctx 0)"]
+style n3072ctx0 stroke:#000000
+n3072ctx0-->|"\\x00..=\\xff"|n1024ctx0
+n3072ctx0-->|"EOI"|n1024ctx0

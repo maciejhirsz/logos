@@ -20,11 +20,12 @@ mod pattern;
 #[allow(missing_docs)]
 mod macros;
 
+use std::error::Error;
 use std::ffi::OsStr;
-use std::mem;
+use std::{fmt, mem};
 use std::path::{Path, PathBuf};
 
-use error::{Error, Errors, SpannedError};
+use error::Errors;
 use generator::Generator;
 use graph::{DisambiguationError, Graph};
 use leaf::Leaf;
@@ -252,12 +253,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
     };
 
-    // #[cfg(feature = "debug")]
-    {
-        debug!("Generating graphs");
-        // TODO
-    }
-
     debug!("Generating graph from pats:\n{pats:#?}");
 
     // TODO: make a way to change this default
@@ -270,6 +265,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
             return impl_logos(errors.render().unwrap())
         }
     };
+
+    #[cfg(feature = "debug")]
+    if let Some(export_path) = parser.export_path.as_ref() {
+        debug!("Generating graphs");
+
+        if let Err(err) = generate_graphs(export_path, &name.to_string(), &graph) {
+            debug!("Failed to generate graphs: {err}");
+        }
+    }
 
     debug!("Checking if any two tokens have the same priority");
 
@@ -378,54 +382,34 @@ fn strip_wrapping_parens(t: TokenStream) -> TokenStream {
     }
 }
 
-fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), String> {
-    let path = Path::new(path_str);
+fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<dyn Error>> {
+    let path = Path::new(path_str).to_owned();
 
-    let (make_mmd, make_dot, dir) = match path.extension().map(OsStr::to_str) {
-        Some(Some(x @ ("dot" | "mmd"))) => (x == "mmd", x == "dot", path.parent().expect("A path with an extension must have a parents")),
-        Some(_) => return Err(String::from("Export path must end in '.dot' or '.mmd', or it must be a directory.")),
-        None => (true, true, path),
+    let (dot_path, mmd_path) = match path.extension().map(OsStr::to_str) {
+        Some(Some("dot")) => (Some(path), None),
+        Some(Some("mmd")) => (None, Some(path)),
+        Some(_) => return Err(String::from("Export path must end in '.dot' or '.mmd', or it must be a directory.").into()),
+        None => {
+            let dot_path = path.join(format!("{}.dot", name));
+            let mmd_path = path.join(format!("{}.mmd", name));
+            (Some(dot_path), Some(mmd_path))
+        },
     };
 
-    std::fs::create_dir_all(dir).map_err(|err| ToString::to_string(&err))?;
+    for (path, is_dot) in [
+        (dot_path, true),
+        (mmd_path, false),
+    ] {
+        let Some(path) = path else { continue };
 
-    // TODO
-    // if make_dot {
-    //     let dot = graph.get_dot()?;
-    //     match graph.get_dot() {
-    //         Ok(s) => {
-    //             let dot_path = if path.extension().is_none() {
-    //                 path.join(format!("{}.dot", name.to_string().to_lowercase()))
-    //             } else {
-    //                 path.to_path_buf()
-    //             };
-    //             if let Err(e) = std::fs::write(dot_path, s) {
-    //                 debug!("Error writing dot graph: {}", e);
-    //             }
-    //         }
-    //         Err(e) => {
-    //             debug!("Error generating dot graph: {}", e);
-    //         }
-    //     }
-    // }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
 
-    // if make_mmd {
-    //     match graph.get_mermaid() {
-    //         Ok(s) => {
-    //             let mermaid_path = if path.extension().is_none() {
-    //                 path.join(format!("{}.mmd", name.to_string().to_lowercase()))
-    //             } else {
-    //                 path.to_path_buf()
-    //             };
-    //             if let Err(e) = std::fs::write(mermaid_path, s) {
-    //                 debug!("Error writing mermaid graph: {}", e);
-    //             }
-    //         }
-    //         Err(e) => {
-    //             debug!("Error generating mermaid graph: {}", e);
-    //         }
-    //     }
-    // }
+        // TODO: add some context to this error before returning?
+        let s = if is_dot { graph.get_dot() } else { graph.get_mermaid() }?;
+        std::fs::write(path, s)?;
+    }
 
     Ok(())
 }

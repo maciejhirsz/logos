@@ -34,7 +34,7 @@ pub struct Parser {
     pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
     // #[cfg(feature = "debug")]
-    pub export_dir: Option<String>,
+    pub export_path: Option<String>,
     types: TypeParams,
 }
 
@@ -122,14 +122,14 @@ impl Parser {
                         parser.err("Expected: #[logos(error = SomeType)]", span);
                     }
                 }),
-                ("export_dir", |parser, span, value| match value {
+                ("export_path", |parser, span, value| match value {
                     #[cfg(feature = "debug")]
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
                         match syn::parse2::<Literal>(value) {
                             Ok(Literal::Utf8(str)) => {
-                                if let Some(previous) = parser.export_dir.replace(str.value()) {
+                                if let Some(previous) = parser.export_path.replace(str.value()) {
                                     parser
                                         .err("Export dir can be defined only once", span)
                                         .err("Previous definition here", previous.span());
@@ -146,7 +146,7 @@ impl Parser {
                     #[cfg(feature = "debug")]
                     _ => {
                         parser.err(
-                            "Expected #[logos(export_dir = \"path/to/export/dir\")]",
+                            "Expected #[logos(export_path = \"path/to/export/dir\")]",
                             span,
                         );
                     }

@@ -55,18 +55,16 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn generate(mut self) -> TokenStream {
-        // let root = self.goto(self.root, Context::default()).clone();
-        // let tables = &self.tables;
-        //
-        let match_cases = self.graph.get_states().map(|state| self.generate_match_case(state)).collect::<Vec<_>>();
-
-        for state in self.graph.get_states() {
-            self.generate_match_case(state);
-        }
+    pub fn generate(self) -> TokenStream {
+        let mut states = self.graph.get_states().collect::<Vec<_>>();
+        // Sort for repeatability (not dependent on hashmap iteration order)
+        states.sort_unstable();
+        let match_cases = states.iter().map(|&state| self.generate_match_case(state)).collect::<Vec<_>>();
 
         let init_state = &self.idents[&self.graph.root()];
-        let all_idents = self.idents.values().collect::<Vec<_>>();
+        let mut all_idents = self.idents.values().collect::<Vec<_>>();
+        // Sort for repeatability (not dependent on hashmap iteration order)
+        all_idents.sort_unstable();
 
         quote! {
             #[derive(Clone, Copy)]
@@ -91,15 +89,16 @@ impl<'a> Generator<'a> {
     fn generate_match_case(&self, state: State) -> TokenStream {
         let this_ident = self.get_ident(&state);
         let mut setup = TokenStream::new();
-        if let StateType::Accept(_) = self.graph.get_state_data(&state).state_type {
+        let state_data = self.graph.get_state_data(&state);
+
+        if let StateType::Accept(_) = state_data.state_type {
             setup.append_all(quote! {
                 lex.end(offset - 1);
             })
         };
 
         let mut inner_cases = TokenStream::new();
-        let transitions = self.graph.get_state_data(&state);
-        for (byte_class, next_state) in &transitions.normal {
+        for (byte_class, next_state) in &state_data.normal {
             let next_ident = self.get_ident(&next_state);
             let patterns = byte_class.ranges.iter().map(|range| {
                 let start = byte_to_tokens(*range.start());
@@ -120,7 +119,7 @@ impl<'a> Generator<'a> {
 
         if state == self.graph.root() {
             inner_cases.append_all(quote!{ None => return None, });
-        } else if let Some(eoi) = &transitions.eoi {
+        } else if let Some(eoi) = &state_data.eoi {
             let eoi_ident = self.get_ident(eoi);
             inner_cases.append_all(quote!{
                 None => {

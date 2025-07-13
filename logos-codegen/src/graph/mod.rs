@@ -46,7 +46,7 @@ pub enum StateType {
     Accept(LeafId),
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct State {
     pub dfa_id: StateID,
     pub context: Option<LeafId>,
@@ -250,7 +250,8 @@ impl Graph {
             bytes_to_next_state.add_byte(input_byte);
         }
 
-        let normal = result.into_iter().map(|(s, bc)| (bc, s)).collect();
+        let mut normal: Vec<(ByteClass, State)> = result.into_iter().map(|(s, bc)| (bc, s)).collect();
+        normal.sort_by_key(|(bc, _)| bc.ranges.first().map(|r| *r.start()));
 
         let eoi_id  = self.dfa.next_eoi_state(state.dfa_id);
         let eoi = if eoi_id.as_usize() == 0 {

@@ -1,6 +1,7 @@
 use crate::graph::{ByteClass, Graph, State, StateType};
 use std::collections::HashMap;
 use std::fmt::{Display, Write};
+use std::iter;
 
 /// Helps assign short strings to node ids while avoiding name collisions.
 struct NodeIdStrings {
@@ -75,7 +76,7 @@ trait ExportFormat {
 
     fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor) -> std::fmt::Result;
 
-    fn write_link(s: &mut String, from: &str, to: &str) -> std::fmt::Result;
+    fn write_link(s: &mut String, from: &str, to: &str, label: &str) -> std::fmt::Result;
 
     fn fmt_range(bc: &ByteClass) -> String;
 }
@@ -84,32 +85,32 @@ struct Dot;
 
 impl ExportFormat for Dot {
     fn write_header(s: &mut String) -> std::fmt::Result {
-        write!(s, "digraph {{")?;
-        write!(s, "node[shape=box];")?;
-        write!(s, "splines=ortho;")
+        writeln!(s, "digraph {{")?;
+        writeln!(s, "node[shape=box];")?;
+        writeln!(s, "splines=ortho;")
     }
 
     fn write_footer(s: &mut String) -> std::fmt::Result {
-        write!(s, "}}")
+        writeln!(s, "}}")
     }
 
     fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor) -> std::fmt::Result {
-        write!(s, "{}[label=\"{}\",color={}];", id, label, color.fmt_dot())
+        writeln!(s, "{id}[label=\"{label}\",color={}];", color.fmt_dot())
     }
 
-    fn write_link(s: &mut String, from: &str, to: &str) -> std::fmt::Result {
-        write!(s, "{}->{};", from, to)
+    fn write_link(s: &mut String, from: &str, to: &str, label: &str) -> std::fmt::Result {
+        writeln!(s, "{from}->{to} [label=\"{label}\"];")
     }
 
     fn fmt_range(bc: &ByteClass) -> String {
-        // TODO: run ascii escape again?
-        bc.to_string()
+        bc.to_string().escape_default().to_string()
     }
 }
 
 struct Mermaid;
 
 impl ExportFormat for Mermaid {
+    // TODO: This should really use stateDiagram instead
     fn write_header(s: &mut String) -> std::fmt::Result {
         writeln!(s, "flowchart TB")
     }
@@ -119,40 +120,25 @@ impl ExportFormat for Mermaid {
     }
 
     fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor) -> std::fmt::Result {
-        writeln!(s, "{}[\"{}\"]", id, label)?;
-        writeln!(s, "style {} stroke:{}", id, color.fmt_mmd())
+        writeln!(s, "{id}[\"{label}\"]")?;
+        writeln!(s, "style {id} stroke:{}", color.fmt_mmd())
     }
 
-    fn write_link(s: &mut String, from: &str, to: &str) -> std::fmt::Result {
-        writeln!(s, "{}-->{}", from, to)
+    fn write_link(s: &mut String, from: &str, to: &str, label: &str) -> std::fmt::Result {
+        writeln!(s, "{from}-->|\"{label}\"|{to}")
     }
 
     fn fmt_range(bc: &ByteClass) -> String {
-        fn escape_mmd(c: char) -> impl Iterator<Item = char> {
-            enum Iter {
-                Char(Option<char>),
-                Str(std::str::Chars<'static>),
-            }
-
-            impl Iterator for Iter {
-                type Item = char;
-
-                fn next(&mut self) -> Option<Self::Item> {
-                    match self {
-                        Iter::Char(c) => c.take(),
-                        Iter::Str(cs) => cs.next(),
-                    }
-                }
-            }
+        let mut result = String::new();
+        for c in bc.to_string().chars() {
             match c {
-                '"' => Iter::Str("&quot".chars()),
-                '\\' => Iter::Str("\\\\".chars()),
-                _ => Iter::Char(Some(c)),
+                '"' => { let _ = result.write_str("&quot"); },
+                '\\' => { let _ = result.write_str("\\\\"); },
+                _ => result.push(c),
             }
         }
-        // TODO
-        // r.fmt_with_escape(escape_mmd)
-        bc.to_string()
+
+        result
     }
 }
 
@@ -172,9 +158,9 @@ impl Graph {
             let state_id = state.dfa_id.as_usize();
             match (fancy, state.context) {
                 (true, None) => format!("State {}", state_id),
-                (false, None) => format!("{}", state.dfa_id.as_usize()),
+                (false, None) => format!("n{}", state.dfa_id.as_usize()),
                 (true, Some(leaf_id)) => format!("State {} (ctx {})", state_id, leaf_id.0),
-                (false, Some(leaf_id)) => format!("{}_ctx{}", state_id, leaf_id.0),
+                (false, Some(leaf_id)) => format!("n{}ctx{}", state_id, leaf_id.0),
             }
         }
 
@@ -182,7 +168,10 @@ impl Graph {
 
         Fmt::write_header(&mut s)?;
 
-        for state in  self.get_states() {
+        let mut states = self.get_states().collect::<Vec<_>>();
+        // Sort for repeatability (not dependent on hashmap iteration order)
+        states.sort_unstable();
+        for state in  states {
             let data = self.get_state_data(&state);
 
             let id = format_state(&state, false);
@@ -196,11 +185,13 @@ impl Graph {
             Fmt::write_node(&mut s, &id, &label, color)?;
 
             for (bc, to_state) in &data.normal {
-                // Todo: label edge
-                Fmt::write_link(&mut s, &id, &format_state(to_state, false));
+                let to_id = format_state(to_state, false);
+                let range = Fmt::fmt_range(bc);
+                Fmt::write_link(&mut s, &id, &to_id, &range);
             }
             if let Some(eoi_state) = &data.eoi {
-                Fmt::write_link(&mut s, &id, &format_state(eoi_state, false));
+                let eoi_id = format_state(eoi_state, false);
+                Fmt::write_link(&mut s, &id, &eoi_id, "EOI");
             }
 
         }
@@ -225,8 +216,8 @@ mod tests {
         let r = ByteClass {
             ranges: vec![0x6C..=0x6C]
         };
-        assert_snapshot!(Dot::fmt_range(&r), @"'l'");
-        assert_snapshot!(Mermaid::fmt_range(&r), @"'l'");
+        assert_snapshot!(Dot::fmt_range(&r), @"l");
+        assert_snapshot!(Mermaid::fmt_range(&r), @"l");
     }
 
     #[test]
@@ -234,8 +225,8 @@ mod tests {
         let r = ByteClass {
             ranges: vec![0x61..=0x7A]
         };
-        assert_snapshot!(Dot::fmt_range(&r), @"'a'..='z'");
-        assert_snapshot!(Mermaid::fmt_range(&r), @"'a'..='z'");
+        assert_snapshot!(Dot::fmt_range(&r), @"a..=z");
+        assert_snapshot!(Mermaid::fmt_range(&r), @"a..=z");
     }
 
     #[test]
@@ -243,14 +234,14 @@ mod tests {
         let r = ByteClass {
             ranges: vec![0x22..=0x22]
         };
-        assert_snapshot!(Dot::fmt_range(&r), @"'\\\\\\\"'");
-        assert_snapshot!(Mermaid::fmt_range(&r), @"'\\\\&quot'");
+        assert_snapshot!(Dot::fmt_range(&r), @r###"\\\""###);
+        assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\&quot"###);
 
         let r = ByteClass {
             ranges: vec![0x5C..=0x5C]
         };
-        assert_snapshot!(Dot::fmt_range(&r), @"'\\\\\\\\'");
-        assert_snapshot!(Mermaid::fmt_range(&r), @"'\\\\\\\\'");
+        assert_snapshot!(Dot::fmt_range(&r), @r###"\\\\"###);
+        assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\\\"###);
     }
 
     #[test]
@@ -258,8 +249,8 @@ mod tests {
         let r = ByteClass {
             ranges: vec![0x0A..=0x0A]
         };
-        assert_snapshot!(Dot::fmt_range(&r), @"0A");
-        assert_snapshot!(Mermaid::fmt_range(&r), @"0A");
+        assert_snapshot!(Dot::fmt_range(&r), @r###"\\n"###);
+        assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\n"###);
     }
 
     #[test]
@@ -267,8 +258,8 @@ mod tests {
         let r = ByteClass {
             ranges: vec![0x0A..=0x10]
         };
-        assert_snapshot!(Dot::fmt_range(&r), @"0A..=10");
-        assert_snapshot!(Mermaid::fmt_range(&r), @"0A..=10");
+        assert_snapshot!(Dot::fmt_range(&r), @r###"\\n..=\\x10"###);
+        assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\n..=\\x10"###);
     }
 
     fn export_graphs(patterns: Vec<&str>) -> [String; 2] {
@@ -313,7 +304,7 @@ mod tests {
 
     #[test]
     fn rope_with_miss_any() {
-        let patterns = vec!["fe{,2}"];
+        let patterns = vec!["fe{0,2}"];
 
         let [dot, mmd] = export_graphs(patterns);
         assert_snapshot!(dot);
