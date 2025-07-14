@@ -128,20 +128,21 @@ impl<'a> Generator<'a> {
         let otherwise = if let Some(leaf_id) = state.context {
             self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
+            // if we reached eoi, we are already at the end of the input
             quote! {
-                lex.end_to_boundary(offset + 1);
+                lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
                 return Some(Err(Self::Error::default()));
             }
         };
 
-        // println!("In state {} (lex: {}-{})", stringify!(#this_ident), lex.token_start, lex.token_end);
-        // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
+                // println!("In state {}", stringify!(#this_ident));
+                // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
         quote! {
             LogosState::#this_ident => {
                 #setup
                 match lex.read::<u8>(offset) {
                     #inner_cases
-                    _ => { #otherwise }
+                    other => { #otherwise }
                 }
             }
         }
