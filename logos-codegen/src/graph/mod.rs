@@ -1,8 +1,16 @@
 use std::ascii::escape_default;
 use std::fmt;
-use std::{collections::{hash_map::Entry, HashMap}, ops::RangeInclusive};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    ops::RangeInclusive,
+};
 
-use regex_automata::{dfa::{dense::DFA, Automaton, StartKind}, nfa::thompson::NFA, util::primitives::StateID, Anchored, MatchKind};
+use regex_automata::{
+    dfa::{dense::DFA, Automaton, StartKind},
+    nfa::thompson::NFA,
+    util::primitives::StateID,
+    Anchored, MatchKind,
+};
 
 use crate::leaf::{Leaf, LeafId};
 
@@ -15,7 +23,9 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { prio_over_length: false }
+        Config {
+            prio_over_length: false,
+        }
     }
 }
 
@@ -26,7 +36,7 @@ pub struct DisambiguationError(pub Vec<LeafId>);
 
 type OwnedDFA = DFA<Vec<u32>>;
 
-fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<Item=LeafId> + 'a {
+fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<Item = LeafId> + 'a {
     let num_matches = if dfa.is_match_state(state_id) {
         dfa.match_len(state_id)
     } else {
@@ -76,11 +86,13 @@ pub struct StateData {
 }
 
 impl StateData {
-    fn iter_children<'a>(&'a self) -> impl Iterator<Item=State> + 'a {
-        self.normal.iter().map(|(_bc, s)| s.clone()).chain(self.eoi.iter().cloned())
+    fn iter_children<'a>(&'a self) -> impl Iterator<Item = State> + 'a {
+        self.normal
+            .iter()
+            .map(|(_bc, s)| s.clone())
+            .chain(self.eoi.iter().cloned())
     }
 }
-
 
 #[derive(Debug)]
 pub struct ByteClass {
@@ -96,7 +108,7 @@ impl ByteClass {
         if let Some(last) = self.ranges.last_mut() {
             if last.end() + 1 == byte {
                 *last = *last.start()..=byte;
-                return
+                return;
             }
         }
         self.ranges.push(byte..=byte);
@@ -109,7 +121,12 @@ impl fmt::Display for ByteClass {
             if range.start() == range.end() {
                 write!(f, "{}", escape_default(*range.start()))?;
             } else {
-                write!(f, "{}..={}", escape_default(*range.start()), escape_default(*range.end()))?;
+                write!(
+                    f,
+                    "{}..={}",
+                    escape_default(*range.start()),
+                    escape_default(*range.end())
+                )?;
             }
 
             if idx < self.ranges.len() - 1 {
@@ -139,23 +156,31 @@ struct GraphTraverse {
 
 impl GraphTraverse {
     fn from_root(root: State) -> Self {
-        Self { state_types: HashMap::new(), visit_stack: vec![root] }
+        Self {
+            state_types: HashMap::new(),
+            visit_stack: vec![root],
+        }
     }
 
     fn get_state_type(&mut self, state_id: StateID, graph: &mut Graph) -> StateType {
         let vacant = match self.state_types.entry(state_id) {
-            Entry::Occupied(occupied) => {
-                return *occupied.get()
-            },
-            Entry::Vacant(vacant) => {
-                vacant
-            },
+            Entry::Occupied(occupied) => return *occupied.get(),
+            Entry::Vacant(vacant) => vacant,
         };
 
-        let matching_leaves = iter_matches(state_id, &graph.dfa).map(|leaf_id| (leaf_id, graph.leaves[leaf_id.0].priority)).collect::<Vec<_>>();
+        let matching_leaves = iter_matches(state_id, &graph.dfa)
+            .map(|leaf_id| (leaf_id, graph.leaves[leaf_id.0].priority))
+            .collect::<Vec<_>>();
 
-        let state_type = if let Some(&(highest_leaf_id, highest_priority)) = matching_leaves.iter().max_by_key(|(_leaf_id, priority)| priority) {
-            let matching_prio_leaves: Vec<LeafId> = matching_leaves.into_iter().filter(|(_leaf_id, priority)| *priority == highest_priority).map(|(leaf_id, _priority)| leaf_id).collect();
+        let state_type = if let Some(&(highest_leaf_id, highest_priority)) = matching_leaves
+            .iter()
+            .max_by_key(|(_leaf_id, priority)| priority)
+        {
+            let matching_prio_leaves: Vec<LeafId> = matching_leaves
+                .into_iter()
+                .filter(|(_leaf_id, priority)| *priority == highest_priority)
+                .map(|(leaf_id, _priority)| leaf_id)
+                .collect();
             if matching_prio_leaves.len() > 1 {
                 graph.errors.push(DisambiguationError(matching_prio_leaves))
             }
@@ -174,7 +199,7 @@ impl Graph {
         self.root
     }
 
-    pub fn get_states<'a>(&'a self) -> impl Iterator<Item=State> + 'a {
+    pub fn get_states<'a>(&'a self) -> impl Iterator<Item = State> + 'a {
         self.edges.keys().cloned()
     }
 
@@ -190,17 +215,22 @@ impl Graph {
         &self.dfa
     }
 
-    pub fn errors<'b>(&'b self) -> impl Iterator<Item=DisambiguationError> + 'b {
+    pub fn errors<'b>(&'b self) -> impl Iterator<Item = DisambiguationError> + 'b {
         self.errors.iter().cloned()
     }
 
     pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
-        let hirs = leaves.iter().map(|leaf| leaf.pattern.hir()).collect::<Vec<_>>();
+        let hirs = leaves
+            .iter()
+            .map(|leaf| leaf.pattern.hir())
+            .collect::<Vec<_>>();
 
         // TODO: utf8 mode here
-        let nfa_config = NFA::config()
-            .shrink(true);
-        let nfa = NFA::compiler().configure(nfa_config).build_many_from_hir(&hirs).map_err(|err| format!("{}", err))?;
+        let nfa_config = NFA::config().shrink(true);
+        let nfa = NFA::compiler()
+            .configure(nfa_config)
+            .build_many_from_hir(&hirs)
+            .map_err(|err| format!("{}", err))?;
         if nfa.has_empty() {
             // TODO Better error handling
             return Err(String::from("Regex includes a zero length match"));
@@ -211,18 +241,33 @@ impl Graph {
             .minimize(true)
             .match_kind(MatchKind::All)
             .start_kind(StartKind::Anchored);
-        let dfa = DFA::builder().configure(dfa_config).build_from_nfa(&nfa).map_err(|err| format!("{}", err))?;
+        let dfa = DFA::builder()
+            .configure(dfa_config)
+            .build_from_nfa(&nfa)
+            .map_err(|err| format!("{}", err))?;
 
+        let start_id = dfa.universal_start_state(Anchored::Yes).expect(
+            "Lookaround assertions are disabled, so there should be a universal start state",
+        );
+        let root = State {
+            dfa_id: start_id,
+            context: None,
+        };
 
-        let start_id = dfa.universal_start_state(Anchored::Yes)
-            .expect("Lookaround assertions are disabled, so there should be a universal start state");
-        let root = State { dfa_id: start_id, context: None };
-
-        let mut graph = Self { leaves, dfa, edges: HashMap::new(), root, errors: Vec::new(), config };
+        let mut graph = Self {
+            leaves,
+            dfa,
+            edges: HashMap::new(),
+            root,
+            errors: Vec::new(),
+            config,
+        };
         let mut traverse = GraphTraverse::from_root(root);
 
         while let Some(state) = traverse.visit_stack.pop() {
-            if graph.edges.contains_key(&state) { continue }
+            if graph.edges.contains_key(&state) {
+                continue;
+            }
             let state_data = graph.gen_state_data(state, &mut traverse);
             traverse.visit_stack.extend(state_data.iter_children());
             graph.edges.insert(state, state_data);
@@ -242,7 +287,9 @@ impl Graph {
             let next_id = self.dfa.next_state(state.dfa_id, input_byte);
 
             // Don't need to account for the dead state
-            if next_id.as_usize() == 0 { continue }
+            if next_id.as_usize() == 0 {
+                continue;
+            }
 
             let next_state = self.propagate_context(state, next_id, traverse);
 
@@ -250,10 +297,11 @@ impl Graph {
             bytes_to_next_state.add_byte(input_byte);
         }
 
-        let mut normal: Vec<(ByteClass, State)> = result.into_iter().map(|(s, bc)| (bc, s)).collect();
+        let mut normal: Vec<(ByteClass, State)> =
+            result.into_iter().map(|(s, bc)| (bc, s)).collect();
         normal.sort_by_key(|(bc, _)| bc.ranges.first().map(|r| *r.start()));
 
-        let eoi_id  = self.dfa.next_eoi_state(state.dfa_id);
+        let eoi_id = self.dfa.next_eoi_state(state.dfa_id);
         let eoi = if eoi_id.as_usize() == 0 {
             None
         } else {
@@ -267,7 +315,12 @@ impl Graph {
         }
     }
 
-    fn propagate_context(&mut self, prev: State, next_id: StateID, traverse: &mut GraphTraverse) -> State {
+    fn propagate_context(
+        &mut self,
+        prev: State,
+        next_id: StateID,
+        traverse: &mut GraphTraverse,
+    ) -> State {
         let mut next_state_type = traverse.get_state_type(next_id, self);
 
         if self.config.prio_over_length {
@@ -279,7 +332,9 @@ impl Graph {
             StateType::Accept(leaf_id) => Some(leaf_id),
         };
 
-        State { dfa_id: next_id, context }
+        State {
+            dfa_id: next_id,
+            context,
+        }
     }
-
 }

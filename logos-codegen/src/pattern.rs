@@ -1,8 +1,9 @@
-
-
 use crate::parser::Literal;
 
-use regex_syntax::{hir::{Hir, HirKind}, Parser};
+use regex_syntax::{
+    hir::{Hir, HirKind},
+    Parser,
+};
 
 #[derive(Clone, Debug)]
 pub struct Pattern {
@@ -12,7 +13,8 @@ pub struct Pattern {
 impl Pattern {
     pub fn compile(source: &str) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
-        let hir = Parser::new().parse(source)
+        let hir = Parser::new()
+            .parse(source)
             .map_err(|err| format!("{}", err))?;
 
         Ok(Pattern { hir })
@@ -41,7 +43,7 @@ impl Pattern {
             HirKind::Look(_) => unimplemented!("Lookarounds are not implemented"),
             HirKind::Repetition(repetition) => {
                 repetition.min as usize * Self::complexity(&*repetition.sub)
-            },
+            }
             HirKind::Capture(capture) => Self::complexity(&*capture.sub),
             HirKind::Concat(hirs) => hirs.iter().map(Self::complexity).sum(),
             HirKind::Alternation(hirs) => hirs.iter().map(Self::complexity).max().unwrap_or(0),

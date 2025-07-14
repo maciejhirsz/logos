@@ -80,4 +80,3 @@ impl Skip {
         self.callback
     }
 }
-

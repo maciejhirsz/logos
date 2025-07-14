@@ -29,11 +29,7 @@ pub struct Generator<'a> {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(
-        name: &'a Ident,
-        this: &'a TokenStream,
-        graph: &'a Graph,
-    ) -> Self {
+    pub fn new(name: &'a Ident, this: &'a TokenStream, graph: &'a Graph) -> Self {
         let mut idents = Map::default();
 
         for state in graph.get_states() {
@@ -43,7 +39,6 @@ impl<'a> Generator<'a> {
             }
             idents.insert(state, name.to_ident());
         }
-
 
         Generator {
             name,
@@ -57,7 +52,10 @@ impl<'a> Generator<'a> {
         let mut states = self.graph.get_states().collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
         states.sort_unstable();
-        let match_cases = states.iter().map(|&state| self.generate_match_case(state)).collect::<Vec<_>>();
+        let match_cases = states
+            .iter()
+            .map(|&state| self.generate_match_case(state))
+            .collect::<Vec<_>>();
 
         let init_state = &self.idents[&self.graph.root()];
         let mut all_idents = self.idents.values().collect::<Vec<_>>();
@@ -116,10 +114,10 @@ impl<'a> Generator<'a> {
         }
 
         if state == self.graph.root() {
-            inner_cases.append_all(quote!{ None => return None, });
+            inner_cases.append_all(quote! { None => return None, });
         } else if let Some(eoi) = &state_data.eoi {
             let eoi_ident = self.get_ident(eoi);
-            inner_cases.append_all(quote!{
+            inner_cases.append_all(quote! {
                 None => {
                     offset += 1;
                     state = LogosState::#eoi_ident;
@@ -130,14 +128,14 @@ impl<'a> Generator<'a> {
         let otherwise = if let Some(leaf_id) = state.context {
             self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
-            quote!{
+            quote! {
                 lex.end_to_boundary(offset + 1);
                 return Some(Err(Self::Error::default()));
             }
         };
 
-                // println!("In state {} (lex: {}-{})", stringify!(#this_ident), lex.token_start, lex.token_end);
-                // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
+        // println!("In state {} (lex: {}-{})", stringify!(#this_ident), lex.token_start, lex.token_end);
+        // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
         quote! {
             LogosState::#this_ident => {
                 #setup
@@ -148,7 +146,6 @@ impl<'a> Generator<'a> {
             }
         }
     }
-
 }
 
 macro_rules! match_quote {

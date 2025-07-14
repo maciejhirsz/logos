@@ -30,10 +30,11 @@ impl Literal {
                         write!(pattern, "{}", byte as char)
                     } else {
                         write!(pattern, "\\x{:02X}", byte)
-                    }.expect("Writing to a string should not fail");
+                    }
+                    .expect("Writing to a string should not fail");
                 }
                 pattern
-            },
+            }
         }
     }
 }
@@ -132,4 +133,3 @@ impl syn::parse::Parse for Literal {
         }
     }
 }
-

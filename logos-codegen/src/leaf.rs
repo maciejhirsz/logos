@@ -110,4 +110,3 @@ impl From<PatternID> for LeafId {
         LeafId(value.as_usize())
     }
 }
-

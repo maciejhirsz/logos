@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::generator::Generator;
-use crate::leaf::{Callback, VariantKind, Leaf};
+use crate::leaf::{Callback, Leaf, VariantKind};
 
 impl Generator<'_> {
     pub fn generate_leaf(&self, leaf: &Leaf) -> TokenStream {
@@ -10,10 +10,7 @@ impl Generator<'_> {
         let this = self.this;
 
         let callback_op = leaf.callback.as_ref().map(|cb| match cb {
-            Callback::Label(ident) => (
-                ident.clone(),
-                quote!(),
-            ),
+            Callback::Label(ident) => (ident.clone(), quote!()),
             Callback::Inline(inline_callback) => {
                 let ident = quote!(callback);
 
@@ -40,7 +37,7 @@ impl Generator<'_> {
                     }
                 };
                 (ident, decl)
-            },
+            }
         });
 
         let constructor = match &leaf.kind {

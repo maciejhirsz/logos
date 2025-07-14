@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use proc_macro2::{Span, TokenStream};
 use regex_automata::dfa::regex::Regex;
 use syn::Ident;
-use lazy_static::lazy_static;
 
 use crate::error::Errors;
 use crate::parser::definition::Literal;
@@ -40,35 +40,49 @@ impl Subpatterns {
             }
         };
 
-        let mut subpattern = Subpattern { name: param.clone(), pattern: lit.escape() };
+        let mut subpattern = Subpattern {
+            name: param.clone(),
+            pattern: lit.escape(),
+        };
         let name = subpattern.name_as_string();
 
         if !SUBPATTERN_IDENT.is_match(&name) {
-            errors.err(format!("Invalid subpattern name: `{}`", name), subpattern.name.span());
+            errors.err(
+                format!("Invalid subpattern name: `{}`", name),
+                subpattern.name.span(),
+            );
             return;
         }
 
-        if let Some(subst_pattern) = self.subst_subpatterns(&subpattern.pattern, lit.span(), errors) {
+        if let Some(subst_pattern) = self.subst_subpatterns(&subpattern.pattern, lit.span(), errors)
+        {
             subpattern.pattern = subst_pattern
         } else {
-            return
+            return;
         };
 
         if let Err(msg) = Pattern::compile(&subpattern.pattern) {
             errors.err(msg, lit.span());
-            return
+            return;
         }
 
         if let Some(existing) = self.map.insert(name, subpattern) {
             errors
-                .err(format!("Subpattern `{}` already exists", param), param.span())
+                .err(
+                    format!("Subpattern `{}` already exists", param),
+                    param.span(),
+                )
                 .err("Previously assigned here", existing.name.span());
             return;
         }
-
     }
 
-    pub fn subst_subpatterns(&self, pattern: &str, span: Span, errors: &mut Errors) -> Option<String> {
+    pub fn subst_subpatterns(
+        &self,
+        pattern: &str,
+        span: Span,
+        errors: &mut Errors,
+    ) -> Option<String> {
         let mut fragments = Vec::new();
         let mut was_error = false;
 

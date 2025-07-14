@@ -13,8 +13,8 @@ pub type Span = core::ops::Range<usize>;
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
 
-    pub token_start: usize,
-    pub token_end: usize,
+    token_start: usize,
+    token_end: usize,
 
     /// Extras associated with the `Token`.
     pub extras: Token::Extras,
@@ -320,5 +320,4 @@ where
     fn offset(&self) -> usize {
         self.token_start
     }
-
 }

@@ -18,8 +18,10 @@ fn test_export(case: &str) {
 
     let _ = logos_codegen::generate(input.parse().expect("Unable to parse input.rs"));
 
-    let generated_dot = std::fs::read_to_string(format!("{case}_export_tmp/{case}.dot")).expect("Unable to read dot file");
-    let generated_mermaid = std::fs::read_to_string(format!("{case}_export_tmp/{case}.mmd")).expect("Unable to read mermaid file");
+    let generated_dot = std::fs::read_to_string(format!("{case}_export_tmp/{case}.dot"))
+        .expect("Unable to read dot file");
+    let generated_mermaid = std::fs::read_to_string(format!("{case}_export_tmp/{case}.mmd"))
+        .expect("Unable to read mermaid file");
 
     assert_snapshot!(generated_dot);
     assert_snapshot!(generated_mermaid);

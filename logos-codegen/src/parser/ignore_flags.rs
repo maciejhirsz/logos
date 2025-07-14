@@ -193,4 +193,3 @@ impl BitAnd for IgnoreFlags {
         Self::new(self.bits & other.bits)
     }
 }
-

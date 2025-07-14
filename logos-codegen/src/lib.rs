@@ -13,8 +13,8 @@ mod generator;
 mod graph;
 mod leaf;
 mod parser;
-mod util;
 mod pattern;
+mod util;
 
 #[macro_use]
 #[allow(missing_docs)]
@@ -70,8 +70,13 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     {
         for skip in mem::take(&mut parser.skips) {
-
-            let Some(pattern_source) = parser.subpatterns.subst_subpatterns(&skip.literal.escape(), skip.literal.span(), &mut parser.errors) else { continue };
+            let Some(pattern_source) = parser.subpatterns.subst_subpatterns(
+                &skip.literal.escape(),
+                skip.literal.span(),
+                &mut parser.errors,
+            ) else {
+                continue;
+            };
 
             let pattern = match Pattern::compile(&pattern_source) {
                 Ok(pattern) => pattern,
@@ -171,10 +176,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     };
 
                     pats.push(
-                    Leaf::new(definition.literal.span(), pattern)
-                        .variant_kind(var_kind.clone())
-                        .priority(definition.priority.unwrap_or(literal_len * 2))
-                        .callback(definition.callback),
+                        Leaf::new(definition.literal.span(), pattern)
+                            .variant_kind(var_kind.clone())
+                            .priority(definition.priority.unwrap_or(literal_len * 2))
+                            .callback(definition.callback),
                     );
                 }
                 REGEX_ATTR => {
@@ -190,7 +195,13 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         // TODO
                     }
 
-                    let Some(pattern_source) = parser.subpatterns.subst_subpatterns(&definition.literal.escape(), definition.literal.span(), &mut parser.errors) else { continue };
+                    let Some(pattern_source) = parser.subpatterns.subst_subpatterns(
+                        &definition.literal.escape(),
+                        definition.literal.span(),
+                        &mut parser.errors,
+                    ) else {
+                        continue;
+                    };
 
                     let pattern = match Pattern::compile(&pattern_source) {
                         Ok(pattern) => pattern,
@@ -202,10 +213,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                     let default_priority = pattern.priority();
                     pats.push(
-                    Leaf::new(definition.literal.span(), pattern)
-                        .variant_kind(var_kind.clone())
-                        .priority(definition.priority.unwrap_or(default_priority))
-                        .callback(definition.callback),
+                        Leaf::new(definition.literal.span(), pattern)
+                            .variant_kind(var_kind.clone())
+                            .priority(definition.priority.unwrap_or(default_priority))
+                            .callback(definition.callback),
                     );
                 }
                 _ => (),
@@ -258,7 +269,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         Err(msg) => {
             let mut errors = Errors::default();
             errors.err(msg, item_span);
-            return impl_logos(errors.render().unwrap())
+            return impl_logos(errors.render().unwrap());
         }
     };
 
@@ -277,12 +288,17 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     for DisambiguationError(matching) in graph.errors() {
         // TODO: better error message pointing to each variant
-        let first = *matching.first().expect("DisambiguationError must have at least 2 leaves");
-        let variants = matching.into_iter().map(|leaf_id| format!("`{}`", graph.leaves()[leaf_id.0])).collect::<Vec<_>>().join(", ");
+        let first = *matching
+            .first()
+            .expect("DisambiguationError must have at least 2 leaves");
+        let variants = matching
+            .into_iter()
+            .map(|leaf_id| format!("`{}`", graph.leaves()[leaf_id.0]))
+            .collect::<Vec<_>>()
+            .join(", ");
         parser.err(
-            format!(
-                "The following variants can all match simultaneously: {variants}"),
-            graph.leaves()[first.0].span
+            format!("The following variants can all match simultaneously: {variants}"),
+            graph.leaves()[first.0].span,
         );
     }
 
@@ -386,18 +402,20 @@ fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<
     let (dot_path, mmd_path) = match path.extension().map(OsStr::to_str) {
         Some(Some("dot")) => (Some(path), None),
         Some(Some("mmd")) => (None, Some(path)),
-        Some(_) => return Err(String::from("Export path must end in '.dot' or '.mmd', or it must be a directory.").into()),
+        Some(_) => {
+            return Err(String::from(
+                "Export path must end in '.dot' or '.mmd', or it must be a directory.",
+            )
+            .into())
+        }
         None => {
             let dot_path = path.join(format!("{}.dot", name));
             let mmd_path = path.join(format!("{}.mmd", name));
             (Some(dot_path), Some(mmd_path))
-        },
+        }
     };
 
-    for (path, is_dot) in [
-        (dot_path, true),
-        (mmd_path, false),
-    ] {
+    for (path, is_dot) in [(dot_path, true), (mmd_path, false)] {
         let Some(path) = path else { continue };
 
         if let Some(parent) = path.parent() {
@@ -405,7 +423,11 @@ fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<
         }
 
         // TODO: add some context to this error before returning?
-        let s = if is_dot { graph.get_dot() } else { graph.get_mermaid() }?;
+        let s = if is_dot {
+            graph.get_dot()
+        } else {
+            graph.get_mermaid()
+        }?;
         std::fs::write(path, s)?;
     }
 

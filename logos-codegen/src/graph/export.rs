@@ -85,8 +85,12 @@ impl ExportFormat for Mermaid {
         let mut result = String::new();
         for c in bc.to_string().chars() {
             match c {
-                '"' => { let _ = result.write_str("&quot"); },
-                '\\' => { let _ = result.write_str("\\\\"); },
+                '"' => {
+                    let _ = result.write_str("&quot");
+                }
+                '\\' => {
+                    let _ = result.write_str("\\\\");
+                }
                 _ => result.push(c),
             }
         }
@@ -124,7 +128,7 @@ impl Graph {
         let mut states = self.get_states().collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
         states.sort_unstable();
-        for state in  states {
+        for state in states {
             let data = self.get_state_data(&state);
 
             let id = format_state(&state, false);
@@ -146,7 +150,6 @@ impl Graph {
                 let eoi_id = format_state(eoi_state, false);
                 Fmt::write_link(&mut s, &id, &eoi_id, "EOI")?;
             }
-
         }
 
         Fmt::write_footer(&mut s)?;
@@ -167,7 +170,7 @@ mod tests {
     #[test]
     fn range_fmt_single_ascii_byte() {
         let r = ByteClass {
-            ranges: vec![0x6C..=0x6C]
+            ranges: vec![0x6C..=0x6C],
         };
         assert_snapshot!(Dot::fmt_range(&r), @"l");
         assert_snapshot!(Mermaid::fmt_range(&r), @"l");
@@ -176,7 +179,7 @@ mod tests {
     #[test]
     fn range_fmt_ascii_bytes() {
         let r = ByteClass {
-            ranges: vec![0x61..=0x7A]
+            ranges: vec![0x61..=0x7A],
         };
         assert_snapshot!(Dot::fmt_range(&r), @"a..=z");
         assert_snapshot!(Mermaid::fmt_range(&r), @"a..=z");
@@ -185,13 +188,13 @@ mod tests {
     #[test]
     fn range_fmt_single_escaped_ascii_byte() {
         let r = ByteClass {
-            ranges: vec![0x22..=0x22]
+            ranges: vec![0x22..=0x22],
         };
         assert_snapshot!(Dot::fmt_range(&r), @r###"\\\""###);
         assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\&quot"###);
 
         let r = ByteClass {
-            ranges: vec![0x5C..=0x5C]
+            ranges: vec![0x5C..=0x5C],
         };
         assert_snapshot!(Dot::fmt_range(&r), @r###"\\\\"###);
         assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\\\"###);
@@ -200,7 +203,7 @@ mod tests {
     #[test]
     fn range_fmt_single_hex_byte() {
         let r = ByteClass {
-            ranges: vec![0x0A..=0x0A]
+            ranges: vec![0x0A..=0x0A],
         };
         assert_snapshot!(Dot::fmt_range(&r), @r###"\\n"###);
         assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\n"###);
@@ -209,14 +212,22 @@ mod tests {
     #[test]
     fn range_fmt_hex_bytes() {
         let r = ByteClass {
-            ranges: vec![0x0A..=0x10]
+            ranges: vec![0x0A..=0x10],
         };
         assert_snapshot!(Dot::fmt_range(&r), @r###"\\n..=\\x10"###);
         assert_snapshot!(Mermaid::fmt_range(&r), @r###"\\n..=\\x10"###);
     }
 
     fn export_graphs(patterns: Vec<&str>) -> [String; 2] {
-        let leaves = patterns.into_iter().map(|src| Leaf::new(Span::call_site(), Pattern::compile(src).expect("Unable to compile pattern"))).collect();
+        let leaves = patterns
+            .into_iter()
+            .map(|src| {
+                Leaf::new(
+                    Span::call_site(),
+                    Pattern::compile(src).expect("Unable to compile pattern"),
+                )
+            })
+            .collect();
 
         let graph = Graph::new(leaves, Config::default()).expect("Unable to compile graph");
         let dot = graph.export_graph::<Dot>().unwrap();
@@ -227,10 +238,7 @@ mod tests {
 
     #[test]
     fn fork() {
-        let patterns = vec![
-            "[a-y]",
-            "z",
-        ];
+        let patterns = vec!["[a-y]", "z"];
 
         let [dot, mmd] = export_graphs(patterns);
         assert_snapshot!(dot);
