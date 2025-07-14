@@ -2,12 +2,11 @@ use std::collections::HashMap;
 
 use proc_macro2::{Span, TokenStream};
 use regex_automata::dfa::regex::Regex;
-use syn::spanned::Spanned;
 use syn::Ident;
 use lazy_static::lazy_static;
 
 use crate::error::Errors;
-use crate::parser::definition::{bytes_to_regex_string, Literal};
+use crate::parser::definition::Literal;
 use crate::pattern::Pattern;
 
 pub struct Subpattern {

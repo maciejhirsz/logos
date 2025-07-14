@@ -33,7 +33,6 @@ pub struct Parser {
     pub error_type: MaybeVoid,
     pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
-    // #[cfg(feature = "debug")]
     pub export_path: Option<String>,
     types: TypeParams,
 }
@@ -123,7 +122,6 @@ impl Parser {
                     }
                 }),
                 ("export_path", |parser, span, value| match value {
-                    #[cfg(feature = "debug")]
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
@@ -131,7 +129,7 @@ impl Parser {
                             Ok(Literal::Utf8(str)) => {
                                 if let Some(previous) = parser.export_path.replace(str.value()) {
                                     parser
-                                        .err("Export dir can be defined only once", span)
+                                        .err("Export path can be defined only once", span)
                                         .err("Previous definition here", previous.span());
                                 }
                             }
@@ -143,16 +141,11 @@ impl Parser {
                             }
                         }
                     }
-                    #[cfg(feature = "debug")]
                     _ => {
                         parser.err(
                             "Expected #[logos(export_path = \"path/to/export/dir\")]",
                             span,
                         );
-                    }
-                    #[cfg(not(feature = "debug"))]
-                    _ => {
-                        parser.err("Enable the 'debug' feature to export graphs", span);
                     }
                 }),
                 ("extras", |parser, span, value| match value {

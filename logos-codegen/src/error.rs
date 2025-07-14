@@ -5,8 +5,6 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
-pub type Result<T> = std::result::Result<T, Error>;
-
 #[derive(Default)]
 pub struct Errors {
     collected: Vec<SpannedError>,

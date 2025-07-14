@@ -1,4 +1,4 @@
-use std::cmp::{Ord, Ordering};
+use std::cmp::Ord;
 use std::fmt::{self, Debug, Display};
 
 use proc_macro2::{Span, TokenStream};
@@ -6,7 +6,6 @@ use regex_automata::PatternID;
 use syn::{spanned::Spanned, Ident};
 
 use crate::pattern::Pattern;
-use crate::util::MaybeVoid;
 
 #[derive(Clone)]
 pub enum VariantKind {
@@ -73,10 +72,6 @@ impl Leaf {
 
     pub fn priority(self, priority: usize) -> Self {
         Self { priority, ..self }
-    }
-
-    pub fn compare_priority(left: &Self, right: &Self) -> Ordering {
-        Ord::cmp(&left.priority, &right.priority)
     }
 }
 

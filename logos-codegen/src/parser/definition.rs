@@ -3,10 +3,9 @@ use std::fmt::Write;
 use proc_macro2::{Ident, Span};
 use syn::{spanned::Spanned, LitByteStr, LitStr};
 
-use crate::error::{Errors, Result};
 use crate::leaf::Callback;
 use crate::parser::nested::NestedValue;
-use crate::parser::{IgnoreFlags, Parser, Subpatterns};
+use crate::parser::{IgnoreFlags, Parser};
 
 pub struct Definition {
     pub literal: Literal,
@@ -134,30 +133,3 @@ impl syn::parse::Parse for Literal {
     }
 }
 
-pub fn bytes_to_regex_string(bytes: Vec<u8>) -> String {
-    if bytes.is_ascii() {
-        unsafe {
-            // Unicode values are prohibited, so we can't use
-            // safe version of String::from_utf8
-            //
-            // We can, however, construct a safe ASCII string
-            return String::from_utf8_unchecked(bytes);
-        }
-    }
-
-    let mut string = String::with_capacity(bytes.len() * 2);
-
-    for byte in bytes {
-        if byte < 0x80 {
-            string.push(byte as char);
-        } else {
-            static DIGITS: [u8; 16] = *b"0123456789abcdef";
-
-            string.push_str(r"\x");
-            string.push(DIGITS[(byte / 16) as usize] as char);
-            string.push(DIGITS[(byte % 16) as usize] as char);
-        }
-    }
-
-    string
-}

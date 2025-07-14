@@ -1,70 +1,23 @@
 use crate::graph::{ByteClass, Graph, State, StateType};
-use std::collections::HashMap;
-use std::fmt::{Display, Write};
-use std::iter;
-
-/// Helps assign short strings to node ids while avoiding name collisions.
-struct NodeIdStrings {
-    next: u32,
-    mappings: HashMap<usize, String>,
-}
-
-impl NodeIdStrings {
-    fn new() -> Self {
-        Self {
-            next: 0,
-            mappings: HashMap::new(),
-        }
-    }
-
-    /// Get a unique string for a node.
-    fn get_unique(&mut self) -> String {
-        let next = self.next;
-        self.next += 1;
-        format!("n{:x}", next)
-    }
-
-    /// Get the string assigned to a node from its index.
-    fn idx(&mut self, id: usize) -> &str {
-        if !self.mappings.contains_key(&id) {
-            let next = self.get_unique();
-            self.mappings.insert(id, next);
-        }
-        self.mappings.get(&id).unwrap().as_str()
-    }
-
-    // /// Get the string assigned to a node from its id.
-    // fn node(&mut self, node: NodeId) -> &str {
-    //     self.idx(node.get())
-    // }
-}
+use std::fmt::Write;
 
 enum NodeColor {
     Black,
-    Red,
-    Blue,
     Green,
-    Orange,
 }
 
 impl NodeColor {
     fn fmt_dot(&self) -> &'static str {
         match self {
             Self::Black => "black",
-            Self::Red => "red",
-            Self::Blue => "blue",
             Self::Green => "green",
-            Self::Orange => "orange",
         }
     }
 
     fn fmt_mmd(&self) -> &'static str {
         match self {
             Self::Black => "#000000",
-            Self::Red => "#D50000",
-            Self::Blue => "#2962FF",
             Self::Green => "#00C853",
-            Self::Orange => "#FF6D00",
         }
     }
 }
@@ -187,11 +140,11 @@ impl Graph {
             for (bc, to_state) in &data.normal {
                 let to_id = format_state(to_state, false);
                 let range = Fmt::fmt_range(bc);
-                Fmt::write_link(&mut s, &id, &to_id, &range);
+                Fmt::write_link(&mut s, &id, &to_id, &range)?;
             }
             if let Some(eoi_state) = &data.eoi {
                 let eoi_id = format_state(eoi_state, false);
-                Fmt::write_link(&mut s, &id, &eoi_id, "EOI");
+                Fmt::write_link(&mut s, &id, &eoi_id, "EOI")?;
             }
 
         }

@@ -1,10 +1,6 @@
-use std::ops::Index;
 
-use regex_automata::dfa::dense::DFA;
-use regex_automata::nfa::thompson::NFA;
-use std::fmt::Write;
 
-use crate::{leaf::Leaf, parser::Literal};
+use crate::parser::Literal;
 
 use regex_syntax::{hir::{Hir, HirKind}, Parser};
 

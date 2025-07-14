@@ -1,7 +1,7 @@
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::Ident;
 use syn::spanned::Spanned;
 
-use crate::leaf::{Callback, InlineCallback};
+use crate::leaf::Callback;
 use crate::parser::nested::NestedValue;
 use crate::parser::{Literal, Parser};
 

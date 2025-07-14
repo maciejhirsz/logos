@@ -1,14 +1,12 @@
 use std::fmt::Write;
 
-use fnv::{FnvHashMap as Map, FnvHashSet as Set};
+use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
-use regex_automata::dfa::dense::DFA;
-use regex_automata::util::primitives::StateID;
+use quote::{quote, TokenStreamExt};
 use syn::Ident;
 
 use crate::graph::{Graph, State, StateType};
-use crate::util::{MaybeVoid, ToIdent};
+use crate::util::ToIdent;
 
 // mod context;
 // mod fork;

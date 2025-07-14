@@ -22,19 +22,16 @@ mod macros;
 
 use std::error::Error;
 use std::ffi::OsStr;
-use std::{fmt, mem};
-use std::path::{Path, PathBuf};
+use std::mem;
+use std::path::Path;
 
 use error::Errors;
 use generator::Generator;
 use graph::{DisambiguationError, Graph};
 use leaf::Leaf;
-use parser::{IgnoreFlags, Mode, Parser};
+use parser::{Mode, Parser};
 use pattern::Pattern;
 use quote::ToTokens;
-use regex_automata::dfa::dense::DFA;
-use regex_syntax::escape;
-use util::MaybeVoid;
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use quote::quote;
@@ -44,7 +41,6 @@ use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
 use crate::leaf::VariantKind;
-use crate::parser::Subpatterns;
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -266,12 +262,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
     };
 
-    #[cfg(feature = "debug")]
-    if let Some(export_path) = parser.export_path.as_ref() {
-        debug!("Generating graphs");
+    if cfg!(feature = "debug") {
+        if let Some(export_path) = parser.export_path.as_ref() {
+            debug!("Exporting graphs");
+            let lower_name = name.to_string().to_lowercase();
 
-        if let Err(err) = generate_graphs(export_path, &name.to_string(), &graph) {
-            debug!("Failed to generate graphs: {err}");
+            if let Err(err) = generate_graphs(export_path, &lower_name, &graph) {
+                debug!("Failed to export graphs: {err}");
+            }
         }
     }
 

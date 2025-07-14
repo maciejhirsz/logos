@@ -2,8 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::generator::Generator;
-use crate::leaf::{Callback, VariantKind, InlineCallback, Leaf};
-use crate::util::MaybeVoid;
+use crate::leaf::{Callback, VariantKind, Leaf};
 
 impl Generator<'_> {
     pub fn generate_leaf(&self, leaf: &Leaf) -> TokenStream {

@@ -1,6 +1,6 @@
 use std::ascii::escape_default;
 use std::fmt;
-use std::{collections::{hash_map::Entry, HashMap, VecDeque}, iter, ops::RangeInclusive};
+use std::{collections::{hash_map::Entry, HashMap}, ops::RangeInclusive};
 
 use regex_automata::{dfa::{dense::DFA, Automaton, StartKind}, nfa::thompson::NFA, util::primitives::StateID, Anchored, MatchKind};
 
@@ -155,7 +155,7 @@ impl GraphTraverse {
         let matching_leaves = iter_matches(state_id, &graph.dfa).map(|leaf_id| (leaf_id, graph.leaves[leaf_id.0].priority)).collect::<Vec<_>>();
 
         let state_type = if let Some(&(highest_leaf_id, highest_priority)) = matching_leaves.iter().max_by_key(|(_leaf_id, priority)| priority) {
-            let matching_prio_leaves: Vec<LeafId> = matching_leaves.into_iter().filter(|(leaf_id, priority)| *priority == highest_priority).map(|(leaf_id, _priority)| leaf_id).collect();
+            let matching_prio_leaves: Vec<LeafId> = matching_leaves.into_iter().filter(|(_leaf_id, priority)| *priority == highest_priority).map(|(leaf_id, _priority)| leaf_id).collect();
             if matching_prio_leaves.len() > 1 {
                 graph.errors.push(DisambiguationError(matching_prio_leaves))
             }
