@@ -7,14 +7,14 @@ use syn::{spanned::Spanned, Ident};
 
 use crate::pattern::Pattern;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum VariantKind {
     Unit(Ident),
     Value(Ident, TokenStream),
     Skip,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Leaf {
     pub pattern: Pattern,
     pub span: Span,
@@ -23,13 +23,13 @@ pub struct Leaf {
     pub callback: Option<Callback>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Callback {
     Label(TokenStream),
     Inline(Box<InlineCallback>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InlineCallback {
     pub arg: Ident,
     pub body: TokenStream,
@@ -75,23 +75,12 @@ impl Leaf {
     }
 }
 
-impl Debug for Leaf {
+impl Display for VariantKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "::{}", self)?;
-
-        match self.callback {
-            Some(Callback::Label(ref label)) => write!(f, " ({})", label),
-            Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
-            None => f.write_str(" (<none>)"),
-        }
-    }
-}
-
-impl Display for Leaf {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.kind {
-            VariantKind::Unit(ident) | VariantKind::Value(ident, _) => Display::fmt(ident, f),
-            VariantKind::Skip => f.write_str("<skip>"),
+        match &self {
+            VariantKind::Unit(ident)  => write!(f, "::{ident}"),
+            VariantKind::Value(ident, _) => write!(f, "::{ident}(_)"),
+            VariantKind::Skip => f.write_str("::<skip>"),
         }
     }
 }

@@ -1,23 +1,28 @@
-use crate::parser::Literal;
+use crate::parser::{Literal};
 
 use regex_syntax::{
     hir::{Hir, HirKind},
-    Parser,
+    Parser, ParserBuilder,
 };
 
 #[derive(Clone, Debug)]
 pub struct Pattern {
+    source: String,
     hir: Hir,
 }
 
 impl Pattern {
-    pub fn compile(source: &str) -> Result<Pattern, String> {
+    pub fn compile(source: &str, utf8_mode: bool, unicode: bool) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
-        let hir = Parser::new()
+        eprintln!("Utf8? {utf8_mode}");
+        let hir = ParserBuilder::new()
+            .utf8(utf8_mode)
+            .unicode(unicode)
+            .build()
             .parse(source)
             .map_err(|err| format!("{}", err))?;
 
-        Ok(Pattern { hir })
+        Ok(Pattern { source: String::from(source), hir })
     }
 
     pub fn compile_lit(source: &Literal) -> Result<Pattern, String> {
@@ -26,7 +31,7 @@ impl Pattern {
             Literal::Bytes(lit_byte_str) => Hir::literal(lit_byte_str.value()),
         };
 
-        Ok(Pattern { hir })
+        Ok(Pattern { source: source.token().to_string(), hir })
     }
 
     pub fn priority(&self) -> usize {
@@ -52,5 +57,9 @@ impl Pattern {
 
     pub fn hir(&self) -> &Hir {
         &self.hir
+    }
+
+    pub fn source(&self) -> &str {
+        &self.source
     }
 }

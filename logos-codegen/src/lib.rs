@@ -29,18 +29,19 @@ use error::Errors;
 use generator::Generator;
 use graph::{DisambiguationError, Graph};
 use leaf::Leaf;
-use parser::{Mode, Parser};
+use parser::{Parser};
 use pattern::Pattern;
 use quote::ToTokens;
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use quote::quote;
-use syn::parse_quote;
+use syn::{parse_quote, LitBool};
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
 use crate::leaf::VariantKind;
+use crate::parser::Subpatterns;
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -66,11 +67,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
         parser.try_parse_logos(attr);
     }
 
+    let utf8_mode = parser.utf8_mode.as_ref().map(LitBool::value).unwrap_or(true);
+    let config = Config { prio_over_length: false, utf8_mode };
+    let subpatterns = Subpatterns::new(&parser.subpatterns, utf8_mode, &mut parser.errors);
+
     let mut pats = Vec::new();
 
     {
         for skip in mem::take(&mut parser.skips) {
-            let Some(pattern_source) = parser.subpatterns.subst_subpatterns(
+            let Some(pattern_source) = subpatterns.subst_subpatterns(
                 &skip.literal.escape(),
                 skip.literal.span(),
                 &mut parser.errors,
@@ -78,7 +83,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 continue;
             };
 
-            let pattern = match Pattern::compile(&pattern_source) {
+            let pattern = match Pattern::compile(&pattern_source, utf8_mode, skip.literal.unicode()) {
                 Ok(pattern) => pattern,
                 Err(err) => {
                     parser.err(err, skip.literal.span());
@@ -160,7 +165,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     if !definition.ignore_flags.is_empty() {
                         // TODO
                     }
-                    // TODO subpatterns
 
                     let pattern = match Pattern::compile_lit(&definition.literal) {
                         Ok(pattern) => pattern,
@@ -195,7 +199,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         // TODO
                     }
 
-                    let Some(pattern_source) = parser.subpatterns.subst_subpatterns(
+                    let Some(pattern_source) = subpatterns.subst_subpatterns(
                         &definition.literal.escape(),
                         definition.literal.span(),
                         &mut parser.errors,
@@ -203,7 +207,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         continue;
                     };
 
-                    let pattern = match Pattern::compile(&pattern_source) {
+                    let pattern = match Pattern::compile(&pattern_source, utf8_mode, definition.literal.unicode()) {
                         Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
@@ -228,14 +232,20 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let error_type = parser.error_type.take();
     let extras = parser.extras.take();
-    let source = parser
-        .source
-        .take()
-        .map(strip_wrapping_parens)
-        .unwrap_or(match parser.mode {
-            Mode::Utf8 => quote!(str),
-            Mode::Binary => quote!([u8]),
-        });
+    let non_utf8_pats = pats.iter().filter(|leaf| {
+        !leaf.pattern.hir().properties().is_utf8()
+    }).collect::<Vec<_>>();
+    if utf8_mode && !non_utf8_pats.is_empty() {
+        // If utf8 mode is specified, make sure no patterns match illegal utf8
+        for leaf in non_utf8_pats {
+            parser.err(format!("Utf8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8", leaf.pattern.source(), leaf.kind), leaf.span);
+        };
+    };
+
+    let source = match utf8_mode {
+        true => quote!(str),
+        false => quote!([u8]),
+    };
     let logos_path = parser
         .logos_path
         .take()
@@ -262,8 +272,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating graph from pats:\n{pats:#?}");
 
-    // TODO: make a way to change this default
-    let config = Config::default();
+    // TODO: make a way to change prio_over_length
     let graph = match Graph::new(pats, config) {
         Ok(nfa) => nfa,
         Err(msg) => {
@@ -293,7 +302,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
             .expect("DisambiguationError must have at least 2 leaves");
         let variants = matching
             .into_iter()
-            .map(|leaf_id| format!("`{}`", graph.leaves()[leaf_id.0]))
+            .map(|leaf_id| format!("`{:?}`", graph.leaves()[leaf_id.0]))
             .collect::<Vec<_>>()
             .join(", ");
         parser.err(

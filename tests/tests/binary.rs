@@ -2,6 +2,7 @@ use logos_derive::Logos;
 use tests::assert_lex;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
+#[logos(utf8 = false)]
 enum Token {
     #[token("foo")]
     Foo,

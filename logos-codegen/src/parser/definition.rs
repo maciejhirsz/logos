@@ -37,6 +37,17 @@ impl Literal {
             }
         }
     }
+
+    pub fn token(&self) -> proc_macro2::Literal {
+        match self {
+            Literal::Utf8(lit_str) => lit_str.token(),
+            Literal::Bytes(lit_byte_str) => lit_byte_str.token(),
+        }
+    }
+
+    pub fn unicode(&self) -> bool {
+        matches!(self, Literal::Utf8(_))
+    }
 }
 
 impl Definition {

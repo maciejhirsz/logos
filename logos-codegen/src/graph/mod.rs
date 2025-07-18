@@ -19,14 +19,7 @@ mod export;
 #[derive(Debug)]
 pub struct Config {
     pub prio_over_length: bool,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            prio_over_length: false,
-        }
-    }
+    pub utf8_mode: bool,
 }
 
 /// Disambiguation error during the attempt to merge two leaf
@@ -226,7 +219,7 @@ impl Graph {
             .collect::<Vec<_>>();
 
         // TODO: utf8 mode here
-        let nfa_config = NFA::config().shrink(true);
+        let nfa_config = NFA::config().shrink(true).utf8(config.utf8_mode);
         let nfa = NFA::compiler()
             .configure(nfa_config)
             .build_many_from_hir(&hirs)

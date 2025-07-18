@@ -15,8 +15,12 @@ pub struct Subpattern {
 }
 
 impl Subpattern {
-    fn name_as_string(&self) -> String {
-        self.name.to_string()
+    fn new(name: Ident, pattern_src: &Literal) -> Self {
+        let pattern_str = pattern_src.escape();
+        let flags = if pattern_src.unicode() { "u" } else { "-u" };
+        let pattern = format!("(?{flags}:{pattern_str})");
+
+        Self { name, pattern }
     }
 }
 
@@ -31,50 +35,46 @@ lazy_static! {
 }
 
 impl Subpatterns {
-    pub fn add(&mut self, param: Ident, pattern: TokenStream, errors: &mut Errors) {
-        let lit = match syn::parse2::<Literal>(pattern) {
-            Ok(lit) => lit,
-            Err(e) => {
-                errors.err(e.to_string(), e.span());
-                return;
+    pub fn new(subpatterns: &Vec<(Ident, Literal)>, utf8_mode: bool, errors: &mut Errors) -> Self {
+        let mut build = Self { map: HashMap::new() };
+        for (name, pattern) in subpatterns {
+            let name_string = name.to_string();
+
+            let mut subpattern = Subpattern::new(name.clone(), pattern);
+
+            if !SUBPATTERN_IDENT.is_match(&name_string) {
+                errors.err(
+                    format!("Invalid subpattern name: `{}`", name),
+                    subpattern.name.span(),
+                );
+                continue;
             }
-        };
 
-        let mut subpattern = Subpattern {
-            name: param.clone(),
-            pattern: lit.escape(),
-        };
-        let name = subpattern.name_as_string();
+            if let Some(subst_pattern) = build.subst_subpatterns(&subpattern.pattern, pattern.span(), errors)
+            {
+                subpattern.pattern = subst_pattern
+            } else {
+                continue;
+            };
 
-        if !SUBPATTERN_IDENT.is_match(&name) {
-            errors.err(
-                format!("Invalid subpattern name: `{}`", name),
-                subpattern.name.span(),
-            );
-            return;
+            // Compile w/ unicode mode, since the top level flag will set it on or off anyway
+            if let Err(msg) = Pattern::compile(&subpattern.pattern, utf8_mode, true) {
+                errors.err(msg, pattern.span());
+                continue;
+            }
+
+            if let Some(existing) = build.map.insert(name_string, subpattern) {
+                errors
+                    .err(
+                        format!("Subpattern `{}` already exists", name),
+                        name.span(),
+                    )
+                    .err("Previously assigned here", existing.name.span());
+                continue;
+            }
         }
 
-        if let Some(subst_pattern) = self.subst_subpatterns(&subpattern.pattern, lit.span(), errors)
-        {
-            subpattern.pattern = subst_pattern
-        } else {
-            return;
-        };
-
-        if let Err(msg) = Pattern::compile(&subpattern.pattern) {
-            errors.err(msg, lit.span());
-            return;
-        }
-
-        if let Some(existing) = self.map.insert(name, subpattern) {
-            errors
-                .err(
-                    format!("Subpattern `{}` already exists", param),
-                    param.span(),
-                )
-                .err("Previously assigned here", existing.name.span());
-            return;
-        }
+        build
     }
 
     pub fn subst_subpatterns(
