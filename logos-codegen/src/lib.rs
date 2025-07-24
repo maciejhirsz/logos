@@ -29,7 +29,7 @@ use error::Errors;
 use generator::Generator;
 use graph::{DisambiguationError, Graph};
 use leaf::Leaf;
-use parser::{Parser};
+use parser::{IgnoreFlags, Parser};
 use pattern::Pattern;
 use quote::ToTokens;
 
@@ -73,31 +73,29 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let mut pats = Vec::new();
 
-    {
-        for skip in mem::take(&mut parser.skips) {
-            let Some(pattern_source) = subpatterns.subst_subpatterns(
-                &skip.literal.escape(),
-                skip.literal.span(),
-                &mut parser.errors,
-            ) else {
+    for skip in parser.skips.drain(..) {
+        let Some(pattern_source) = subpatterns.subst_subpatterns(
+            &skip.literal.escape(),
+            skip.literal.span(),
+            &mut parser.errors,
+        ) else {
+            continue;
+        };
+
+        let pattern = match Pattern::compile(&pattern_source, utf8_mode, skip.literal.unicode(), false) {
+            Ok(pattern) => pattern,
+            Err(err) => {
+                parser.errors.err(err, skip.literal.span());
                 continue;
-            };
+            }
+        };
 
-            let pattern = match Pattern::compile(&pattern_source, utf8_mode, skip.literal.unicode()) {
-                Ok(pattern) => pattern,
-                Err(err) => {
-                    parser.err(err, skip.literal.span());
-                    continue;
-                }
-            };
-
-            let default_priority = pattern.priority();
-            pats.push(
-                Leaf::new(skip.literal.span(), pattern)
-                    .priority(skip.priority.unwrap_or(default_priority))
-                    .callback(skip.into_callback()),
-            );
-        }
+        let default_priority = pattern.priority();
+        pats.push(
+            Leaf::new(skip.literal.span(), pattern)
+                .priority(skip.priority.unwrap_or(default_priority))
+                .callback(skip.into_callback()),
+        );
     }
 
     debug!("Iterating through enum variants");
@@ -162,11 +160,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    if !definition.ignore_flags.is_empty() {
-                        // TODO
-                    }
+                    let pattern_res = if definition.ignore_flags.ignore_case {
+                        // TODO: need to escape special_chars but not already escaped bytes
+                        let pattern_src = regex_syntax::escape(&definition.literal.escape());
+                        Pattern::compile(&pattern_src, utf8_mode, definition.literal.unicode(), true)
+                    } else {
+                        Pattern::compile_lit(&definition.literal)
+                    };
 
-                    let pattern = match Pattern::compile_lit(&definition.literal) {
+                    let pattern = match pattern_res {
                         Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
@@ -195,10 +197,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    if !definition.ignore_flags.is_empty() {
-                        // TODO
-                    }
-
                     let Some(pattern_source) = subpatterns.subst_subpatterns(
                         &definition.literal.escape(),
                         definition.literal.span(),
@@ -207,7 +205,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         continue;
                     };
 
-                    let pattern = match Pattern::compile(&pattern_source, utf8_mode, definition.literal.unicode()) {
+                    let unicode = definition.literal.unicode();
+                    let ignore_case = definition.ignore_flags.ignore_case;
+                    let pattern = match Pattern::compile(&pattern_source, utf8_mode, unicode, ignore_case) {
                         Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());

@@ -20,14 +20,19 @@ pub enum Literal {
 }
 
 impl Literal {
-    pub fn escape(&self) -> String {
+    pub fn escape(&self, literal: bool) -> String {
         match self {
             Literal::Utf8(lit_str) => lit_str.value(),
             Literal::Bytes(lit_byte_str) => {
                 let mut pattern = String::new();
                 for byte in lit_byte_str.value() {
                     if byte <= 127 {
-                        write!(pattern, "{}", byte as char)
+                        if literal {
+                            regex_syntax::escape_into(byte as char, &mut pattern);
+                            Ok(())
+                        } else {
+                            write!(pattern, "{}", byte as char)
+                        }
                     } else {
                         write!(pattern, "\\x{:02X}", byte)
                     }
@@ -56,7 +61,7 @@ impl Definition {
             literal,
             priority: None,
             callback: None,
-            ignore_flags: IgnoreFlags::Empty,
+            ignore_flags: IgnoreFlags::default(),
         }
     }
 

@@ -58,7 +58,7 @@ impl Subpatterns {
             };
 
             // Compile w/ unicode mode, since the top level flag will set it on or off anyway
-            if let Err(msg) = Pattern::compile(&subpattern.pattern, utf8_mode, true) {
+            if let Err(msg) = Pattern::compile(&subpattern.pattern, utf8_mode, true, false) {
                 errors.err(msg, pattern.span());
                 continue;
             }

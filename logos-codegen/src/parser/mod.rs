@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;

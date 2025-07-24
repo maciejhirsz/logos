@@ -1,4 +1,4 @@
-use crate::parser::{Literal};
+use crate::parser::Literal;
 
 use regex_syntax::{
     hir::{Hir, HirKind},
@@ -12,12 +12,12 @@ pub struct Pattern {
 }
 
 impl Pattern {
-    pub fn compile(source: &str, utf8_mode: bool, unicode: bool) -> Result<Pattern, String> {
+    pub fn compile(source: &str, utf8_mode: bool, unicode: bool, ignore_case: bool) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
-        eprintln!("Utf8? {utf8_mode}");
-        let hir = ParserBuilder::new()
+        let mut hir = ParserBuilder::new()
             .utf8(utf8_mode)
             .unicode(unicode)
+            .case_insensitive(ignore_case)
             .build()
             .parse(source)
             .map_err(|err| format!("{}", err))?;
