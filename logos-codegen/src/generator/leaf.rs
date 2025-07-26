@@ -82,6 +82,9 @@ impl Generator<'_> {
                     CallbackResult::Error(err) => {
                         return Some(Err(err));
                     },
+                    CallbackResult::DefaultError => {
+                        return Some(Err(make_error(lex)));
+                    },
                 }
             },
             (VariantKind::Value(ident, _), None) => quote! {
@@ -100,6 +103,9 @@ impl Generator<'_> {
                     },
                     CallbackResult::Error(err) => {
                         return Some(Err(err));
+                    },
+                    CallbackResult::DefaultError => {
+                        return Some(Err(make_error(lex)));
                     },
                 }
             },

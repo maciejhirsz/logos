@@ -40,7 +40,7 @@ use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
 use crate::leaf::VariantKind;
-use crate::parser::Subpatterns;
+use crate::parser::{ErrorType, Subpatterns};
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -242,7 +242,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Parsing additional options (extras, source, ...)");
 
-    let error_type = parser.error_type.take();
+    let ErrorType { ty: error_type, callback: error_callback } = parser.error_type.take().unwrap_or_default();
     let extras = parser.extras.take();
     let non_utf8_pats = pats
         .iter()
@@ -329,7 +329,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating code from graph:\n{:#?}", graph.dfa());
 
-    let generator = Generator::new(name, &this, &graph);
+    let generator = Generator::new(name, &this, &graph, &error_callback);
 
     let body = generator.generate();
     let imp = impl_logos(quote! {
@@ -342,12 +342,13 @@ pub fn generate(input: TokenStream) -> TokenStream {
         };
         use #logos_path::Logos;
 
+        type Error = #error_type;
         type Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         #body
     });
 
-    // println!("{}", imp);
+    // eprintln!("{}", imp);
     // TokenStream::new()
     imp
 }

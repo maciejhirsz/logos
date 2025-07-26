@@ -26,7 +26,7 @@ pub struct Leaf {
 #[derive(Clone, Debug)]
 pub enum Callback {
     Label(TokenStream),
-    Inline(Box<InlineCallback>),
+    Inline(InlineCallback),
 }
 
 #[derive(Clone, Debug)]
@@ -38,7 +38,7 @@ pub struct InlineCallback {
 
 impl From<InlineCallback> for Callback {
     fn from(inline: InlineCallback) -> Callback {
-        Callback::Inline(Box::new(inline))
+        Callback::Inline(inline)
     }
 }
 

@@ -514,5 +514,7 @@ mod merging_asymmetric_loops {
             #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip, priority = 3)]
             Ignored,
         }
+
+        let _ = Token2::Ignored;
     }
 }

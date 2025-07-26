@@ -6,16 +6,10 @@ use quote::{quote, TokenStreamExt};
 use syn::Ident;
 
 use crate::graph::{Graph, State, StateType};
+use crate::leaf::{Callback, InlineCallback};
 use crate::util::ToIdent;
 
-// mod context;
-// mod fork;
 mod leaf;
-// mod rope;
-// mod tables;
-
-// use self::context::Context;
-// use self::tables::TableStack;
 
 pub struct Generator<'a> {
     /// Name of the type we are implementing the `Logos` trait for
@@ -26,10 +20,12 @@ pub struct Generator<'a> {
     graph: &'a Graph,
     /// Function name identifiers
     idents: Map<State, Ident>,
+    /// Callback for the default error type
+    error_callback: &'a Option<Callback>,
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(name: &'a Ident, this: &'a TokenStream, graph: &'a Graph) -> Self {
+    pub fn new(name: &'a Ident, this: &'a TokenStream, graph: &'a Graph, error_callback: &'a Option<Callback>) -> Self {
         let mut idents = Map::default();
 
         for state in graph.get_states() {
@@ -45,6 +41,7 @@ impl<'a> Generator<'a> {
             this,
             graph,
             idents,
+            error_callback,
         }
     }
 
@@ -62,7 +59,10 @@ impl<'a> Generator<'a> {
         // Sort for repeatability (not dependent on hashmap iteration order)
         all_idents.sort_unstable();
 
+        let error_cb = self.generate_error_cb();
+
         quote! {
+            #error_cb
             #[derive(Clone, Copy)]
             enum LogosState {
                 #(#all_idents),*
@@ -80,6 +80,32 @@ impl<'a> Generator<'a> {
 
     fn get_ident(&self, state: &State) -> &Ident {
         self.idents.get(state).expect("Unreachable state found")
+    }
+
+    fn generate_error_cb(&self) -> TokenStream {
+        let this = self.this;
+
+        let body = match self.error_callback {
+            Some(Callback::Label(label)) => quote! {
+                let error = #label(lex);
+                error.into()
+            },
+            Some(Callback::Inline(InlineCallback { arg, body, .. })) =>  quote! {
+                let #arg = lex;
+                let error = { #body };
+                error.into()
+            },
+            None => quote!{
+                <#this as Logos>::Error::default()
+            },
+        };
+
+        quote! {
+            #[inline]
+            fn make_error<'s>(lex: &mut Lexer<'s>) -> <#this as Logos<'s>>::Error {
+                #body
+            }
+        }
     }
 
     fn generate_match_case(&self, state: State) -> TokenStream {
@@ -131,7 +157,7 @@ impl<'a> Generator<'a> {
             // if we reached eoi, we are already at the end of the input
             quote! {
                 lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                return Some(Err(Self::Error::default()));
+                return Some(Err(make_error(lex)));
             }
         };
 

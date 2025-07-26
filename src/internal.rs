@@ -32,6 +32,7 @@ pub trait LexerInternal<'source> {
 pub enum CallbackResult<'a, L: Logos<'a>> {
     Emit(L),
     Error(L::Error),
+    DefaultError,
     Skip,
 }
 
@@ -74,7 +75,7 @@ impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for Option<T> {
     {
         match self {
             Some(val) => CallbackResult::Emit(con(val)),
-            None => CallbackResult::Error(L::Error::default()),
+            None => CallbackResult::DefaultError,
         }
     }
 }
@@ -116,7 +117,7 @@ impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for bool {
     {
         match self {
             true => CallbackResult::Emit(con(())),
-            false => CallbackResult::Error(L::Error::default()),
+            false => CallbackResult::DefaultError,
         }
     }
 }

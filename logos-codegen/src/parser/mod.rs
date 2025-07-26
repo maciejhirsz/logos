@@ -10,6 +10,7 @@ use crate::util::{expect_punct, MaybeVoid};
 use crate::LOGOS_ATTR;
 
 mod definition;
+mod error_type;
 mod ignore_flags;
 mod nested;
 mod skip;
@@ -17,6 +18,7 @@ mod subpattern;
 mod type_params;
 
 pub use self::definition::{Definition, Literal};
+pub use self::error_type::ErrorType;
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
 pub use self::skip::Skip;
@@ -29,8 +31,8 @@ pub struct Parser {
     pub utf8_mode: Option<LitBool>,
     pub skips: Vec<Skip>,
     pub extras: MaybeVoid,
-    pub error_type: MaybeVoid,
     pub subpatterns: Vec<(Ident, Literal)>,
+    pub error_type: Option<ErrorType>,
     pub logos_path: Option<TokenStream>,
     pub export_path: Option<String>,
     types: TypeParams,
@@ -103,14 +105,72 @@ impl Parser {
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
-                        if let MaybeVoid::Some(previous) = parser.error_type.replace(value) {
+                        let error_ty = ErrorType::new(value);
+
+                        if let Some(previous) = parser.error_type.replace(error_ty) {
+                            parser
+                                .err("Error type can be defined only once", span)
+                                .err("Previous definition here", previous.span());
+                        }
+                    }
+                    NestedValue::Group(value) => {
+                        let span = value.span();
+                        let mut nested = AttributeParser::new(value);
+                        let ty = match nested.parsed::<Type>() {
+                            Some(Ok(ty)) => ty,
+                            Some(Err(e)) => {
+                                parser.err(e.to_string(), e.span());
+                                return;
+                            }
+                            None => {
+                                parser.err("Expected #[logos(error(SomeType))]", span);
+                                return;
+                            }
+                        };
+
+                        let mut error_type = {
+                            use quote::ToTokens;
+                            ErrorType::new(ty.into_token_stream())
+                        };
+
+                        for (position, next) in nested.enumerate() {
+                            match next {
+                                Nested::Unexpected(tokens) => {
+                                    parser.err("Unexpected token in attribute", tokens.span());
+                                }
+                                Nested::Unnamed(tokens) => match position {
+                                    0 => error_type.callback = parser.parse_callback(tokens),
+                                    _ => {
+                                        parser.err(
+                                            "\
+                                            Expected a named argument at this position\n\
+                                            \n\
+                                            hint: If you are trying to define a callback here use: callback = ...\
+                                            ",
+                                            tokens.span(),
+                                        );
+                                    }
+                                },
+                                Nested::Named(name, value) => {
+                                    error_type.named_attr(name, value, parser);
+                                }
+                            }
+                        }
+
+                        if let Some(previous) = parser.error_type.replace(error_type) {
                             parser
                                 .err("Error type can be defined only once", span)
                                 .err("Previous definition here", previous.span());
                         }
                     }
                     _ => {
-                        parser.err("Expected: #[logos(error = SomeType)]", span);
+                        parser.err(
+                            concat!(
+                                "Expected: #[logos(error = SomeType)] or ",
+                                "#[logos(error(SomeType[, callback))]"
+                            ),
+                            span,
+                        );
                     }
                 }),
                 ("export_path", |parser, span, value| match value {
