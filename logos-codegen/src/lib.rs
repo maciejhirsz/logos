@@ -271,7 +271,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating graph from pats:\n{pats:#?}");
 
-    // TODO: make a way to change prio_over_length
     let graph = match Graph::new(pats, config) {
         Ok(nfa) => nfa,
         Err(msg) => {

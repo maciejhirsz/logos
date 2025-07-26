@@ -14,7 +14,7 @@ pub struct Pattern {
 impl Pattern {
     pub fn compile(source: &str, utf8_mode: bool, unicode: bool, ignore_case: bool) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
-        let mut hir = ParserBuilder::new()
+        let hir = ParserBuilder::new()
             .utf8(utf8_mode)
             .unicode(unicode)
             .case_insensitive(ignore_case)

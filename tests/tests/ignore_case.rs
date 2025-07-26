@@ -28,8 +28,10 @@ mod ignore_ascii_case {
         // "frèRE
         #[token(b"fr\xC3\xA8RE", ignore(case))]
         Frere,
+        // "ÉTAIT"
         #[token(b"\xC3\x89TAIT", ignore(case))]
         Etait,
+        // "là"
         #[token(b"l\xC3\xA0", ignore(case))]
         La,
         #[token(b"cET", ignore(case))]
@@ -93,8 +95,10 @@ mod ignore_ascii_case {
         NaSingle,
         #[regex("(?-u)éèd", ignore(case))]
         NaConcat,
+        // "[cûü]+"
         #[regex(b"(c|\xC3\xBB|\xC3\xBC)+", ignore(case))]
         NaAltern,
+        // "i§?"
         #[regex(b"i(\xC2\xA7)?", priority = 3, ignore(case))]
         NaMaybe,
         #[regex("((?i-u:[x-z])|[{-É])+")]

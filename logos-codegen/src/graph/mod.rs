@@ -218,7 +218,6 @@ impl Graph {
             .map(|leaf| leaf.pattern.hir())
             .collect::<Vec<_>>();
 
-        // TODO: utf8 mode here
         let nfa_config = NFA::config().shrink(true).utf8(config.utf8_mode);
         let nfa = NFA::compiler()
             .configure(nfa_config)
