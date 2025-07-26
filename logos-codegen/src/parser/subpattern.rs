@@ -16,7 +16,7 @@ pub struct Subpattern {
 
 impl Subpattern {
     fn new(name: Ident, pattern_src: &Literal) -> Self {
-        let pattern_str = pattern_src.escape();
+        let pattern_str = pattern_src.escape(false);
         let flags = if pattern_src.unicode() { "u" } else { "-u" };
         let pattern = format!("(?{flags}:{pattern_str})");
 

@@ -25,34 +25,36 @@ mod ignore_ascii_case {
 
         #[token(b"MON", ignore(case))]
         Mon,
-        #[token(b"fr\xE8RE", ignore(case))]
+        // "frèRE
+        #[token(b"fr\xC3\xA8RE", ignore(case))]
         Frere,
-        #[token(b"\xC9TAIT", ignore(case))]
+        #[token(b"\xC3\x89TAIT", ignore(case))]
         Etait,
-        #[token(b"l\xE0", ignore(case))]
+        #[token(b"l\xC3\xA0", ignore(case))]
         La,
         #[token(b"cET", ignore(case))]
         Cet,
-        #[token(b"\xE9T\xE9", ignore(case))]
+        // "éTé"
+        #[token(b"\xC3\xA9T\xC3\xA9", ignore(case))]
         Ete,
     }
 
-    // #[test]
-    // fn tokens_simple() {
-    //     assert_lex(
-    //         b"LowErcase or UppeRCase: ThAT iS tHe question" as &[u8],
-    //         &[
-    //             (Ok(Words::Lowercase), b"LowErcase", 0..9),
-    //             (Ok(Words::Or), b"or", 10..12),
-    //             (Ok(Words::Uppercase), b"UppeRCase", 13..22),
-    //             (Ok(Words::Colon), b":", 22..23),
-    //             (Ok(Words::That), b"ThAT", 24..28),
-    //             (Ok(Words::Is), b"iS", 29..31),
-    //             (Ok(Words::The), b"tHe", 32..35),
-    //             (Ok(Words::Question), b"question", 36..44),
-    //         ],
-    //     )
-    // }
+    #[test]
+    fn tokens_simple() {
+        assert_lex(
+            b"LowErcase or UppeRCase: ThAT iS tHe question" as &[u8],
+            &[
+                (Ok(Words::Lowercase), b"LowErcase", 0..9),
+                (Ok(Words::Or), b"or", 10..12),
+                (Ok(Words::Uppercase), b"UppeRCase", 13..22),
+                (Ok(Words::Colon), b":", 22..23),
+                (Ok(Words::That), b"ThAT", 24..28),
+                (Ok(Words::Is), b"iS", 29..31),
+                (Ok(Words::The), b"tHe", 32..35),
+                (Ok(Words::Question), b"question", 36..44),
+            ],
+        )
+    }
 
     #[test]
     fn tokens_nonascii() {
@@ -62,92 +64,89 @@ mod ignore_ascii_case {
                 (Ok(Words::Mon), "Mon".as_bytes(), 0..3),
                 (Ok(Words::Frere), "Frère".as_bytes(), 4..10),
                 (Ok(Words::Etait), "Était".as_bytes(), 11..17),
-                (Err(()), "l".as_bytes(), 18..19),
-                (Err(()), "À".as_bytes(), 19..21),
+                (Err(()), "lÀ".as_bytes(), 18..21),
                 (Ok(Words::Cet), "cet".as_bytes(), 22..25),
-                (Err(()), "É".as_bytes(), 26..28),
-                (Err(()), "t".as_bytes(), 28..29),
-                (Err(()), "é".as_bytes(), 29..31),
+                (Err(()), b"\xC3\x89t\xC3", 26..30),
+                (Err(()), b"\xA9", 30..31),
             ],
         )
     }
 
-    // #[derive(Logos, Debug, PartialEq, Eq)]
-    // #[logos(skip " +")]
-    // #[logos(utf8 = false)]
-    // enum Letters {
-    //     #[regex("a", ignore(case))]
-    //     Single,
-    //     #[regex("bc", ignore(case))]
-    //     Concat,
-    //     #[regex("[de]", ignore(case))]
-    //     Altern,
-    //     #[regex("f+", ignore(case))]
-    //     Loop,
-    //     #[regex("gg?", ignore(case))]
-    //     Maybe,
-    //     #[regex("[h-k]+", ignore(case))]
-    //     Range,
-    //
-    //     #[regex("à", ignore(case))]
-    //     NaSingle,
-    //     #[regex("éèd", ignore(case))]
-    //     NaConcat,
-    //     #[regex("[cûü]+", ignore(case))]
-    //     NaAltern,
-    //     #[regex("i§?", priority = 3, ignore(case))]
-    //     NaMaybe,
-    //     #[regex("[x-à]+", ignore(case))]
-    //     NaRange,
-    // }
-    //
-    // #[test]
-    // fn regex_simple() {
-    //     assert_lex(
-    //         b"aA BCbC DdEE fFff g gg hHiIjJkK" as &[u8],
-    //         &[
-    //             (Ok(Letters::Single), b"a", 0..1),
-    //             (Ok(Letters::Single), b"A", 1..2),
-    //             (Ok(Letters::Concat), b"BC", 3..5),
-    //             (Ok(Letters::Concat), b"bC", 5..7),
-    //             (Ok(Letters::Altern), b"D", 8..9),
-    //             (Ok(Letters::Altern), b"d", 9..10),
-    //             (Ok(Letters::Altern), b"E", 10..11),
-    //             (Ok(Letters::Altern), b"E", 11..12),
-    //             (Ok(Letters::Loop), b"fFff", 13..17),
-    //             (Ok(Letters::Maybe), b"g", 18..19),
-    //             (Ok(Letters::Maybe), b"gg", 20..22),
-    //             (Ok(Letters::Range), b"hHiIjJkK", 23..31),
-    //         ],
-    //     )
-    // }
-    //
-    // #[test]
-    // fn regex_nonascii() {
-    //     assert_lex(
-    //         b"à À éèD Éèd CcûÛüÜC i i§ xXyYzZ|{}" as &[u8],
-    //         &[
-    //             (Ok(Letters::NaSingle), b"à", 0..2),
-    //             (Ok(Letters::NaRange), b"À", 3..5),
-    //             (Ok(Letters::NaConcat), b"éèD", 6..11),
-    //             (Ok(Letters::NaRange), b"É", 12..14),
-    //             (Err(()), b"è", 14..16),
-    //             (Ok(Letters::Altern), b"d", 16..17),
-    //             (Ok(Letters::NaAltern), b"Ccû", 18..22),
-    //             (Ok(Letters::NaRange), b"Û", 22..24),
-    //             (Ok(Letters::NaAltern), b"ü", 24..26),
-    //             (Ok(Letters::NaRange), b"Ü", 26..28),
-    //             (Ok(Letters::NaAltern), b"C", 28..29),
-    //             (Ok(Letters::NaMaybe), b"i", 30..31),
-    //             (Ok(Letters::NaMaybe), b"i§", 32..35),
-    //             (Ok(Letters::NaRange), b"xXyYzZ|{}", 36..45),
-    //         ],
-    //     )
-    // }
+    #[derive(Logos, Debug, PartialEq, Eq)]
+    #[logos(skip " +")]
+    #[logos(utf8 = false)]
+    enum Letters {
+        #[regex(b"a", ignore(case))]
+        Single,
+        #[regex("bc", ignore(case))]
+        Concat,
+        #[regex("[de]", ignore(case))]
+        Altern,
+        #[regex("f+", ignore(case))]
+        Loop,
+        #[regex("gg?", ignore(case))]
+        Maybe,
+        #[regex("[h-k]+", ignore(case))]
+        Range,
+
+        #[regex("(?-u)à", ignore(case))]
+        NaSingle,
+        #[regex("(?-u)éèd", ignore(case))]
+        NaConcat,
+        #[regex(b"(c|\xC3\xBB|\xC3\xBC)+", ignore(case))]
+        NaAltern,
+        #[regex(b"i(\xC2\xA7)?", priority = 3, ignore(case))]
+        NaMaybe,
+        #[regex("((?i-u:[x-z])|[{-É])+")]
+        NaRange,
+    }
+
+    #[test]
+    fn regex_simple() {
+        assert_lex(
+            "aA BCbC DdEE fFff g gg hHiIjJkK".as_bytes(),
+            &[
+                (Ok(Letters::Single), b"a", 0..1),
+                (Ok(Letters::Single), b"A", 1..2),
+                (Ok(Letters::Concat), b"BC", 3..5),
+                (Ok(Letters::Concat), b"bC", 5..7),
+                (Ok(Letters::Altern), b"D", 8..9),
+                (Ok(Letters::Altern), b"d", 9..10),
+                (Ok(Letters::Altern), b"E", 10..11),
+                (Ok(Letters::Altern), b"E", 11..12),
+                (Ok(Letters::Loop), b"fFff", 13..17),
+                (Ok(Letters::Maybe), b"g", 18..19),
+                (Ok(Letters::Maybe), b"gg", 20..22),
+                (Ok(Letters::Range), b"hHiIjJkK", 23..31),
+            ],
+        )
+    }
+
+    #[test]
+    fn regex_nonascii() {
+        assert_lex(
+            "à À éèD Éèd CcûÛüÜC i i§ xXyYzZ|{}".as_bytes(),
+            &[
+                (Ok(Letters::NaSingle), "à".as_bytes(), 0..2),
+                (Ok(Letters::NaRange), "À".as_bytes(), 3..5),
+                (Ok(Letters::NaConcat), "éèD".as_bytes(), 6..11),
+                (Ok(Letters::NaRange), "É".as_bytes(), 12..14),
+                (Err(()), "è".as_bytes(), 14..16),
+                (Ok(Letters::Altern), "d".as_bytes(), 16..17),
+                (Ok(Letters::NaAltern), "Ccû".as_bytes(), 18..22),
+                (Err(()), "Û".as_bytes(), 22..24),
+                (Ok(Letters::NaAltern), "ü".as_bytes(), 24..26),
+                (Err(()), "Ü".as_bytes(), 26..28),
+                (Ok(Letters::NaAltern), "C".as_bytes(), 28..29),
+                (Ok(Letters::NaMaybe), "i".as_bytes(), 30..31),
+                (Ok(Letters::NaMaybe), "i§".as_bytes(), 32..35),
+                (Ok(Letters::NaRange), "xXyYzZ|{}".as_bytes(), 36..45),
+            ],
+        )
+    }
 }
 
 mod ignore_case {
-    // use logos::Logos as _;
     use logos_derive::Logos;
     use tests::assert_lex;
 

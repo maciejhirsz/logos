@@ -22,13 +22,18 @@ pub enum Literal {
 impl Literal {
     pub fn escape(&self, literal: bool) -> String {
         match self {
+            Literal::Utf8(lit_str) if literal => {
+                regex_syntax::escape(&lit_str.value())
+            },
             Literal::Utf8(lit_str) => lit_str.value(),
             Literal::Bytes(lit_byte_str) => {
                 let mut pattern = String::new();
                 for byte in lit_byte_str.value() {
                     if byte <= 127 {
                         if literal {
-                            regex_syntax::escape_into(byte as char, &mut pattern);
+                            let buf = [byte];
+                            let s = str::from_utf8(&buf).expect("Ascii is always valid utf8");
+                            regex_syntax::escape_into(s, &mut pattern);
                             Ok(())
                         } else {
                             write!(pattern, "{}", byte as char)

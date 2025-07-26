@@ -75,7 +75,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     for skip in parser.skips.drain(..) {
         let Some(pattern_source) = subpatterns.subst_subpatterns(
-            &skip.literal.escape(),
+            &skip.literal.escape(false),
             skip.literal.span(),
             &mut parser.errors,
         ) else {
@@ -161,8 +161,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     };
 
                     let pattern_res = if definition.ignore_flags.ignore_case {
-                        // TODO: need to escape special_chars but not already escaped bytes
-                        let pattern_src = regex_syntax::escape(&definition.literal.escape());
+                        let pattern_src = definition.literal.escape(true);
                         Pattern::compile(&pattern_src, utf8_mode, definition.literal.unicode(), true)
                     } else {
                         Pattern::compile_lit(&definition.literal)
@@ -198,7 +197,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     };
 
                     let Some(pattern_source) = subpatterns.subst_subpatterns(
-                        &definition.literal.escape(),
+                        &definition.literal.escape(false),
                         definition.literal.span(),
                         &mut parser.errors,
                     ) else {
