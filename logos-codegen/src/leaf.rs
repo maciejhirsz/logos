@@ -78,7 +78,7 @@ impl Leaf {
 impl Display for VariantKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            VariantKind::Unit(ident)  => write!(f, "::{ident}"),
+            VariantKind::Unit(ident) => write!(f, "::{ident}"),
             VariantKind::Value(ident, _) => write!(f, "::{ident}(_)"),
             VariantKind::Skip => f.write_str("::<skip>"),
         }

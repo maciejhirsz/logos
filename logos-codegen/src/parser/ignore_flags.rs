@@ -1,5 +1,3 @@
-use std::ops::{BitAnd, BitOr};
-
 use proc_macro2::{Ident, TokenStream, TokenTree};
 
 use crate::parser::Parser;
@@ -11,10 +9,6 @@ pub struct IgnoreFlags {
 }
 
 impl IgnoreFlags {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Parses an identifier an enables it for `self`.
     ///
     /// Valid inputs are (that produces `true`):
@@ -83,7 +77,7 @@ impl IgnoreFlags {
             }
 
             match tokens.next() {
-                Some(tt) if is_punct(&tt, ',') => {},
+                Some(tt) if is_punct(&tt, ',') => {}
                 None => return,
                 Some(unexpected_tt) => {
                     parser.err(

@@ -22,9 +22,7 @@ pub enum Literal {
 impl Literal {
     pub fn escape(&self, literal: bool) -> String {
         match self {
-            Literal::Utf8(lit_str) if literal => {
-                regex_syntax::escape(&lit_str.value())
-            },
+            Literal::Utf8(lit_str) if literal => regex_syntax::escape(&lit_str.value()),
             Literal::Utf8(lit_str) => lit_str.value(),
             Literal::Bytes(lit_byte_str) => {
                 let mut pattern = String::new();

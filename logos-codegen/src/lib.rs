@@ -22,21 +22,20 @@ mod macros;
 
 use std::error::Error;
 use std::ffi::OsStr;
-use std::mem;
 use std::path::Path;
 
 use error::Errors;
 use generator::Generator;
 use graph::{DisambiguationError, Graph};
 use leaf::Leaf;
-use parser::{IgnoreFlags, Parser};
+use parser::Parser;
 use pattern::Pattern;
 use quote::ToTokens;
 
-use proc_macro2::{Delimiter, TokenStream, TokenTree};
+use proc_macro2::{TokenStream, TokenTree};
 use quote::quote;
-use syn::{parse_quote, LitBool};
 use syn::spanned::Spanned;
+use syn::{parse_quote, LitBool};
 use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
@@ -67,8 +66,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
         parser.try_parse_logos(attr);
     }
 
-    let utf8_mode = parser.utf8_mode.as_ref().map(LitBool::value).unwrap_or(true);
-    let config = Config { prio_over_length: false, utf8_mode };
+    let utf8_mode = parser
+        .utf8_mode
+        .as_ref()
+        .map(LitBool::value)
+        .unwrap_or(true);
+    let config = Config {
+        prio_over_length: false,
+        utf8_mode,
+    };
     let subpatterns = Subpatterns::new(&parser.subpatterns, utf8_mode, &mut parser.errors);
 
     let mut pats = Vec::new();
@@ -82,13 +88,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
             continue;
         };
 
-        let pattern = match Pattern::compile(&pattern_source, utf8_mode, skip.literal.unicode(), false) {
-            Ok(pattern) => pattern,
-            Err(err) => {
-                parser.errors.err(err, skip.literal.span());
-                continue;
-            }
-        };
+        let pattern =
+            match Pattern::compile(&pattern_source, utf8_mode, skip.literal.unicode(), false) {
+                Ok(pattern) => pattern,
+                Err(err) => {
+                    parser.errors.err(err, skip.literal.span());
+                    continue;
+                }
+            };
 
         let default_priority = pattern.priority();
         pats.push(
@@ -162,7 +169,12 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                     let pattern_res = if definition.ignore_flags.ignore_case {
                         let pattern_src = definition.literal.escape(true);
-                        Pattern::compile(&pattern_src, utf8_mode, definition.literal.unicode(), true)
+                        Pattern::compile(
+                            &pattern_src,
+                            utf8_mode,
+                            definition.literal.unicode(),
+                            true,
+                        )
                     } else {
                         Pattern::compile_lit(&definition.literal)
                     };
@@ -206,13 +218,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                     let unicode = definition.literal.unicode();
                     let ignore_case = definition.ignore_flags.ignore_case;
-                    let pattern = match Pattern::compile(&pattern_source, utf8_mode, unicode, ignore_case) {
-                        Ok(pattern) => pattern,
-                        Err(err) => {
-                            parser.err(err, definition.literal.span());
-                            continue;
-                        }
-                    };
+                    let pattern =
+                        match Pattern::compile(&pattern_source, utf8_mode, unicode, ignore_case) {
+                            Ok(pattern) => pattern,
+                            Err(err) => {
+                                parser.err(err, definition.literal.span());
+                                continue;
+                            }
+                        };
 
                     let default_priority = pattern.priority();
                     pats.push(
@@ -231,14 +244,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let error_type = parser.error_type.take();
     let extras = parser.extras.take();
-    let non_utf8_pats = pats.iter().filter(|leaf| {
-        !leaf.pattern.hir().properties().is_utf8()
-    }).collect::<Vec<_>>();
+    let non_utf8_pats = pats
+        .iter()
+        .filter(|leaf| !leaf.pattern.hir().properties().is_utf8())
+        .collect::<Vec<_>>();
     if utf8_mode && !non_utf8_pats.is_empty() {
         // If utf8 mode is specified, make sure no patterns match illegal utf8
         for leaf in non_utf8_pats {
             parser.err(format!("Utf8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8", leaf.pattern.source(), leaf.kind), leaf.span);
-        };
+        }
     };
 
     let source = match utf8_mode {
@@ -382,25 +396,6 @@ fn is_logos_attr(attr: &syn::Attribute) -> bool {
     attr.path().is_ident(LOGOS_ATTR)
         || attr.path().is_ident(TOKEN_ATTR)
         || attr.path().is_ident(REGEX_ATTR)
-}
-
-fn strip_wrapping_parens(t: TokenStream) -> TokenStream {
-    let tts: Vec<TokenTree> = t.into_iter().collect();
-
-    if tts.len() != 1 {
-        tts.into_iter().collect()
-    } else {
-        match tts.into_iter().next().unwrap() {
-            TokenTree::Group(g) => {
-                if g.delimiter() == Delimiter::Parenthesis {
-                    g.stream()
-                } else {
-                    core::iter::once(TokenTree::Group(g)).collect()
-                }
-            }
-            tt => core::iter::once(tt).collect(),
-        }
-    }
 }
 
 fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<dyn Error>> {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use lazy_static::lazy_static;
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::Span;
 use regex_automata::dfa::regex::Regex;
 use syn::Ident;
 
@@ -36,7 +36,9 @@ lazy_static! {
 
 impl Subpatterns {
     pub fn new(subpatterns: &Vec<(Ident, Literal)>, utf8_mode: bool, errors: &mut Errors) -> Self {
-        let mut build = Self { map: HashMap::new() };
+        let mut build = Self {
+            map: HashMap::new(),
+        };
         for (name, pattern) in subpatterns {
             let name_string = name.to_string();
 
@@ -50,7 +52,8 @@ impl Subpatterns {
                 continue;
             }
 
-            if let Some(subst_pattern) = build.subst_subpatterns(&subpattern.pattern, pattern.span(), errors)
+            if let Some(subst_pattern) =
+                build.subst_subpatterns(&subpattern.pattern, pattern.span(), errors)
             {
                 subpattern.pattern = subst_pattern
             } else {
@@ -65,10 +68,7 @@ impl Subpatterns {
 
             if let Some(existing) = build.map.insert(name_string, subpattern) {
                 errors
-                    .err(
-                        format!("Subpattern `{}` already exists", name),
-                        name.span(),
-                    )
+                    .err(format!("Subpattern `{}` already exists", name), name.span())
                     .err("Previously assigned here", existing.name.span());
                 continue;
             }

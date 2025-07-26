@@ -135,8 +135,8 @@ impl<'a> Generator<'a> {
             }
         };
 
-                // println!("In state {}", stringify!(#this_ident));
-                // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
+        // println!("In state {}", stringify!(#this_ident));
+        // println!("Reading {:?}@{}", lex.read::<u8>(offset), offset);
         quote! {
             LogosState::#this_ident => {
                 #setup

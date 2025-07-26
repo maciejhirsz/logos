@@ -2,7 +2,7 @@ use crate::parser::Literal;
 
 use regex_syntax::{
     hir::{Hir, HirKind},
-    Parser, ParserBuilder,
+    ParserBuilder,
 };
 
 #[derive(Clone, Debug)]
@@ -12,7 +12,12 @@ pub struct Pattern {
 }
 
 impl Pattern {
-    pub fn compile(source: &str, utf8_mode: bool, unicode: bool, ignore_case: bool) -> Result<Pattern, String> {
+    pub fn compile(
+        source: &str,
+        utf8_mode: bool,
+        unicode: bool,
+        ignore_case: bool,
+    ) -> Result<Pattern, String> {
         // TODO: don't create new parser every time
         let hir = ParserBuilder::new()
             .utf8(utf8_mode)
@@ -22,7 +27,10 @@ impl Pattern {
             .parse(source)
             .map_err(|err| format!("{}", err))?;
 
-        Ok(Pattern { source: String::from(source), hir })
+        Ok(Pattern {
+            source: String::from(source),
+            hir,
+        })
     }
 
     pub fn compile_lit(source: &Literal) -> Result<Pattern, String> {
@@ -31,7 +39,10 @@ impl Pattern {
             Literal::Bytes(lit_byte_str) => Hir::literal(lit_byte_str.value()),
         };
 
-        Ok(Pattern { source: source.token().to_string(), hir })
+        Ok(Pattern {
+            source: source.token().to_string(),
+            hir,
+        })
     }
 
     pub fn priority(&self) -> usize {

@@ -183,7 +183,7 @@ impl Parser {
                         match syn::parse2::<Literal>(value) {
                             Ok(lit) => {
                                 parser.subpatterns.push((name, lit));
-                            },
+                            }
                             Err(e) => {
                                 parser.errors.err(e.to_string(), e.span());
                             }
