@@ -52,6 +52,26 @@ impl Generator<'_> {
             state = START;
         };
 
+        let impl_callback_val = |decl, ty, cb_ident| quote! {
+            #decl
+            let action = CallbackRetVal::<'s, #ty, Self>::construct(#cb_ident(lex), #constructor);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                },
+                CallbackResult::Skip => {
+                    #trivia
+                },
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                },
+                CallbackResult::DefaultError => {
+                    return Some(Err(make_error(lex)));
+                },
+            }
+        };
+
+
         match (&leaf.kind, callback_op) {
             (VariantKind::Skip, None) => trivia,
             (VariantKind::Skip, Some((ident, decl))) => quote! {
@@ -69,46 +89,12 @@ impl Generator<'_> {
             (VariantKind::Unit(ident), None) => quote! {
                 return Some(Ok(#name::#ident));
             },
-            (VariantKind::Unit(_ident), Some((cb_ident, decl))) => quote! {
-                #decl
-                let action = CallbackRetVal::<'s, (), Self>::construct(#cb_ident(lex), #constructor);
-                match action {
-                    CallbackResult::Emit(tok) => {
-                        return Some(Ok(tok));
-                    },
-                    CallbackResult::Skip => {
-                        #trivia
-                    },
-                    CallbackResult::Error(err) => {
-                        return Some(Err(err));
-                    },
-                    CallbackResult::DefaultError => {
-                        return Some(Err(make_error(lex)));
-                    },
-                }
-            },
+            (VariantKind::Unit(_ident), Some((cb_ident, decl))) => impl_callback_val(decl, &quote!(()), cb_ident),
             (VariantKind::Value(ident, _), None) => quote! {
                 let token = #name::#ident(lex.slice());
                 return Some(Ok(token));
             },
-            (VariantKind::Value(_ident, ty), Some((cb_ident, decl))) => quote! {
-                #decl
-                let action = CallbackRetVal::<'s, #ty, Self>::construct(#cb_ident(lex), #constructor);
-                match action {
-                    CallbackResult::Emit(tok) => {
-                        return Some(Ok(tok));
-                    },
-                    CallbackResult::Skip => {
-                        #trivia
-                    },
-                    CallbackResult::Error(err) => {
-                        return Some(Err(err));
-                    },
-                    CallbackResult::DefaultError => {
-                        return Some(Err(make_error(lex)));
-                    },
-                }
-            },
+            (VariantKind::Value(_ident, ty), Some((cb_ident, decl))) => impl_callback_val(decl, ty, cb_ident),
         }
     }
 }
