@@ -224,12 +224,16 @@ mod tests {
             .map(|src| {
                 Leaf::new(
                     Span::call_site(),
-                    Pattern::compile(src).expect("Unable to compile pattern"),
+                    Pattern::compile(src, true, true, false).expect("Unable to compile pattern"),
                 )
             })
             .collect();
 
-        let graph = Graph::new(leaves, Config::default()).expect("Unable to compile graph");
+        let config = Config {
+            prio_over_length: false,
+            utf8_mode: true,
+        };
+        let graph = Graph::new(leaves, config).expect("Unable to compile graph");
         let dot = graph.export_graph::<Dot>().unwrap();
         let mmd = graph.export_graph::<Mermaid>().unwrap();
 

@@ -1,5 +1,5 @@
 #[derive(Logos)]
-#[logos(source = [u8])]
+#[logos(utf8 = false)]
 enum Token {
     #[token("\n")]
     Newline,
