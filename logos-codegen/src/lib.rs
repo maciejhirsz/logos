@@ -329,7 +329,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating code from graph:\n{:#?}", graph.dfa());
 
-    let generator = Generator::new(name, &this, &graph, &error_callback);
+    let config = crate::generator::Config {
+        use_state_machine_codegen: cfg!(feature = "state_machine_codegen"),
+    };
+    let generator = Generator::new(config, name, &this, &graph, &error_callback);
 
     let body = generator.generate();
     let imp = impl_logos(quote! {

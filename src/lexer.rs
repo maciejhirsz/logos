@@ -317,6 +317,7 @@ where
         self.token_end = offset;
     }
 
+    #[inline]
     fn offset(&self) -> usize {
         self.token_start
     }

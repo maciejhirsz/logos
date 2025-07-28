@@ -18,6 +18,10 @@ debug = [
     "logos-derive/debug",
     "logos/debug"
 ]
+state_machine_codegen = [
+    "logos-derive/state_machine_codegen",
+    "logos/state_machine_codegen"
+]
 
 [dev-dependencies]
 criterion = { version = "2.10.1", package = "codspeed-criterion-compat" }

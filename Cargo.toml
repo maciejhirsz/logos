@@ -54,6 +54,8 @@ export_derive = ["logos-derive"]
 std = []
 # Use safe alternatives for unsafe code (may impact performance)?
 forbid_unsafe = ["logos-derive?/forbid_unsafe"]
+# Use the state machine codegen instead of the tailcall codegen
+state_machine_codegen = ["logos-derive?/state_machine_codegen"]
 
 [package.metadata.docs.rs]
 features = ["debug"]

@@ -46,15 +46,20 @@ impl Generator<'_> {
             VariantKind::Skip => quote!(),
         };
 
+        let start_ident = &self.idents[&self.graph.root()];
+        let restart_lex = match self.config.use_state_machine_codegen {
+            false => quote! { return #start_ident(lex, offset) },
+            true => quote! { state = LogosState::#start_ident; },
+        };
         let trivia = quote! {
             lex.trivia();
             offset = lex.offset();
-            state = START;
+            #restart_lex
         };
 
         let impl_callback_val = |decl, ty, cb_ident| quote! {
             #decl
-            let action = CallbackRetVal::<'s, #ty, Self>::construct(#cb_ident(lex), #constructor);
+            let action = CallbackRetVal::<'s, #ty, #this>::construct(#cb_ident(lex), #constructor);
             match action {
                 CallbackResult::Emit(tok) => {
                     return Some(Ok(tok));
@@ -76,7 +81,7 @@ impl Generator<'_> {
             (VariantKind::Skip, None) => trivia,
             (VariantKind::Skip, Some((ident, decl))) => quote! {
                 #decl
-                let action = SkipRetVal::<'s, Self>::construct(#ident(lex));
+                let action = SkipRetVal::<'s, #this>::construct(#ident(lex));
                 match action {
                     SkipResult::Skip => {
                         #trivia
