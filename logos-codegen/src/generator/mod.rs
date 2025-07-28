@@ -76,6 +76,7 @@ impl<'a> Generator<'a> {
                 }
                 #error_cb
                 let mut state = LogosState::#init_state;
+                let mut offset = lex.offset();
                 loop {
                     match state {
                         #(#states_rendered)*
