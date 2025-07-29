@@ -284,7 +284,9 @@ impl Parser {
                 }),
             ];
 
-            debug_assert!(NESTED_LOOKUP.is_sorted_by_key(|(n, _)| n));
+            // Vec::is_sorted_by_key was stabilized in 1.82
+            // debug_assert!(NESTED_LOOKUP.is_sorted_by_key(|(n, _)| n));
+            debug_assert!(NESTED_LOOKUP.windows(2).all(|w| w[0].0 < w[1].0));
 
             match NESTED_LOOKUP.binary_search_by_key(&name.to_string().as_str(), |(n, _)| n) {
                 Ok(idx) => NESTED_LOOKUP[idx].1(self, name.span(), value),

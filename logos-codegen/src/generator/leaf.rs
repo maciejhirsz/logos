@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, TokenStreamExt};
 
 use crate::generator::Generator;
 use crate::leaf::{Callback, Leaf, VariantKind};
@@ -17,7 +17,7 @@ impl Generator<'_> {
                 let arg = &inline_callback.arg;
                 let body = &inline_callback.body;
 
-                let ret = match &leaf.kind {
+                let mut ret = match &leaf.kind {
                     VariantKind::Unit(_) => quote! {
                         impl CallbackRetVal<'s, (), #this>
                     },
@@ -29,10 +29,14 @@ impl Generator<'_> {
                     },
                 };
 
+                if cfg!(rust_1_82) {
+                    ret.append_all(quote!(+ use<'s>));
+                }
+
                 // TODO: shouldn't copy this callback code for every accept state?
                 let decl = quote! {
                     #[inline]
-                    fn callback<'s>(#arg: &mut _Lexer<'s>) -> #ret + use<'s> {
+                    fn callback<'s>(#arg: &mut _Lexer<'s>) -> #ret {
                         #body
                     }
                 };

@@ -1,0 +1,410 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = [u8];
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+        use ::logos::internal::{
+            LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
+        };
+        use std::result::Result as _Result;
+        use std::option::Option as _Option;
+        use ::logos::Logos;
+        type _Lexer<'s> = ::logos::Lexer<'s, Token>;
+        #[derive(Clone, Copy)]
+        enum LogosState {
+            state10240,
+            state1024_ctx2,
+            state10752,
+            state1536_ctx2,
+            state2048_ctx1,
+            state2560_ctx2,
+            state3072_ctx2,
+            state3584_ctx0,
+            state4096_ctx1,
+            state4608,
+            state5120,
+            state5632,
+            state6144,
+            state6656,
+            state7168,
+            state7680_ctx2,
+            state8192_ctx2,
+            state8704,
+            state9216,
+            state9728,
+        }
+        #[inline]
+        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+            <Token as Logos<'s>>::Error::default()
+        }
+        let mut state = LogosState::state4608;
+        let mut offset = lex.offset();
+        loop {
+            match state {
+                LogosState::state1024_ctx2 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            return Some(Ok(Token::Any));
+                        }
+                    }
+                }
+                LogosState::state1536_ctx2 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        Some(128u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state7680_ctx2;
+                        }
+                        other => {
+                            return Some(Ok(Token::Any));
+                        }
+                    }
+                }
+                LogosState::state2048_ctx1 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            return Some(Ok(Token::AnyUnicode));
+                        }
+                    }
+                }
+                LogosState::state2560_ctx2 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        Some(128u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state8192_ctx2;
+                        }
+                        other => {
+                            return Some(Ok(Token::Any));
+                        }
+                    }
+                }
+                LogosState::state3072_ctx2 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state2048_ctx1;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state2048_ctx1;
+                        }
+                        other => {
+                            return Some(Ok(Token::Any));
+                        }
+                    }
+                }
+                LogosState::state3584_ctx0 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            return Some(Ok(Token::Newline));
+                        }
+                    }
+                }
+                LogosState::state4096_ctx1 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            return Some(Ok(Token::AnyUnicode));
+                        }
+                    }
+                }
+                LogosState::state4608 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=9u8) | Some(11u8..=127u8) => {
+                            offset += 1;
+                            state = LogosState::state7168;
+                        }
+                        Some(10u8) => {
+                            offset += 1;
+                            state = LogosState::state8704;
+                        }
+                        Some(128u8..=193u8) | Some(245u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state9216;
+                        }
+                        Some(194u8..=223u8) => {
+                            offset += 1;
+                            state = LogosState::state9728;
+                        }
+                        Some(224u8) => {
+                            offset += 1;
+                            state = LogosState::state10240;
+                        }
+                        Some(225u8..=236u8) | Some(238u8..=239u8) => {
+                            offset += 1;
+                            state = LogosState::state10752;
+                        }
+                        Some(237u8) => {
+                            offset += 1;
+                            state = LogosState::state6656;
+                        }
+                        Some(240u8) => {
+                            offset += 1;
+                            state = LogosState::state5120;
+                        }
+                        Some(241u8..=243u8) => {
+                            offset += 1;
+                            state = LogosState::state5632;
+                        }
+                        Some(244u8) => {
+                            offset += 1;
+                            state = LogosState::state6144;
+                        }
+                        None if lex.offset() == offset => return None,
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state5120 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=143u8) | Some(192u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(144u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state1536_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state5632 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=127u8) | Some(192u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(128u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state1536_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state6144 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=127u8) | Some(144u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(128u8..=143u8) => {
+                            offset += 1;
+                            state = LogosState::state1536_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state6656 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=127u8) | Some(160u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(128u8..=159u8) => {
+                            offset += 1;
+                            state = LogosState::state2560_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state7168 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state4096_ctx1;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state4096_ctx1;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state7680_ctx2 => {
+                    match lex.read::<u8>(offset) {
+                        Some(128u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state8192_ctx2;
+                        }
+                        other => {
+                            return Some(Ok(Token::Any));
+                        }
+                    }
+                }
+                LogosState::state8192_ctx2 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state2048_ctx1;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state2048_ctx1;
+                        }
+                        other => {
+                            return Some(Ok(Token::Any));
+                        }
+                    }
+                }
+                LogosState::state8704 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state3584_ctx0;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state3584_ctx0;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state9216 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state9728 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=127u8) | Some(192u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(128u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state3072_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state10240 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=159u8) | Some(192u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(160u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state2560_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state10752 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=127u8) | Some(192u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        Some(128u8..=191u8) => {
+                            offset += 1;
+                            state = LogosState::state2560_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
