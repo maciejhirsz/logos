@@ -110,13 +110,13 @@ impl<'a> Generator<'a> {
                 error.into()
             },
             None => quote!{
-                <#this as Logos>::Error::default()
+                <#this as Logos<'s>>::Error::default()
             },
         };
 
         quote! {
             #[inline]
-            fn make_error<'s>(lex: &mut Lexer<'s>) -> <#this as Logos<'s>>::Error {
+            fn make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
                 #body
             }
         }
@@ -202,8 +202,8 @@ impl<'a> Generator<'a> {
         } else {
             let this = self.this;
             quote! {
-                fn #this_ident<'s>(lex: &mut Lexer<'s>, mut offset: usize)
-                    -> Option<Result<#this, <#this as Logos<'s>>::Error>> {
+                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize)
+                    -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
                     #body
                 }
             }

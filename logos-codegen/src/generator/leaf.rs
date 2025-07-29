@@ -32,7 +32,7 @@ impl Generator<'_> {
                 // TODO: shouldn't copy this callback code for every accept state?
                 let decl = quote! {
                     #[inline]
-                    fn callback<'s>(#arg: &mut Lexer<'s>) -> #ret + use<'s> {
+                    fn callback<'s>(#arg: &mut _Lexer<'s>) -> #ret + use<'s> {
                         #body
                     }
                 };
