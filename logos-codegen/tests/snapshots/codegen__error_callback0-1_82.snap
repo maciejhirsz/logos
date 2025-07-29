@@ -1,5 +1,0 @@
----
-source: logos-codegen/tests/codegen.rs
-expression: generated
----
-impl < 's > :: logos :: Logos < 's > for TokenA { type Error = & 'static str ; type Extras = Vec <&'static str > ; type Source = str ; fn lex (lex : & mut :: logos :: Lexer < 's , Self >) -> std :: option :: Option < std :: result :: Result < Self , Self :: Error >> { use :: logos :: internal :: { LexerInternal , CallbackRetVal , CallbackResult , SkipRetVal , SkipResult , } ; use :: logos :: Logos ; type Error = & 'static str ; type Lexer < 's > = :: logos :: Lexer < 's , TokenA > ; # [inline] fn make_error < 's > (lex : & mut Lexer < 's >) -> < TokenA as Logos < 's >> :: Error { let lex = lex ; let error = { lex . extras . push ("a") ; "a" } ; error . into () } # [derive (Clone , Copy)] enum LogosState { State0 } const START : LogosState = LogosState :: State0 ; let mut state = START ; let mut offset = lex . offset () ; loop { match state { LogosState :: State0 => { match lex . read :: < u8 > (offset) { None => return None , other => { lex . end_to_boundary (offset + if other . is_some () { 1 } else { 0 }) ; return Some (Err (make_error (lex))) ; } } } } } } }

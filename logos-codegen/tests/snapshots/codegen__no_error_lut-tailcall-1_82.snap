@@ -1,0 +1,420 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = [u8];
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+        use ::logos::internal::{
+            LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
+        };
+        use std::result::Result as _Result;
+        use std::option::Option as _Option;
+        use ::logos::Logos;
+        type _Lexer<'s> = ::logos::Lexer<'s, Token>;
+        #[inline]
+        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+            <Token as Logos<'s>>::Error::default()
+        }
+        fn state1024_ctx2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                other => {
+                    return Some(Ok(Token::Any));
+                }
+            }
+        }
+        fn state1536_ctx2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                Some(128u8..=191u8) => {
+                    offset += 1;
+                    return state7680_ctx2(lex, offset);
+                }
+                other => {
+                    return Some(Ok(Token::Any));
+                }
+            }
+        }
+        fn state2048_ctx1<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                other => {
+                    return Some(Ok(Token::AnyUnicode));
+                }
+            }
+        }
+        fn state2560_ctx2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                Some(128u8..=191u8) => {
+                    offset += 1;
+                    return state8192_ctx2(lex, offset);
+                }
+                other => {
+                    return Some(Ok(Token::Any));
+                }
+            }
+        }
+        fn state3072_ctx2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                Some(0u8..=255u8) => {
+                    offset += 1;
+                    return state2048_ctx1(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state2048_ctx1(lex, offset);
+                }
+                other => {
+                    return Some(Ok(Token::Any));
+                }
+            }
+        }
+        fn state3584_ctx0<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                other => {
+                    return Some(Ok(Token::Newline));
+                }
+            }
+        }
+        fn state4096_ctx1<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset - 1);
+            match lex.read::<u8>(offset) {
+                other => {
+                    return Some(Ok(Token::AnyUnicode));
+                }
+            }
+        }
+        fn state4608<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=9u8) | Some(11u8..=127u8) => {
+                    offset += 1;
+                    return state7168(lex, offset);
+                }
+                Some(10u8) => {
+                    offset += 1;
+                    return state8704(lex, offset);
+                }
+                Some(128u8..=193u8) | Some(245u8..=255u8) => {
+                    offset += 1;
+                    return state9216(lex, offset);
+                }
+                Some(194u8..=223u8) => {
+                    offset += 1;
+                    return state9728(lex, offset);
+                }
+                Some(224u8) => {
+                    offset += 1;
+                    return state10240(lex, offset);
+                }
+                Some(225u8..=236u8) | Some(238u8..=239u8) => {
+                    offset += 1;
+                    return state10752(lex, offset);
+                }
+                Some(237u8) => {
+                    offset += 1;
+                    return state6656(lex, offset);
+                }
+                Some(240u8) => {
+                    offset += 1;
+                    return state5120(lex, offset);
+                }
+                Some(241u8..=243u8) => {
+                    offset += 1;
+                    return state5632(lex, offset);
+                }
+                Some(244u8) => {
+                    offset += 1;
+                    return state6144(lex, offset);
+                }
+                None if lex.offset() == offset => return None,
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state5120<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=143u8) | Some(192u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(144u8..=191u8) => {
+                    offset += 1;
+                    return state1536_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state5632<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=127u8) | Some(192u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(128u8..=191u8) => {
+                    offset += 1;
+                    return state1536_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state6144<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=127u8) | Some(144u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(128u8..=143u8) => {
+                    offset += 1;
+                    return state1536_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state6656<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=127u8) | Some(160u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(128u8..=159u8) => {
+                    offset += 1;
+                    return state2560_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state7168<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=255u8) => {
+                    offset += 1;
+                    return state4096_ctx1(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state4096_ctx1(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state7680_ctx2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(128u8..=191u8) => {
+                    offset += 1;
+                    return state8192_ctx2(lex, offset);
+                }
+                other => {
+                    return Some(Ok(Token::Any));
+                }
+            }
+        }
+        fn state8192_ctx2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=255u8) => {
+                    offset += 1;
+                    return state2048_ctx1(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state2048_ctx1(lex, offset);
+                }
+                other => {
+                    return Some(Ok(Token::Any));
+                }
+            }
+        }
+        fn state8704<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=255u8) => {
+                    offset += 1;
+                    return state3584_ctx0(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state3584_ctx0(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state9216<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state9728<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=127u8) | Some(192u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(128u8..=191u8) => {
+                    offset += 1;
+                    return state3072_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state10240<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=159u8) | Some(192u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(160u8..=191u8) => {
+                    offset += 1;
+                    return state2560_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        fn state10752<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            match lex.read::<u8>(offset) {
+                Some(0u8..=127u8) | Some(192u8..=255u8) => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                Some(128u8..=191u8) => {
+                    offset += 1;
+                    return state2560_ctx2(lex, offset);
+                }
+                None => {
+                    offset += 1;
+                    return state1024_ctx2(lex, offset);
+                }
+                other => {
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(make_error(lex)));
+                }
+            }
+        }
+        state4608(lex, lex.offset())
+    }
+}

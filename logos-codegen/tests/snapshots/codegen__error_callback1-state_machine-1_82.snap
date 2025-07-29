@@ -1,0 +1,46 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for TokenA {
+    type Error = &'static str;
+    type Extras = Vec<&'static str>;
+    type Source = str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+        use ::logos::internal::{
+            LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
+        };
+        use std::result::Result as _Result;
+        use std::option::Option as _Option;
+        use ::logos::Logos;
+        type _Lexer<'s> = ::logos::Lexer<'s, TokenA>;
+        #[derive(Clone, Copy)]
+        enum LogosState {
+            state0,
+        }
+        #[inline]
+        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <TokenA as Logos<'s>>::Error {
+            let error = callback0(lex);
+            error.into()
+        }
+        let mut state = LogosState::state0;
+        let mut offset = lex.offset();
+        loop {
+            match state {
+                LogosState::state0 => {
+                    match lex.read::<u8>(offset) {
+                        None if lex.offset() == offset => return None,
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

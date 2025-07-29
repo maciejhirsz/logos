@@ -1,5 +1,6 @@
 use insta::assert_snapshot;
 use std::{error::Error, path::PathBuf};
+use syn::parse_file;
 
 #[rstest::rstest]
 #[case("simple")]
@@ -10,6 +11,14 @@ use std::{error::Error, path::PathBuf};
 #[case("error_callback1")]
 #[case("error_callback_failure")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
+    let rust_ver = if cfg!(rust_1_82) { "1_82" } else { "pre_1_82" };
+
+    let codegen_alg = if cfg!(feature = "state_machine_codegen") {
+        "state_machine"
+    } else {
+        "tailcall"
+    };
+
     let mut fixture_dir = PathBuf::new();
     fixture_dir.push(env!("CARGO_MANIFEST_DIR"));
     fixture_dir.push("tests");
@@ -22,11 +31,10 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
 
     let generated = logos_codegen::generate(input.parse()?).to_string();
 
-    if cfg!(rust_1_82) {
-        assert_snapshot!(format!("{fixture}-1_82"), generated);
-    } else {
-        assert_snapshot!(format!("{fixture}-pre_1_82"), generated);
-    }
+    let formatted =
+        prettyplease::unparse(&parse_file(&generated).expect("Logos output is unparseable"));
+
+    assert_snapshot!(format!("{fixture}-{codegen_alg}-{rust_ver}"), formatted);
 
     Ok(())
 }

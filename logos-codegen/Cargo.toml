@@ -12,6 +12,7 @@ syn = { version = "2.0.13", features = ["full"] }
 pretty_assertions = "1.4.0"
 rstest = "0.23.0"
 insta = "1.41.1"
+prettyplease = "0.2.36"
 
 [build-dependencies]
 rustc_version = "0.4.1"

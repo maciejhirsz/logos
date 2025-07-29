@@ -31,7 +31,13 @@ pub struct Generator<'a> {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(config: Config, name: &'a Ident, this: &'a TokenStream, graph: &'a Graph, error_callback: &'a Option<Callback>) -> Self {
+    pub fn new(
+        config: Config,
+        name: &'a Ident,
+        this: &'a TokenStream,
+        graph: &'a Graph,
+        error_callback: &'a Option<Callback>,
+    ) -> Self {
         let mut idents = Map::default();
 
         for state in graph.get_states() {
@@ -104,12 +110,12 @@ impl<'a> Generator<'a> {
                 let error = #label(lex);
                 error.into()
             },
-            Some(Callback::Inline(InlineCallback { arg, body, .. })) =>  quote! {
+            Some(Callback::Inline(InlineCallback { arg, body, .. })) => quote! {
                 let #arg = lex;
                 let error = { #body };
                 error.into()
             },
-            None => quote!{
+            None => quote! {
                 <#this as Logos<'s>>::Error::default()
             },
         };

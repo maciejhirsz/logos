@@ -781,6 +781,7 @@ dependencies = [
  "assert_fs",
  "clap 3.2.25",
  "fs-err",
+ "insta",
  "logos-codegen",
  "predicates 2.1.5",
  "proc-macro2",
@@ -795,6 +796,7 @@ dependencies = [
  "insta",
  "lazy_static",
  "pretty_assertions",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "regex-automata 0.4.9",
@@ -939,6 +941,16 @@ checksum = "3ae130e2f271fbc2ac3a40fb1d07180839cdbbe443c7a27e1e3c13c5cac0116d"
 dependencies = [
  "diff",
  "yansi",
+]
+
+[[package]]
+name = "prettyplease"
+version = "0.2.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff24dfcda44452b9816fff4cd4227e1bb73ff5a2f1bc1105aa92fb8565ce44d2"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.104",
 ]
 
 [[package]]

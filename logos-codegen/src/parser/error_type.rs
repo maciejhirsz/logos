@@ -13,7 +13,10 @@ pub struct ErrorType {
 
 impl Default for ErrorType {
     fn default() -> Self {
-        ErrorType { ty: quote::quote!(()), callback: None }
+        ErrorType {
+            ty: quote::quote!(()),
+            callback: None,
+        }
     }
 }
 

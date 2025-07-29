@@ -242,7 +242,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Parsing additional options (extras, source, ...)");
 
-    let ErrorType { ty: error_type, callback: error_callback } = parser.error_type.take().unwrap_or_default();
+    let ErrorType {
+        ty: error_type,
+        callback: error_callback,
+    } = parser.error_type.take().unwrap_or_default();
     let extras = parser.extras.take();
     let non_utf8_pats = pats
         .iter()

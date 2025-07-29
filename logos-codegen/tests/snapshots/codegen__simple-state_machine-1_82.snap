@@ -1,0 +1,107 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+        use ::logos::internal::{
+            LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
+        };
+        use std::result::Result as _Result;
+        use std::option::Option as _Option;
+        use ::logos::Logos;
+        type _Lexer<'s> = ::logos::Lexer<'s, Token>;
+        #[derive(Clone, Copy)]
+        enum LogosState {
+            state1024_ctx0,
+            state1536,
+            state2048,
+            state2560,
+            state3072,
+        }
+        #[inline]
+        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+            <Token as Logos<'s>>::Error::default()
+        }
+        let mut state = LogosState::state1536;
+        let mut offset = lex.offset();
+        loop {
+            match state {
+                LogosState::state1024_ctx0 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            return Some(Ok(Token::Letter));
+                        }
+                    }
+                }
+                LogosState::state1536 => {
+                    match lex.read::<u8>(offset) {
+                        Some(b'a') => {
+                            offset += 1;
+                            state = LogosState::state3072;
+                        }
+                        None if lex.offset() == offset => return None,
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state2048 => {
+                    match lex.read::<u8>(offset) {
+                        Some(b'z') => {
+                            offset += 1;
+                            state = LogosState::state2560;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state2560 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx0;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx0;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state3072 => {
+                    match lex.read::<u8>(offset) {
+                        Some(b'-') => {
+                            offset += 1;
+                            state = LogosState::state2048;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

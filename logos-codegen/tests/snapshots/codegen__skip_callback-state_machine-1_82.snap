@@ -1,0 +1,310 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = &'static str;
+    type Extras = Vec<&'static str>;
+    type Source = str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+        use ::logos::internal::{
+            LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
+        };
+        use std::result::Result as _Result;
+        use std::option::Option as _Option;
+        use ::logos::Logos;
+        type _Lexer<'s> = ::logos::Lexer<'s, Token>;
+        #[derive(Clone, Copy)]
+        enum LogosState {
+            state1024_ctx5,
+            state1536_ctx4,
+            state2048_ctx3,
+            state2560_ctx2,
+            state3072_ctx1,
+            state3584_ctx0,
+            state4096,
+            state4608,
+            state5120,
+            state5632,
+            state6144,
+            state6656,
+            state7168,
+        }
+        #[inline]
+        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+            <Token as Logos<'s>>::Error::default()
+        }
+        let mut state = LogosState::state4096;
+        let mut offset = lex.offset();
+        loop {
+            match state {
+                LogosState::state1024_ctx5 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            let action = SkipRetVal::<
+                                's,
+                                Token,
+                            >::construct(labelled_skip_result_callback(lex));
+                            match action {
+                                SkipResult::Skip => {
+                                    lex.trivia();
+                                    offset = lex.offset();
+                                    state = LogosState::state4096;
+                                }
+                                SkipResult::Error(err) => {
+                                    return Some(Err(err));
+                                }
+                            }
+                        }
+                    }
+                }
+                LogosState::state1536_ctx4 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            let action = SkipRetVal::<
+                                's,
+                                Token,
+                            >::construct(labelled_result_callback(lex));
+                            match action {
+                                SkipResult::Skip => {
+                                    lex.trivia();
+                                    offset = lex.offset();
+                                    state = LogosState::state4096;
+                                }
+                                SkipResult::Error(err) => {
+                                    return Some(Err(err));
+                                }
+                            }
+                        }
+                    }
+                }
+                LogosState::state2048_ctx3 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            let action = SkipRetVal::<
+                                's,
+                                Token,
+                            >::construct(labelled_skip_callback(lex));
+                            match action {
+                                SkipResult::Skip => {
+                                    lex.trivia();
+                                    offset = lex.offset();
+                                    state = LogosState::state4096;
+                                }
+                                SkipResult::Error(err) => {
+                                    return Some(Err(err));
+                                }
+                            }
+                        }
+                    }
+                }
+                LogosState::state2560_ctx2 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            let action = SkipRetVal::<
+                                's,
+                                Token,
+                            >::construct(labelled_callback(lex));
+                            match action {
+                                SkipResult::Skip => {
+                                    lex.trivia();
+                                    offset = lex.offset();
+                                    state = LogosState::state4096;
+                                }
+                                SkipResult::Error(err) => {
+                                    return Some(Err(err));
+                                }
+                            }
+                        }
+                    }
+                }
+                LogosState::state3072_ctx1 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            #[inline]
+                            fn callback<'s>(
+                                lex: &mut _Lexer<'s>,
+                            ) -> impl SkipRetVal<'s, Token> + use<'s> {
+                                lex.extras.push("inline_callback")
+                            }
+                            let action = SkipRetVal::<
+                                's,
+                                Token,
+                            >::construct(callback(lex));
+                            match action {
+                                SkipResult::Skip => {
+                                    lex.trivia();
+                                    offset = lex.offset();
+                                    state = LogosState::state4096;
+                                }
+                                SkipResult::Error(err) => {
+                                    return Some(Err(err));
+                                }
+                            }
+                        }
+                    }
+                }
+                LogosState::state3584_ctx0 => {
+                    lex.end(offset - 1);
+                    match lex.read::<u8>(offset) {
+                        other => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state4096;
+                        }
+                    }
+                }
+                LogosState::state4096 => {
+                    match lex.read::<u8>(offset) {
+                        Some(b'a') => {
+                            offset += 1;
+                            state = LogosState::state5120;
+                        }
+                        Some(b'b') => {
+                            offset += 1;
+                            state = LogosState::state5632;
+                        }
+                        Some(b'c') => {
+                            offset += 1;
+                            state = LogosState::state6144;
+                        }
+                        Some(b'd') => {
+                            offset += 1;
+                            state = LogosState::state6656;
+                        }
+                        Some(b'e'..=b'f') => {
+                            offset += 1;
+                            state = LogosState::state7168;
+                        }
+                        Some(b'g'..=b'h') => {
+                            offset += 1;
+                            state = LogosState::state4608;
+                        }
+                        None if lex.offset() == offset => return None,
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state4608 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx5;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1024_ctx5;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state5120 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state3584_ctx0;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state3584_ctx0;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state5632 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state3072_ctx1;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state3072_ctx1;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state6144 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state2560_ctx2;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state2560_ctx2;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state6656 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state2048_ctx3;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state2048_ctx3;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+                LogosState::state7168 => {
+                    match lex.read::<u8>(offset) {
+                        Some(0u8..=255u8) => {
+                            offset += 1;
+                            state = LogosState::state1536_ctx4;
+                        }
+                        None => {
+                            offset += 1;
+                            state = LogosState::state1536_ctx4;
+                        }
+                        other => {
+                            lex.end_to_boundary(
+                                offset + if other.is_some() { 1 } else { 0 },
+                            );
+                            return Some(Err(make_error(lex)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -76,7 +76,6 @@ pub trait Logos<'source>: Sized {
     ) -> Lexer<'source, Self> {
         Lexer::with_extras(source, extras)
     }
-
 }
 
 /// Type that can be returned from a callback, informing the `Lexer`, to skip
