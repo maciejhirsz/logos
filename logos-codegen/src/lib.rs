@@ -49,6 +49,7 @@ const REGEX_ATTR: &str = "regex";
 
 /// Generate a `Logos` implementation for the given struct, provided as a stream of rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
+    // TODO: debug statements are printing large debug reprs. Clean them up
     debug!("Reading input token streams");
 
     let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
@@ -339,7 +340,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let generator = Generator::new(config, name, &this, &graph, &error_callback);
 
     let body = generator.generate();
-    let imp = impl_logos(quote! {
+    impl_logos(quote! {
         use #logos_path::internal::{
             LexerInternal,
             CallbackRetVal,
@@ -354,11 +355,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         type _Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         #body
-    });
-
-    // eprintln!("{}", imp);
-    // TokenStream::new()
-    imp
+    })
 }
 
 /// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.

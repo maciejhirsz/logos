@@ -26,6 +26,8 @@ impl Errors {
     pub fn render(self) -> Option<TokenStream> {
         let errors = self.collected;
 
+        // Each of the SpannedErrors get rendered into a compile_error!()
+        // invocation (see ToTokens implementation below).
         match errors.len() {
             0 => None,
             _ => Some(quote! {

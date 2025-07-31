@@ -24,7 +24,9 @@ pub struct Generator<'a> {
     this: &'a TokenStream,
     /// Reference to the graph with all of the nodes
     graph: &'a Graph,
-    /// Function name identifiers
+    /// Mapping of states to their identifiers.
+    /// Identifiers are enum variants in the state machine codegen
+    /// and function names in the tailcall codegen.
     idents: Map<State, Ident>,
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
@@ -58,6 +60,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// Generates the implementation (body) of the [Logos::lex] function
     pub fn generate(self) -> TokenStream {
         let mut states = self.graph.get_states().collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
@@ -102,6 +105,9 @@ impl<'a> Generator<'a> {
         self.idents.get(state).expect("Unreachable state found")
     }
 
+    // Generates the definition for the `make_error` function. This can be
+    // specified using the `callback` argument of the `error` attribute.
+    // Otherwise, it defaults to the `Default::default()`value.
     fn generate_error_cb(&self) -> TokenStream {
         let this = self.this;
 
@@ -128,6 +134,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// Generates the code to transition to a new state.
     fn state_transition(&self, state: &State) -> TokenStream {
         let state_ident = self.get_ident(&state);
         match self.config.use_state_machine_codegen {
@@ -136,17 +143,30 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// Generates the body of a state. This is a match statement over
+    /// the next byte, which determines the next state.
+    ///
+    /// It also instantiates the relevant leaf, if `state` has a context.
+    ///
+    /// In state machine codegen, the body is wrapped in a match arm for the
+    /// `state`'s variant. In tailcall codegen, the body is inside of
+    /// `state`'s function.
     fn generate_state(&self, state: State) -> TokenStream {
         let this_ident = self.get_ident(&state);
         let mut setup = TokenStream::new();
         let state_data = self.graph.get_state_data(&state);
 
+        // If we are in a match state, update the current token to
+        // end at the current offset - 1.
+        // The 1 comes from the 1 byte delayed match behavior
+        // of the regex-automata crate.
         if let StateType::Accept(_) = state_data.state_type {
             setup.append_all(quote! {
                 lex.end(offset - 1);
             })
         };
 
+        // Generate a match arm for each byte class, with each body being a state transition
         let mut inner_cases = TokenStream::new();
         for (byte_class, next_state) in &state_data.normal {
             let patterns = byte_class.ranges.iter().map(|range| {
@@ -167,6 +187,7 @@ impl<'a> Generator<'a> {
             });
         }
 
+        // Add special handling for end of input, both within a token and between them
         if state == self.graph.root() {
             // If we just started lexing and are at the end of input, return None
             inner_cases.append_all(quote! { None if lex.offset() == offset => return None, });
@@ -181,10 +202,13 @@ impl<'a> Generator<'a> {
             });
         }
 
+        // If nothing else applies, return the current token (active context)
+        // or an error (no active context).
         let otherwise = if let Some(leaf_id) = state.context {
             self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
             // if we reached eoi, we are already at the end of the input
+            // so don't add 1 to offset.
             quote! {
                 lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
                 return Some(Err(make_error(lex)));
@@ -199,6 +223,7 @@ impl<'a> Generator<'a> {
             }
         };
 
+        // Wrap body in a match arm or function depending on the current codegen
         if self.config.use_state_machine_codegen {
             quote! {
                 LogosState::#this_ident => {
@@ -224,6 +249,7 @@ macro_rules! match_quote {
     }}
 }
 
+/// Converts a byte to a byte literal that can be used to match it
 fn byte_to_tokens(byte: u8) -> TokenStream {
     match_quote! {
         byte;
