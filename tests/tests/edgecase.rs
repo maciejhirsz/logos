@@ -320,8 +320,6 @@ mod colors {
     }
 }
 
-// TODO: Type Parameter support
-#[cfg(any())]
 mod type_params {
     use super::*;
     use std::num::ParseIntError;
@@ -413,9 +411,9 @@ mod priority_disambiguate_2 {
     }
 }
 
-// TODO: This is a case where behavior has changed with the regex engine
-// Also, the behavior was wrong here, as it should be impossible for the
-// pattern to match "ffoof"
+// This is a case where behavior has changed with the new regex engine
+// Also, the behavior used to be incorrect here, as it should be impossible
+// for the pattern to match "ffoof"
 mod loop_in_loop {
     use super::*;
 

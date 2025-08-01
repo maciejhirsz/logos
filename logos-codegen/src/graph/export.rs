@@ -63,7 +63,8 @@ impl ExportFormat for Dot {
 struct Mermaid;
 
 impl ExportFormat for Mermaid {
-    // TODO: This should really use stateDiagram instead
+    // TODO: This should really use the mermaid diagram type
+    // `stateDiagram` instead. since it more closely aligns with what we are representing.
     fn write_header(s: &mut String) -> std::fmt::Result {
         writeln!(s, "flowchart TB")
     }
