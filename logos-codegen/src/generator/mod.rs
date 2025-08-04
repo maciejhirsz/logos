@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
@@ -40,15 +38,10 @@ impl<'a> Generator<'a> {
         graph: &'a Graph,
         error_callback: &'a Option<Callback>,
     ) -> Self {
-        let mut idents = Map::default();
-
-        for state in graph.get_states() {
-            let mut name = format!("state{}", state.dfa_id.as_usize());
-            if let Some(accept) = state.context {
-                write!(name, "_ctx{}", accept.0).expect("Failed to write to string");
-            }
-            idents.insert(state, name.to_ident());
-        }
+        let idents = graph
+            .get_states()
+            .map(|state| (state, state.to_string().to_ident()))
+            .collect();
 
         Generator {
             config,

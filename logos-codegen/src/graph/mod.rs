@@ -90,6 +90,16 @@ impl State {
     }
 }
 
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "state{}", self.dfa_id.as_usize())?;
+        if let Some(accept) = self.context {
+            write!(f, "_ctx{}", accept.0)?
+        }
+        Ok(())
+    }
+}
+
 /// This struct includes all information that should be attached to [State] but does not uniquely
 /// identify State, which facilitates building a HashMap<State, StateData> structure.
 #[derive(Debug, Default)]
@@ -111,6 +121,24 @@ impl StateData {
             .iter()
             .map(|(_bc, s)| s.clone())
             .chain(self.eoi.iter().cloned())
+    }
+}
+
+impl fmt::Display for StateData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let StateType::Accept(leaf_id) = self.state_type {
+            write!(f, "Accept({})", leaf_id.0)?;
+        } else {
+            write!(f, "Normal")?;
+        }
+        if f.alternate() {
+            write!(f, " {{\n")?;
+            for (bc, state) in &self.normal {
+                write!(f, "  {} => {}\n", &bc.to_string(), &state)?;
+            }
+            write!(f, "}}")?;
+        }
+        Ok(())
     }
 }
 

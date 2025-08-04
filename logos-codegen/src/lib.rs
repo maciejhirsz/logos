@@ -49,7 +49,6 @@ const REGEX_ATTR: &str = "regex";
 
 /// Generate a `Logos` implementation for the given struct, provided as a stream of rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
-    // TODO: debug statements are printing large debug reprs. Clean them up
     debug!("Reading input token streams");
 
     let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
@@ -66,6 +65,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
     for attr in &mut item.attrs {
         parser.try_parse_logos(attr);
     }
+
+    debug!("Iterating through subpatterns and skips");
 
     let utf8_mode = parser
         .utf8_mode
@@ -252,7 +253,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
     }
 
-    debug!("Parsing additional options (extras, source, ...)");
+    debug!("Parsing additional options (extras, utf8, ...)");
 
     let ErrorType {
         ty: error_type,
@@ -302,7 +303,17 @@ pub fn generate(input: TokenStream) -> TokenStream {
         }
     };
 
-    debug!("Generating graph from pats:\n{pats:#?}");
+    if cfg!(feature = "debug") {
+        let leaves_rendered = pats
+            .iter()
+            .enumerate()
+            .map(|(leaf_id, leaf)| format!("  {}: {} (priority: {})", leaf_id, leaf, leaf.priority))
+            .collect::<Vec<_>>()
+            .join("\n");
+        debug!("Generated leaves:\n{leaves_rendered}");
+    }
+
+    debug!("Generating graph from leaves");
 
     let graph = match Graph::new(pats, config) {
         Ok(nfa) => nfa,
@@ -312,6 +323,25 @@ pub fn generate(input: TokenStream) -> TokenStream {
             return impl_logos(errors.render().unwrap());
         }
     };
+
+    debug!("Generated Automaton:\n{:?}", graph.dfa());
+
+    if cfg!(feature = "debug") {
+        let graph_rendered = graph
+            .get_states()
+            .map(|state| {
+                let transitions = format!("{:#}", graph.get_state_data(&state));
+                let indented = transitions
+                    .lines()
+                    .map(|line| format!("  {line}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                format!("  {} => {}", state, indented)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        debug!("Generated Graph:\n{graph_rendered}");
+    }
 
     if cfg!(feature = "debug") {
         if let Some(export_path) = parser.export_path.as_ref() {
@@ -357,7 +387,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         return impl_logos(errors);
     }
 
-    debug!("Generating code from graph:\n{:#?}", graph.dfa());
+    debug!("Generating code from graph");
 
     let config = crate::generator::Config {
         use_state_machine_codegen: cfg!(feature = "state_machine_codegen"),
@@ -455,7 +485,6 @@ fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<
             std::fs::create_dir_all(parent)?;
         }
 
-        // TODO: add some context to this error before returning?
         let s = if is_dot {
             graph.get_dot()
         } else {

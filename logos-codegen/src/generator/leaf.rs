@@ -41,6 +41,8 @@ impl Generator<'_> {
                 }
 
                 // TODO: shouldn't copy this callback code for every accept state?
+                // Fix this by instantiating the callback once, should implement that
+                // alongside adding LUTs during performance optimizations.
                 let decl = quote! {
                     #[inline]
                     fn callback<'s>(#arg: &mut _Lexer<'s>) -> #ret {
