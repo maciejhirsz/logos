@@ -51,9 +51,20 @@ impl<'s> ::logos::Logos<'s> for Token {
             { compile_error!("Invalid nested attribute") }
             {
                 compile_error!(
-                    "The following variants can all match simultaneously: `Leaf { pattern: Pattern { source: \"a\", hir: Literal(\"a\") }, span: Span, priority: 2, kind: Skip, callback: None }`, `Leaf { pattern: Pattern { source: \"a\", hir: Literal(\"a\") }, span: Span, priority: 2, kind: Skip, callback: Some(Inline(InlineCallback { arg: Ident(_), body: TokenStream [], span: Span })) }`, `Leaf { pattern: Pattern { source: \"a\", hir: Literal(\"a\") }, span: Span, priority: 2, kind: Unit(Ident(A)), callback: None }`"
+                    "The pattern #[regex(\"a\")] ::<skip> can match simultaneously with the following variants:\n  #[regex(\"a\")] ::<skip>\n  #[regex(\"a\")] ::A\n\n(all at the priority 2)"
+                )
+            }
+            {
+                compile_error!(
+                    "The pattern #[regex(\"a\")] ::<skip> can match simultaneously with the following variants:\n  #[regex(\"a\")] ::<skip>\n  #[regex(\"a\")] ::A\n\n(all at the priority 2)"
+                )
+            }
+            {
+                compile_error!(
+                    "The pattern #[regex(\"a\")] ::A can match simultaneously with the following variants:\n  #[regex(\"a\")] ::<skip>\n  #[regex(\"a\")] ::<skip>\n\n(all at the priority 2)"
                 )
             }
         }
+        unimplemented!()
     }
 }

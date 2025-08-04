@@ -225,7 +225,8 @@ mod tests {
             .map(|src| {
                 Leaf::new(
                     Span::call_site(),
-                    Pattern::compile(src, true, true, false).expect("Unable to compile pattern"),
+                    Pattern::compile(false, src, src.to_string(), true, false)
+                        .expect("Unable to compile pattern"),
                 )
             })
             .collect();

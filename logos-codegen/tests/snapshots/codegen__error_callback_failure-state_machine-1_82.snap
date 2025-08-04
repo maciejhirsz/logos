@@ -52,5 +52,6 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             { compile_error!("Error type can be defined only once") }
             { compile_error!("Previous definition here") }
         }
+        unimplemented!()
     }
 }

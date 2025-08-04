@@ -34,6 +34,8 @@ impl Errors {
                 fn _logos_derive_compile_errors() {
                     #(#errors)*
                 }
+
+                unimplemented!()
             }),
         }
     }

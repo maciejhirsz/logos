@@ -284,11 +284,13 @@ impl Graph {
         let nfa = NFA::compiler()
             .configure(nfa_config)
             .build_many_from_hir(&hirs)
-            .map_err(|err| format!("{}", err))?;
-        if nfa.has_empty() {
-            // TODO Better error handling
-            return Err(String::from("Regex includes a zero length match"));
-        }
+            .map_err(|err| {
+                format!(
+                    "Logos encountered an error compiling the NFA for this regex: {}",
+                    err
+                )
+            })?;
+
         let dfa_config = DFA::config()
             .accelerate(false)
             .byte_classes(false)
@@ -298,13 +300,26 @@ impl Graph {
         let dfa = DFA::builder()
             .configure(dfa_config)
             .build_from_nfa(&nfa)
-            .map_err(|err| format!("{}", err))?;
+            .map_err(|err| {
+                format!(
+                    "Logos encountered an error compiling the DFA for this regex: {}",
+                    err
+                )
+            })?;
 
-        let start_id = dfa.universal_start_state(Anchored::Yes).expect(
-            // TODO: clearer error message here, because we didn't explicitly disable lookbehind
-            // assertions
-            "Lookaround assertions are disabled, so there should be a universal start state",
-        );
+        let Some(start_id) = dfa.universal_start_state(Anchored::Yes) else {
+            return Err(concat!(
+                "This Regex is missing a universal start state, which is unsupported by logos. ",
+                "This is most likely do to a lookbehind assertion at the start of the regex."
+            )
+            .into());
+        };
+        if dfa.has_empty() {
+            return Err(
+                "This Regex may match an empty string, which is unsupported by logos.".into(),
+            );
+        }
+
         let root = State {
             dfa_id: start_id,
             context: None,
@@ -331,6 +346,7 @@ impl Graph {
             graph.edges.insert(state, state_data);
         }
 
+        // Future optimizations:
         // TODO: prune nodes that don't lead to any more accept states before reaching the dead
         // node (0)
         //

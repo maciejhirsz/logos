@@ -60,10 +60,29 @@ impl Subpatterns {
                 continue;
             };
 
+            // Test compile the subpattern for better error messages
             // Compile w/ unicode mode, since the top level flag will set it on or off anyway
-            if let Err(msg) = Pattern::compile(&subpattern.pattern, utf8_mode, true, false) {
-                errors.err(msg, pattern.span());
-                continue;
+            match Pattern::compile(
+                false,
+                &subpattern.pattern,
+                pattern.token().to_string(),
+                true,
+                false,
+            ) {
+                Err(msg) => {
+                    errors.err(msg, pattern.span());
+                    continue;
+                }
+                Ok(pat) => {
+                    let utf8_pat = pat.hir().properties().is_utf8();
+                    if utf8_mode && !utf8_pat {
+                        errors.err(format!(concat!(
+                            "UTF-8 mode is requested, but the subpattern {} = {} can match invalid utf8.\n",
+                            "You can disable UTF-8 mode with #[logos(utf8 = false)]"
+                        ), name, pat.source()), pattern.span());
+                        continue;
+                    }
+                }
             }
 
             if let Some(existing) = build.map.insert(name_string, subpattern) {

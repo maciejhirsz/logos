@@ -14,19 +14,29 @@ pub enum VariantKind {
     Skip,
 }
 
-#[derive(Debug, Clone)]
-pub struct Leaf {
-    pub pattern: Pattern,
-    pub span: Span,
-    pub priority: usize,
-    pub kind: VariantKind,
-    pub callback: Option<Callback>,
+impl Display for VariantKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            VariantKind::Unit(ident) => write!(f, "::{ident}"),
+            VariantKind::Value(ident, _) => write!(f, "::{ident}(_)"),
+            VariantKind::Skip => f.write_str("::<skip>"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub enum Callback {
     Label(TokenStream),
     Inline(InlineCallback),
+}
+
+impl Callback {
+    pub fn span(&self) -> Span {
+        match self {
+            Callback::Label(tokens) => tokens.span(),
+            Callback::Inline(inline) => inline.span,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -42,13 +52,13 @@ impl From<InlineCallback> for Callback {
     }
 }
 
-impl Callback {
-    pub fn span(&self) -> Span {
-        match self {
-            Callback::Label(tokens) => tokens.span(),
-            Callback::Inline(inline) => inline.span,
-        }
-    }
+#[derive(Debug, Clone)]
+pub struct Leaf {
+    pub pattern: Pattern,
+    pub span: Span,
+    pub priority: usize,
+    pub kind: VariantKind,
+    pub callback: Option<Callback>,
 }
 
 impl Leaf {
@@ -75,13 +85,9 @@ impl Leaf {
     }
 }
 
-impl Display for VariantKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            VariantKind::Unit(ident) => write!(f, "::{ident}"),
-            VariantKind::Value(ident, _) => write!(f, "::{ident}(_)"),
-            VariantKind::Skip => f.write_str("::<skip>"),
-        }
+impl fmt::Display for Leaf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.pattern, self.kind)
     }
 }
 

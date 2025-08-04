@@ -89,14 +89,19 @@ pub fn generate(input: TokenStream) -> TokenStream {
             continue;
         };
 
-        let pattern =
-            match Pattern::compile(&pattern_source, utf8_mode, skip.literal.unicode(), false) {
-                Ok(pattern) => pattern,
-                Err(err) => {
-                    parser.errors.err(err, skip.literal.span());
-                    continue;
-                }
-            };
+        let pattern = match Pattern::compile(
+            false,
+            &pattern_source,
+            skip.literal.token().to_string(),
+            skip.literal.unicode(),
+            false,
+        ) {
+            Ok(pattern) => pattern,
+            Err(err) => {
+                parser.errors.err(err, skip.literal.span());
+                continue;
+            }
+        };
 
         let default_priority = pattern.priority();
         pats.push(
@@ -150,12 +155,12 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 ERROR_ATTR => {
                     // TODO: Remove in future versions
                     parser.err(
-                        "\
-                        Since 0.13 Logos no longer requires the #[error] variant.\n\
-                        \n\
-                        For help with migration see release notes: \
-                        https://github.com/maciejhirsz/logos/releases\
-                        ",
+                        concat!(
+                            "Since 0.13 Logos no longer requires the #[error] variant.",
+                            "\n\n",
+                            "For help with migration see release notes: ",
+                            "https://github.com/maciejhirsz/logos/releases"
+                        ),
                         attr.span(),
                     );
                 }
@@ -171,8 +176,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     let pattern_res = if definition.ignore_flags.ignore_case {
                         let pattern_src = definition.literal.escape(true);
                         Pattern::compile(
+                            true,
                             &pattern_src,
-                            utf8_mode,
+                            definition.literal.token().to_string(),
                             definition.literal.unicode(),
                             true,
                         )
@@ -219,14 +225,19 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                     let unicode = definition.literal.unicode();
                     let ignore_case = definition.ignore_flags.ignore_case;
-                    let pattern =
-                        match Pattern::compile(&pattern_source, utf8_mode, unicode, ignore_case) {
-                            Ok(pattern) => pattern,
-                            Err(err) => {
-                                parser.err(err, definition.literal.span());
-                                continue;
-                            }
-                        };
+                    let pattern = match Pattern::compile(
+                        false,
+                        &pattern_source,
+                        definition.literal.token().to_string(),
+                        unicode,
+                        ignore_case,
+                    ) {
+                        Ok(pattern) => pattern,
+                        Err(err) => {
+                            parser.err(err, definition.literal.span());
+                            continue;
+                        }
+                    };
 
                     let default_priority = pattern.priority();
                     pats.push(
@@ -255,7 +266,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
     if utf8_mode && !non_utf8_pats.is_empty() {
         // If utf8 mode is specified, make sure no patterns match illegal utf8
         for leaf in non_utf8_pats {
-            parser.err(format!("Utf8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8", leaf.pattern.source(), leaf.kind), leaf.span);
+            parser.err(format!(concat!(
+                "UTF-8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8.\n",
+                "You can disable UTF-8 mode with #[logos(utf8 = false)]"
+            ), leaf.pattern.source(), leaf.kind), leaf.span);
         }
     };
 
@@ -313,19 +327,30 @@ pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Checking if any two tokens have the same priority");
 
     for DisambiguationError(matching) in graph.errors() {
-        // TODO: better error message pointing to each variant
-        let first = *matching
-            .first()
-            .expect("DisambiguationError must have at least 2 leaves");
-        let variants = matching
-            .into_iter()
-            .map(|leaf_id| format!("`{:?}`", graph.leaves()[leaf_id.0]))
-            .collect::<Vec<_>>()
-            .join(", ");
-        parser.err(
-            format!("The following variants can all match simultaneously: {variants}"),
-            graph.leaves()[first.0].span,
-        );
+        for leaf_id in &matching {
+            let leaf = &graph.leaves()[leaf_id.0];
+            let priority = leaf.priority;
+
+            let matching = matching
+                .iter()
+                .filter(|&id| id != leaf_id)
+                .map(|matchind_id| format!("  {}", &graph.leaves()[matchind_id.0]))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            parser.err(
+                format!(
+                    concat!(
+                        "The pattern {} can match simultaneously with the following variants:\n",
+                        "{}\n",
+                        "\n",
+                        "(all at the priority {})"
+                    ),
+                    leaf, matching, priority
+                ),
+                leaf.span,
+            );
+        }
     }
 
     if let Some(errors) = parser.errors.render() {

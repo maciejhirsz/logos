@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::parser::Literal;
 
 use regex_syntax::{
@@ -7,7 +9,11 @@ use regex_syntax::{
 
 #[derive(Clone, Debug)]
 pub struct Pattern {
+    /// This field is only used to display #[regex] or #[token] in the display impl
+    is_literal: bool,
+    /// The original source literal for this pattern
     source: String,
+    /// The parsed regex HIR for this pattern
     hir: Hir,
 }
 
@@ -22,21 +28,26 @@ impl Pattern {
     /// example, if your input is a `[u8]`, but you want to match specific parts of it as UTF-8, you
     /// would have only `unicode` set.
     pub fn compile(
-        source: &str,
-        utf8_mode: bool,
+        is_literal: bool,
+        regex: &str,
+        source: String,
         unicode: bool,
         ignore_case: bool,
     ) -> Result<Pattern, String> {
+        // UTF-8 mode is disabled here so we can give prettier error messages
+        // later in the compilation process. See logos_codegen/src/lib.rs for
+        // the utf8 checking.
         let hir = ParserBuilder::new()
-            .utf8(utf8_mode)
+            .utf8(false)
             .unicode(unicode)
             .case_insensitive(ignore_case)
             .build()
-            .parse(source)
+            .parse(regex)
             .map_err(|err| format!("{}", err))?;
 
         Ok(Pattern {
-            source: String::from(source),
+            is_literal,
+            source,
             hir,
         })
     }
@@ -51,6 +62,7 @@ impl Pattern {
         };
 
         Ok(Pattern {
+            is_literal: true,
             source: source.token().to_string(),
             hir,
         })
@@ -69,8 +81,7 @@ impl Pattern {
             // slightly higher complexity for non-ascii unicode patterns.
             HirKind::Literal(literal) => 2 * literal.0.len(),
             HirKind::Class(_) => 2,
-            // TODO: better error handling
-            HirKind::Look(_) => unimplemented!("Lookarounds are not implemented"),
+            HirKind::Look(_) => 0,
             HirKind::Repetition(repetition) => {
                 repetition.min as usize * Self::complexity(&*repetition.sub)
             }
@@ -88,5 +99,15 @@ impl Pattern {
     /// Get a reference to the original source string of the pattern
     pub fn source(&self) -> &str {
         &self.source
+    }
+}
+
+impl fmt::Display for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_literal {
+            write!(f, "#[token({})]", self.source)
+        } else {
+            write!(f, "#[regex({})]", self.source)
+        }
     }
 }
