@@ -4,12 +4,9 @@ use std::path::Path;
 
 use insta::assert_snapshot;
 
-#[test]
-fn test_complex() {
-    test_export("complex");
-}
-
-fn test_export(case: &str) {
+#[rstest::rstest]
+#[case("complex")]
+fn test_export(#[case] case: &str) {
     let mut input_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/export");
     input_path.push(case);
     input_path.push("input.rs");
