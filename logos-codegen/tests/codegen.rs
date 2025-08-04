@@ -10,6 +10,8 @@ use syn::parse_file;
 #[case("error_callback0")]
 #[case("error_callback1")]
 #[case("error_callback_failure")]
+#[case("prio_conflict")]
+#[case("illegal_utf8")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let rust_ver = if cfg!(rust_1_82) { "1_82" } else { "pre_1_82" };
 
@@ -19,15 +21,12 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
         "tailcall"
     };
 
-    let mut fixture_dir = PathBuf::new();
-    fixture_dir.push(env!("CARGO_MANIFEST_DIR"));
-    fixture_dir.push("tests");
-    fixture_dir.push("data");
-    fixture_dir.push("codegen");
-    fixture_dir.push(fixture);
+    let input_dir_path = [env!("CARGO_MANIFEST_DIR"), "tests", "data", "codegen"]
+        .iter()
+        .collect::<PathBuf>();
 
-    let input = fixture_dir.join("input.rs");
-    let input = std::fs::read_to_string(input)?;
+    let input_path = input_dir_path.join(format!("{}.rs", fixture));
+    let input = std::fs::read_to_string(input_path)?;
 
     let generated = logos_codegen::generate(input.parse()?).to_string();
 
