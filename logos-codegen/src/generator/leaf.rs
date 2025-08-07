@@ -91,7 +91,7 @@ impl Generator<'_> {
                         return Some(Err(err));
                     },
                     CallbackResult::DefaultError => {
-                        return Some(Err(make_error(lex)));
+                        return Some(Err(_make_error(lex)));
                     },
                 }
             }

@@ -21,7 +21,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             state0,
         }
         #[inline]
-        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <TokenA as Logos<'s>>::Error {
+        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <TokenA as Logos<'s>>::Error {
             let error = callback0(lex);
             error.into()
         }
@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
-                            return Some(Err(make_error(lex)));
+                            return Some(Err(_make_error(lex)));
                         }
                     }
                 }

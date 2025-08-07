@@ -54,7 +54,7 @@ impl<'a> Generator<'a> {
     }
 
     /// Generates the implementation (body) of the [Logos::lex] function
-    pub fn generate(self) -> TokenStream {
+    pub fn generate(&mut self) -> TokenStream {
         let mut states = self.graph.get_states().collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
         states.sort_unstable();
@@ -98,7 +98,7 @@ impl<'a> Generator<'a> {
         self.idents.get(state).expect("Unreachable state found")
     }
 
-    // Generates the definition for the `make_error` function. This can be
+    // Generates the definition for the `_make_error` function. This can be
     // specified using the `callback` argument of the `error` attribute.
     // Otherwise, it defaults to the `Default::default()`value.
     fn generate_error_cb(&self) -> TokenStream {
@@ -121,7 +121,7 @@ impl<'a> Generator<'a> {
 
         quote! {
             #[inline]
-            fn make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
+            fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
                 #body
             }
         }
@@ -204,7 +204,7 @@ impl<'a> Generator<'a> {
             // so don't add 1 to offset.
             quote! {
                 lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                return Some(Err(make_error(lex)));
+                return Some(Err(_make_error(lex)));
             }
         };
 

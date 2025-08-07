@@ -21,7 +21,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         use std::result::Result as _Result;
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         #[inline]
-        fn make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
         fn state1024_ctx0<'s>(
@@ -47,7 +47,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 None if lex.offset() == offset => return None,
                 other => {
                     lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(make_error(lex)));
+                    return Some(Err(_make_error(lex)));
                 }
             }
         }
@@ -62,7 +62,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
                 other => {
                     lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(make_error(lex)));
+                    return Some(Err(_make_error(lex)));
                 }
             }
         }
@@ -81,7 +81,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
                 other => {
                     lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(make_error(lex)));
+                    return Some(Err(_make_error(lex)));
                 }
             }
         }
@@ -96,7 +96,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
                 other => {
                     lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(make_error(lex)));
+                    return Some(Err(_make_error(lex)));
                 }
             }
         }

@@ -392,7 +392,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let config = crate::generator::Config {
         use_state_machine_codegen: cfg!(feature = "state_machine_codegen"),
     };
-    let generator = Generator::new(config, name, &this, &graph, &error_callback);
+    let mut generator = Generator::new(config, name, &this, &graph, &error_callback);
 
     let body = generator.generate();
     impl_logos(quote! {
