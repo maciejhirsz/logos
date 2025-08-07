@@ -1,6 +1,6 @@
 use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
-use quote::{quote, TokenStreamExt};
+use quote::quote;
 use syn::Ident;
 
 use crate::graph::{Graph, State, StateType};
@@ -8,6 +8,7 @@ use crate::leaf::{Callback, InlineCallback};
 use crate::util::ToIdent;
 
 mod leaf;
+mod fork;
 
 pub struct Config {
     pub use_state_machine_codegen: bool,
@@ -28,6 +29,8 @@ pub struct Generator<'a> {
     idents: Map<State, Ident>,
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
+    /// Bit masks that will be compressed into LUTs for fast looping
+    loop_masks: Vec<[bool; 256]>,
 }
 
 impl<'a> Generator<'a> {
@@ -50,6 +53,7 @@ impl<'a> Generator<'a> {
             graph,
             idents,
             error_callback,
+            loop_masks: Vec::new(),
         }
     }
 
@@ -144,82 +148,25 @@ impl<'a> Generator<'a> {
     /// In state machine codegen, the body is wrapped in a match arm for the
     /// `state`'s variant. In tailcall codegen, the body is inside of
     /// `state`'s function.
-    fn generate_state(&self, state: State) -> TokenStream {
-        let this_ident = self.get_ident(&state);
-        let mut setup = TokenStream::new();
+    fn generate_state(&mut self, state: State) -> TokenStream {
         let state_data = self.graph.get_state_data(&state);
 
         // If we are in a match state, update the current token to
         // end at the current offset - 1.
         // The 1 comes from the 1 byte delayed match behavior
         // of the regex-automata crate.
-        if let StateType::Accept(_) = state_data.state_type {
-            setup.append_all(quote! {
-                lex.end(offset - 1);
-            })
-        };
+        let setup = if let StateType::Accept(_) = state_data.state_type {
+            Some(quote!(lex.end(offset - 1);))
+        } else { None };
 
-        // Generate a match arm for each byte class, with each body being a state transition
-        let mut inner_cases = TokenStream::new();
-        for (byte_class, next_state) in &state_data.normal {
-            let patterns = byte_class.ranges.iter().map(|range| {
-                let start = byte_to_tokens(*range.start());
-                let end = byte_to_tokens(*range.end());
-                if range.len() == 1 {
-                    quote! { Some(#start) }
-                } else {
-                    quote! { Some(#start ..= #end) }
-                }
-            });
-            let transition = self.state_transition(next_state);
-            inner_cases.append_all(quote! {
-                #(#patterns)|* => {
-                    offset += 1;
-                    #transition
-                },
-            });
-        }
-
-        // Add special handling for end of input, both within a token and between them
-        if state == self.graph.root() {
-            // If we just started lexing and are at the end of input, return None
-            inner_cases.append_all(quote! { None if lex.offset() == offset => return None, });
-        }
-        if let Some(eoi) = &state_data.eoi {
-            let transition = self.state_transition(eoi);
-            inner_cases.append_all(quote! {
-                None => {
-                    offset += 1;
-                    #transition
-                }
-            });
-        }
-
-        // If nothing else applies, return the current token (active context)
-        // or an error (no active context).
-        let otherwise = if let Some(leaf_id) = state.context {
-            self.generate_leaf(&self.graph.leaves()[leaf_id.0])
-        } else {
-            // if we reached eoi, we are already at the end of the input
-            // so don't add 1 to offset.
-            quote! {
-                lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                return Some(Err(_make_error(lex)));
-            }
-        };
-
-        let body = quote! {
-            #setup
-            match lex.read::<u8>(offset) {
-                #inner_cases
-                other => { #otherwise }
-            }
-        };
+        let body = self.impl_fork(state, state_data);
 
         // Wrap body in a match arm or function depending on the current codegen
+        let this_ident = self.get_ident(&state);
         if self.config.use_state_machine_codegen {
             quote! {
                 LogosState::#this_ident => {
+                    #setup
                     #body
                 }
             }
@@ -228,6 +175,7 @@ impl<'a> Generator<'a> {
             quote! {
                 fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
+                    #setup
                     #body
                 }
             }
