@@ -29,8 +29,6 @@ pub struct Generator<'a> {
     idents: Map<State, Ident>,
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
-    /// Bit masks that will be compressed into LUTs for fast looping
-    loop_masks: Vec<[bool; 256]>,
 }
 
 impl<'a> Generator<'a> {
@@ -53,7 +51,6 @@ impl<'a> Generator<'a> {
             graph,
             idents,
             error_callback,
-            loop_masks: Vec::new(),
         }
     }
 
