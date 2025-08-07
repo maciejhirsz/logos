@@ -7,8 +7,8 @@ use crate::graph::{Graph, State, StateType};
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::ToIdent;
 
-mod leaf;
 mod fork;
+mod leaf;
 
 pub struct Config {
     pub use_state_machine_codegen: bool,
@@ -131,12 +131,25 @@ impl<'a> Generator<'a> {
         }
     }
 
-    /// Generates the code to transition to a new state.
+    /// Generates the code to transition to a state.
     fn state_transition(&self, state: &State) -> TokenStream {
+        return self.state_action(self.state_value(state));
+    }
+
+    /// Generates the code to transition to a state stored in an identifier
+    fn state_action(&self, state_ident: TokenStream) -> TokenStream {
+        match self.config.use_state_machine_codegen {
+            true => quote! { state = #state_ident; continue; },
+            false => quote! { return #state_ident(lex, offset); },
+        }
+    }
+
+    /// Generates the code to quote a state's representation
+    fn state_value(&self, state: &State) -> TokenStream {
         let state_ident = self.get_ident(&state);
         match self.config.use_state_machine_codegen {
-            true => quote! { state = LogosState::#state_ident; },
-            false => quote! { return #state_ident(lex, offset) },
+            true => quote!(LogosState::#state_ident),
+            false => quote!(#state_ident),
         }
     }
 
@@ -157,7 +170,9 @@ impl<'a> Generator<'a> {
         // of the regex-automata crate.
         let setup = if let StateType::Accept(_) = state_data.state_type {
             Some(quote!(lex.end(offset - 1);))
-        } else { None };
+        } else {
+            None
+        };
 
         let body = self.impl_fork(state, state_data);
 

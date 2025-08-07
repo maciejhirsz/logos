@@ -51,6 +51,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end(offset - 1);
                     match lex.read::<u8>(offset) {
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::Any));
                         }
                     }
@@ -61,8 +62,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(128u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state7680_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::Any));
                         }
                     }
@@ -71,6 +74,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end(offset - 1);
                     match lex.read::<u8>(offset) {
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::AnyUnicode));
                         }
                     }
@@ -81,8 +85,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(128u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state8192_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::Any));
                         }
                     }
@@ -93,12 +99,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state2048_ctx1;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state2048_ctx1;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state2048_ctx1;
+                                continue;
+                            }
                             return Some(Ok(Token::Any));
                         }
                     }
@@ -107,6 +115,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end(offset - 1);
                     match lex.read::<u8>(offset) {
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::Newline));
                         }
                     }
@@ -115,76 +124,304 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end(offset - 1);
                     match lex.read::<u8>(offset) {
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::AnyUnicode));
                         }
                     }
                 }
                 LogosState::state4608 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=9u8) | Some(11u8..=127u8) => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {
+                        const TABLE: [_Option<LogosState>; 256] = [
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state8704),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state7168),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state9728),
+                            Some(LogosState::state10240),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state6656),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state10752),
+                            Some(LogosState::state5120),
+                            Some(LogosState::state5632),
+                            Some(LogosState::state5632),
+                            Some(LogosState::state5632),
+                            Some(LogosState::state6144),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                            Some(LogosState::state9216),
+                        ];
+                        let next_state = TABLE[byte as usize];
+                        if let Some(next_state) = next_state {
                             offset += 1;
-                            state = LogosState::state7168;
+                            state = next_state;
+                            continue;
                         }
-                        Some(10u8) => {
-                            offset += 1;
-                            state = LogosState::state8704;
-                        }
-                        Some(128u8..=193u8) | Some(245u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state9216;
-                        }
-                        Some(194u8..=223u8) => {
-                            offset += 1;
-                            state = LogosState::state9728;
-                        }
-                        Some(224u8) => {
-                            offset += 1;
-                            state = LogosState::state10240;
-                        }
-                        Some(225u8..=236u8) | Some(238u8..=239u8) => {
-                            offset += 1;
-                            state = LogosState::state10752;
-                        }
-                        Some(237u8) => {
-                            offset += 1;
-                            state = LogosState::state6656;
-                        }
-                        Some(240u8) => {
-                            offset += 1;
-                            state = LogosState::state5120;
-                        }
-                        Some(241u8..=243u8) => {
-                            offset += 1;
-                            state = LogosState::state5632;
-                        }
-                        Some(244u8) => {
-                            offset += 1;
-                            state = LogosState::state6144;
-                        }
-                        None if lex.offset() == offset => return None,
-                        other => {
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
+                    } else {
+                        if lex.offset() == offset {
+                            return None;
                         }
                     }
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(_make_error(lex)));
                 }
                 LogosState::state5120 => {
                     match lex.read::<u8>(offset) {
                         Some(0u8..=143u8) | Some(192u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(144u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state1536_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -197,16 +434,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=127u8) | Some(192u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(128u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state1536_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -219,16 +459,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=127u8) | Some(144u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(128u8..=143u8) => {
                             offset += 1;
                             state = LogosState::state1536_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -241,16 +484,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=127u8) | Some(160u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(128u8..=159u8) => {
                             offset += 1;
                             state = LogosState::state2560_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -263,12 +509,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state4096_ctx1;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state4096_ctx1;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state4096_ctx1;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -281,8 +529,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(128u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state8192_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::Any));
                         }
                     }
@@ -292,12 +542,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state2048_ctx1;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state2048_ctx1;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state2048_ctx1;
+                                continue;
+                            }
                             return Some(Ok(Token::Any));
                         }
                     }
@@ -307,12 +559,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state3584_ctx0;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state3584_ctx0;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state3584_ctx0;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -325,12 +579,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -343,16 +599,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=127u8) | Some(192u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(128u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state3072_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -365,16 +624,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=159u8) | Some(192u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(160u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state2560_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -387,16 +649,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=127u8) | Some(192u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         Some(128u8..=191u8) => {
                             offset += 1;
                             state = LogosState::state2560_ctx2;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx2;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx2;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );

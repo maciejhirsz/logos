@@ -26,8 +26,12 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             mut offset: usize,
         ) -> _Option<_Result<TokenA, <TokenA as Logos<'s>>::Error>> {
             match lex.read::<u8>(offset) {
-                None if lex.offset() == offset => return None,
                 other => {
+                    if other.is_none() {
+                        if lex.offset() == offset {
+                            return None;
+                        }
+                    }
                     lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
                     return Some(Err(_make_error(lex)));
                 }

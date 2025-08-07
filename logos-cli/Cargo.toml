@@ -14,6 +14,8 @@ predicates = "2.1.1"
 [features]
 # Enables debug messages
 debug = ["logos-codegen/debug"]
+# Use the state machine codegen instead of the tailcall codegen
+state_machine_codegen = ["logos-codegen/state_machine_codegen"]
 
 [package]
 name = "logos-cli"

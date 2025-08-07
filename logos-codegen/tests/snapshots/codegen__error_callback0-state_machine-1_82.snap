@@ -35,8 +35,12 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             match state {
                 LogosState::state0 => {
                     match lex.read::<u8>(offset) {
-                        None if lex.offset() == offset => return None,
                         other => {
+                            if other.is_none() {
+                                if lex.offset() == offset {
+                                    return None;
+                                }
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );

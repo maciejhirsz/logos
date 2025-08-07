@@ -36,6 +36,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end(offset - 1);
                     match lex.read::<u8>(offset) {
                         other => {
+                            if other.is_none() {}
                             return Some(Ok(Token::Letter));
                         }
                     }
@@ -45,9 +46,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(b'a') => {
                             offset += 1;
                             state = LogosState::state3072;
+                            continue;
                         }
-                        None if lex.offset() == offset => return None,
                         other => {
+                            if other.is_none() {
+                                if lex.offset() == offset {
+                                    return None;
+                                }
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -60,8 +66,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(b'z') => {
                             offset += 1;
                             state = LogosState::state2560;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {}
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -74,12 +82,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(0u8..=255u8) => {
                             offset += 1;
                             state = LogosState::state1024_ctx0;
-                        }
-                        None => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx0;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {
+                                offset += 1;
+                                state = LogosState::state1024_ctx0;
+                                continue;
+                            }
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
@@ -92,8 +102,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                         Some(b'-') => {
                             offset += 1;
                             state = LogosState::state2048;
+                            continue;
                         }
                         other => {
+                            if other.is_none() {}
                             lex.end_to_boundary(
                                 offset + if other.is_some() { 1 } else { 0 },
                             );
