@@ -1,48 +1,59 @@
-use std::path::Path;
+use insta::assert_snapshot;
+use std::fs::read_to_string;
 
 use assert_cmd::Command;
-use assert_fs::{assert::PathAssert, fixture::FileWriteStr, NamedTempFile};
-use predicates::prelude::*;
+use assert_fs::{fixture::FileWriteStr, NamedTempFile};
 
 const INPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/input.rs");
-const OUTPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/output.rs");
-const FMT_OUTPUT_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/fmt_output.rs");
 
-#[test]
-fn test_codegen() {
+fn gen_to_file(format: bool) -> NamedTempFile {
     let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
 
     let mut cmd = Command::cargo_bin("logos-cli").unwrap();
-    cmd.arg(INPUT_FILE)
-        .arg("--output")
-        .arg(tempfile.path())
-        .assert()
-        .success();
+    cmd.arg(INPUT_FILE).arg("--output").arg(tempfile.path());
+    if format {
+        cmd.arg("--format");
+    }
 
-    tempfile.assert(normalize_newlines(OUTPUT_FILE));
+    cmd.assert().success();
+
+    tempfile
+}
+
+#[test]
+fn test_codegen() {
+    let tempfile = gen_to_file(false);
+
+    let output = read_to_string(tempfile).expect("Unable to read output file");
+
+    assert_snapshot!(output);
 }
 
 #[test]
 fn test_codegen_check() {
+    let tempfile = gen_to_file(false);
+
     Command::cargo_bin("logos-cli")
         .unwrap()
         .arg(INPUT_FILE)
         .arg("--check")
         .arg("--output")
-        .arg(OUTPUT_FILE)
+        .arg(tempfile.path())
         .assert()
         .success();
 }
 
 #[test]
 fn test_codegen_check_format() {
+    let tempfile = gen_to_file(true);
+
     Command::cargo_bin("logos-cli")
         .unwrap()
         .arg(INPUT_FILE)
         .arg("--format")
         .arg("--check")
         .arg("--output")
-        .arg(FMT_OUTPUT_FILE)
+        .arg(tempfile.path())
         .assert()
         .success();
 }
@@ -65,19 +76,9 @@ fn test_codegen_fail_check() {
 
 #[test]
 fn test_codegen_format() {
-    let tempfile = NamedTempFile::new("output.gen.rs").unwrap();
+    let tempfile = gen_to_file(true);
 
-    let mut cmd = Command::cargo_bin("logos-cli").unwrap();
-    cmd.arg(INPUT_FILE)
-        .arg("--format")
-        .arg("--output")
-        .arg(tempfile.path())
-        .assert()
-        .success();
+    let output = read_to_string(tempfile).expect("Unable to read output file");
 
-    tempfile.assert(normalize_newlines(FMT_OUTPUT_FILE));
-}
-
-fn normalize_newlines(s: impl AsRef<Path>) -> impl Predicate<str> {
-    predicates::str::diff(fs_err::read_to_string(s).unwrap().replace("\r\n", "\n")).normalize()
+    assert_snapshot!(output);
 }

@@ -1,0 +1,36 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+        fn _logos_derive_compile_errors() {
+            {
+                compile_error!(
+                    "UTF-8 mode is requested, but the subpattern stuff = b\"\\\\xFF\" can match invalid utf8.\nYou can disable UTF-8 mode with #[logos(utf8 = false)]"
+                )
+            }
+            {
+                compile_error!(
+                    "UTF-8 mode is requested, but the pattern b\"b\\xFF\" of variant `::B` can match invalid utf8.\nYou can disable UTF-8 mode with #[logos(utf8 = false)]"
+                )
+            }
+            {
+                compile_error!(
+                    "UTF-8 mode is requested, but the pattern \"(?-u)2\\\\xFF\" of variant `::Two` can match invalid utf8.\nYou can disable UTF-8 mode with #[logos(utf8 = false)]"
+                )
+            }
+            {
+                compile_error!(
+                    "UTF-8 mode is requested, but the pattern b\"3\\\\xFF\" of variant `::Three` can match invalid utf8.\nYou can disable UTF-8 mode with #[logos(utf8 = false)]"
+                )
+            }
+        }
+        unimplemented!()
+    }
+}

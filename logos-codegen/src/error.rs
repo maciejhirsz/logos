@@ -5,8 +5,6 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
 
-pub type Result<T> = std::result::Result<T, Error>;
-
 #[derive(Default)]
 pub struct Errors {
     collected: Vec<SpannedError>,
@@ -28,12 +26,16 @@ impl Errors {
     pub fn render(self) -> Option<TokenStream> {
         let errors = self.collected;
 
+        // Each of the SpannedErrors get rendered into a compile_error!()
+        // invocation (see ToTokens implementation below).
         match errors.len() {
             0 => None,
             _ => Some(quote! {
                 fn _logos_derive_compile_errors() {
                     #(#errors)*
                 }
+
+                unimplemented!()
             }),
         }
     }
