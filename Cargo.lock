@@ -765,7 +765,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "logos"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "logos-cli"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "logos-codegen"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "beef",
  "fnv",
@@ -805,7 +805,7 @@ dependencies = [
 
 [[package]]
 name = "logos-derive"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "logos-codegen",
 ]

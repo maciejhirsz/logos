@@ -26,6 +26,8 @@ impl NodeIdStrings {
 
     /// Get the string assigned to a node from its index.
     fn idx(&mut self, id: usize) -> &str {
+        // Insert cannot be used since we also need a mut ref for get_unique
+        #[allow(clippy::map_entry)]
         if !self.mappings.contains_key(&id) {
             let next = self.get_unique();
             self.mappings.insert(id, next);

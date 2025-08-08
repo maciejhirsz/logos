@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-logos = "0.15.0"
+logos = "0.15.1"
 ```
 
 Then, you can automatically derive the [`Logos`](https://docs.rs/logos/latest/logos/trait.Logos.html) trait on your `enum` using the `Logos` derive macro:
