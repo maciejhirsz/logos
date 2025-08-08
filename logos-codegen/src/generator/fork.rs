@@ -12,11 +12,32 @@ use super::Generator;
 
 impl<'a> Generator<'a> {
     pub fn impl_fork(&mut self, state: State, state_data: &StateData) -> TokenStream {
-        if state_data.normal.len() > 2 {
-            self.impl_fork_table(state, state_data)
-        } else {
-            self.impl_fork_match(state, state_data)
+        const ENABLE_TABLE: bool = true;
+        const ENABLE_LOOP: bool = true;
+
+        let self_edge = state_data
+            .normal
+            .iter()
+            .filter(|(_bc, next_state)| next_state == &state)
+            .collect::<Vec<_>>();
+        assert!(self_edge.len() <= 1);
+
+        let mut result = TokenStream::new();
+
+        if ENABLE_LOOP {
+            if let Some((bc, _)) = self_edge.first() {
+                result.append_all(self.impl_fast_loop(bc));
+            }
         }
+
+        let fork = if ENABLE_TABLE && state_data.normal.len() > 2 {
+            self.impl_fork_table(state, state_data, ENABLE_LOOP)
+        } else {
+            self.impl_fork_match(state, state_data, ENABLE_LOOP)
+        };
+        result.append_all(fork);
+
+        result
     }
 
     /// Generate code for if state edge applies:
@@ -56,10 +77,19 @@ impl<'a> Generator<'a> {
         eoi
     }
 
-    fn impl_fork_match(&mut self, state: State, state_data: &StateData) -> TokenStream {
+    fn impl_fork_match(
+        &mut self,
+        state: State,
+        state_data: &StateData,
+        ignore_self: bool,
+    ) -> TokenStream {
         // Generate a match arm for each byte class, with each body being a state transition
         let mut inner_cases = TokenStream::new();
         for (byte_class, next_state) in &state_data.normal {
+            if ignore_self && next_state == &state {
+                continue;
+            }
+
             let patterns = byte_class.ranges.iter().map(|range| {
                 let start = byte_to_tokens(*range.start());
                 let end = byte_to_tokens(*range.end());
@@ -93,10 +123,19 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn impl_fork_table(&mut self, state: State, state_data: &StateData) -> TokenStream {
+    fn impl_fork_table(
+        &mut self,
+        state: State,
+        state_data: &StateData,
+        ignore_self: bool,
+    ) -> TokenStream {
         // Generate a match arm for each byte class, with each body being a state transition
         let mut table = vec![None; 256];
         for (byte_class, next_state) in &state_data.normal {
+            if ignore_self && next_state == &state {
+                continue;
+            }
+
             for range in &byte_class.ranges {
                 for byte in range.clone() {
                     table[byte as usize] = Some(next_state);

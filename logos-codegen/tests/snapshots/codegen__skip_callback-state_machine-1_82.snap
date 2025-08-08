@@ -16,6 +16,33 @@ impl<'s> ::logos::Logos<'s> for Token {
         use std::option::Option as _Option;
         use ::logos::Logos;
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
+        macro_rules! _fast_loop {
+            ($lex:ident, $test:ident, $offset:ident) => {
+                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 16usize] >
+                ($offset) { if $test (arr[0usize]) { $offset += 0usize; break 'fast_loop;
+                } if $test (arr[1usize]) { $offset += 1usize; break 'fast_loop; } if
+                $test (arr[2usize]) { $offset += 2usize; break 'fast_loop; } if $test
+                (arr[3usize]) { $offset += 3usize; break 'fast_loop; } if $test
+                (arr[4usize]) { $offset += 4usize; break 'fast_loop; } if $test
+                (arr[5usize]) { $offset += 5usize; break 'fast_loop; } if $test
+                (arr[6usize]) { $offset += 6usize; break 'fast_loop; } if $test
+                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } if $test
+                (arr[8usize]) { $offset += 8usize; break 'fast_loop; } if $test
+                (arr[9usize]) { $offset += 9usize; break 'fast_loop; } if $test
+                (arr[10usize]) { $offset += 10usize; break 'fast_loop; } if $test
+                (arr[11usize]) { $offset += 11usize; break 'fast_loop; } if $test
+                (arr[12usize]) { $offset += 12usize; break 'fast_loop; } if $test
+                (arr[13usize]) { $offset += 13usize; break 'fast_loop; } if $test
+                (arr[14usize]) { $offset += 14usize; break 'fast_loop; } if $test
+                (arr[15usize]) { $offset += 15usize; break 'fast_loop; } $offset +=
+                16usize; } while let Some(byte) = $lex .read:: < u8 > ($offset) { if
+                $test (byte) { break 'fast_loop; } $offset += 1; } }
+            };
+        }
+        #[inline]
+        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+            <Token as Logos<'s>>::Error::default()
+        }
         #[derive(Clone, Copy)]
         enum LogosState {
             state1024_ctx5,
@@ -31,10 +58,6 @@ impl<'s> ::logos::Logos<'s> for Token {
             state6144,
             state6656,
             state7168,
-        }
-        #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
-            <Token as Logos<'s>>::Error::default()
         }
         let mut state = LogosState::state4096;
         let mut offset = lex.offset();

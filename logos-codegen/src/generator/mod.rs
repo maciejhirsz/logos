@@ -1,3 +1,4 @@
+use fast_loop::fast_loop_macro;
 use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -7,6 +8,7 @@ use crate::graph::{Graph, State, StateType};
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::ToIdent;
 
+mod fast_loop;
 mod fork;
 mod leaf;
 
@@ -29,6 +31,8 @@ pub struct Generator<'a> {
     idents: Map<State, Ident>,
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
+    /// Bit masks that will be compressed into LUTs for fast looping
+    loop_masks: Vec<[bool; 256]>,
 }
 
 impl<'a> Generator<'a> {
@@ -51,6 +55,7 @@ impl<'a> Generator<'a> {
             graph,
             idents,
             error_callback,
+            loop_masks: Vec::new(),
         }
     }
 
@@ -70,14 +75,18 @@ impl<'a> Generator<'a> {
         all_idents.sort_unstable();
 
         let error_cb = self.generate_error_cb();
+        let fast_loop_macro = fast_loop_macro(16);
+        let loop_luts = self.render_loop_luts();
 
         if self.config.use_state_machine_codegen {
             quote! {
+                #fast_loop_macro
+                #loop_luts
+                #error_cb
                 #[derive(Clone, Copy)]
                 enum LogosState {
                     #(#all_idents),*
                 }
-                #error_cb
                 let mut state = LogosState::#init_state;
                 let mut offset = lex.offset();
                 loop {
@@ -88,6 +97,8 @@ impl<'a> Generator<'a> {
             }
         } else {
             quote! {
+                #fast_loop_macro
+                #loop_luts
                 #error_cb
                 #(#states_rendered)*
                 #init_state(lex, lex.offset())
