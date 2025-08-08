@@ -22,7 +22,7 @@ impl TableStack {
         }
     }
 
-    pub fn view(&mut self) -> TableView {
+    pub fn view(&mut self) -> TableView<'_> {
         let mask = if self.shift < 8 {
             // Reusing existing table with a shifted mask
             let mask = 1u8 << self.shift;

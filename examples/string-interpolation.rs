@@ -50,7 +50,7 @@ fn get_string_content(lex: &mut Lexer<StringContext>) -> String {
     while let Some(Ok(token)) = lex.next() {
         match token {
             StringContext::Content => s.push_str(lex.slice()),
-            StringContext::DollarSign => s.push_str("$"),
+            StringContext::DollarSign => s.push('$'),
             StringContext::InterpolationStart(value) => s.push_str(&value),
             StringContext::Quote => break,
         }
