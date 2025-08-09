@@ -75,7 +75,7 @@ impl<'a> Generator<'a> {
         all_idents.sort_unstable();
 
         let error_cb = self.generate_error_cb();
-        let fast_loop_macro = fast_loop_macro(16);
+        let fast_loop_macro = fast_loop_macro(8);
         let loop_luts = self.render_loop_luts();
 
         if self.config.use_state_machine_codegen {
