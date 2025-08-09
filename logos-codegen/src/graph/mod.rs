@@ -1,4 +1,5 @@
 use std::ascii::escape_default;
+use std::collections::HashSet;
 use std::fmt;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -50,11 +51,20 @@ fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<Item 
 
 /// This type holds information about a given [State]. Namely, whether
 /// it is a match state for a leaf or not.
-#[derive(Clone, Copy, Debug, Default)]
-pub enum StateType {
-    #[default]
-    Normal,
-    Accept(LeafId),
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StateType {
+    pub accept: Option<LeafId>,
+    pub early_accept: Option<LeafId>,
+}
+
+impl StateType {
+    fn normal() -> Self {
+        Self::default()
+    }
+
+    fn accept(leaf_id: LeafId) -> Self {
+        StateType { accept: Some(leaf_id), early_accept: None }
+    }
 }
 
 /// This type uniquely identifies the state of the Logos state machine.
@@ -75,16 +85,18 @@ impl State {
     /// case that `state_type` is a [StateType::Accept] and [State.context] is Some, and the
     /// `context` leaf is a higher priority, then the returned value is instead
     /// [StateType::Normal].
-    fn filter_state_type(&self, state_type: StateType, graph: &Graph) -> StateType {
-        if let StateType::Accept(accept_leaf_id) = state_type {
+    fn filter_state_type(&self, mut state_type: StateType, graph: &Graph) -> StateType {
+        state_type.accept = state_type.accept.and_then(|accept_leaf_id| {
             if let Some(current_leaf_id) = self.context {
                 let accept_prio = graph.leaves[accept_leaf_id.0].priority;
                 let current_prio = graph.leaves[current_leaf_id.0].priority;
                 if accept_prio < current_prio {
-                    return StateType::Normal;
+                    return None;
                 }
             }
-        }
+
+            Some(accept_leaf_id)
+        });
 
         state_type
     }
@@ -112,6 +124,8 @@ pub struct StateData {
     /// The "eoi" transition (the transition taken if this state immediately preceeds the end of
     /// the input), if any.
     pub eoi: Option<State>,
+    /// For graph traversal purposes, the states that can lead to this one
+    from_states: Vec<State>,
 }
 
 impl StateData {
@@ -126,10 +140,10 @@ impl StateData {
 
 impl fmt::Display for StateData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let StateType::Accept(leaf_id) = self.state_type {
-            write!(f, "Accept({})", leaf_id.0)?;
-        } else {
-            write!(f, "Normal")?;
+        match self.state_type {
+            StateType { early_accept: Some(leaf_id), .. } => write!(f, "Early({})", leaf_id.0)?,
+            StateType { accept: Some(leaf_id), .. } => write!(f, "Accept({})", leaf_id.0)?,
+            StateType { .. } => write!(f, "Normal")?,
         }
         if f.alternate() {
             write!(f, " {{\n")?;
@@ -261,9 +275,9 @@ impl GraphTraverse {
                 graph.errors.push(DisambiguationError(matching_prio_leaves))
             }
 
-            StateType::Accept(highest_leaf_id)
+            StateType::accept(highest_leaf_id)
         } else {
-            StateType::Normal
+            StateType::normal()
         };
 
         *vacant.insert(state_type)
@@ -374,6 +388,33 @@ impl Graph {
             graph.edges.insert(state, state_data);
         }
 
+        // Find early accept states and populate StateData.from_states
+        let states_iter = graph.edges.keys().cloned().collect::<Vec<_>>();
+        for state in states_iter {
+            let state_data = graph.edges.get_mut(&state).unwrap();
+            let children = state_data.iter_children().collect::<Vec<_>>();
+            let mut child_types = HashSet::new();
+            for child in children {
+                let child_state_data = graph.edges.get_mut(&child).expect("Unregistered state found");
+                child_state_data.from_states.push(state);
+                child_types.insert(child_state_data.state_type.accept);
+            }
+
+            // if let Some(Some(leaf_id)) = child_types.iter().next() {
+            //     if child_types.len() == 1 {
+            //         let state_data = graph.edges.get_mut(&state).unwrap();
+            //         // All transitions lead to a single accept, make this an early accept
+            //         state_data.state_type.early_accept = Some(*leaf_id);
+            //
+            //         let children = state_data.iter_children().collect::<Vec<_>>();
+            //         for child in children {
+            //             let child_state_data = graph.edges.get_mut(&child).expect("Unregistered state found");
+            //             child_state_data.state_type.accept = None;
+            //         }
+            //     }
+            // }
+        }
+
         // Future optimizations:
         // TODO: prune nodes that don't lead to any more accept states before reaching the dead
         // node (0)
@@ -419,6 +460,7 @@ impl Graph {
             state_type,
             normal,
             eoi,
+            from_states: Vec::new(),
         }
     }
 
@@ -437,10 +479,7 @@ impl Graph {
             next_state_type = prev.filter_state_type(next_state_type, self);
         };
 
-        let context = match next_state_type {
-            StateType::Normal => prev.context,
-            StateType::Accept(leaf_id) => Some(leaf_id),
-        };
+        let context = next_state_type.accept.or(prev.context);
 
         State {
             dfa_id: next_id,

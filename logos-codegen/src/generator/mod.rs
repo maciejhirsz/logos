@@ -176,10 +176,14 @@ impl<'a> Generator<'a> {
         // end at the current offset - 1.
         // The 1 comes from the 1 byte delayed match behavior
         // of the regex-automata crate.
-        let setup = if let StateType::Accept(_) = state_data.state_type {
-            Some(quote!(lex.end(offset - 1);))
-        } else {
-            None
+        let setup = match state_data.state_type {
+            StateType { early_accept: Some(_), .. } => {
+                Some(quote! { lex.end(offset); })
+            },
+            StateType { accept: Some(_), .. } => {
+                Some(quote! { lex.end(offset - 1); })
+            },
+            StateType { .. } => None,
         };
 
         let body = self.impl_fork(state, state_data);

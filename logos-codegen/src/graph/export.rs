@@ -1,4 +1,4 @@
-use crate::graph::{ByteClass, Graph, State, StateType};
+use crate::graph::{ByteClass, Graph, State};
 use std::fmt::Write;
 
 enum NodeColor {
@@ -134,7 +134,7 @@ impl Graph {
 
             let id = format_state(&state, false);
             let label = format_state(&state, true);
-            let color = if matches!(data.state_type, StateType::Accept(_)) {
+            let color = if data.state_type.early_accept.is_some() || data.state_type.accept.is_some() {
                 NodeColor::Green
             } else {
                 NodeColor::Black
