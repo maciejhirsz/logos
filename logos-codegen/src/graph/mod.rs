@@ -63,7 +63,10 @@ impl StateType {
     }
 
     fn accept(leaf_id: LeafId) -> Self {
-        StateType { accept: Some(leaf_id), early_accept: None }
+        StateType {
+            accept: Some(leaf_id),
+            early_accept: None,
+        }
     }
 }
 
@@ -141,8 +144,14 @@ impl StateData {
 impl fmt::Display for StateData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.state_type {
-            StateType { early_accept: Some(leaf_id), .. } => write!(f, "Early({})", leaf_id.0)?,
-            StateType { accept: Some(leaf_id), .. } => write!(f, "Accept({})", leaf_id.0)?,
+            StateType {
+                early_accept: Some(leaf_id),
+                ..
+            } => write!(f, "Early({})", leaf_id.0)?,
+            StateType {
+                accept: Some(leaf_id),
+                ..
+            } => write!(f, "Accept({})", leaf_id.0)?,
             StateType { .. } => write!(f, "Normal")?,
         }
         if f.alternate() {
@@ -225,63 +234,6 @@ pub struct Graph {
     root: State,
     /// Any disambiguation errors encountered when constructing the graph
     errors: Vec<DisambiguationError>,
-}
-
-/// This struct holds information needed to traverse the state graph of the
-/// [regex_automata::dfa::dense::DFA] efficiently.
-#[derive(Debug)]
-struct GraphTraverse {
-    /// This is a cache of the [StateType] corresponding to each `regex_automata`'s [StateID], so
-    /// that it only needs to be calculated once for each.
-    state_types: HashMap<StateID, StateType>,
-    /// This is a stack of [State]s that still need to be visited.
-    visit_stack: Vec<State>,
-}
-
-impl GraphTraverse {
-    fn from_root(root: State) -> Self {
-        Self {
-            state_types: HashMap::new(),
-            visit_stack: vec![root],
-        }
-    }
-
-    /// Get the [StateType] of a [State] from the cache, or calculate it if it isn't present in the
-    /// cache.
-    fn get_state_type(&mut self, state_id: StateID, graph: &mut Graph) -> StateType {
-        let vacant = match self.state_types.entry(state_id) {
-            Entry::Occupied(occupied) => return *occupied.get(),
-            Entry::Vacant(vacant) => vacant,
-        };
-
-        // Get a list of all leaves that match in this state
-        let matching_leaves = iter_matches(state_id, &graph.dfa)
-            .map(|leaf_id| (leaf_id, graph.leaves[leaf_id.0].priority))
-            .collect::<Vec<_>>();
-
-        // Find the highest priority that matches at this state
-        let state_type = if let Some(&(highest_leaf_id, highest_priority)) = matching_leaves
-            .iter()
-            .max_by_key(|(_leaf_id, priority)| priority)
-        {
-            // Find all the leaves that match at said highest priority
-            let matching_prio_leaves: Vec<LeafId> = matching_leaves
-                .into_iter()
-                .filter(|(_leaf_id, priority)| *priority == highest_priority)
-                .map(|(leaf_id, _priority)| leaf_id)
-                .collect();
-            // Ensure that only one leaf matches at said highest priority
-            if matching_prio_leaves.len() > 1 {
-                graph.errors.push(DisambiguationError(matching_prio_leaves))
-            }
-
-            StateType::accept(highest_leaf_id)
-        } else {
-            StateType::normal()
-        };
-
-        *vacant.insert(state_type)
-    }
 }
 
 impl Graph {
@@ -395,7 +347,10 @@ impl Graph {
             let children = state_data.iter_children().collect::<Vec<_>>();
             let mut child_types = HashSet::new();
             for child in children {
-                let child_state_data = graph.edges.get_mut(&child).expect("Unregistered state found");
+                let child_state_data = graph
+                    .edges
+                    .get_mut(&child)
+                    .expect("Unregistered state found");
                 child_state_data.from_states.push(state);
                 child_types.insert(child_state_data.state_type.accept);
             }
@@ -485,5 +440,62 @@ impl Graph {
             dfa_id: next_id,
             context,
         }
+    }
+}
+
+/// This struct holds information needed to traverse the state graph of the
+/// [regex_automata::dfa::dense::DFA] efficiently.
+#[derive(Debug)]
+struct GraphTraverse {
+    /// This is a cache of the [StateType] corresponding to each `regex_automata`'s [StateID], so
+    /// that it only needs to be calculated once for each.
+    state_types: HashMap<StateID, StateType>,
+    /// This is a stack of [State]s that still need to be visited.
+    visit_stack: Vec<State>,
+}
+
+impl GraphTraverse {
+    fn from_root(root: State) -> Self {
+        Self {
+            state_types: HashMap::new(),
+            visit_stack: vec![root],
+        }
+    }
+
+    /// Get the [StateType] of a [State] from the cache, or calculate it if it isn't present in the
+    /// cache.
+    fn get_state_type(&mut self, state_id: StateID, graph: &mut Graph) -> StateType {
+        let vacant = match self.state_types.entry(state_id) {
+            Entry::Occupied(occupied) => return *occupied.get(),
+            Entry::Vacant(vacant) => vacant,
+        };
+
+        // Get a list of all leaves that match in this state
+        let matching_leaves = iter_matches(state_id, &graph.dfa)
+            .map(|leaf_id| (leaf_id, graph.leaves[leaf_id.0].priority))
+            .collect::<Vec<_>>();
+
+        // Find the highest priority that matches at this state
+        let state_type = if let Some(&(highest_leaf_id, highest_priority)) = matching_leaves
+            .iter()
+            .max_by_key(|(_leaf_id, priority)| priority)
+        {
+            // Find all the leaves that match at said highest priority
+            let matching_prio_leaves: Vec<LeafId> = matching_leaves
+                .into_iter()
+                .filter(|(_leaf_id, priority)| *priority == highest_priority)
+                .map(|(leaf_id, _priority)| leaf_id)
+                .collect();
+            // Ensure that only one leaf matches at said highest priority
+            if matching_prio_leaves.len() > 1 {
+                graph.errors.push(DisambiguationError(matching_prio_leaves))
+            }
+
+            StateType::accept(highest_leaf_id)
+        } else {
+            StateType::normal()
+        };
+
+        *vacant.insert(state_type)
     }
 }

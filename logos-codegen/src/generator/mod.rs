@@ -177,12 +177,13 @@ impl<'a> Generator<'a> {
         // The 1 comes from the 1 byte delayed match behavior
         // of the regex-automata crate.
         let setup = match state_data.state_type {
-            StateType { early_accept: Some(_), .. } => {
-                Some(quote! { lex.end(offset); })
-            },
-            StateType { accept: Some(_), .. } => {
-                Some(quote! { lex.end(offset - 1); })
-            },
+            StateType {
+                early_accept: Some(_),
+                ..
+            } => Some(quote! { lex.end(offset); }),
+            StateType {
+                accept: Some(_), ..
+            } => Some(quote! { lex.end(offset - 1); }),
             StateType { .. } => None,
         };
 
