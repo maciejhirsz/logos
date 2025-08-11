@@ -74,7 +74,6 @@ pub fn generate(input: TokenStream) -> TokenStream {
         .map(LitBool::value)
         .unwrap_or(true);
     let config = Config {
-        prio_over_length: false,
         utf8_mode,
     };
     let subpatterns = Subpatterns::new(&parser.subpatterns, utf8_mode, &mut parser.errors);
@@ -328,9 +327,9 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     if cfg!(feature = "debug") {
         let graph_rendered = graph
-            .get_states()
+            .iter_states()
             .map(|state| {
-                let transitions = format!("{:#}", graph.get_state_data(&state));
+                let transitions = format!("{:#}", graph.get_state(state));
                 let indented = transitions
                     .lines()
                     .map(|line| format!("  {line}"))

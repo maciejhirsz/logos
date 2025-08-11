@@ -44,7 +44,7 @@ impl<'a> Generator<'a> {
     ///  - return the current token (active context)
     ///  - or an error (no active context).
     fn fork_otherwise(&self, state: State) -> TokenStream {
-        if let Some(leaf_id) = state.context {
+        if let Some(leaf_id) = self.graph.get_state(state).context {
             self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
             // if we reached eoi, we are already at the end of the input

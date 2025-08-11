@@ -113,12 +113,11 @@ impl Graph {
 
     fn export_graph<Fmt: ExportFormat>(&self) -> Result<String, std::fmt::Error> {
         fn format_state(state: &State, fancy: bool) -> String {
-            let state_id = state.dfa_id.as_usize();
-            match (fancy, state.context) {
-                (true, None) => format!("State {}", state_id),
-                (false, None) => format!("n{}", state.dfa_id.as_usize()),
-                (true, Some(leaf_id)) => format!("State {} (ctx {})", state_id, leaf_id.0),
-                (false, Some(leaf_id)) => format!("n{}ctx{}", state_id, leaf_id.0),
+            let state_id = state.0;
+            if fancy {
+                format!("State {}", state_id)
+            } else {
+                format!("n{}", state_id)
             }
         }
 
@@ -126,11 +125,11 @@ impl Graph {
 
         Fmt::write_header(&mut s)?;
 
-        let mut states = self.get_states().collect::<Vec<_>>();
+        let mut states = self.iter_states().collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
         states.sort_unstable();
         for state in states {
-            let data = self.get_state_data(&state);
+            let data = self.get_state(state);
 
             let id = format_state(&state, false);
             let label = format_state(&state, true);
@@ -233,7 +232,6 @@ mod tests {
             .collect();
 
         let config = Config {
-            prio_over_length: false,
             utf8_mode: true,
         };
         let graph = Graph::new(leaves, config).expect("Unable to compile graph");

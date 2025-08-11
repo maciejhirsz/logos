@@ -44,7 +44,7 @@ impl<'a> Generator<'a> {
         error_callback: &'a Option<Callback>,
     ) -> Self {
         let idents = graph
-            .get_states()
+            .iter_states()
             .map(|state| (state, state.to_string().to_ident()))
             .collect();
 
@@ -61,7 +61,7 @@ impl<'a> Generator<'a> {
 
     /// Generates the implementation (body) of the [Logos::lex] function
     pub fn generate(&mut self) -> TokenStream {
-        let mut states = self.graph.get_states().collect::<Vec<_>>();
+        let mut states = self.graph.iter_states().collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
         states.sort_unstable();
         let states_rendered = states
@@ -170,7 +170,7 @@ impl<'a> Generator<'a> {
     /// `state`'s variant. In tailcall codegen, the body is inside of
     /// `state`'s function.
     fn generate_state(&mut self, state: State) -> TokenStream {
-        let state_data = self.graph.get_state_data(&state);
+        let state_data = self.graph.get_state(state);
 
         // If we are in a match state, update the current token to
         // end at the current offset - 1.
