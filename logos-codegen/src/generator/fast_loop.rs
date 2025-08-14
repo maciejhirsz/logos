@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-use crate::{graph::ByteClass, util::ToIdent};
+use crate::{graph::{ByteClass, State}, util::ToIdent};
 
 use super::Generator;
 
@@ -11,6 +11,22 @@ fn loop_table_ident(index: usize) -> Ident {
 }
 
 impl<'a> Generator<'a> {
+    pub fn maybe_impl_fast_loop(&mut self, state: State) -> TokenStream {
+        let state_data = self.graph.get_state(state);
+        let self_edge = state_data
+            .normal
+            .iter()
+            .filter(|(_bc, next_state)| next_state == &state)
+            .collect::<Vec<_>>();
+        assert!(self_edge.len() <= 1);
+
+        if let Some((bc, _)) = self_edge.first() {
+            self.impl_fast_loop(bc)
+        } else {
+            TokenStream::new()
+        }
+    }
+
     /// TODO
     pub fn impl_fast_loop(&mut self, self_edge: &ByteClass) -> TokenStream {
         // TODO: generate loop test as a comparison if it is simple

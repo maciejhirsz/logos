@@ -36,19 +36,20 @@ pub struct DisambiguationError(pub Vec<LeafId>);
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateType {
     pub accept: Option<LeafId>,
-    pub early_accept: Option<LeafId>,
+    pub early: Option<LeafId>,
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct State(usize);
+impl StateType {
+    fn early_or_accept(&self) -> Option<LeafId> {
+        self.early.or(self.accept)
+    }
+}
+
 
 /// This type uniquely identifies the state of the Logos state machine.
-/// Note that, in addition to the `regex-automata` DFA state, we also
-/// keep track of whether a match has been encountered or not (In regex-automata,
-/// this is accounted for at the regex engine level, above the DFA).
-
-/// TODO
-struct Todo;
+/// It is an index into the `states` field of the [Graph] struct.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct State(usize);
 
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,7 +59,7 @@ impl fmt::Display for State {
 
 /// This struct includes all information that should be attached to [State] but does not uniquely
 /// identify State, which facilitates building a HashMap<State, StateData> structure.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateData {
     /// The corresponding `regex_automata` state
     pub dfa_id: StateID,
@@ -72,6 +73,8 @@ pub struct StateData {
     /// The "eoi" transition (the transition taken if this state immediately preceeds the end of
     /// the input), if any.
     pub eoi: Option<State>,
+    /// States that can transition to this state
+    pub backward: Vec<State>,
 }
 
 impl StateData {
@@ -82,9 +85,8 @@ impl StateData {
         }
     }
 
-    fn with_context(dfa_id: StateID, context: Option<LeafId>) -> Self {
+    fn with_context(context: Option<LeafId>) -> Self {
         Self {
-            dfa_id,
             context,
             ..Default::default()
         }
@@ -97,25 +99,34 @@ impl StateData {
             .map(|(_bc, s)| s.clone())
             .chain(self.eoi.iter().cloned())
     }
+
+    fn add_back_edge(&mut self, state: State) {
+        if let Err(index) = self.backward.binary_search(&state) {
+            self.backward.insert(index, state);
+        }
+    }
 }
 
 impl fmt::Display for StateData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.state_type {
-            StateType {
-                early_accept: Some(leaf_id),
-                ..
-            } => write!(f, "Early({})", leaf_id.0)?,
-            StateType {
-                accept: Some(leaf_id),
-                ..
-            } => write!(f, "Accept({})", leaf_id.0)?,
-            StateType { .. } => write!(f, "Normal")?,
+        write!(f, "StateData(")?;
+        if let Some(leaf_id) = self.state_type.accept {
+            write!(f, "accept({}) ", leaf_id.0)?
         }
+        if let Some(leaf_id) = self.state_type.early {
+            write!(f, "early({}) ", leaf_id.0)?
+        }
+        write!(f, ")")?;
         if f.alternate() {
-            write!(f, " {{\n")?;
+            if let Some(context) = self.context {
+                write!(f, " (context: {})", context.0)?;
+            }
+            writeln!(f, " {{")?;
             for (bc, state) in &self.normal {
-                write!(f, "  {} => {}\n", &bc.to_string(), state)?;
+                writeln!(f, "  {} => {}", &bc.to_string(), state)?;
+            }
+            if let Some(eoi_state) = &self.eoi {
+                writeln!(f, "  EOI => {}", eoi_state)?;
             }
             write!(f, "}}")?;
         }
@@ -124,7 +135,7 @@ impl fmt::Display for StateData {
 }
 
 /// This struct represents a subset of the possible bytes x00 through xFF
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ByteClass {
     pub ranges: Vec<RangeInclusive<u8>>,
 }
@@ -180,8 +191,6 @@ impl fmt::Display for ByteClass {
 /// the input from where it began the match state to the saved offset.
 #[derive(Debug)]
 pub struct Graph {
-    /// The config used to construct the graph
-    config: Config,
     /// The leaves used to construct the graph
     leaves: Vec<Leaf>,
     /// The dfa used to construct the graph
@@ -201,7 +210,7 @@ impl Graph {
     }
 
     /// Iterate over all of the states of the graph
-    pub fn iter_states<'a>(&'a self) -> impl Iterator<Item = State> + 'a {
+    pub fn iter_states(&self) -> impl Iterator<Item = State> {
         (0..self.states.len()).map(State)
     }
 
@@ -245,10 +254,82 @@ impl Graph {
                 ctx_traverse.get_ctx_state(eoi_state, context)
             });
 
+            for child in ctx_traverse.ctx_states[ctx_state.0]
+                .iter_children()
+                .collect::<Vec<_>>()
+            {
+                ctx_traverse.ctx_states[child.0].add_back_edge(ctx_state);
+            }
+
         }
 
         graph.states = ctx_traverse.ctx_states;
         graph.root = State(0);
+
+        // Remove late matches when all incoming edges contain the early match
+        for state in graph.iter_states() {
+            let state_data = graph.get_state(state);
+            if let Some(leaf_id) = state_data.state_type.accept {
+                if state_data.backward.iter().all(|&back_state| {
+                    graph.get_state(back_state).state_type.early == Some(leaf_id)
+                }) {
+                    graph.states[state.0].state_type.accept = None;
+                }
+            }
+        }
+
+        // Prune dead ends
+        let mut visit_stack = graph.iter_states().filter(|state| {
+            graph.get_state(*state).state_type.early_or_accept().is_some()
+        }).collect::<Vec<_>>();
+        let mut reach_accept = visit_stack.iter().cloned().collect::<HashSet<_>>();
+        while let Some(state) = visit_stack.pop() {
+            for parent in &graph.get_state(state).backward {
+                if reach_accept.insert(*parent) {
+                    visit_stack.push(*parent);
+                }
+            }
+        }
+
+        for state in graph.iter_states() {
+            let state_data = &mut graph.states[state.0];
+            state_data.normal.retain(|(_bc, next_state)| {
+                reach_accept.contains(next_state)
+            });
+
+            state_data.eoi = state_data.eoi.filter(|state| reach_accept.contains(state));
+
+            // Clear backward states in preparation for deduplication
+            state_data.backward.clear();
+        }
+
+        // Deduplicate states
+        let mut state_indexes = HashMap::new();
+        let mut state_lookup = HashMap::new();
+
+        for state in graph.iter_states() {
+            let state_data = &graph.states[state.0];
+            if state_indexes.contains_key(&state_data) {
+                state_lookup.insert(state, state_indexes[&state_data]);
+            } else {
+                state_indexes.insert(state_data, state);
+            }
+        }
+        for state in graph.iter_states() {
+            let state_data = &mut graph.states[state.0];
+            // Replace all states with their deduplicated version
+            for (_bc, next_state) in &mut state_data.normal {
+                if let Some(new_next_state) = state_lookup.get(next_state) {
+                    *next_state = *new_next_state;
+                }
+            }
+
+            if let Some(eoi_state) = &mut state_data.eoi {
+                if let Some(new_eoi_state) = state_lookup.get(eoi_state) {
+                    *eoi_state = *new_eoi_state;
+                }
+            }
+        }
 
         // Future optimizations:
         // TODO: prune nodes that don't lead to any more accept states before reaching the dead
@@ -256,6 +337,9 @@ impl Graph {
         //
         // TODO: implement early matching (so we don't need to read an extra byte) in cases where
         // all transitions lead to a match state for the same leaf
+        // Done, now need to prune late matches that are always covered by early ones to free up
+        // nodes to be pruned
+        // Done, now need to merge identical states and prune dead ends
 
         Ok(graph)
     }
@@ -314,7 +398,9 @@ impl Graph {
         let root = dfa_lookup[&start_id];
 
         let mut errors = Vec::new();
-        for state_data in &mut states {
+        for state_id in 0..states.len() {
+
+            let state_data = &mut states[state_id];
             let dfa_id = state_data.dfa_id;
             match Self::get_state_type(dfa_id, &leaves, &dfa) {
                 Ok(state_type) => state_data.state_type = state_type,
@@ -329,7 +415,9 @@ impl Graph {
                     continue;
                 }
 
-                result.entry(dfa_lookup[&next_id]).or_insert(ByteClass::new()).add_byte(input_byte);
+                let next_state = dfa_lookup[&next_id];
+
+                result.entry(next_state).or_insert(ByteClass::new()).add_byte(input_byte);
             }
 
             let mut normal: Vec<(ByteClass, State)> =
@@ -344,16 +432,37 @@ impl Graph {
             } else {
                 Some(dfa_lookup[&eoi_id])
             };
+
+            for child in state_data.iter_children().collect::<Vec<_>>() {
+                states[child.0].add_back_edge(State(state_id));
+            }
         }
 
-        Ok(Graph {
-            config,
+        let mut graph = Graph {
             leaves,
             dfa,
             states,
             root,
             errors,
-        })
+        };
+
+        // Find early accept states
+        for state in graph.iter_states() {
+            let state_data = graph.get_state(state);
+            let child_state_types = state_data.iter_children().map(|child_state| {
+                let child_state_data = graph.get_state(child_state);
+                child_state_data.state_type
+            }).collect::<HashSet<_>>();
+
+            let child_state_types_vec = child_state_types.into_iter().map(|state_type| state_type.accept).collect::<Vec<_>>();
+
+            // If all children match the same leaf, this state is an early accept state
+            if let &[Some(leaf_id)] = &*child_state_types_vec {
+                graph.states[state.0].state_type.early = Some(leaf_id);
+            }
+        }
+
+        Ok(graph)
     }
 
     /// Get the [StateType] of a [State] from the cache, or calculate it if it isn't present in the
@@ -380,26 +489,41 @@ impl Graph {
                 return Err(DisambiguationError(matching_prio_leaves))
             }
 
-            // TODO: Check for early accept here
             Ok(StateType {
                 accept: Some(highest_leaf_id),
-                early_accept: None,
+                early: None,
             })
         } else {
             Ok(StateType::default())
         }
     }
 
-    fn propagate_context(old_context: Option<LeafId>, new_kind: &StateType) -> Option<LeafId> {
-        new_kind.accept.or(old_context)
-    }
+}
 
+impl fmt::Display for Graph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // TODO: cleanup
+        let graph_rendered = self
+            .iter_states()
+            .map(|state| {
+                let transitions = format!("{:#}", self.get_state(state));
+                let indented = transitions
+                    .lines()
+                    .map(|line| format!("  {line}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                format!("  {} => {}", state, indented)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        f.write_str(&graph_rendered)
+    }
 }
 
 struct ContextTraverse<'a> {
     ctx_states: Vec::<StateData>,
     ctx_lookup: HashMap::<(State, Option<LeafId>), State>,
-    // TODO: Replace this with an index
     ctx_stack: Vec::<(State, State)>,
     no_ctx_graph: &'a Graph,
 }
@@ -417,15 +541,14 @@ impl<'a> ContextTraverse<'a> {
     }
 
     fn get_ctx_state(&mut self, no_ctx_next_state: State, current_context: Option<LeafId>) -> State {
-        // TODO: BUG: Need to transfer accept (state_type) here
         let next_type = self.no_ctx_graph.states[no_ctx_next_state.0].state_type;
-        let next_context = next_type.accept.or(current_context);
+        let next_context = next_type.early_or_accept().or(current_context);
+
         match self.ctx_lookup.entry((no_ctx_next_state, next_context)) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let index = self.ctx_states.len();
-                let dfa_id = self.no_ctx_graph.get_state(no_ctx_next_state).dfa_id;
-                let mut ctx_data = StateData::with_context(dfa_id, next_context);
+                let mut ctx_data = StateData::with_context(next_context);
                 ctx_data.state_type = next_type;
                 self.ctx_states.push(ctx_data);
                 let ctx_state = *entry.insert(State(index));

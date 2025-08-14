@@ -176,10 +176,10 @@ impl<'a> Generator<'a> {
         // end at the current offset - 1.
         // The 1 comes from the 1 byte delayed match behavior
         // of the regex-automata crate.
+        // TODO: this needs to be after the fast loop
         let setup = match state_data.state_type {
             StateType {
-                early_accept: Some(_),
-                ..
+                early: Some(_), ..
             } => Some(quote! { lex.end(offset); }),
             StateType {
                 accept: Some(_), ..
@@ -187,15 +187,17 @@ impl<'a> Generator<'a> {
             StateType { .. } => None,
         };
 
-        let body = self.impl_fork(state, state_data);
+        let fast_loop = self.maybe_impl_fast_loop(state);
+        let fork = self.impl_fork(state, state_data, true);
 
         // Wrap body in a match arm or function depending on the current codegen
         let this_ident = self.get_ident(&state);
         if self.config.use_state_machine_codegen {
             quote! {
                 LogosState::#this_ident => {
+                    #fast_loop
                     #setup
-                    #body
+                    #fork
                 }
             }
         } else {
@@ -203,8 +205,9 @@ impl<'a> Generator<'a> {
             quote! {
                 fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
+                    #fast_loop
                     #setup
-                    #body
+                    #fork
                 }
             }
         }

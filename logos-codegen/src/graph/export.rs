@@ -134,7 +134,7 @@ impl Graph {
             let id = format_state(&state, false);
             let label = format_state(&state, true);
             let color =
-                if data.state_type.early_accept.is_some() || data.state_type.accept.is_some() {
+                if data.state_type.early.is_some() || data.state_type.accept.is_some() {
                     NodeColor::Green
                 } else {
                     NodeColor::Black
