@@ -331,16 +331,6 @@ impl Graph {
             }
         }
 
-        // Future optimizations:
-        // TODO: prune nodes that don't lead to any more accept states before reaching the dead
-        // node (0)
-        //
-        // TODO: implement early matching (so we don't need to read an extra byte) in cases where
-        // all transitions lead to a match state for the same leaf
-        // Done, now need to prune late matches that are always covered by early ones to free up
-        // nodes to be pruned
-        // Done, now need to merge identical states and prune dead ends
-
         Ok(graph)
     }
 
