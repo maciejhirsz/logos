@@ -1,8 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::Ident;
 
-use crate::{graph::{ByteClass, State}, util::ToIdent};
+use crate::graph::{ByteClass, State};
 
 use super::Generator;
 
@@ -40,7 +39,6 @@ impl<'a> Generator<'a> {
             _fast_loop!(lex, loop_test, offset);
         }
     }
-
 }
 
 pub fn fast_loop_macro(unroll_factor: usize) -> TokenStream {

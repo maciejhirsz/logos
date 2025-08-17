@@ -133,12 +133,11 @@ impl Graph {
 
             let id = format_state(&state, false);
             let label = format_state(&state, true);
-            let color =
-                if data.state_type.early.is_some() || data.state_type.accept.is_some() {
-                    NodeColor::Green
-                } else {
-                    NodeColor::Black
-                };
+            let color = if data.state_type.early.is_some() || data.state_type.accept.is_some() {
+                NodeColor::Green
+            } else {
+                NodeColor::Black
+            };
 
             Fmt::write_node(&mut s, &id, &label, color)?;
 
@@ -231,9 +230,7 @@ mod tests {
             })
             .collect();
 
-        let config = Config {
-            utf8_mode: true,
-        };
+        let config = Config { utf8_mode: true };
         let graph = Graph::new(leaves, config).expect("Unable to compile graph");
         let dot = graph.export_graph::<Dot>().unwrap();
         let mmd = graph.export_graph::<Mermaid>().unwrap();

@@ -11,7 +11,12 @@ use crate::{
 use super::Generator;
 
 impl<'a> Generator<'a> {
-    pub fn impl_fork(&mut self, state: State, state_data: &StateData, ignore_self: bool) -> TokenStream {
+    pub fn impl_fork(
+        &mut self,
+        state: State,
+        state_data: &StateData,
+        ignore_self: bool,
+    ) -> TokenStream {
         if state_data.normal.len() > 2 {
             self.impl_fork_table(state, state_data, ignore_self)
         } else {
@@ -76,19 +81,25 @@ impl<'a> Generator<'a> {
                 let (test_ident, test_mask) = self.add_test_to_lut(byte_class);
                 quote! { #test_ident[byte as usize] & #test_mask != 0 }
             } else {
-                let sub_conditions = comparisons.into_iter().map(|cmp| {
-                    let Comparisons { range, except } = cmp;
-                    let start = byte_to_tokens(*range.start());
-                    let end = byte_to_tokens(*range.end());
-                    let exceptions = except.into_iter().map(|ex| {
-                        quote! { && byte != #ex }
-                    }).collect::<Vec<_>>();
-                    if range.len() == 1 {
-                        quote! { (byte == #start) }
-                    } else {
-                        quote! { (matches!(byte, #start ..= #end) #(#exceptions)*) }
-                    }
-                }).collect::<Vec<_>>();
+                let sub_conditions = comparisons
+                    .into_iter()
+                    .map(|cmp| {
+                        let Comparisons { range, except } = cmp;
+                        let start = byte_to_tokens(*range.start());
+                        let end = byte_to_tokens(*range.end());
+                        let exceptions = except
+                            .into_iter()
+                            .map(|ex| {
+                                quote! { && byte != #ex }
+                            })
+                            .collect::<Vec<_>>();
+                        if range.len() == 1 {
+                            quote! { (byte == #start) }
+                        } else {
+                            quote! { (matches!(byte, #start ..= #end) #(#exceptions)*) }
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
                 quote! { #(#sub_conditions) ||* }
             };

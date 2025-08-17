@@ -73,9 +73,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         .as_ref()
         .map(LitBool::value)
         .unwrap_or(true);
-    let config = Config {
-        utf8_mode,
-    };
+    let config = Config { utf8_mode };
     let subpatterns = Subpatterns::new(&parser.subpatterns, utf8_mode, &mut parser.errors);
 
     let mut pats = Vec::new();

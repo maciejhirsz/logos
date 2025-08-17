@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use fast_loop::fast_loop_macro;
 use fnv::FnvHashMap as Map;
@@ -180,9 +180,7 @@ impl<'a> Generator<'a> {
         // of the regex-automata crate.
         // TODO: this needs to be after the fast loop
         let setup = match state_data.state_type {
-            StateType {
-                early: Some(_), ..
-            } => Some(quote! { lex.end(offset); }),
+            StateType { early: Some(_), .. } => Some(quote! { lex.end(offset); }),
             StateType {
                 accept: Some(_), ..
             } => Some(quote! { lex.end(offset - 1); }),
@@ -219,9 +217,7 @@ impl<'a> Generator<'a> {
         format!("_TABLE_{index}").to_ident()
     }
 
-
     fn add_test_to_lut(&mut self, edge: &ByteClass) -> (Ident, u8) {
-
         let mut table_bits = [false; 256];
         for range in edge.ranges.iter() {
             for byte in range.clone() {
@@ -247,22 +243,19 @@ impl<'a> Generator<'a> {
     pub fn render_luts(&self) -> TokenStream {
         let mut sorted = self.loop_masks.iter().collect::<Vec<_>>();
         sorted.sort_by_key(|(_bits, id)| **id);
-        let decls = sorted
-            .chunks(8)
-            .enumerate()
-            .map(|(lut_idx, bit_arrs)| {
-                let mut byte_arr = [0u8; 256];
-                for (bit_index, (bits, _id)) in bit_arrs.iter().enumerate() {
-                    for (arr_idx, &bit) in bits.iter().enumerate() {
-                        if bit {
-                            byte_arr[arr_idx] |= 1 << bit_index;
-                        }
+        let decls = sorted.chunks(8).enumerate().map(|(lut_idx, bit_arrs)| {
+            let mut byte_arr = [0u8; 256];
+            for (bit_index, (bits, _id)) in bit_arrs.iter().enumerate() {
+                for (arr_idx, &bit) in bits.iter().enumerate() {
+                    if bit {
+                        byte_arr[arr_idx] |= 1 << bit_index;
                     }
                 }
+            }
 
-                let ident = Self::table_ident(lut_idx);
-                quote! { const #ident: [u8; 256] = [#(#byte_arr),*]; }
-            });
+            let ident = Self::table_ident(lut_idx);
+            quote! { const #ident: [u8; 256] = [#(#byte_arr),*]; }
+        });
 
         quote! { #(#decls)* }
     }

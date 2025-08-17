@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use regex_automata::{dfa::{dense::DFA, Automaton}, util::primitives::StateID};
+use regex_automata::{
+    dfa::{dense::DFA, Automaton},
+    util::primitives::StateID,
+};
 
 use crate::leaf::LeafId;
 
@@ -42,4 +45,3 @@ pub fn get_states<'a>(dfa: &'a OwnedDFA, root: StateID) -> impl Iterator<Item = 
 
     states.into_iter()
 }
-

@@ -1,6 +1,6 @@
 use std::ascii::escape_default;
 use std::collections::HashSet;
-use std::{cmp, fmt};
+use std::fmt;
 use std::{
     collections::{hash_map::Entry, HashMap},
     ops::RangeInclusive,
@@ -16,8 +16,8 @@ use regex_automata::{
 
 use crate::leaf::{Leaf, LeafId};
 
-mod export;
 mod dfa_util;
+mod export;
 
 /// A configuration used to construct a graph
 #[derive(Debug)]
@@ -44,7 +44,6 @@ impl StateType {
         self.early.or(self.accept)
     }
 }
-
 
 /// This type uniquely identifies the state of the Logos state machine.
 /// It is an index into the `states` field of the [Graph] struct.
@@ -162,8 +161,8 @@ impl ByteClass {
             if let Some(Comparisons { range, except }) = ranges.last_mut() {
                 if *next_range.start() == *range.end() + 2 {
                     *range = *range.start()..=*next_range.end();
-                    except.push(*next_range.start()-1);
-                    continue
+                    except.push(*next_range.start() - 1);
+                    continue;
                 }
             }
             ranges.push(Comparisons::new(next_range.clone()));
@@ -171,7 +170,6 @@ impl ByteClass {
 
         ranges
     }
-
 }
 
 impl fmt::Display for ByteClass {
@@ -200,7 +198,7 @@ impl fmt::Display for ByteClass {
 #[derive(Debug)]
 pub struct Comparisons {
     pub range: RangeInclusive<u8>,
-    pub except: Vec<u8>
+    pub except: Vec<u8>,
 }
 
 impl Comparisons {
@@ -216,8 +214,12 @@ impl Comparisons {
             1
         } else {
             let mut edges = 0;
-            if *self.range.start() > u8::MIN { edges += 1 }
-            if *self.range.end() < u8::MAX { edges += 1 }
+            if *self.range.start() > u8::MIN {
+                edges += 1
+            }
+            if *self.range.end() < u8::MAX {
+                edges += 1
+            }
             edges
         }) + self.except.len()
     }
@@ -293,9 +295,9 @@ impl Graph {
             }
             ctx_traverse.ctx_states[ctx_state.0].normal = normal;
 
-            ctx_traverse.ctx_states[ctx_state.0].eoi = orig_state_data.eoi.map(|eoi_state| {
-                ctx_traverse.get_ctx_state(eoi_state, context)
-            });
+            ctx_traverse.ctx_states[ctx_state.0].eoi = orig_state_data
+                .eoi
+                .map(|eoi_state| ctx_traverse.get_ctx_state(eoi_state, context));
 
             for child in ctx_traverse.ctx_states[ctx_state.0]
                 .iter_children()
@@ -303,7 +305,6 @@ impl Graph {
             {
                 ctx_traverse.ctx_states[child.0].add_back_edge(ctx_state);
             }
-
         }
 
         graph.states = ctx_traverse.ctx_states;
@@ -322,9 +323,16 @@ impl Graph {
         }
 
         // Prune dead ends
-        let mut visit_stack = graph.iter_states().filter(|state| {
-            graph.get_state(*state).state_type.early_or_accept().is_some()
-        }).collect::<Vec<_>>();
+        let mut visit_stack = graph
+            .iter_states()
+            .filter(|state| {
+                graph
+                    .get_state(*state)
+                    .state_type
+                    .early_or_accept()
+                    .is_some()
+            })
+            .collect::<Vec<_>>();
         let mut reach_accept = visit_stack.iter().cloned().collect::<HashSet<_>>();
         while let Some(state) = visit_stack.pop() {
             for parent in &graph.get_state(state).backward {
@@ -336,9 +344,9 @@ impl Graph {
 
         for state in graph.iter_states() {
             let state_data = &mut graph.states[state.0];
-            state_data.normal.retain(|(_bc, next_state)| {
-                reach_accept.contains(next_state)
-            });
+            state_data
+                .normal
+                .retain(|(_bc, next_state)| reach_accept.contains(next_state));
 
             state_data.eoi = state_data.eoi.filter(|state| reach_accept.contains(state));
 
@@ -424,15 +432,17 @@ impl Graph {
         }
 
         let mut states = Vec::new();
-        let dfa_lookup = get_states(&dfa, start_id).enumerate().map(|(idx, dfa_id)| {
-            states.push(StateData::new(dfa_id));
-            (dfa_id, State(idx))
-        }).collect::<HashMap<StateID, State>>();
+        let dfa_lookup = get_states(&dfa, start_id)
+            .enumerate()
+            .map(|(idx, dfa_id)| {
+                states.push(StateData::new(dfa_id));
+                (dfa_id, State(idx))
+            })
+            .collect::<HashMap<StateID, State>>();
         let root = dfa_lookup[&start_id];
 
         let mut errors = Vec::new();
         for state_id in 0..states.len() {
-
             let state_data = &mut states[state_id];
             let dfa_id = state_data.dfa_id;
             match Self::get_state_type(dfa_id, &leaves, &dfa) {
@@ -450,7 +460,10 @@ impl Graph {
 
                 let next_state = dfa_lookup[&next_id];
 
-                result.entry(next_state).or_insert(ByteClass::new()).add_byte(input_byte);
+                result
+                    .entry(next_state)
+                    .or_insert(ByteClass::new())
+                    .add_byte(input_byte);
             }
 
             let mut normal: Vec<(ByteClass, State)> =
@@ -482,12 +495,18 @@ impl Graph {
         // Find early accept states
         for state in graph.iter_states() {
             let state_data = graph.get_state(state);
-            let child_state_types = state_data.iter_children().map(|child_state| {
-                let child_state_data = graph.get_state(child_state);
-                child_state_data.state_type
-            }).collect::<HashSet<_>>();
+            let child_state_types = state_data
+                .iter_children()
+                .map(|child_state| {
+                    let child_state_data = graph.get_state(child_state);
+                    child_state_data.state_type
+                })
+                .collect::<HashSet<_>>();
 
-            let child_state_types_vec = child_state_types.into_iter().map(|state_type| state_type.accept).collect::<Vec<_>>();
+            let child_state_types_vec = child_state_types
+                .into_iter()
+                .map(|state_type| state_type.accept)
+                .collect::<Vec<_>>();
 
             // If all children match the same leaf, this state is an early accept state
             if let &[Some(leaf_id)] = &*child_state_types_vec {
@@ -500,7 +519,11 @@ impl Graph {
 
     /// Get the [StateType] of a [State] from the cache, or calculate it if it isn't present in the
     /// cache.
-    fn get_state_type(state_id: StateID, leaves: &Vec<Leaf>, dfa: &OwnedDFA) -> Result<StateType, DisambiguationError> {
+    fn get_state_type(
+        state_id: StateID,
+        leaves: &Vec<Leaf>,
+        dfa: &OwnedDFA,
+    ) -> Result<StateType, DisambiguationError> {
         // Get a list of all leaves that match in this state
         let matching_leaves = iter_matches(state_id, dfa)
             .map(|leaf_id| (leaf_id, leaves[leaf_id.0].priority))
@@ -519,7 +542,7 @@ impl Graph {
                 .collect();
             // Ensure that only one leaf matches at said highest priority
             if matching_prio_leaves.len() > 1 {
-                return Err(DisambiguationError(matching_prio_leaves))
+                return Err(DisambiguationError(matching_prio_leaves));
             }
 
             Ok(StateType {
@@ -530,7 +553,6 @@ impl Graph {
             Ok(StateType::default())
         }
     }
-
 }
 
 impl fmt::Display for Graph {
@@ -555,9 +577,9 @@ impl fmt::Display for Graph {
 }
 
 struct ContextTraverse<'a> {
-    ctx_states: Vec::<StateData>,
-    ctx_lookup: HashMap::<(State, Option<LeafId>), State>,
-    ctx_stack: Vec::<(State, State)>,
+    ctx_states: Vec<StateData>,
+    ctx_lookup: HashMap<(State, Option<LeafId>), State>,
+    ctx_stack: Vec<(State, State)>,
     no_ctx_graph: &'a Graph,
 }
 
@@ -573,7 +595,11 @@ impl<'a> ContextTraverse<'a> {
         }
     }
 
-    fn get_ctx_state(&mut self, no_ctx_next_state: State, current_context: Option<LeafId>) -> State {
+    fn get_ctx_state(
+        &mut self,
+        no_ctx_next_state: State,
+        current_context: Option<LeafId>,
+    ) -> State {
         let next_type = self.no_ctx_graph.states[no_ctx_next_state.0].state_type;
         let next_context = next_type.early_or_accept().or(current_context);
 
@@ -587,7 +613,7 @@ impl<'a> ContextTraverse<'a> {
                 let ctx_state = *entry.insert(State(index));
                 self.ctx_stack.push((no_ctx_next_state, ctx_state));
                 ctx_state
-            },
+            }
         }
     }
 
