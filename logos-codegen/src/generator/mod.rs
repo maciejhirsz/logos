@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use fast_loop::fast_loop_macro;
 use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
@@ -32,7 +34,7 @@ pub struct Generator<'a> {
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
     /// Bit masks that will be compressed into LUTs for fast looping
-    loop_masks: Vec<[bool; 256]>,
+    loop_masks: HashMap<[bool; 256], usize>,
 }
 
 impl<'a> Generator<'a> {
@@ -55,7 +57,7 @@ impl<'a> Generator<'a> {
             graph,
             idents,
             error_callback,
-            loop_masks: Vec::new(),
+            loop_masks: HashMap::new(),
         }
     }
 
@@ -219,10 +221,6 @@ impl<'a> Generator<'a> {
 
 
     fn add_test_to_lut(&mut self, edge: &ByteClass) -> (Ident, u8) {
-        let loop_id = self.loop_masks.len();
-        let loop_table = loop_id / 8;
-        let ident = Self::table_ident(loop_table);
-        let loop_mask = 1u8 << (loop_id % 8);
 
         let mut table_bits = [false; 256];
         for range in edge.ranges.iter() {
@@ -231,18 +229,30 @@ impl<'a> Generator<'a> {
             }
         }
 
-        self.loop_masks.push(table_bits);
+        let loop_id = if let Some(&existing) = self.loop_masks.get(&table_bits) {
+            existing
+        } else {
+            let loop_id = self.loop_masks.len();
+            self.loop_masks.insert(table_bits, loop_id);
+            loop_id
+        };
+
+        let loop_table = loop_id / 8;
+        let ident = Self::table_ident(loop_table);
+        let loop_mask = 1u8 << (loop_id % 8);
 
         (ident, loop_mask)
     }
 
     pub fn render_luts(&self) -> TokenStream {
-        let decls = self.loop_masks
+        let mut sorted = self.loop_masks.iter().collect::<Vec<_>>();
+        sorted.sort_by_key(|(_bits, id)| **id);
+        let decls = sorted
             .chunks(8)
             .enumerate()
             .map(|(lut_idx, bit_arrs)| {
                 let mut byte_arr = [0u8; 256];
-                for (bit_index, bits) in bit_arrs.iter().enumerate() {
+                for (bit_index, (bits, _id)) in bit_arrs.iter().enumerate() {
                     for (arr_idx, &bit) in bits.iter().enumerate() {
                         if bit {
                             byte_arr[arr_idx] |= 1 << bit_index;
