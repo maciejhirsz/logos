@@ -333,7 +333,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     .map(|line| format!("  {line}"))
                     .collect::<Vec<_>>()
                     .join("\n");
-                format!("  {} => {}", state, indented)
+                format!("  {state} => {indented}")
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -469,8 +469,8 @@ fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<
             .into())
         }
         None => {
-            let dot_path = path.join(format!("{}.dot", name));
-            let mmd_path = path.join(format!("{}.mmd", name));
+            let dot_path = path.join(format!("{name}.dot"));
+            let mmd_path = path.join(format!("{name}.mmd"));
             (Some(dot_path), Some(mmd_path))
         }
     };

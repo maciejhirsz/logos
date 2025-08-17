@@ -21,7 +21,7 @@ impl Pattern {
     /// Create a new pattern from a regex string source.
     /// - `utf8_mode` determines if the pattern should refuse to match invalid utf8 sequences
     /// - `unicode` determines if the regex pattern should match bytes (false) or utf8 codepoints
-    /// (true)
+    ///   (true)
     /// - `ignore_case` sets the (?i) flag for the entire pattern.
     ///
     /// There are some cases where the value of `utf8_mode` and `unicode` may not match. For
@@ -43,7 +43,7 @@ impl Pattern {
             .case_insensitive(ignore_case)
             .build()
             .parse(regex)
-            .map_err(|err| format!("{}", err))?;
+            .map_err(|err| format!("{err}"))?;
 
         Ok(Pattern {
             is_literal,
@@ -83,9 +83,9 @@ impl Pattern {
             HirKind::Class(_) => 2,
             HirKind::Look(_) => 0,
             HirKind::Repetition(repetition) => {
-                repetition.min as usize * Self::complexity(&*repetition.sub)
+                repetition.min as usize * Self::complexity(&repetition.sub)
             }
-            HirKind::Capture(capture) => Self::complexity(&*capture.sub),
+            HirKind::Capture(capture) => Self::complexity(&capture.sub),
             HirKind::Concat(hirs) => hirs.iter().map(Self::complexity).sum(),
             HirKind::Alternation(hirs) => hirs.iter().map(Self::complexity).max().unwrap_or(0),
         }

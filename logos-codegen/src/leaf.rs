@@ -91,14 +91,8 @@ impl fmt::Display for Leaf {
     }
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct LeafId(pub usize);
-
-impl Default for LeafId {
-    fn default() -> Self {
-        LeafId(0)
-    }
-}
 
 impl From<PatternID> for LeafId {
     fn from(value: PatternID) -> Self {

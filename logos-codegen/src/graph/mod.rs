@@ -95,7 +95,7 @@ impl StateData {
     fn iter_children<'a>(&'a self) -> impl Iterator<Item = State> + 'a {
         self.normal
             .iter()
-            .map(|(_bc, s)| s.clone())
+            .map(|(_bc, s)| *s)
             .chain(self.eoi.iter().cloned())
     }
 
@@ -125,7 +125,7 @@ impl fmt::Display for StateData {
                 writeln!(f, "  {} => {}", &bc.to_string(), state)?;
             }
             if let Some(eoi_state) = &self.eoi {
-                writeln!(f, "  EOI => {}", eoi_state)?;
+                writeln!(f, "  EOI => {eoi_state}")?;
             }
             write!(f, "}}")?;
         }
@@ -360,10 +360,10 @@ impl Graph {
 
         for state in graph.iter_states() {
             let state_data = &graph.states[state.0];
-            if state_indexes.contains_key(&state_data) {
-                state_lookup.insert(state, state_indexes[&state_data]);
+            if let Entry::Vacant(e) = state_indexes.entry(state_data) {
+                e.insert(state);
             } else {
-                state_indexes.insert(state_data, state);
+                state_lookup.insert(state, state_indexes[&state_data]);
             }
         }
         for state in graph.iter_states() {
@@ -396,10 +396,7 @@ impl Graph {
             .configure(nfa_config)
             .build_many_from_hir(&hirs)
             .map_err(|err| {
-                format!(
-                    "Logos encountered an error compiling the NFA for this regex: {}",
-                    err
-                )
+                format!("Logos encountered an error compiling the NFA for this regex: {err}")
             })?;
 
         let dfa_config = DFA::config()
@@ -412,10 +409,7 @@ impl Graph {
             .configure(dfa_config)
             .build_from_nfa(&nfa)
             .map_err(|err| {
-                format!(
-                    "Logos encountered an error compiling the DFA for this regex: {}",
-                    err
-                )
+                format!("Logos encountered an error compiling the DFA for this regex: {err}")
             })?;
 
         let Some(start_id) = dfa.universal_start_state(Anchored::Yes) else {
@@ -521,7 +515,7 @@ impl Graph {
     /// cache.
     fn get_state_type(
         state_id: StateID,
-        leaves: &Vec<Leaf>,
+        leaves: &[Leaf],
         dfa: &OwnedDFA,
     ) -> Result<StateType, DisambiguationError> {
         // Get a list of all leaves that match in this state
@@ -567,7 +561,7 @@ impl fmt::Display for Graph {
                     .map(|line| format!("  {line}"))
                     .collect::<Vec<_>>()
                     .join("\n");
-                format!("  {} => {}", state, indented)
+                format!("  {state} => {indented}")
             })
             .collect::<Vec<_>>()
             .join("\n");

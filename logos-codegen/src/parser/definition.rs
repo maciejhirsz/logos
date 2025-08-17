@@ -37,7 +37,7 @@ impl Literal {
                             write!(pattern, "{}", byte as char)
                         }
                     } else {
-                        write!(pattern, "\\x{:02X}", byte)
+                        write!(pattern, "\\x{byte:02X}")
                     }
                     .expect("Writing to a string should not fail");
                 }
@@ -118,11 +118,10 @@ impl Definition {
                 parser.err(
                     format!(
                         "\
-                        Unknown nested attribute: {}\n\
+                        Unknown nested attribute: {unknown}\n\
                         \n\
                         Expected one of: priority, callback\
-                        ",
-                        unknown
+                        "
                     ),
                     name.span(),
                 );

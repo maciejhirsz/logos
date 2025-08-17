@@ -64,11 +64,10 @@ impl Skip {
                 parser.err(
                     format!(
                         "\
-                        Unknown nested attribute: {}\n\
+                        Unknown nested attribute: {unknown}\n\
                         \n\
                         Expected: callback or priority\
-                        ",
-                        unknown
+                        "
                     ),
                     name.span(),
                 );

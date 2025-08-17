@@ -180,8 +180,8 @@ impl<'a> Generator<'a> {
 
             let mut match_body = TokenStream::new();
             for state in &states {
-                let ident = self.get_ident(&state);
-                let action = self.state_transition(&state);
+                let ident = self.get_ident(state);
+                let action = self.state_transition(state);
                 match_body.append_all(quote! {
                     Some(LogosNextState::#ident) => {
                         offset += 1;

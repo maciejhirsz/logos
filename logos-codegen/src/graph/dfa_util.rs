@@ -31,7 +31,7 @@ pub fn iter_children<'a>(dfa: &'a OwnedDFA, state: StateID) -> impl Iterator<Ite
 
 /// This utility function returns every state accessible by the dfa
 /// from a root state.
-pub fn get_states<'a>(dfa: &'a OwnedDFA, root: StateID) -> impl Iterator<Item = StateID> {
+pub fn get_states(dfa: &OwnedDFA, root: StateID) -> impl Iterator<Item = StateID> {
     let mut states = HashSet::new();
     states.insert(root);
     let mut explore_stack = vec![root];

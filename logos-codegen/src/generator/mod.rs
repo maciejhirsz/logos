@@ -143,7 +143,7 @@ impl<'a> Generator<'a> {
 
     /// Generates the code to transition to a state.
     fn state_transition(&self, state: &State) -> TokenStream {
-        return self.state_action(self.state_value(state));
+        self.state_action(self.state_value(state))
     }
 
     /// Generates the code to transition to a state stored in an identifier
@@ -156,7 +156,7 @@ impl<'a> Generator<'a> {
 
     /// Generates the code to quote a state's representation
     fn state_value(&self, state: &State) -> TokenStream {
-        let state_ident = self.get_ident(&state);
+        let state_ident = self.get_ident(state);
         match self.config.use_state_machine_codegen {
             true => quote!(LogosState::#state_ident),
             false => quote!(#state_ident),

@@ -27,7 +27,7 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
         .iter()
         .collect::<PathBuf>();
 
-    let input_path = input_dir_path.join(format!("{}.rs", fixture));
+    let input_path = input_dir_path.join(format!("{fixture}.rs"));
     let input = std::fs::read_to_string(input_path)?;
 
     let generated = logos_codegen::generate(input.parse()?).to_string();

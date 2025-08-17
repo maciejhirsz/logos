@@ -115,9 +115,9 @@ impl Graph {
         fn format_state(state: &State, fancy: bool) -> String {
             let state_id = state.0;
             if fancy {
-                format!("State {}", state_id)
+                format!("State {state_id}")
             } else {
-                format!("n{}", state_id)
+                format!("n{state_id}")
             }
         }
 

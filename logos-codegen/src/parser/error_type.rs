@@ -53,11 +53,10 @@ impl ErrorType {
                 parser.err(
                     format!(
                         "\
-                        Unknown nested attribute: {}\n\
+                        Unknown nested attribute: {unknown}\n\
                         \n\
                         Expected one of: callback\
-                        ",
-                        unknown
+                        "
                     ),
                     name.span(),
                 );

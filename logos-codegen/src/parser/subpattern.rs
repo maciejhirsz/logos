@@ -46,7 +46,7 @@ impl Subpatterns {
 
             if !SUBPATTERN_IDENT.is_match(&name_string) {
                 errors.err(
-                    format!("Invalid subpattern name: `{}`", name),
+                    format!("Invalid subpattern name: `{name}`"),
                     subpattern.name.span(),
                 );
                 continue;
@@ -87,7 +87,7 @@ impl Subpatterns {
 
             if let Some(existing) = build.map.insert(name_string, subpattern) {
                 errors
-                    .err(format!("Subpattern `{}` already exists", name), name.span())
+                    .err(format!("Subpattern `{name}` already exists"), name.span())
                     .err("Previously assigned here", existing.name.span());
                 continue;
             }
@@ -118,7 +118,7 @@ impl Subpatterns {
                 fragments.push(&subpattern.pattern);
             } else {
                 was_error = true;
-                errors.err(format!("Subpattern `{}` not found", name), span);
+                errors.err(format!("Subpattern `{name}` not found"), span);
             }
             current_pos = group.end();
         }

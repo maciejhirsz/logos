@@ -36,11 +36,10 @@ impl IgnoreFlags {
                 parser.err(
                     format!(
                         "\
-                        Unknown flag: {}\n\
+                        Unknown flag: {unknown}\n\
                         \n\
                         Expected one of: case, ascii_case\
-                        ",
-                        unknown
+                        "
                     ),
                     ident.span(),
                 );
