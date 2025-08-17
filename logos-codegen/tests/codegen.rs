@@ -20,6 +20,8 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     } else {
         "tailcall"
     };
+    let label = format!("{fixture}-{codegen_alg}-{rust_ver}");
+    println!("Running case {label}");
 
     let input_dir_path = [env!("CARGO_MANIFEST_DIR"), "tests", "data", "codegen"]
         .iter()
@@ -33,7 +35,7 @@ pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let formatted =
         prettyplease::unparse(&parse_file(&generated).expect("Logos output is unparseable"));
 
-    assert_snapshot!(format!("{fixture}-{codegen_alg}-{rust_ver}"), formatted);
+    assert_snapshot!(label, formatted);
 
     Ok(())
 }

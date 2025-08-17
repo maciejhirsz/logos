@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, iter};
 
 use regex_automata::{
     dfa::{dense::DFA, Automaton},
@@ -23,6 +23,12 @@ pub fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<I
     })
 }
 
+pub fn iter_children<'a>(dfa: &'a OwnedDFA, state: StateID) -> impl Iterator<Item = StateID> + 'a {
+    (0..=u8::MAX)
+        .map(move |byte| dfa.next_state(state, byte))
+        .chain(iter::once(dfa.next_eoi_state(state)))
+}
+
 /// This utility function returns every state accessible by the dfa
 /// from a root state.
 pub fn get_states<'a>(dfa: &'a OwnedDFA, root: StateID) -> impl Iterator<Item = StateID> {
@@ -30,18 +36,14 @@ pub fn get_states<'a>(dfa: &'a OwnedDFA, root: StateID) -> impl Iterator<Item = 
     states.insert(root);
     let mut explore_stack = vec![root];
     while let Some(state) = explore_stack.pop() {
-        for byte in 0..u8::MAX {
-            let next_state = dfa.next_state(state, byte);
-            if states.insert(next_state) {
-                explore_stack.push(next_state)
+        for child in iter_children(dfa, state) {
+            if states.insert(child) {
+                explore_stack.push(child);
             }
-        }
-
-        let eoi_state = dfa.next_eoi_state(state);
-        if states.insert(eoi_state) {
-            explore_stack.push(eoi_state)
         }
     }
 
-    states.into_iter()
+    let mut sorted = states.into_iter().collect::<Vec<_>>();
+    sorted.sort_unstable();
+    sorted.into_iter()
 }
