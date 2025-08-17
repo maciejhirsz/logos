@@ -19,7 +19,7 @@ jobs:
       options: --security-opt seccomp=unconfined
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install rustfmt
       run: |
