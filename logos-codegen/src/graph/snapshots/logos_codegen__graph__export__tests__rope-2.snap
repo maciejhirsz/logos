@@ -3,21 +3,19 @@ source: logos-codegen/src/graph/export.rs
 expression: mmd
 ---
 flowchart TB
-n1024ctx0["State 1024 (ctx 0)"]
-style n1024ctx0 stroke:#00C853
-n1536["State 1536"]
-style n1536 stroke:#000000
-n1536-->|"r"|n3584
-n2048["State 2048"]
-style n2048 stroke:#000000
-n2048-->|"p"|n2560
-n2560["State 2560"]
-style n2560 stroke:#000000
-n2560-->|"e"|n3072
-n3072["State 3072"]
-style n3072 stroke:#000000
-n3072-->|"\\x00..=\\xff"|n1024ctx0
-n3072-->|"EOI"|n1024ctx0
-n3584["State 3584"]
-style n3584 stroke:#000000
-n3584-->|"o"|n2048
+n0["State 0"]
+style n0 stroke:#000000
+n0-->|"r"|n1
+n1["State 1"]
+style n1 stroke:#000000
+n1-->|"o"|n2
+n2["State 2"]
+style n2 stroke:#000000
+n2-->|"p"|n3
+n3["State 3"]
+style n3 stroke:#000000
+n3-->|"e"|n4
+n4["State 4"]
+style n4 stroke:#00C853
+n5["State 5"]
+style n5 stroke:#000000

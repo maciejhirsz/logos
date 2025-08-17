@@ -5,16 +5,14 @@ expression: dot
 digraph {
 node[shape=box];
 splines=ortho;
-n1024ctx0[label="State 1024 (ctx 0)",color=green];
-n1536[label="State 1536",color=black];
-n1536->n3584 [label="r"];
-n2048[label="State 2048",color=black];
-n2048->n2560 [label="p"];
-n2560[label="State 2560",color=black];
-n2560->n3072 [label="e"];
-n3072[label="State 3072",color=black];
-n3072->n1024ctx0 [label="\\x00..=\\xff"];
-n3072->n1024ctx0 [label="EOI"];
-n3584[label="State 3584",color=black];
-n3584->n2048 [label="o"];
+n0[label="State 0",color=black];
+n0->n1 [label="r"];
+n1[label="State 1",color=black];
+n1->n2 [label="o"];
+n2[label="State 2",color=black];
+n2->n3 [label="p"];
+n3[label="State 3",color=black];
+n3->n4 [label="e"];
+n4[label="State 4",color=green];
+n5[label="State 5",color=black];
 }

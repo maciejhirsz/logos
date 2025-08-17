@@ -18,7 +18,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
-                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 16usize] >
+                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
                 ($offset) { if $test (arr[0usize]) { $offset += 0usize; break 'fast_loop;
                 } if $test (arr[1usize]) { $offset += 1usize; break 'fast_loop; } if
                 $test (arr[2usize]) { $offset += 2usize; break 'fast_loop; } if $test
@@ -26,17 +26,9 @@ impl<'s> ::logos::Logos<'s> for Token {
                 (arr[4usize]) { $offset += 4usize; break 'fast_loop; } if $test
                 (arr[5usize]) { $offset += 5usize; break 'fast_loop; } if $test
                 (arr[6usize]) { $offset += 6usize; break 'fast_loop; } if $test
-                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } if $test
-                (arr[8usize]) { $offset += 8usize; break 'fast_loop; } if $test
-                (arr[9usize]) { $offset += 9usize; break 'fast_loop; } if $test
-                (arr[10usize]) { $offset += 10usize; break 'fast_loop; } if $test
-                (arr[11usize]) { $offset += 11usize; break 'fast_loop; } if $test
-                (arr[12usize]) { $offset += 12usize; break 'fast_loop; } if $test
-                (arr[13usize]) { $offset += 13usize; break 'fast_loop; } if $test
-                (arr[14usize]) { $offset += 14usize; break 'fast_loop; } if $test
-                (arr[15usize]) { $offset += 15usize; break 'fast_loop; } $offset +=
-                16usize; } while let Some(byte) = $lex .read:: < u8 > ($offset) { if
-                $test (byte) { break 'fast_loop; } $offset += 1; } }
+                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } $offset += 8usize;
+                } while let Some(byte) = $lex .read:: < u8 > ($offset) { if $test (byte)
+                { break 'fast_loop; } $offset += 1; } }
             };
         }
         #[inline]
@@ -45,152 +37,25 @@ impl<'s> ::logos::Logos<'s> for Token {
         }
         #[derive(Clone, Copy)]
         enum LogosState {
-            state1024_ctx5,
-            state1536_ctx4,
-            state2048_ctx3,
-            state2560_ctx2,
-            state3072_ctx1,
-            state3584_ctx0,
-            state4096,
-            state4608,
-            state5120,
-            state5632,
-            state6144,
-            state6656,
-            state7168,
+            state0,
+            state1,
+            state10,
+            state11,
+            state12,
+            state2,
+            state3,
+            state4,
+            state5,
+            state6,
+            state7,
+            state8,
+            state9,
         }
-        let mut state = LogosState::state4096;
+        let mut state = LogosState::state0;
         let mut offset = lex.offset();
         loop {
             match state {
-                LogosState::state1024_ctx5 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            let action = SkipRetVal::<
-                                's,
-                                Token,
-                            >::construct(labelled_skip_result_callback(lex));
-                            match action {
-                                SkipResult::Skip => {
-                                    lex.trivia();
-                                    offset = lex.offset();
-                                    state = LogosState::state4096;
-                                }
-                                SkipResult::Error(err) => {
-                                    return Some(Err(err));
-                                }
-                            }
-                        }
-                    }
-                }
-                LogosState::state1536_ctx4 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            let action = SkipRetVal::<
-                                's,
-                                Token,
-                            >::construct(labelled_result_callback(lex));
-                            match action {
-                                SkipResult::Skip => {
-                                    lex.trivia();
-                                    offset = lex.offset();
-                                    state = LogosState::state4096;
-                                }
-                                SkipResult::Error(err) => {
-                                    return Some(Err(err));
-                                }
-                            }
-                        }
-                    }
-                }
-                LogosState::state2048_ctx3 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            let action = SkipRetVal::<
-                                's,
-                                Token,
-                            >::construct(labelled_skip_callback(lex));
-                            match action {
-                                SkipResult::Skip => {
-                                    lex.trivia();
-                                    offset = lex.offset();
-                                    state = LogosState::state4096;
-                                }
-                                SkipResult::Error(err) => {
-                                    return Some(Err(err));
-                                }
-                            }
-                        }
-                    }
-                }
-                LogosState::state2560_ctx2 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            let action = SkipRetVal::<
-                                's,
-                                Token,
-                            >::construct(labelled_callback(lex));
-                            match action {
-                                SkipResult::Skip => {
-                                    lex.trivia();
-                                    offset = lex.offset();
-                                    state = LogosState::state4096;
-                                }
-                                SkipResult::Error(err) => {
-                                    return Some(Err(err));
-                                }
-                            }
-                        }
-                    }
-                }
-                LogosState::state3072_ctx1 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            #[inline]
-                            fn callback<'s>(
-                                lex: &mut _Lexer<'s>,
-                            ) -> impl SkipRetVal<'s, Token> {
-                                lex.extras.push("inline_callback")
-                            }
-                            let action = SkipRetVal::<
-                                's,
-                                Token,
-                            >::construct(callback(lex));
-                            match action {
-                                SkipResult::Skip => {
-                                    lex.trivia();
-                                    offset = lex.offset();
-                                    state = LogosState::state4096;
-                                }
-                                SkipResult::Error(err) => {
-                                    return Some(Err(err));
-                                }
-                            }
-                        }
-                    }
-                }
-                LogosState::state3584_ctx0 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            lex.trivia();
-                            offset = lex.offset();
-                            state = LogosState::state4096;
-                        }
-                    }
-                }
-                LogosState::state4096 => {
+                LogosState::state0 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
                         const TABLE: [_Option<LogosState>; 256] = [
@@ -291,14 +156,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                             None,
                             None,
                             None,
-                            Some(LogosState::state5120),
-                            Some(LogosState::state5632),
-                            Some(LogosState::state6144),
-                            Some(LogosState::state6656),
-                            Some(LogosState::state7168),
-                            Some(LogosState::state7168),
-                            Some(LogosState::state4608),
-                            Some(LogosState::state4608),
+                            Some(LogosState::state1),
+                            Some(LogosState::state2),
+                            Some(LogosState::state3),
+                            Some(LogosState::state4),
+                            Some(LogosState::state5),
+                            Some(LogosState::state5),
+                            Some(LogosState::state6),
+                            Some(LogosState::state6),
                             None,
                             None,
                             None,
@@ -465,125 +330,207 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
                     return Some(Err(_make_error(lex)));
                 }
-                LogosState::state4608 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state1024_ctx5;
-                            continue;
+                LogosState::state1 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    lex.trivia();
+                    offset = lex.offset();
+                    state = LogosState::state0;
+                }
+                LogosState::state2 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    #[inline]
+                    fn callback<'s>(lex: &mut _Lexer<'s>) -> impl SkipRetVal<'s, Token> {
+                        lex.extras.push("inline_callback")
+                    }
+                    let action = SkipRetVal::<'s, Token>::construct(callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
                         }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state1024_ctx5;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
                         }
                     }
                 }
-                LogosState::state5120 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state3584_ctx0;
-                            continue;
+                LogosState::state3 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
                         }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state3584_ctx0;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
-                }
-                LogosState::state5632 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state3072_ctx1;
-                            continue;
-                        }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state3072_ctx1;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
                         }
                     }
                 }
-                LogosState::state6144 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state2560_ctx2;
-                            continue;
+                LogosState::state4 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_skip_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
                         }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state2560_ctx2;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
-                }
-                LogosState::state6656 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state2048_ctx3;
-                            continue;
-                        }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state2048_ctx3;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
                         }
                     }
                 }
-                LogosState::state7168 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
-                            offset += 1;
-                            state = LogosState::state1536_ctx4;
-                            continue;
+                LogosState::state5 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_result_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
                         }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state1536_ctx4;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
                         }
                     }
+                }
+                LogosState::state6 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_skip_result_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
+                        }
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
+                        }
+                    }
+                }
+                LogosState::state7 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_skip_result_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
+                        }
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
+                        }
+                    }
+                }
+                LogosState::state8 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_result_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
+                        }
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
+                        }
+                    }
+                }
+                LogosState::state9 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_skip_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
+                        }
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
+                        }
+                    }
+                }
+                LogosState::state10 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
+                        }
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
+                        }
+                    }
+                }
+                LogosState::state11 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    #[inline]
+                    fn callback<'s>(lex: &mut _Lexer<'s>) -> impl SkipRetVal<'s, Token> {
+                        lex.extras.push("inline_callback")
+                    }
+                    let action = SkipRetVal::<'s, Token>::construct(callback(lex));
+                    match action {
+                        SkipResult::Skip => {
+                            lex.trivia();
+                            offset = lex.offset();
+                            state = LogosState::state0;
+                        }
+                        SkipResult::Error(err) => {
+                            return Some(Err(err));
+                        }
+                    }
+                }
+                LogosState::state12 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    lex.trivia();
+                    offset = lex.offset();
+                    state = LogosState::state0;
                 }
             }
         }

@@ -5,18 +5,18 @@ expression: dot
 digraph {
 node[shape=box];
 splines=ortho;
-n1024ctx0[label="State 1024 (ctx 0)",color=green];
-n1536ctx0[label="State 1536 (ctx 0)",color=green];
-n1536ctx0->n1024ctx0 [label="\\x00..=d|f..=\\xff"];
-n1536ctx0->n2048ctx0 [label="e"];
-n1536ctx0->n1024ctx0 [label="EOI"];
-n2048ctx0[label="State 2048 (ctx 0)",color=green];
-n2048ctx0->n1024ctx0 [label="\\x00..=\\xff"];
-n2048ctx0->n1024ctx0 [label="EOI"];
-n2560[label="State 2560",color=black];
-n2560->n3072 [label="f"];
-n3072[label="State 3072",color=black];
-n3072->n1024ctx0 [label="\\x00..=d|f..=\\xff"];
-n3072->n1536ctx0 [label="e"];
-n3072->n1024ctx0 [label="EOI"];
+n0[label="State 0",color=black];
+n0->n1 [label="f"];
+n1[label="State 1",color=black];
+n1->n2 [label="\\x00..=d|f..=\\xff"];
+n1->n3 [label="e"];
+n1->n2 [label="EOI"];
+n2[label="State 2",color=green];
+n3[label="State 3",color=green];
+n3->n2 [label="\\x00..=d|f..=\\xff"];
+n3->n4 [label="e"];
+n3->n2 [label="EOI"];
+n4[label="State 4",color=green];
+n4->n2 [label="\\x00..=\\xff"];
+n4->n2 [label="EOI"];
 }

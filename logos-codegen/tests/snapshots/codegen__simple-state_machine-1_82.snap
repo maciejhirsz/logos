@@ -18,7 +18,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
-                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 16usize] >
+                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
                 ($offset) { if $test (arr[0usize]) { $offset += 0usize; break 'fast_loop;
                 } if $test (arr[1usize]) { $offset += 1usize; break 'fast_loop; } if
                 $test (arr[2usize]) { $offset += 2usize; break 'fast_loop; } if $test
@@ -26,17 +26,9 @@ impl<'s> ::logos::Logos<'s> for Token {
                 (arr[4usize]) { $offset += 4usize; break 'fast_loop; } if $test
                 (arr[5usize]) { $offset += 5usize; break 'fast_loop; } if $test
                 (arr[6usize]) { $offset += 6usize; break 'fast_loop; } if $test
-                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } if $test
-                (arr[8usize]) { $offset += 8usize; break 'fast_loop; } if $test
-                (arr[9usize]) { $offset += 9usize; break 'fast_loop; } if $test
-                (arr[10usize]) { $offset += 10usize; break 'fast_loop; } if $test
-                (arr[11usize]) { $offset += 11usize; break 'fast_loop; } if $test
-                (arr[12usize]) { $offset += 12usize; break 'fast_loop; } if $test
-                (arr[13usize]) { $offset += 13usize; break 'fast_loop; } if $test
-                (arr[14usize]) { $offset += 14usize; break 'fast_loop; } if $test
-                (arr[15usize]) { $offset += 15usize; break 'fast_loop; } $offset +=
-                16usize; } while let Some(byte) = $lex .read:: < u8 > ($offset) { if
-                $test (byte) { break 'fast_loop; } $offset += 1; } }
+                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } $offset += 8usize;
+                } while let Some(byte) = $lex .read:: < u8 > ($offset) { if $test (byte)
+                { break 'fast_loop; } $offset += 1; } }
             };
         }
         #[inline]
@@ -45,96 +37,66 @@ impl<'s> ::logos::Logos<'s> for Token {
         }
         #[derive(Clone, Copy)]
         enum LogosState {
-            state1024_ctx0,
-            state1536,
-            state2048,
-            state2560,
-            state3072,
+            state0,
+            state1,
+            state2,
+            state3,
+            state4,
         }
-        let mut state = LogosState::state1536;
+        let mut state = LogosState::state0;
         let mut offset = lex.offset();
         loop {
             match state {
-                LogosState::state1024_ctx0 => {
-                    lex.end(offset - 1);
-                    match lex.read::<u8>(offset) {
-                        other => {
-                            if other.is_none() {}
-                            return Some(Ok(Token::Letter));
-                        }
-                    }
-                }
-                LogosState::state1536 => {
-                    match lex.read::<u8>(offset) {
-                        Some(b'a') => {
+                LogosState::state0 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {
+                        if (byte == b'a') {
                             offset += 1;
-                            state = LogosState::state3072;
+                            state = LogosState::state1;
                             continue;
                         }
-                        other => {
-                            if other.is_none() {
-                                if lex.offset() == offset {
-                                    return None;
-                                }
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
+                    } else {
+                        if lex.offset() == offset {
+                            return None;
                         }
                     }
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(_make_error(lex)));
                 }
-                LogosState::state2048 => {
-                    match lex.read::<u8>(offset) {
-                        Some(b'z') => {
+                LogosState::state1 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {
+                        if (byte == b'-') {
                             offset += 1;
-                            state = LogosState::state2560;
+                            state = LogosState::state2;
                             continue;
                         }
-                        other => {
-                            if other.is_none() {}
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    } else {}
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(_make_error(lex)));
                 }
-                LogosState::state2560 => {
-                    match lex.read::<u8>(offset) {
-                        Some(0u8..=255u8) => {
+                LogosState::state2 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {
+                        if (byte == b'z') {
                             offset += 1;
-                            state = LogosState::state1024_ctx0;
+                            state = LogosState::state3;
                             continue;
                         }
-                        other => {
-                            if other.is_none() {
-                                offset += 1;
-                                state = LogosState::state1024_ctx0;
-                                continue;
-                            }
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    } else {}
+                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                    return Some(Err(_make_error(lex)));
                 }
-                LogosState::state3072 => {
-                    match lex.read::<u8>(offset) {
-                        Some(b'-') => {
-                            offset += 1;
-                            state = LogosState::state2048;
-                            continue;
-                        }
-                        other => {
-                            if other.is_none() {}
-                            lex.end_to_boundary(
-                                offset + if other.is_some() { 1 } else { 0 },
-                            );
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                LogosState::state3 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    return Some(Ok(Token::Letter));
+                }
+                LogosState::state4 => {
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    return Some(Ok(Token::Letter));
                 }
             }
         }

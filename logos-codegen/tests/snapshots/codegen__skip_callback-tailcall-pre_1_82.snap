@@ -18,7 +18,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
-                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 16usize] >
+                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
                 ($offset) { if $test (arr[0usize]) { $offset += 0usize; break 'fast_loop;
                 } if $test (arr[1usize]) { $offset += 1usize; break 'fast_loop; } if
                 $test (arr[2usize]) { $offset += 2usize; break 'fast_loop; } if $test
@@ -26,176 +26,28 @@ impl<'s> ::logos::Logos<'s> for Token {
                 (arr[4usize]) { $offset += 4usize; break 'fast_loop; } if $test
                 (arr[5usize]) { $offset += 5usize; break 'fast_loop; } if $test
                 (arr[6usize]) { $offset += 6usize; break 'fast_loop; } if $test
-                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } if $test
-                (arr[8usize]) { $offset += 8usize; break 'fast_loop; } if $test
-                (arr[9usize]) { $offset += 9usize; break 'fast_loop; } if $test
-                (arr[10usize]) { $offset += 10usize; break 'fast_loop; } if $test
-                (arr[11usize]) { $offset += 11usize; break 'fast_loop; } if $test
-                (arr[12usize]) { $offset += 12usize; break 'fast_loop; } if $test
-                (arr[13usize]) { $offset += 13usize; break 'fast_loop; } if $test
-                (arr[14usize]) { $offset += 14usize; break 'fast_loop; } if $test
-                (arr[15usize]) { $offset += 15usize; break 'fast_loop; } $offset +=
-                16usize; } while let Some(byte) = $lex .read:: < u8 > ($offset) { if
-                $test (byte) { break 'fast_loop; } $offset += 1; } }
+                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } $offset += 8usize;
+                } while let Some(byte) = $lex .read:: < u8 > ($offset) { if $test (byte)
+                { break 'fast_loop; } $offset += 1; } }
             };
         }
         #[inline]
         fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
-        fn state1024_ctx5<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset - 1);
-            match lex.read::<u8>(offset) {
-                other => {
-                    if other.is_none() {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_skip_result_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            return state4096(lex, offset);
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-            }
-        }
-        fn state1536_ctx4<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset - 1);
-            match lex.read::<u8>(offset) {
-                other => {
-                    if other.is_none() {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_result_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            return state4096(lex, offset);
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-            }
-        }
-        fn state2048_ctx3<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset - 1);
-            match lex.read::<u8>(offset) {
-                other => {
-                    if other.is_none() {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_skip_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            return state4096(lex, offset);
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-            }
-        }
-        fn state2560_ctx2<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset - 1);
-            match lex.read::<u8>(offset) {
-                other => {
-                    if other.is_none() {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            return state4096(lex, offset);
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-            }
-        }
-        fn state3072_ctx1<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset - 1);
-            match lex.read::<u8>(offset) {
-                other => {
-                    if other.is_none() {}
-                    #[inline]
-                    fn callback<'s>(lex: &mut _Lexer<'s>) -> impl SkipRetVal<'s, Token> {
-                        lex.extras.push("inline_callback")
-                    }
-                    let action = SkipRetVal::<'s, Token>::construct(callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            return state4096(lex, offset);
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-            }
-        }
-        fn state3584_ctx0<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset - 1);
-            match lex.read::<u8>(offset) {
-                other => {
-                    if other.is_none() {}
-                    lex.trivia();
-                    offset = lex.offset();
-                    return state4096(lex, offset);
-                }
-            }
-        }
-        fn state4096<'s>(
+        fn state0<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
                 enum LogosNextState {
-                    state4608,
-                    state5120,
-                    state5632,
-                    state6144,
-                    state6656,
-                    state7168,
+                    state1,
+                    state2,
+                    state3,
+                    state4,
+                    state5,
+                    state6,
                 }
                 const TABLE: [_Option<LogosNextState>; 256] = [
                     None,
@@ -295,14 +147,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                     None,
                     None,
                     None,
-                    Some(LogosNextState::state5120),
-                    Some(LogosNextState::state5632),
-                    Some(LogosNextState::state6144),
-                    Some(LogosNextState::state6656),
-                    Some(LogosNextState::state7168),
-                    Some(LogosNextState::state7168),
-                    Some(LogosNextState::state4608),
-                    Some(LogosNextState::state4608),
+                    Some(LogosNextState::state1),
+                    Some(LogosNextState::state2),
+                    Some(LogosNextState::state3),
+                    Some(LogosNextState::state4),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state6),
+                    Some(LogosNextState::state6),
                     None,
                     None,
                     None,
@@ -456,29 +308,29 @@ impl<'s> ::logos::Logos<'s> for Token {
                     None,
                 ];
                 match TABLE[byte as usize] {
-                    Some(LogosNextState::state4608) => {
+                    Some(LogosNextState::state1) => {
                         offset += 1;
-                        return state4608(lex, offset);
+                        return state1(lex, offset);
                     }
-                    Some(LogosNextState::state5120) => {
+                    Some(LogosNextState::state2) => {
                         offset += 1;
-                        return state5120(lex, offset);
+                        return state2(lex, offset);
                     }
-                    Some(LogosNextState::state5632) => {
+                    Some(LogosNextState::state3) => {
                         offset += 1;
-                        return state5632(lex, offset);
+                        return state3(lex, offset);
                     }
-                    Some(LogosNextState::state6144) => {
+                    Some(LogosNextState::state4) => {
                         offset += 1;
-                        return state6144(lex, offset);
+                        return state4(lex, offset);
                     }
-                    Some(LogosNextState::state6656) => {
+                    Some(LogosNextState::state5) => {
                         offset += 1;
-                        return state6656(lex, offset);
+                        return state5(lex, offset);
                     }
-                    Some(LogosNextState::state7168) => {
+                    Some(LogosNextState::state6) => {
                         offset += 1;
-                        return state7168(lex, offset);
+                        return state6(lex, offset);
                     }
                     None => {}
                 }
@@ -490,120 +342,232 @@ impl<'s> ::logos::Logos<'s> for Token {
             lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
             return Some(Err(_make_error(lex)));
         }
-        fn state4608<'s>(
+        fn state1<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            match lex.read::<u8>(offset) {
-                Some(0u8..=255u8) => {
-                    offset += 1;
-                    return state1024_ctx5(lex, offset);
-                }
-                other => {
-                    if other.is_none() {
-                        offset += 1;
-                        return state1024_ctx5(lex, offset);
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
-                }
-            }
+            lex.end(offset);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            lex.trivia();
+            offset = lex.offset();
+            return state0(lex, offset);
         }
-        fn state5120<'s>(
+        fn state2<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            match lex.read::<u8>(offset) {
-                Some(0u8..=255u8) => {
-                    offset += 1;
-                    return state3584_ctx0(lex, offset);
+            lex.end(offset);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            #[inline]
+            fn callback<'s>(lex: &mut _Lexer<'s>) -> impl SkipRetVal<'s, Token> {
+                lex.extras.push("inline_callback")
+            }
+            let action = SkipRetVal::<'s, Token>::construct(callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
                 }
-                other => {
-                    if other.is_none() {
-                        offset += 1;
-                        return state3584_ctx0(lex, offset);
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
                 }
             }
         }
-        fn state5632<'s>(
+        fn state3<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            match lex.read::<u8>(offset) {
-                Some(0u8..=255u8) => {
-                    offset += 1;
-                    return state3072_ctx1(lex, offset);
+            lex.end(offset);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<'s, Token>::construct(labelled_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
                 }
-                other => {
-                    if other.is_none() {
-                        offset += 1;
-                        return state3072_ctx1(lex, offset);
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
                 }
             }
         }
-        fn state6144<'s>(
+        fn state4<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            match lex.read::<u8>(offset) {
-                Some(0u8..=255u8) => {
-                    offset += 1;
-                    return state2560_ctx2(lex, offset);
+            lex.end(offset);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<'s, Token>::construct(labelled_skip_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
                 }
-                other => {
-                    if other.is_none() {
-                        offset += 1;
-                        return state2560_ctx2(lex, offset);
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
                 }
             }
         }
-        fn state6656<'s>(
+        fn state5<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            match lex.read::<u8>(offset) {
-                Some(0u8..=255u8) => {
-                    offset += 1;
-                    return state2048_ctx3(lex, offset);
+            lex.end(offset);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<
+                's,
+                Token,
+            >::construct(labelled_result_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
                 }
-                other => {
-                    if other.is_none() {
-                        offset += 1;
-                        return state2048_ctx3(lex, offset);
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
                 }
             }
         }
-        fn state7168<'s>(
+        fn state6<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            match lex.read::<u8>(offset) {
-                Some(0u8..=255u8) => {
-                    offset += 1;
-                    return state1536_ctx4(lex, offset);
+            lex.end(offset);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<
+                's,
+                Token,
+            >::construct(labelled_skip_result_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
                 }
-                other => {
-                    if other.is_none() {
-                        offset += 1;
-                        return state1536_ctx4(lex, offset);
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
                 }
             }
         }
-        state4096(lex, lex.offset())
+        fn state7<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<
+                's,
+                Token,
+            >::construct(labelled_skip_result_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
+                }
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
+                }
+            }
+        }
+        fn state8<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<
+                's,
+                Token,
+            >::construct(labelled_result_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
+                }
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
+                }
+            }
+        }
+        fn state9<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<'s, Token>::construct(labelled_skip_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
+                }
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
+                }
+            }
+        }
+        fn state10<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = SkipRetVal::<'s, Token>::construct(labelled_callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
+                }
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
+                }
+            }
+        }
+        fn state11<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            #[inline]
+            fn callback<'s>(lex: &mut _Lexer<'s>) -> impl SkipRetVal<'s, Token> {
+                lex.extras.push("inline_callback")
+            }
+            let action = SkipRetVal::<'s, Token>::construct(callback(lex));
+            match action {
+                SkipResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    return state0(lex, offset);
+                }
+                SkipResult::Error(err) => {
+                    return Some(Err(err));
+                }
+            }
+        }
+        fn state12<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            lex.trivia();
+            offset = lex.offset();
+            return state0(lex, offset);
+        }
+        state0(lex, lex.offset())
     }
 }
