@@ -20,13 +20,21 @@ fn gen_to_file(format: bool) -> NamedTempFile {
     tempfile
 }
 
+fn get_features_label() -> &'static str {
+    if cfg!(feature = "state_machine_codegen") {
+        "state_machine"
+    } else {
+        "tailcall"
+    }
+}
+
 #[test]
 fn test_codegen() {
     let tempfile = gen_to_file(false);
 
     let output = read_to_string(tempfile).expect("Unable to read output file");
 
-    assert_snapshot!(output);
+    assert_snapshot!(format!("{}-nofmt", get_features_label()), output);
 }
 
 #[test]
@@ -80,5 +88,5 @@ fn test_codegen_format() {
 
     let output = read_to_string(tempfile).expect("Unable to read output file");
 
-    assert_snapshot!(output);
+    assert_snapshot!(format!("{}-fmt", get_features_label()), output);
 }
