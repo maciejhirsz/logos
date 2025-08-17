@@ -20,8 +20,8 @@ fn test_export(#[case] case: &str) {
     let generated_mermaid = std::fs::read_to_string(format!("{case}_export_tmp/{case}.mmd"))
         .expect("Unable to read mermaid file");
 
-    assert_snapshot!(generated_dot);
-    assert_snapshot!(generated_mermaid);
+    assert_snapshot!(format!("{case}-dot"), generated_dot);
+    assert_snapshot!(format!("{case}-mmd"), generated_mermaid);
 
     // cleanup
     let _ = std::fs::remove_dir_all(format!("{case}_export_tmp"));

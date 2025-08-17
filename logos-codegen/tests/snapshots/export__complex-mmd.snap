@@ -1,0 +1,61 @@
+---
+source: logos-codegen/tests/export.rs
+expression: generated_mermaid
+---
+flowchart TB
+n0["State 0"]
+style n0 stroke:#000000
+n0-->|"a..=r|t..=z"|n1
+n0-->|"s"|n2
+n1["State 1"]
+style n1 stroke:#00C853
+n2["State 2"]
+style n2 stroke:#00C853
+n2-->|"t"|n4
+n3["State 3"]
+style n3 stroke:#000000
+n4["State 4"]
+style n4 stroke:#000000
+n4-->|"r"|n5
+n5["State 5"]
+style n5 stroke:#000000
+n5-->|"\\x00..=`|{..=\\xff"|n6
+n5-->|"a..=t|v..=z"|n7
+n5-->|"u"|n8
+n5-->|"EOI"|n6
+n6["State 6"]
+style n6 stroke:#00C853
+n7["State 7"]
+style n7 stroke:#00C853
+n7-->|"\\x00..=`|{..=\\xff"|n9
+n7-->|"a..=z"|n10
+n7-->|"EOI"|n9
+n8["State 8"]
+style n8 stroke:#00C853
+n8-->|"\\x00..=`|{..=\\xff"|n9
+n8-->|"a..=b|d..=z"|n10
+n8-->|"c"|n11
+n8-->|"EOI"|n9
+n9["State 9"]
+style n9 stroke:#00C853
+n10["State 10"]
+style n10 stroke:#00C853
+n10-->|"\\x00..=`|{..=\\xff"|n9
+n10-->|"a..=z"|n10
+n10-->|"EOI"|n9
+n11["State 11"]
+style n11 stroke:#000000
+n11-->|"\\x00..=`|{..=\\xff"|n9
+n11-->|"a..=s|u..=z"|n10
+n11-->|"t"|n12
+n11-->|"EOI"|n9
+n12["State 12"]
+style n12 stroke:#00C853
+n12-->|"a..=z"|n14
+n13["State 13"]
+style n13 stroke:#000000
+n14["State 14"]
+style n14 stroke:#000000
+n14-->|"\\x00..=`|{..=\\xff"|n9
+n14-->|"a..=z"|n10
+n14-->|"EOI"|n9
