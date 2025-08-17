@@ -5,7 +5,7 @@ use quote::{quote, TokenStreamExt};
 
 use crate::{
     generator::byte_to_tokens,
-    graph::{State, StateData},
+    graph::{Comparisons, State, StateData},
 };
 
 use super::Generator;
@@ -69,36 +69,48 @@ impl<'a> Generator<'a> {
                 continue;
             }
 
-            let patterns = byte_class.ranges.iter().map(|range| {
-                let start = byte_to_tokens(*range.start());
-                let end = byte_to_tokens(*range.end());
-                if range.len() == 1 {
-                    quote! { Some(#start) }
-                } else {
-                    quote! { Some(#start ..= #end) }
-                }
-            });
+            let comparisons = byte_class.impl_with_cmp();
+            let cmp_count: usize = comparisons.iter().map(|cmp| cmp.count_ops()).sum();
+
+            let condition = if cmp_count > 2 {
+                let (test_ident, test_mask) = self.add_test_to_lut(byte_class);
+                quote! { #test_ident[byte as usize] & #test_mask != 0 }
+            } else {
+                let sub_conditions = comparisons.into_iter().map(|cmp| {
+                    let Comparisons { range, except } = cmp;
+                    let start = byte_to_tokens(*range.start());
+                    let end = byte_to_tokens(*range.end());
+                    let exceptions = except.into_iter().map(|ex| {
+                        quote! { && byte != #ex }
+                    }).collect::<Vec<_>>();
+                    if range.len() == 1 {
+                        quote! { (byte == #start) }
+                    } else {
+                        quote! { (matches!(byte, #start ..= #end) #(#exceptions)*) }
+                    }
+                }).collect::<Vec<_>>();
+
+                quote! { #(#sub_conditions) ||* }
+            };
             let transition = self.state_transition(next_state);
             inner_cases.append_all(quote! {
-                #(#patterns)|* => {
+                if #condition {
                     offset += 1;
                     #transition
-                },
+                }
             });
         }
 
         let eoi = self.fork_eoi(state, state_data);
         let otherwise = self.fork_otherwise(state);
         quote! {
-            match lex.read::<u8>(offset) {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
                 #inner_cases
-                other => {
-                    if other.is_none() {
-                        #eoi
-                    }
-                    #otherwise
-                }
+            } else {
+                #eoi
             }
+            #otherwise
         }
     }
 

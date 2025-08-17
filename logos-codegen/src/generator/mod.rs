@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-use crate::graph::{Graph, State, StateType};
+use crate::graph::{ByteClass, Graph, State, StateType};
 use crate::leaf::{Callback, InlineCallback};
 use crate::util::ToIdent;
 
@@ -76,7 +76,7 @@ impl<'a> Generator<'a> {
 
         let error_cb = self.generate_error_cb();
         let fast_loop_macro = fast_loop_macro(8);
-        let loop_luts = self.render_loop_luts();
+        let loop_luts = self.render_luts();
 
         if self.config.use_state_machine_codegen {
             quote! {
@@ -211,6 +211,50 @@ impl<'a> Generator<'a> {
                 }
             }
         }
+    }
+
+    fn table_ident(index: usize) -> Ident {
+        format!("_TABLE_{index}").to_ident()
+    }
+
+
+    fn add_test_to_lut(&mut self, edge: &ByteClass) -> (Ident, u8) {
+        let loop_id = self.loop_masks.len();
+        let loop_table = loop_id / 8;
+        let ident = Self::table_ident(loop_table);
+        let loop_mask = 1u8 << (loop_id % 8);
+
+        let mut table_bits = [false; 256];
+        for range in edge.ranges.iter() {
+            for byte in range.clone() {
+                table_bits[byte as usize] = true;
+            }
+        }
+
+        self.loop_masks.push(table_bits);
+
+        (ident, loop_mask)
+    }
+
+    pub fn render_luts(&self) -> TokenStream {
+        let decls = self.loop_masks
+            .chunks(8)
+            .enumerate()
+            .map(|(lut_idx, bit_arrs)| {
+                let mut byte_arr = [0u8; 256];
+                for (bit_index, bits) in bit_arrs.iter().enumerate() {
+                    for (arr_idx, &bit) in bits.iter().enumerate() {
+                        if bit {
+                            byte_arr[arr_idx] |= 1 << bit_index;
+                        }
+                    }
+                }
+
+                let ident = Self::table_ident(lut_idx);
+                quote! { const #ident: [u8; 256] = [#(#byte_arr),*]; }
+            });
+
+        quote! { #(#decls)* }
     }
 }
 

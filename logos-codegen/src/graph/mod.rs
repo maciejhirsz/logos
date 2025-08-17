@@ -1,6 +1,6 @@
 use std::ascii::escape_default;
 use std::collections::HashSet;
-use std::fmt;
+use std::{cmp, fmt};
 use std::{
     collections::{hash_map::Entry, HashMap},
     ops::RangeInclusive,
@@ -155,6 +155,23 @@ impl ByteClass {
         }
         self.ranges.push(byte..=byte);
     }
+
+    pub fn impl_with_cmp(&self) -> Vec<Comparisons> {
+        let mut ranges: Vec<Comparisons> = Vec::new();
+        for next_range in &self.ranges {
+            if let Some(Comparisons { range, except }) = ranges.last_mut() {
+                if *next_range.start() == *range.end() + 2 {
+                    *range = *range.start()..=*next_range.end();
+                    except.push(*next_range.start()-1);
+                    continue
+                }
+            }
+            ranges.push(Comparisons::new(next_range.clone()));
+        }
+
+        ranges
+    }
+
 }
 
 impl fmt::Display for ByteClass {
@@ -177,6 +194,32 @@ impl fmt::Display for ByteClass {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct Comparisons {
+    pub range: RangeInclusive<u8>,
+    pub except: Vec<u8>
+}
+
+impl Comparisons {
+    pub fn new(range: RangeInclusive<u8>) -> Self {
+        Comparisons {
+            range,
+            except: Vec::new(),
+        }
+    }
+
+    pub fn count_ops(&self) -> usize {
+        (if *self.range.start() == *self.range.end() {
+            1
+        } else {
+            let mut edges = 0;
+            if *self.range.start() > u8::MIN { edges += 1 }
+            if *self.range.end() < u8::MAX { edges += 1 }
+            edges
+        }) + self.except.len()
     }
 }
 
