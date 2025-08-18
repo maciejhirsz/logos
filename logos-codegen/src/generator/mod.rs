@@ -178,7 +178,6 @@ impl<'a> Generator<'a> {
         // end at the current offset - 1.
         // The 1 comes from the 1 byte delayed match behavior
         // of the regex-automata crate.
-        // TODO: this needs to be after the fast loop
         let setup = match state_data.state_type {
             StateType { early: Some(_), .. } => Some(quote! { lex.end(offset); }),
             StateType {

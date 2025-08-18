@@ -324,20 +324,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Generated Automaton:\n{:?}", graph.dfa());
 
     if cfg!(feature = "debug") {
-        let graph_rendered = graph
-            .iter_states()
-            .map(|state| {
-                let transitions = format!("{:#}", graph.get_state(state));
-                let indented = transitions
-                    .lines()
-                    .map(|line| format!("  {line}"))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                format!("  {state} => {indented}")
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        debug!("Generated Graph:\n{graph_rendered}");
+        debug!("Generated Graph:\n{graph}");
     }
 
     if cfg!(feature = "debug") {

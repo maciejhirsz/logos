@@ -615,14 +615,14 @@ impl Graph {
 
 impl fmt::Display for Graph {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO: cleanup
         let graph_rendered = self
             .iter_states()
             .map(|state| {
                 let transitions = format!("{:#}", self.get_state(state));
                 let indented = transitions
                     .lines()
-                    .map(|line| format!("  {line}"))
+                    .enumerate()
+                    .map(|(idx, line)| format!("{}{line}", if idx > 0 { "  " } else { "" }))
                     .collect::<Vec<_>>()
                     .join("\n");
                 format!("  {state} => {indented}")
