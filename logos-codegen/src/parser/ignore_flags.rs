@@ -12,8 +12,7 @@ impl IgnoreFlags {
     /// Parses an identifier an enables it for `self`.
     ///
     /// Valid inputs are (that produces `true`):
-    /// * `"case"` (incompatible with `"ascii_case"`)
-    /// * `"ascii_case"` (incompatible with `"case"`)
+    /// * `"case"`
     ///
     /// An error causes this function to return `false` and emits an error to
     /// the given `Parser`.
@@ -38,7 +37,7 @@ impl IgnoreFlags {
                         "\
                         Unknown flag: {unknown}\n\
                         \n\
-                        Expected one of: case, ascii_case\
+                        Expected one of: case\
                         "
                     ),
                     ident.span(),
@@ -67,7 +66,7 @@ impl IgnoreFlags {
                         "\
                         Invalid ignore flag\n\
                         \n\
-                        Expected one of: case, ascii_case\
+                        Expected one of: case\
                         ",
                         name.span(),
                     );
