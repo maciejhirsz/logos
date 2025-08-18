@@ -15,7 +15,10 @@ impl<'a> Generator<'a> {
             .iter()
             .filter(|(_bc, next_state)| next_state == &state)
             .collect::<Vec<_>>();
-        assert!(self_edge.len() <= 1, "There should only be one edge going to any given state");
+        assert!(
+            self_edge.len() <= 1,
+            "There should only be one edge going to any given state"
+        );
 
         if let Some((bc, _)) = self_edge.first() {
             self.impl_fast_loop(bc)
