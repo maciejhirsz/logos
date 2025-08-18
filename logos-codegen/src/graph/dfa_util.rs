@@ -9,7 +9,8 @@ use crate::leaf::LeafId;
 
 pub type OwnedDFA = DFA<Vec<u32>>;
 
-/// This utility implements an iterator over the matching patterns of a given dfa state
+/// Returns an iterator over the matching patterns of a given dfa state. Returns leaf ids in
+/// ascending order.
 pub fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<Item = LeafId> + 'a {
     let num_matches = if dfa.is_match_state(state_id) {
         dfa.match_len(state_id)
@@ -23,6 +24,8 @@ pub fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<I
     })
 }
 
+/// Returns an iterator over the child states of a given dfa state. Returns children in order of
+/// input byte (0..=255), then eoi. No deduplication of child states is performed.
 pub fn iter_children<'a>(dfa: &'a OwnedDFA, state: StateID) -> impl Iterator<Item = StateID> + 'a {
     (0..=u8::MAX)
         .map(move |byte| dfa.next_state(state, byte))
@@ -30,7 +33,7 @@ pub fn iter_children<'a>(dfa: &'a OwnedDFA, state: StateID) -> impl Iterator<Ite
 }
 
 /// This utility function returns every state accessible by the dfa
-/// from a root state.
+/// from a root state. Returns the states in ascending order.
 pub fn get_states(dfa: &OwnedDFA, root: StateID) -> impl Iterator<Item = StateID> {
     let mut states = HashSet::new();
     states.insert(root);

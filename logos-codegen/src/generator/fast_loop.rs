@@ -6,6 +6,8 @@ use crate::graph::{ByteClass, State};
 use super::Generator;
 
 impl<'a> Generator<'a> {
+    /// Returns a fast loop implementation if State has an edge that points back to itself,
+    /// otherwise return an empty TokenStream.
     pub fn maybe_impl_fast_loop(&mut self, state: State) -> TokenStream {
         let state_data = self.graph.get_state(state);
         let self_edge = state_data
@@ -13,7 +15,7 @@ impl<'a> Generator<'a> {
             .iter()
             .filter(|(_bc, next_state)| next_state == &state)
             .collect::<Vec<_>>();
-        assert!(self_edge.len() <= 1);
+        assert!(self_edge.len() <= 1, "There should only be one edge going to any given state");
 
         if let Some((bc, _)) = self_edge.first() {
             self.impl_fast_loop(bc)
@@ -22,9 +24,11 @@ impl<'a> Generator<'a> {
         }
     }
 
-    /// TODO
+    /// Return a fast loop implementation for the given edge. This fast loop iterates over bytes
+    /// starting at `offset` until the given edge no longer applies. Offset will now be the first
+    /// offset that transitions away from the current state.
     pub fn impl_fast_loop(&mut self, self_edge: &ByteClass) -> TokenStream {
-        // Note: Unlike forks, we don't ever fall back to doing normal comparisons. A LUT is always
+        // Note: Unlike forks, we don't ever fall back to doing normal comparisons - A LUT is always
         // generated for the loop test. Since we read multiple times, its more likely we make back
         // the time spend possibly brining the lut back into cache. I think it might be better to
         // compare if we are looking for a single byte (i.e. only one comparison operation), but
@@ -41,6 +45,8 @@ impl<'a> Generator<'a> {
     }
 }
 
+/// This macro is included with the generated code. It is used to manually unroll the fast_loop
+/// loop.
 pub fn fast_loop_macro(unroll_factor: usize) -> TokenStream {
     let index = (0..unroll_factor).collect::<Vec<_>>();
 

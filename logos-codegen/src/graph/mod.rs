@@ -35,11 +35,17 @@ pub struct DisambiguationError(pub Vec<LeafId>);
 /// it is a match state for a leaf or not.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateType {
+    // If non-None, this state matches this leaf, and the match extends from the start offset
+    // up to (but not including) the most recently read byte.
     pub accept: Option<LeafId>,
+    // If non-None, this state matches this leaf, and the match extends from the start offset
+    // through the most recently read byte.
     pub early: Option<LeafId>,
 }
 
 impl StateType {
+    /// Collapse the `early` and `accept` fields into a single field, if either is set. (Priority
+    /// is given to `early`.)
     fn early_or_accept(&self) -> Option<LeafId> {
         self.early.or(self.accept)
     }
@@ -77,6 +83,10 @@ pub struct StateData {
 }
 
 impl StateData {
+    /// Create a new [StateData] object with the given [StateID]
+    ///
+    /// This is used when constructing the context free graph, where each DFA [StateID] corresponds
+    /// uniquely to a [State].
     fn new(dfa_id: StateID) -> Self {
         Self {
             dfa_id,
@@ -84,6 +94,10 @@ impl StateData {
         }
     }
 
+    /// Create a new [StateData] object with the given [LeafId] as context
+    ///
+    /// This is used when constructing the contextualized graph, where each [State] may correspond
+    /// to multiple [StateID]s, and vice versa.
     fn with_context(context: Option<LeafId>) -> Self {
         Self {
             context,
@@ -99,6 +113,8 @@ impl StateData {
             .chain(self.eoi.iter().cloned())
     }
 
+    /// Add a backreference to the given state, which specifies that `self` is reachable from
+    /// `state`.
     fn add_back_edge(&mut self, state: State) {
         if let Err(index) = self.backward.binary_search(&state) {
             self.backward.insert(index, state);
@@ -134,12 +150,16 @@ impl fmt::Display for StateData {
 }
 
 /// This struct represents a subset of the possible bytes x00 through xFF
+///
+/// If bytes are added in ascending order (which they are by the graph module), then the ranges are
+/// guaranteed to be sorted, non-overlapping, and seperated by at least one non-matching byte.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ByteClass {
     pub ranges: Vec<RangeInclusive<u8>>,
 }
 
 impl ByteClass {
+    /// Create a new empty [ByteClass] that doesn't match any bytes.
     fn new() -> Self {
         ByteClass { ranges: Vec::new() }
     }
@@ -155,6 +175,7 @@ impl ByteClass {
         self.ranges.push(byte..=byte);
     }
 
+    /// Implement this [ByteClass] using a list of [Comparisons].
     pub fn impl_with_cmp(&self) -> Vec<Comparisons> {
         let mut ranges: Vec<Comparisons> = Vec::new();
         for next_range in &self.ranges {
@@ -195,7 +216,21 @@ impl fmt::Display for ByteClass {
     }
 }
 
-#[derive(Debug)]
+/// This struct represents a contiguous range with an optional list of isolated holes.
+///
+/// This struct exists because, for example,
+///
+/// `matches!(byte, 5..=10 | 12..=16)`
+///
+/// can be implemented more efficiently as
+///
+/// `(byte >= 5 && byte <= 16 && byte != 11)`
+///
+/// than
+///
+/// `(byte < 5 || byte > 10) && (byte < 12 || byte > 16)`
+///
+/// and the rust compiler does not always do this for more complex ranges.
 pub struct Comparisons {
     pub range: RangeInclusive<u8>,
     pub except: Vec<u8>,
@@ -211,9 +246,11 @@ impl Comparisons {
 
     pub fn count_ops(&self) -> usize {
         (if *self.range.start() == *self.range.end() {
+            // Implement with a single == operation
             1
         } else {
             let mut edges = 0;
+            // Only have to check limits that aren't enforced by the type itself
             if *self.range.start() > u8::MIN {
                 edges += 1
             }
@@ -221,7 +258,7 @@ impl Comparisons {
                 edges += 1
             }
             edges
-        }) + self.except.len()
+        }) + self.except.len() // One extra != operation for each exception
     }
 }
 
@@ -281,6 +318,8 @@ impl Graph {
 
     /// Create a new graph using a given list of [Leaf] objects to match on and a [Config]
     pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
+        // First, construct a context-free graph, then traverse it with a context to build the
+        // contextual graph.
         let mut graph = Self::new_no_context(leaves, config)?;
         let mut ctx_traverse = ContextTraverse::new(graph.root, &graph);
 
@@ -299,6 +338,8 @@ impl Graph {
                 .eoi
                 .map(|eoi_state| ctx_traverse.get_ctx_state(eoi_state, context));
 
+            // Add back edges to each of the children, pointing to hthe current (contextualized)
+            // state
             for child in ctx_traverse.ctx_states[ctx_state.0]
                 .iter_children()
                 .collect::<Vec<_>>()
@@ -308,9 +349,11 @@ impl Graph {
         }
 
         graph.states = ctx_traverse.ctx_states;
+        // ContextTraverse sets the root to be state 0
         graph.root = State(0);
 
-        // Remove late matches when all incoming edges contain the early match
+        // Remove late matches when all incoming edges contain the early match since they are
+        // unnecessary in this case.
         for state in graph.iter_states() {
             let state_data = graph.get_state(state);
             if let Some(leaf_id) = state_data.state_type.accept {
@@ -322,7 +365,11 @@ impl Graph {
             }
         }
 
-        // Prune dead ends
+        // Prune dead ends (states that do not alter the context and do not lead to a state that
+        // does).
+
+        // Setup the visit stack with any state that is accept (and therefore changes the current
+        // context).
         let mut visit_stack = graph
             .iter_states()
             .filter(|state| {
@@ -335,6 +382,8 @@ impl Graph {
             .collect::<Vec<_>>();
         let mut reach_accept = visit_stack.iter().cloned().collect::<HashSet<_>>();
         while let Some(state) = visit_stack.pop() {
+            // Traverse the graph backwards to include any parents of visited nodes in the set of
+            // nodes that can reach an accept state.
             for parent in &graph.get_state(state).backward {
                 if reach_accept.insert(*parent) {
                     visit_stack.push(*parent);
@@ -342,6 +391,7 @@ impl Graph {
             }
         }
 
+        // Now that we have a set of non-dead states, we can remove edges going to dead states.
         for state in graph.iter_states() {
             let state_data = &mut graph.states[state.0];
             state_data
@@ -350,22 +400,29 @@ impl Graph {
 
             state_data.eoi = state_data.eoi.filter(|state| reach_accept.contains(state));
 
-            // Clear backward states in preparation for deduplication
+            // Clear backward states in preparation for deduplication (they do not change state
+            // behavior and therefore are meaningless if they along differentiate states).
             state_data.backward.clear();
         }
 
-        // Deduplicate states
+        // Finally, we can deduplicate states based on their context and edges
+
+        // A map between a states representation and the canonical State index assigned to it.
         let mut state_indexes = HashMap::new();
+        // A map of rewrites (key should be rewritten to value in the deduplicated graph).
         let mut state_lookup = HashMap::new();
 
         for state in graph.iter_states() {
             let state_data = &graph.states[state.0];
             if let Entry::Vacant(e) = state_indexes.entry(state_data) {
+                // State's represntation wasn't in state_indexes, state becomes the canonical index
                 e.insert(state);
             } else {
+                // State's representation is a deplicate, rewrite it to the canonical one
                 state_lookup.insert(state, state_indexes[&state_data]);
             }
         }
+        // Finally, perform the state_lookup rewrites
         for state in graph.iter_states() {
             let state_data = &mut graph.states[state.0];
             // Replace all states with their deduplicated version
@@ -385,6 +442,11 @@ impl Graph {
         Ok(graph)
     }
 
+    /// Construct a context-free graph from a set of leaves and a config. Context-free means that
+    /// the most recently matched leaf is not inherent to the current state, and must be tracked
+    /// seperately by the matching engine. This is simpler because it means that the graph's states
+    /// correspond 1:1 with the DFA's states, but it means you can't statically dispatch the leaf
+    /// handlers.
     fn new_no_context(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
         let hirs = leaves
             .iter()
@@ -425,6 +487,7 @@ impl Graph {
             );
         }
 
+        // First, get a list of all states, and map the DFA StateIDs to ascending indexes
         let mut states = Vec::new();
         let dfa_lookup = get_states(&dfa, start_id)
             .enumerate()
@@ -435,6 +498,7 @@ impl Graph {
             .collect::<HashMap<StateID, State>>();
         let root = dfa_lookup[&start_id];
 
+        // Now, for each state, construct its edges and determine which leaves it matches
         let mut errors = Vec::new();
         for state_id in 0..states.len() {
             let state_data = &mut states[state_id];
@@ -571,13 +635,19 @@ impl fmt::Display for Graph {
 }
 
 struct ContextTraverse<'a> {
+    /// List of all State representations. This will become the `states` field of the contextual
+    /// graph.
     ctx_states: Vec<StateData>,
+    /// A map from the context-free state and context to the contextual state
     ctx_lookup: HashMap<(State, Option<LeafId>), State>,
+    /// A stack of (context-free state, contextual state) pairs to be traversed.
     ctx_stack: Vec<(State, State)>,
+    /// A reference to the context-free graph we are traversing.
     no_ctx_graph: &'a Graph,
 }
 
 impl<'a> ContextTraverse<'a> {
+    /// Create a new [ContextTraverse] object using a context-free graph and a root state id.
     fn new(no_ctx_root: State, no_ctx_graph: &'a Graph) -> Self {
         let ctx_root = State(0);
         let init_state = StateData::new(no_ctx_graph.states[no_ctx_root.0].dfa_id);
@@ -589,6 +659,8 @@ impl<'a> ContextTraverse<'a> {
         }
     }
 
+    /// Given a state in the context-free graph and a previous context, determine the new context,
+    /// create a contextual state, and return it.
     fn get_ctx_state(
         &mut self,
         no_ctx_next_state: State,
@@ -605,12 +677,15 @@ impl<'a> ContextTraverse<'a> {
                 ctx_data.state_type = next_type;
                 self.ctx_states.push(ctx_data);
                 let ctx_state = *entry.insert(State(index));
+                // Since we haven't seen the ctx_state before, make sure we populate its StateData
+                // object later in the traversal
                 self.ctx_stack.push((no_ctx_next_state, ctx_state));
                 ctx_state
             }
         }
     }
 
+    /// Get the next (context-free, contextual) state pair from the traversal stack
     fn next_state(&mut self) -> Option<(State, State)> {
         self.ctx_stack.pop()
     }

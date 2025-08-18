@@ -20,6 +20,9 @@ pub enum Literal {
 }
 
 impl Literal {
+    /// Escape this literal into a regex_syntax compatible pattern string.
+    /// - `literal`: if true, escape any metacharacters the pattern so that it matches literally.
+    ///   This is necessary so that literal byte strings can be implemented properly.
     pub fn escape(&self, literal: bool) -> String {
         match self {
             Literal::Utf8(lit_str) if literal => regex_syntax::escape(&lit_str.value()),

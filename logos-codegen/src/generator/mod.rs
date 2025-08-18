@@ -213,10 +213,13 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// Returns the identifier used to access the "index"th LUT.
     fn table_ident(index: usize) -> Ident {
         format!("_TABLE_{index}").to_ident()
     }
 
+    /// Return the identifier and bit mask used to reference a LUT containing a bit mask. The bit
+    /// mask is generated to match the given edge.
     fn add_test_to_lut(&mut self, edge: &ByteClass) -> (Ident, u8) {
         let mut table_bits = [false; 256];
         for range in edge.ranges.iter() {
@@ -240,6 +243,8 @@ impl<'a> Generator<'a> {
         (ident, loop_mask)
     }
 
+    /// Stack the bit tables into chunks of 8 and render them as byte table constants into a
+    /// TokenStream.
     pub fn render_luts(&self) -> TokenStream {
         let mut sorted = self.loop_masks.iter().collect::<Vec<_>>();
         sorted.sort_by_key(|(_bits, id)| **id);
