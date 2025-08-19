@@ -463,8 +463,12 @@ impl Graph {
 
         let dfa_config = DFA::config()
             .accelerate(false)
-            .byte_classes(false)
-            .minimize(true)
+            // Turning byte classes on makes compilation go faster but makes the DFA
+            // representation harder to interpret
+            .byte_classes(!cfg!(feature = "debug"))
+            // I wasn't able to see a performance difference with this on, but it did
+            // make compiling the dfa in a large project take ~15 sec, so leaving it off
+            .minimize(false)
             .match_kind(MatchKind::All)
             .start_kind(StartKind::Anchored);
         let dfa = DFA::builder()
