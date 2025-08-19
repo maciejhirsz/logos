@@ -352,182 +352,94 @@ impl<'s> ::logos::Logos<'s> for Token {
                 LogosState::state3 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 255u8)) {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    if let Some(byte) = other {} else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state4 => {
+                    lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 127u8))
-                            || (matches!(byte, 192u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 128u8..= 191u8)) {
                             offset += 1;
-                            state = LogosState::state17;
+                            state = LogosState::state1;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
-                    lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
-                    return Some(Err(_make_error(lex)));
+                    } else {}
+                    return Some(Ok(Token::Any));
                 }
                 LogosState::state5 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 159u8))
-                            || (matches!(byte, 192u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 160u8..= 191u8)) {
                             offset += 1;
                             state = LogosState::state13;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    } else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state6 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 127u8))
-                            || (matches!(byte, 192u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 128u8..= 191u8)) {
                             offset += 1;
                             state = LogosState::state13;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    } else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state7 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 127u8))
-                            || (matches!(byte, 160u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 128u8..= 159u8)) {
                             offset += 1;
                             state = LogosState::state13;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    } else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state8 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 143u8))
-                            || (matches!(byte, 192u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 144u8..= 191u8)) {
                             offset += 1;
                             state = LogosState::state12;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    } else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state9 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 127u8))
-                            || (matches!(byte, 192u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 128u8..= 191u8)) {
                             offset += 1;
                             state = LogosState::state12;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    } else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state10 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                        if (matches!(byte, 0u8..= 127u8))
-                            || (matches!(byte, 144u8..= 255u8))
-                        {
-                            offset += 1;
-                            state = LogosState::state11;
-                            continue;
-                        }
                         if (matches!(byte, 128u8..= 143u8)) {
                             offset += 1;
                             state = LogosState::state12;
                             continue;
                         }
-                    } else {
-                        offset += 1;
-                        state = LogosState::state11;
-                        continue;
-                    }
+                    } else {}
                     return Some(Ok(Token::Any));
                 }
                 LogosState::state11 => {
-                    lex.end(offset - 1);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     return Some(Ok(Token::Any));

@@ -557,14 +557,11 @@ impl Graph {
                 .iter_children()
                 .map(|child_state| {
                     let child_state_data = graph.get_state(child_state);
-                    child_state_data.state_type
+                    child_state_data.state_type.accept
                 })
                 .collect::<HashSet<_>>();
 
-            let child_state_types_vec = child_state_types
-                .into_iter()
-                .map(|state_type| state_type.accept)
-                .collect::<Vec<_>>();
+            let child_state_types_vec = child_state_types.into_iter().collect::<Vec<_>>();
 
             // If all children match the same leaf, this state is an early accept state
             if let &[Some(leaf_id)] = &*child_state_types_vec {
