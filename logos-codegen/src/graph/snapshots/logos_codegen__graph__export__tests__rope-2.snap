@@ -17,5 +17,3 @@ style n3 stroke:#000000
 n3-->|"e"|n4
 n4["State 4"]
 style n4 stroke:#00C853
-n5["State 5"]
-style n5 stroke:#000000

@@ -125,10 +125,7 @@ impl Graph {
 
         Fmt::write_header(&mut s)?;
 
-        let mut states = self.iter_states().collect::<Vec<_>>();
-        // Sort for repeatability (not dependent on hashmap iteration order)
-        states.sort_unstable();
-        for state in states {
+        for state in self.iter_states() {
             let data = self.get_state(state);
 
             let id = format_state(&state, false);

@@ -39,17 +39,11 @@ impl<'s> ::logos::Logos<'s> for Token {
         enum LogosState {
             state0,
             state1,
-            state10,
-            state11,
-            state12,
             state2,
             state3,
             state4,
             state5,
             state6,
-            state7,
-            state8,
-            state9,
         }
         let mut state = LogosState::state0;
         let mut offset = lex.offset();
@@ -156,14 +150,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                             None,
                             None,
                             None,
-                            Some(LogosState::state1),
                             Some(LogosState::state2),
                             Some(LogosState::state3),
                             Some(LogosState::state4),
                             Some(LogosState::state5),
-                            Some(LogosState::state5),
                             Some(LogosState::state6),
                             Some(LogosState::state6),
+                            Some(LogosState::state1),
+                            Some(LogosState::state1),
                             None,
                             None,
                             None,
@@ -334,21 +328,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    lex.trivia();
-                    offset = lex.offset();
-                    state = LogosState::state0;
-                }
-                LogosState::state2 => {
-                    lex.end(offset);
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    #[inline]
-                    fn callback<'s>(
-                        lex: &mut _Lexer<'s>,
-                    ) -> impl SkipRetVal<'s, Token> + use<'s> {
-                        lex.extras.push("inline_callback")
-                    }
-                    let action = SkipRetVal::<'s, Token>::construct(callback(lex));
+                    let action = SkipRetVal::<
+                        's,
+                        Token,
+                    >::construct(labelled_skip_result_callback(lex));
                     match action {
                         SkipResult::Skip => {
                             lex.trivia();
@@ -360,14 +343,25 @@ impl<'s> ::logos::Logos<'s> for Token {
                         }
                     }
                 }
+                LogosState::state2 => {
+                    lex.end(offset);
+                    let other = lex.read::<u8>(offset);
+                    if let Some(byte) = other {} else {}
+                    lex.trivia();
+                    offset = lex.offset();
+                    state = LogosState::state0;
+                }
                 LogosState::state3 => {
                     lex.end(offset);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_callback(lex));
+                    #[inline]
+                    fn callback<'s>(
+                        lex: &mut _Lexer<'s>,
+                    ) -> impl SkipRetVal<'s, Token> + use<'s> {
+                        lex.extras.push("inline_callback")
+                    }
+                    let action = SkipRetVal::<'s, Token>::construct(callback(lex));
                     match action {
                         SkipResult::Skip => {
                             lex.trivia();
@@ -386,7 +380,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     let action = SkipRetVal::<
                         's,
                         Token,
-                    >::construct(labelled_skip_callback(lex));
+                    >::construct(labelled_callback(lex));
                     match action {
                         SkipResult::Skip => {
                             lex.trivia();
@@ -405,7 +399,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     let action = SkipRetVal::<
                         's,
                         Token,
-                    >::construct(labelled_result_callback(lex));
+                    >::construct(labelled_skip_callback(lex));
                     match action {
                         SkipResult::Skip => {
                             lex.trivia();
@@ -424,42 +418,6 @@ impl<'s> ::logos::Logos<'s> for Token {
                     let action = SkipRetVal::<
                         's,
                         Token,
-                    >::construct(labelled_skip_result_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            state = LogosState::state0;
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-                LogosState::state7 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_skip_result_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            state = LogosState::state0;
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-                LogosState::state8 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
                     >::construct(labelled_result_callback(lex));
                     match action {
                         SkipResult::Skip => {
@@ -471,70 +429,6 @@ impl<'s> ::logos::Logos<'s> for Token {
                             return Some(Err(err));
                         }
                     }
-                }
-                LogosState::state9 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_skip_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            state = LogosState::state0;
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-                LogosState::state10 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    let action = SkipRetVal::<
-                        's,
-                        Token,
-                    >::construct(labelled_callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            state = LogosState::state0;
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-                LogosState::state11 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    #[inline]
-                    fn callback<'s>(
-                        lex: &mut _Lexer<'s>,
-                    ) -> impl SkipRetVal<'s, Token> + use<'s> {
-                        lex.extras.push("inline_callback")
-                    }
-                    let action = SkipRetVal::<'s, Token>::construct(callback(lex));
-                    match action {
-                        SkipResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            state = LogosState::state0;
-                        }
-                        SkipResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                    }
-                }
-                LogosState::state12 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    lex.trivia();
-                    offset = lex.offset();
-                    state = LogosState::state0;
                 }
             }
         }

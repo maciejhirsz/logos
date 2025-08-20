@@ -8,11 +8,9 @@ style n0 stroke:#000000
 n0-->|"f"|n1
 n1["State 1"]
 style n1 stroke:#00C853
-n1-->|"e"|n3
+n1-->|"e"|n2
 n2["State 2"]
 style n2 stroke:#000000
+n2-->|"e"|n3
 n3["State 3"]
-style n3 stroke:#000000
-n3-->|"e"|n4
-n4["State 4"]
-style n4 stroke:#00C853
+style n3 stroke:#00C853

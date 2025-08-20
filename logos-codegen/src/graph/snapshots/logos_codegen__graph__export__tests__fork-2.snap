@@ -5,13 +5,9 @@ expression: mmd
 flowchart TB
 n0["State 0"]
 style n0 stroke:#000000
-n0-->|"a..=y"|n1
-n0-->|"z"|n2
+n0-->|"z"|n1
+n0-->|"a..=y"|n2
 n1["State 1"]
 style n1 stroke:#00C853
 n2["State 2"]
 style n2 stroke:#00C853
-n3["State 3"]
-style n3 stroke:#000000
-n4["State 4"]
-style n4 stroke:#000000

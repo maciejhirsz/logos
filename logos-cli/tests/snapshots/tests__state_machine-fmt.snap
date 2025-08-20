@@ -77,7 +77,6 @@ impl<'s> ::logos::Logos<'s> for Token {
             state1,
             state2,
             state3,
-            state4,
         }
         let mut state = LogosState::state0;
         let mut offset = lex.offset();
@@ -127,13 +126,6 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
                 LogosState::state3 => {
                     lex.end(offset);
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {
-                    } else {
-                    }
-                    return Some(Ok(Token::Letter));
-                }
-                LogosState::state4 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
                     } else {

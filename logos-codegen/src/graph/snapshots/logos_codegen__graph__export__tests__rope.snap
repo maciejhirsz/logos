@@ -14,5 +14,4 @@ n2->n3 [label="p"];
 n3[label="State 3",color=black];
 n3->n4 [label="e"];
 n4[label="State 4",color=green];
-n5[label="State 5",color=black];
 }

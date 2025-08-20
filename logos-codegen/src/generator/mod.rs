@@ -220,12 +220,7 @@ impl<'a> Generator<'a> {
     /// Return the identifier and bit mask used to reference a LUT containing a bit mask. The bit
     /// mask is generated to match the given edge.
     fn add_test_to_lut(&mut self, edge: &ByteClass) -> (Ident, u8) {
-        let mut table_bits = [false; 256];
-        for range in edge.ranges.iter() {
-            for byte in range.clone() {
-                table_bits[byte as usize] = true;
-            }
-        }
+        let table_bits = edge.to_table();
 
         let loop_id = if let Some(&existing) = self.loop_masks.get(&table_bits) {
             existing
@@ -246,7 +241,7 @@ impl<'a> Generator<'a> {
     /// TokenStream.
     pub fn render_luts(&self) -> TokenStream {
         let mut sorted = self.loop_masks.iter().collect::<Vec<_>>();
-        sorted.sort_by_key(|(_bits, id)| **id);
+        sorted.sort_unstable_by_key(|(_bits, id)| **id);
         let decls = sorted.chunks(8).enumerate().map(|(lut_idx, bit_arrs)| {
             let mut byte_arr = [0u8; 256];
             for (bit_index, (bits, _id)) in bit_arrs.iter().enumerate() {
