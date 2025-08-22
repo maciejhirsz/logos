@@ -4,13 +4,15 @@ fnv = "1.0.6"
 lazy_static = "1.4.0"
 proc-macro2 = "1.0.9"
 quote = "1.0.3"
-regex-syntax = "0.8.2"
+regex-automata = "0.4.9"
+regex-syntax = "0.8.5"
 syn = { version = "2.0.13", features = ["full"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 rstest = "0.26.1"
 insta = "1.41.1"
+prettyplease = "0.2.36"
 
 [build-dependencies]
 rustc_version = "0.4.1"
@@ -18,10 +20,10 @@ rustc_version = "0.4.1"
 [features]
 # Enables debug messages
 debug = []
-# Exports out internal methods for fuzzing
-fuzzing = []
 # Don't use or generate unsafe code
 forbid_unsafe = []
+# Use the state machine codegen instead of the tailcall codegen
+state_machine_codegen = []
 
 [lib]
 bench = false

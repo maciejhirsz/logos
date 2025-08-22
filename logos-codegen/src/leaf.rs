@@ -1,32 +1,45 @@
-use std::cmp::{Ord, Ordering};
+use std::cmp::Ord;
 use std::fmt::{self, Debug, Display};
 
 use proc_macro2::{Span, TokenStream};
+use regex_automata::PatternID;
 use syn::{spanned::Spanned, Ident};
 
-use crate::graph::{Disambiguate, Node};
-use crate::parser::SkipCallback;
-use crate::util::MaybeVoid;
+use crate::pattern::Pattern;
 
-#[derive(Clone)]
-pub struct Leaf<'t> {
-    pub ident: Option<&'t Ident>,
-    pub span: Span,
-    pub priority: usize,
-    pub field: MaybeVoid,
-    pub callback: Option<Callback>,
+#[derive(Clone, Debug)]
+pub enum VariantKind {
+    Unit(Ident),
+    Value(Ident, TokenStream),
+    Skip,
 }
 
-#[derive(Clone)]
+impl Display for VariantKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            VariantKind::Unit(ident) => write!(f, "::{ident}"),
+            VariantKind::Value(ident, _) => write!(f, "::{ident}(_)"),
+            VariantKind::Skip => f.write_str("::<skip>"),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Callback {
     Label(TokenStream),
-    Inline(Box<InlineCallback>),
-    #[allow(clippy::enum_variant_names)]
-    SkipCallback(SkipCallback),
-    Skip(Span),
+    Inline(InlineCallback),
 }
 
-#[derive(Clone)]
+impl Callback {
+    pub fn span(&self) -> Span {
+        match self {
+            Callback::Label(tokens) => tokens.span(),
+            Callback::Inline(inline) => inline.span,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct InlineCallback {
     pub arg: Ident,
     pub body: TokenStream,
@@ -35,89 +48,54 @@ pub struct InlineCallback {
 
 impl From<InlineCallback> for Callback {
     fn from(inline: InlineCallback) -> Callback {
-        Callback::Inline(Box::new(inline))
+        Callback::Inline(inline)
     }
 }
 
-impl Callback {
-    pub fn span(&self) -> Span {
-        match self {
-            Callback::Label(tokens) => tokens.span(),
-            Callback::Inline(inline) => inline.span,
-            Callback::SkipCallback(callback) => callback.span(),
-            Callback::Skip(skip) => *skip,
-        }
-    }
+#[derive(Debug, Clone)]
+pub struct Leaf {
+    pub pattern: Pattern,
+    pub span: Span,
+    pub priority: usize,
+    pub kind: VariantKind,
+    pub callback: Option<Callback>,
 }
 
-impl<'t> Leaf<'t> {
-    pub fn new(ident: &'t Ident, span: Span) -> Self {
+impl Leaf {
+    pub fn new(span: Span, pattern: Pattern) -> Self {
         Leaf {
-            ident: Some(ident),
+            pattern,
             span,
             priority: 0,
-            field: MaybeVoid::Void,
+            kind: VariantKind::Skip,
             callback: None,
         }
     }
 
-    pub fn new_skip(span: Span) -> Self {
-        Leaf {
-            ident: None,
-            span,
-            priority: 0,
-            field: MaybeVoid::Void,
-            callback: Some(Callback::Skip(span)),
-        }
+    pub fn variant_kind(self, kind: VariantKind) -> Self {
+        Self { kind, ..self }
     }
 
-    pub fn callback(mut self, callback: Option<Callback>) -> Self {
-        self.callback = callback;
-        self
+    pub fn callback(self, callback: Option<Callback>) -> Self {
+        Self { callback, ..self }
     }
 
-    pub fn field(mut self, field: MaybeVoid) -> Self {
-        self.field = field;
-        self
-    }
-
-    pub fn priority(mut self, priority: usize) -> Self {
-        self.priority = priority;
-        self
+    pub fn priority(self, priority: usize) -> Self {
+        Self { priority, ..self }
     }
 }
 
-impl Disambiguate for Leaf<'_> {
-    fn cmp(left: &Leaf, right: &Leaf) -> Ordering {
-        Ord::cmp(&left.priority, &right.priority)
+impl fmt::Display for Leaf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.pattern, self.kind)
     }
 }
 
-impl<'t> From<Leaf<'t>> for Node<Leaf<'t>> {
-    fn from(leaf: Leaf<'t>) -> Self {
-        Node::Leaf(leaf)
-    }
-}
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct LeafId(pub usize);
 
-impl Debug for Leaf<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "::{}", self)?;
-
-        match self.callback {
-            Some(Callback::Label(ref label)) => write!(f, " ({})", label),
-            Some(Callback::Inline(_)) => f.write_str(" (<inline>)"),
-            Some(Callback::Skip(_)) => f.write_str(" (<skip>)"),
-            Some(Callback::SkipCallback(_)) => f.write_str(" (<skip callback>)"),
-            None => Ok(()),
-        }
-    }
-}
-
-impl Display for Leaf<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.ident {
-            Some(ident) => Display::fmt(ident, f),
-            None => f.write_str("<skip>"),
-        }
+impl From<PatternID> for LeafId {
+    fn from(value: PatternID) -> Self {
+        LeafId(value.as_usize())
     }
 }
