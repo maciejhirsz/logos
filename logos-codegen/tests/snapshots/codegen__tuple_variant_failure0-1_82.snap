@@ -1,0 +1,5 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: generated
+---
+impl < 's > :: logos :: Logos < 's > for Token { type Error = () ; type Extras = () ; type Source = str ; fn lex (lex : & mut :: logos :: Lexer < 's , Self >) { fn _logos_derive_compile_errors () { { compile_error ! ("Logos currently only supports variants with one field, found 0") } } } }
