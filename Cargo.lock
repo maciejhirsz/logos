@@ -741,7 +741,6 @@ dependencies = [
  "beef",
  "fnv",
  "insta",
- "lazy_static",
  "pretty_assertions",
  "proc-macro2",
  "quote",
