@@ -30,6 +30,6 @@ jobs:
       run: cargo codspeed build --workspace
 
     - name: Run the benchmarks
-      uses: CodSpeedHQ/action@v3
+      uses: CodSpeedHQ/action@v4
       with:
         run: cargo codspeed run --workspace
