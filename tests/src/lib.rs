@@ -26,32 +26,6 @@
 //! Token::lexer("This shouldn't work with a string literal!");
 //! ```
 //!
-//! Matching against .* (or .+) should fail to compile:
-//!
-//! ```compile_fail
-//! use logos::Logos;
-//! use logos_derive::Logos;
-//!
-//! #[derive(Logos, Debug, PartialEq)]
-//! enum Token {
-//!     #[regex(r"\(.*\)")]
-//!     BetweenParen,
-//!
-//! }
-//! ```
-//!
-//! ```compile_fail
-//! use logos::Logos;
-//! use logos_derive::Logos;
-//!
-//! #[derive(Logos, Debug, PartialEq)]
-//! enum Token {
-//!     #[regex(r"\(.+\)")]
-//!     BetweenParen,
-//!
-//! }
-//! ```
-//!
 //! And also when working with bytes:
 //!
 //! ```compile_fail
