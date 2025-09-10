@@ -25,7 +25,7 @@ enum Token {
     // Callbacks can use closure syntax, or refer
     // to a function defined elsewhere.
     //
-    // Each pattern can have it's own callback.
+    // Each pattern can have its own callback.
     #[regex("[0-9]+", |lex| lex.slice().parse().ok())]
     #[regex("[0-9]+k", kilo)]
     #[regex("[0-9]+m", mega)]
