@@ -411,6 +411,9 @@ mod priority_disambiguate_2 {
     }
 }
 
+// This is a case where behavior has changed with the new regex engine
+// Also, the behavior used to be incorrect here, as it should be impossible
+// for the pattern to match "ffoof"
 mod loop_in_loop {
     use super::*;
 
@@ -432,10 +435,13 @@ mod loop_in_loop {
                 (Ok(Token::Foo), "foooo", 22..27),
                 (Ok(Token::Foo), "foofffffoo", 28..38),
                 (Ok(Token::Foo), "f", 39..40),
-                (Err(()), "ff", 41..43),
-                (Err(()), "ff", 44..46),
+                (Ok(Token::Foo), "f", 41..42),
+                (Ok(Token::Foo), "f", 42..43),
+                (Ok(Token::Foo), "f", 44..45),
+                (Ok(Token::Foo), "f", 45..46),
                 (Err(()), "o", 46..47),
-                (Err(()), "ffoof", 48..53),
+                (Ok(Token::Foo), "ffoo", 48..52),
+                (Ok(Token::Foo), "f", 52..53),
                 (Err(()), "o", 53..54),
             ],
         );
@@ -506,5 +512,7 @@ mod merging_asymmetric_loops {
             #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip, priority = 3)]
             Ignored,
         }
+
+        let _ = Token2::Ignored;
     }
 }

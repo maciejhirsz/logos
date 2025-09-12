@@ -1,233 +1,262 @@
-use fnv::{FnvHashMap as Map, FnvHashSet as Set};
+use std::collections::HashMap;
+
+use fast_loop::fast_loop_macro;
+use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::quote;
 use syn::Ident;
 
-use crate::graph::{Graph, Meta, Node, NodeId, Range};
-use crate::leaf::Leaf;
+use crate::graph::{ByteClass, Graph, State, StateType};
+use crate::leaf::{Callback, InlineCallback};
 use crate::util::ToIdent;
 
-mod context;
+mod fast_loop;
 mod fork;
 mod leaf;
-mod rope;
-mod tables;
 
-use self::context::Context;
-use self::tables::TableStack;
+pub struct Config {
+    pub use_state_machine_codegen: bool,
+}
 
 pub struct Generator<'a> {
+    /// Configuration for the code generation
+    config: Config,
     /// Name of the type we are implementing the `Logos` trait for
     name: &'a Ident,
     /// Name of the type with any generics it might need
     this: &'a TokenStream,
-    /// Id to the root node
-    root: NodeId,
     /// Reference to the graph with all of the nodes
-    graph: &'a Graph<Leaf<'a>>,
-    /// Meta data collected for the nodes
-    meta: Meta,
-    /// Buffer with functions growing during generation
-    rendered: TokenStream,
-    /// Set of functions that have already been rendered
-    fns: Set<(NodeId, Context)>,
-    /// Function name identifiers
-    idents: Map<(NodeId, Context), Ident>,
-    /// Local function calls. Note: a call might change its context,
-    /// so we can't use `idents` for this purpose.
-    gotos: Map<(NodeId, Context), TokenStream>,
-    /// Identifiers for helper functions matching a byte to a given
-    /// set of ranges
-    tests: Map<Vec<Range>, Ident>,
-    /// Related to above, table stack manages tables that need to be
-    tables: TableStack,
+    graph: &'a Graph,
+    /// Mapping of states to their identifiers.
+    /// Identifiers are enum variants in the state machine codegen
+    /// and function names in the tailcall codegen.
+    idents: Map<State, Ident>,
+    /// Callback for the default error type
+    error_callback: &'a Option<Callback>,
+    /// Bit masks that will be compressed into LUTs for fast looping
+    loop_masks: HashMap<[bool; 256], usize>,
 }
 
 impl<'a> Generator<'a> {
     pub fn new(
+        config: Config,
         name: &'a Ident,
         this: &'a TokenStream,
-        root: NodeId,
-        graph: &'a Graph<Leaf>,
+        graph: &'a Graph,
+        error_callback: &'a Option<Callback>,
     ) -> Self {
-        let rendered = Self::fast_loop_macro();
-        let meta = Meta::analyze(root, graph);
+        let idents = graph
+            .iter_states()
+            .map(|state| (state, state.to_string().to_ident()))
+            .collect();
 
         Generator {
+            config,
             name,
             this,
-            root,
             graph,
-            meta,
-            rendered,
-            fns: Set::default(),
-            idents: Map::default(),
-            gotos: Map::default(),
-            tests: Map::default(),
-            tables: TableStack::new(),
+            idents,
+            error_callback,
+            loop_masks: HashMap::new(),
         }
     }
 
-    pub fn generate(mut self) -> TokenStream {
-        let root = self.goto(self.root, Context::default()).clone();
-        let rendered = &self.rendered;
-        let tables = &self.tables;
+    /// Generates the implementation (body) of the [Logos::lex] function
+    pub fn generate(&mut self) -> TokenStream {
+        let mut states = self.graph.iter_states().collect::<Vec<_>>();
+        // Sort for repeatability (not dependent on hashmap iteration order)
+        states.sort_unstable();
+        let states_rendered = states
+            .iter()
+            .map(|&state| self.generate_state(state))
+            .collect::<Vec<_>>();
+
+        let init_state = &self.idents[&self.graph.root()];
+        let mut all_idents = self.idents.values().collect::<Vec<_>>();
+        // Sort for repeatability (not dependent on hashmap iteration order)
+        all_idents.sort_unstable();
+
+        let error_cb = self.generate_error_cb();
+        let fast_loop_macro = fast_loop_macro(8);
+        let loop_luts = self.render_luts();
+
+        if self.config.use_state_machine_codegen {
+            quote! {
+                #fast_loop_macro
+                #loop_luts
+                #error_cb
+                #[derive(Clone, Copy)]
+                enum LogosState {
+                    #(#all_idents),*
+                }
+                let mut state = LogosState::#init_state;
+                let mut offset = lex.offset();
+                loop {
+                    match state {
+                        #(#states_rendered)*
+                    }
+                }
+            }
+        } else {
+            quote! {
+                #fast_loop_macro
+                #loop_luts
+                #error_cb
+                #(#states_rendered)*
+                #init_state(lex, lex.offset())
+            }
+        }
+    }
+
+    fn get_ident(&self, state: &State) -> &Ident {
+        self.idents.get(state).expect("Unreachable state found")
+    }
+
+    // Generates the definition for the `_make_error` function. This can be
+    // specified using the `callback` argument of the `error` attribute.
+    // Otherwise, it defaults to the `Default::default()`value.
+    fn generate_error_cb(&self) -> TokenStream {
+        let this = self.this;
+
+        let body = match self.error_callback {
+            Some(Callback::Label(label)) => quote! {
+                let error = #label(lex);
+                error.into()
+            },
+            Some(Callback::Inline(InlineCallback { arg, body, .. })) => quote! {
+                let #arg = lex;
+                let error = { #body };
+                error.into()
+            },
+            None => quote! {
+                <#this as Logos<'s>>::Error::default()
+            },
+        };
 
         quote! {
-            #tables
-            #rendered
-            #root
-        }
-    }
-
-    fn generate_fn(&mut self, id: NodeId, ctx: Context) {
-        if self.fns.contains(&(id, ctx)) {
-            return;
-        }
-        self.fns.insert((id, ctx));
-
-        let body = match &self.graph[id] {
-            Node::Fork(fork) => self.generate_fork(id, fork, ctx),
-            Node::Rope(rope) => self.generate_rope(rope, ctx),
-            Node::Leaf(leaf) => self.generate_leaf(leaf, ctx),
-        };
-        let ident = self.generate_ident(id, ctx);
-        let out = quote! {
             #[inline]
-            fn #ident<'s>(lex: &mut Lexer<'s>) {
+            fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
                 #body
             }
+        }
+    }
+
+    /// Generates the code to transition to a state.
+    fn state_transition(&self, state: &State) -> TokenStream {
+        self.state_action(self.state_value(state))
+    }
+
+    /// Generates the code to transition to a state stored in an identifier
+    fn state_action(&self, state_ident: TokenStream) -> TokenStream {
+        match self.config.use_state_machine_codegen {
+            true => quote! { state = #state_ident; continue; },
+            false => quote! { return #state_ident(lex, offset); },
+        }
+    }
+
+    /// Generates the code to quote a state's representation
+    fn state_value(&self, state: &State) -> TokenStream {
+        let state_ident = self.get_ident(state);
+        match self.config.use_state_machine_codegen {
+            true => quote!(LogosState::#state_ident),
+            false => quote!(#state_ident),
+        }
+    }
+
+    /// Generates the body of a state. This is a match statement over
+    /// the next byte, which determines the next state.
+    ///
+    /// It also instantiates the relevant leaf, if `state` has a context.
+    ///
+    /// In state machine codegen, the body is wrapped in a match arm for the
+    /// `state`'s variant. In tailcall codegen, the body is inside of
+    /// `state`'s function.
+    fn generate_state(&mut self, state: State) -> TokenStream {
+        let state_data = self.graph.get_state(state);
+
+        // If we are in a match state, update the current token to
+        // end at the current offset - 1.
+        // The 1 comes from the 1 byte delayed match behavior
+        // of the regex-automata crate.
+        let setup = match state_data.state_type {
+            StateType { early: Some(_), .. } => Some(quote! { lex.end(offset); }),
+            StateType {
+                accept: Some(_), ..
+            } => Some(quote! { lex.end(offset - 1); }),
+            StateType { .. } => None,
         };
 
-        self.rendered.append_all(out);
+        let fast_loop = self.maybe_impl_fast_loop(state);
+        let fork = self.impl_fork(state, state_data, true);
+
+        // Wrap body in a match arm or function depending on the current codegen
+        let this_ident = self.get_ident(&state);
+        if self.config.use_state_machine_codegen {
+            quote! {
+                LogosState::#this_ident => {
+                    #fast_loop
+                    #setup
+                    #fork
+                }
+            }
+        } else {
+            let this = self.this;
+            quote! {
+                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize)
+                    -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
+                    #fast_loop
+                    #setup
+                    #fork
+                }
+            }
+        }
     }
 
-    fn goto(&mut self, id: NodeId, mut ctx: Context) -> &TokenStream {
-        let key = (id, ctx);
+    /// Returns the identifier used to access the "index"th LUT.
+    fn table_ident(index: usize) -> Ident {
+        format!("_TABLE_{index}").to_ident()
+    }
 
-        // Allow contains_key + insert because self.generate_ident borrows a mutable ref to self
-        // too.
-        #[allow(clippy::map_entry)]
-        if !self.gotos.contains_key(&key) {
-            let meta = &self.meta[id];
-            let enters_loop = !meta.loop_entry_from.is_empty();
+    /// Return the identifier and bit mask used to reference a LUT containing a bit mask. The bit
+    /// mask is generated to match the given edge.
+    fn add_test_to_lut(&mut self, edge: &ByteClass) -> (Ident, u8) {
+        let table_bits = edge.to_table();
 
-            let bump = if enters_loop || !ctx.can_backtrack() {
-                ctx.switch(self.graph[id].miss())
-            } else {
-                None
-            };
+        let loop_id = if let Some(&existing) = self.loop_masks.get(&table_bits) {
+            existing
+        } else {
+            let loop_id = self.loop_masks.len();
+            self.loop_masks.insert(table_bits, loop_id);
+            loop_id
+        };
 
-            let bump = match (bump, enters_loop, meta.min_read) {
-                (Some(t), _, _) => Some(t),
-                (None, true, _) => ctx.bump(),
-                (None, false, 0) => ctx.bump(),
-                (None, false, _) => None,
-            };
+        let loop_table = loop_id / 8;
+        let ident = Self::table_ident(loop_table);
+        let loop_mask = 1u8 << (loop_id % 8);
 
-            if meta.min_read == 0 || ctx.remainder() < meta.min_read {
-                ctx.wipe();
+        (ident, loop_mask)
+    }
+
+    /// Stack the bit tables into chunks of 8 and render them as byte table constants into a
+    /// TokenStream.
+    pub fn render_luts(&self) -> TokenStream {
+        let mut sorted = self.loop_masks.iter().collect::<Vec<_>>();
+        sorted.sort_unstable_by_key(|(_bits, id)| **id);
+        let decls = sorted.chunks(8).enumerate().map(|(lut_idx, bit_arrs)| {
+            let mut byte_arr = [0u8; 256];
+            for (bit_index, (bits, _id)) in bit_arrs.iter().enumerate() {
+                for (arr_idx, &bit) in bits.iter().enumerate() {
+                    if bit {
+                        byte_arr[arr_idx] |= 1 << bit_index;
+                    }
+                }
             }
 
-            let ident = self.generate_ident(id, ctx);
-            let mut call_site = quote!(#ident(lex));
+            let ident = Self::table_ident(lut_idx);
+            quote! { const #ident: [u8; 256] = [#(#byte_arr),*]; }
+        });
 
-            if let Some(bump) = bump {
-                call_site = quote!({
-                    #bump
-                    #call_site
-                });
-            }
-            self.gotos.insert(key, call_site);
-            self.generate_fn(id, ctx);
-        }
-        &self.gotos[&key]
-    }
-
-    fn generate_ident(&mut self, id: NodeId, ctx: Context) -> &Ident {
-        self.idents.entry((id, ctx)).or_insert_with(|| {
-            let mut ident = format!("goto{}", id);
-
-            ctx.write_suffix(&mut ident);
-
-            ident.to_ident()
-        })
-    }
-
-    /// Returns an identifier to a function that matches a byte to any
-    /// of the provided ranges. This will generate either a simple
-    /// match expression, or use a lookup table internally.
-    fn generate_test(&mut self, ranges: Vec<Range>) -> &Ident {
-        if !self.tests.contains_key(&ranges) {
-            let idx = self.tests.len();
-            let ident = format!("pattern{}", idx).to_ident();
-
-            let lo = ranges.first().unwrap().start;
-            let hi = ranges.last().unwrap().end;
-
-            let body = match ranges.len() {
-                0..=2 => {
-                    quote! {
-                        match byte {
-                            #(#ranges)|* => true,
-                            _ => false,
-                        }
-                    }
-                }
-                _ if hi - lo < 64 => {
-                    let mut offset = hi.saturating_sub(63);
-
-                    while offset.count_ones() > 1 && lo - offset > 0 {
-                        offset += 1;
-                    }
-
-                    let mut table = 0u64;
-
-                    for byte in ranges.iter().flat_map(|range| *range) {
-                        if byte - offset >= 64 {
-                            panic!("{:#?} {} {} {}", ranges, hi, lo, offset);
-                        }
-                        table |= 1 << (byte - offset);
-                    }
-
-                    let search = match offset {
-                        0 => quote!(byte),
-                        _ => quote!(byte.wrapping_sub(#offset)),
-                    };
-
-                    quote! {
-                        const LUT: u64 = #table;
-
-                        match 1u64.checked_shl(#search as u32) {
-                            Some(shift) => LUT & shift != 0,
-                            None => false,
-                        }
-                    }
-                }
-                _ => {
-                    let mut view = self.tables.view();
-
-                    for byte in ranges.iter().flat_map(|range| *range) {
-                        view.flag(byte);
-                    }
-
-                    let mask = view.mask();
-                    let lut = view.ident();
-
-                    quote! {
-                        #lut[byte as usize] & #mask > 0
-                    }
-                }
-            };
-            self.rendered.append_all(quote! {
-                #[inline]
-                fn #ident(byte: u8) -> bool {
-                    #body
-                }
-            });
-            self.tests.insert(ranges.clone(), ident);
-        }
-        &self.tests[&ranges]
+        quote! { #(#decls)* }
     }
 }
 
@@ -238,6 +267,7 @@ macro_rules! match_quote {
     }}
 }
 
+/// Converts a byte to a byte literal that can be used to match it
 fn byte_to_tokens(byte: u8) -> TokenStream {
     match_quote! {
         byte;
@@ -251,18 +281,5 @@ fn byte_to_tokens(byte: u8) -> TokenStream {
         b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
         b'{', b'}', b'[', b']', b'<', b'>', b'-', b'=', b'_', b'+',
         b':', b';', b',', b'.', b'/', b'?', b'|', b'"', b'\'', b'\\',
-    }
-}
-
-impl ToTokens for Range {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Range { start, end } = self;
-
-        tokens.append_all(byte_to_tokens(*start));
-
-        if start != end {
-            tokens.append_all(quote!(..=));
-            tokens.append_all(byte_to_tokens(*end));
-        }
     }
 }

@@ -8,11 +8,14 @@ proc-macro2 = "1.0.39"
 [dev-dependencies]
 assert_cmd = "2.0.4"
 assert_fs = "1.0.7"
+insta = "1.43.1"
 predicates = "2.1.1"
 
 [features]
 # Enables debug messages
 debug = ["logos-codegen/debug"]
+# Use the state machine codegen instead of the tailcall codegen
+state_machine_codegen = ["logos-codegen/state_machine_codegen"]
 
 [package]
 name = "logos-cli"

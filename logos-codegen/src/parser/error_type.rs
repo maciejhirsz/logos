@@ -5,11 +5,19 @@ use syn::Ident;
 use crate::leaf::Callback;
 use crate::parser::nested::NestedValue;
 use crate::parser::Parser;
-use crate::util::MaybeVoid;
 
 pub struct ErrorType {
     pub ty: TokenStream,
     pub callback: Option<Callback>,
+}
+
+impl Default for ErrorType {
+    fn default() -> Self {
+        ErrorType {
+            ty: quote::quote!(()),
+            callback: None,
+        }
+    }
 }
 
 impl ErrorType {
@@ -45,23 +53,14 @@ impl ErrorType {
                 parser.err(
                     format!(
                         "\
-                        Unknown nested attribute: {}\n\
+                        Unknown nested attribute: {unknown}\n\
                         \n\
                         Expected one of: callback\
-                        ",
-                        unknown
+                        "
                     ),
                     name.span(),
                 );
             }
-        }
-    }
-
-    pub fn unwrap(opt: Option<Self>) -> (MaybeVoid, Option<Callback>) {
-        if let Some(Self { ty, callback }) = opt {
-            (MaybeVoid::Some(ty), callback)
-        } else {
-            (MaybeVoid::Void, None)
         }
     }
 
