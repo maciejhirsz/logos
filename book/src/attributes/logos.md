@@ -123,4 +123,4 @@ fn main() {
 }
 ```
 
-(Note that the above supatterns are redundant as the same can be achieved with [existing character classes](https://docs.rs/regex/latest/regex/#ascii-character-classes))
+(Note that the above subpatterns are redundant as the same can be achieved with [existing character classes](https://docs.rs/regex/latest/regex/#ascii-character-classes))
