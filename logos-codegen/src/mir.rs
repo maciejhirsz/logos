@@ -1,6 +1,4 @@
-use std::convert::TryFrom;
-
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex_syntax::hir::{Dot, Hir, HirKind};
 use regex_syntax::ParserBuilder;
 
@@ -8,10 +6,8 @@ pub use regex_syntax::hir::{Class, ClassUnicode, Literal};
 
 use crate::error::{Error, Result};
 
-lazy_static! {
-    static ref DOT_UTF8: Hir = Hir::dot(Dot::AnyChar);
-    static ref DOT_BYTES: Hir = Hir::dot(Dot::AnyByte);
-}
+static DOT_UTF8: Lazy<Hir> = Lazy::new(|| Hir::dot(Dot::AnyChar));
+static DOT_BYTES: Lazy<Hir> = Lazy::new(|| Hir::dot(Dot::AnyByte));
 
 /// Middle Intermediate Representation of the regex, built from
 /// `regex_syntax`'s `Hir`. The goal here is to strip and canonicalize
