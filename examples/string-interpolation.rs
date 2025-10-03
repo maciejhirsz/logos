@@ -107,15 +107,15 @@ fn get_variable_value(lex: &mut Lexer<StringInterpolationContext>) -> Option<Str
 
 /* ANCHOR: main */
 fn test_variable_definition(
-    expeected_id: &str,
-    expeected_value: &str,
+    expected_id: &str,
+    expected_value: &str,
     token: Option<Result<VariableDefinitionContext, ()>>,
 ) {
     if let Some(Ok(VariableDefinitionContext::Id((id, value)))) = token {
-        assert_eq!(id, expeected_id);
-        assert_eq!(value, expeected_value);
+        assert_eq!(id, expected_id);
+        assert_eq!(value, expected_value);
     } else {
-        panic!("Expected key: {} not found", expeected_id);
+        panic!("Expected key: {} not found", expected_id);
     }
 }
 

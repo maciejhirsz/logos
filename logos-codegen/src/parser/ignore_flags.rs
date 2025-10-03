@@ -270,7 +270,7 @@ pub mod ascii_case {
         fn make_ascii_case_insensitive(mut self) -> Mir {
             use std::cmp;
 
-            // Manuall implementation to only perform the case folding on ascii characters.
+            // Manual implementation to only perform the case folding on ascii characters.
 
             let mut ranges = Vec::new();
 
