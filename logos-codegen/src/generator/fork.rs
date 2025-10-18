@@ -31,10 +31,9 @@ impl<'a> Generator<'a> {
         if let Some(leaf_id) = self.graph.get_state(state).context {
             self.generate_leaf(&self.graph.leaves()[leaf_id.0])
         } else {
-            // if we reached eoi, we are already at the end of the input
-            // so don't add 1 to offset.
+            // Ensure the error token has at least one byte in it
             quote! {
-                lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+                lex.end_to_boundary(offset.max(lex.offset() + 1));
                 return Some(Err(_make_error(lex)));
             }
         }

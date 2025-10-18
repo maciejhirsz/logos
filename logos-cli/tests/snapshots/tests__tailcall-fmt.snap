@@ -86,7 +86,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                     return None;
                 }
             }
-            lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+            lex.end_to_boundary(offset.max(lex.offset() + 1));
             return Some(Err(_make_error(lex)));
         }
         fn state1<'s>(
@@ -101,7 +101,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
             } else {
             }
-            lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+            lex.end_to_boundary(offset.max(lex.offset() + 1));
             return Some(Err(_make_error(lex)));
         }
         fn state2<'s>(
@@ -116,7 +116,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
             } else {
             }
-            lex.end_to_boundary(offset + if other.is_some() { 1 } else { 0 });
+            lex.end_to_boundary(offset.max(lex.offset() + 1));
             return Some(Err(_make_error(lex)));
         }
         fn state3<'s>(
