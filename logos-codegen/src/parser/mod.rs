@@ -173,7 +173,7 @@ impl Parser {
                         );
                     }
                 }),
-                ("export_path", |parser, span, value| match value {
+                ("export_dir", |parser, span, value| match value {
                     NestedValue::Assign(value) => {
                         let span = value.span();
 

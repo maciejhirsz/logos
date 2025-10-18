@@ -1,5 +1,5 @@
 #[derive(Logos, Debug)]
-#[logos(export_path = "complex_export_tmp")]
+#[logos(export_dir = "complex_export_tmp")]
 enum Complex {
     #[regex("[a-z]")]
     Letter,
