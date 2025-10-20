@@ -35,322 +35,560 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
+        #[inline]
+        fn _make_token<'s>(
+            lex: &mut _Lexer<'s>,
+            offset: usize,
+            context: usize,
+        ) -> CallbackResult<'s, Token> {
+            match context {
+                0 => {
+                    lex.end_to_boundary(offset.max(lex.offset() + 1));
+                    CallbackResult::Error(_make_error(lex))
+                }
+                1usize => CallbackResult::Emit(Token::Newline),
+                2usize => CallbackResult::Emit(Token::AnyUnicode),
+                3usize => CallbackResult::Emit(Token::Any),
+                _ => unreachable!(),
+            }
+        }
         fn state0<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state1<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state2<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                if (matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state4(lex, offset, context);
+                }
+            } else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state3<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state4<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                if (matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state5(lex, offset, context);
+                }
+            } else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state5<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 2usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state6<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state7<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state8<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
                 enum LogosNextState {
-                    state1,
-                    state2,
-                    state3,
-                    state4,
                     state5,
-                    state6,
-                    state7,
-                    state8,
                     state9,
                     state10,
+                    state11,
+                    state12,
+                    state16,
+                    state17,
+                    state18,
+                    state19,
+                    state20,
                 }
                 const TABLE: [_Option<LogosNextState>; 256] = [
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state6),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state1),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
-                    Some(LogosNextState::state8),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state16),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state5),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state18),
+                    Some(LogosNextState::state19),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state12),
+                    Some(LogosNextState::state20),
+                    Some(LogosNextState::state20),
                     Some(LogosNextState::state9),
                     Some(LogosNextState::state10),
                     Some(LogosNextState::state10),
                     Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state5),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state10),
-                    Some(LogosNextState::state2),
-                    Some(LogosNextState::state3),
-                    Some(LogosNextState::state3),
-                    Some(LogosNextState::state3),
-                    Some(LogosNextState::state4),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
-                    Some(LogosNextState::state7),
+                    Some(LogosNextState::state11),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
+                    Some(LogosNextState::state17),
                 ];
                 match TABLE[byte as usize] {
-                    Some(LogosNextState::state1) => {
-                        offset += 1;
-                        return state1(lex, offset);
-                    }
-                    Some(LogosNextState::state2) => {
-                        offset += 1;
-                        return state2(lex, offset);
-                    }
-                    Some(LogosNextState::state3) => {
-                        offset += 1;
-                        return state3(lex, offset);
-                    }
-                    Some(LogosNextState::state4) => {
-                        offset += 1;
-                        return state4(lex, offset);
-                    }
                     Some(LogosNextState::state5) => {
                         offset += 1;
-                        return state5(lex, offset);
-                    }
-                    Some(LogosNextState::state6) => {
-                        offset += 1;
-                        return state6(lex, offset);
-                    }
-                    Some(LogosNextState::state7) => {
-                        offset += 1;
-                        return state7(lex, offset);
-                    }
-                    Some(LogosNextState::state8) => {
-                        offset += 1;
-                        return state8(lex, offset);
+                        return state5(lex, offset, context);
                     }
                     Some(LogosNextState::state9) => {
                         offset += 1;
-                        return state9(lex, offset);
+                        return state9(lex, offset, context);
                     }
                     Some(LogosNextState::state10) => {
                         offset += 1;
-                        return state10(lex, offset);
+                        return state10(lex, offset, context);
+                    }
+                    Some(LogosNextState::state11) => {
+                        offset += 1;
+                        return state11(lex, offset, context);
+                    }
+                    Some(LogosNextState::state12) => {
+                        offset += 1;
+                        return state12(lex, offset, context);
+                    }
+                    Some(LogosNextState::state16) => {
+                        offset += 1;
+                        return state16(lex, offset, context);
+                    }
+                    Some(LogosNextState::state17) => {
+                        offset += 1;
+                        return state17(lex, offset, context);
+                    }
+                    Some(LogosNextState::state18) => {
+                        offset += 1;
+                        return state18(lex, offset, context);
+                    }
+                    Some(LogosNextState::state19) => {
+                        offset += 1;
+                        return state19(lex, offset, context);
+                    }
+                    Some(LogosNextState::state20) => {
+                        offset += 1;
+                        return state20(lex, offset, context);
                     }
                     None => {}
                 }
@@ -359,160 +597,399 @@ impl<'s> ::logos::Logos<'s> for Token {
                     return None;
                 }
             }
-            lex.end_to_boundary(offset.max(lex.offset() + 1));
-            return Some(Err(_make_error(lex)));
-        }
-        fn state1<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            return Some(Ok(Token::AnyUnicode));
-        }
-        fn state2<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
-                if (matches!(byte, 144u8..= 191u8)) {
-                    offset += 1;
-                    return state12(lex, offset);
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
                 }
-            } else {}
-            return Some(Ok(Token::Any));
-        }
-        fn state3<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
-                    offset += 1;
-                    return state12(lex, offset);
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
                 }
-            } else {}
-            return Some(Ok(Token::Any));
-        }
-        fn state4<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
-                if (matches!(byte, 128u8..= 143u8)) {
-                    offset += 1;
-                    return state12(lex, offset);
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
                 }
-            } else {}
-            return Some(Ok(Token::Any));
-        }
-        fn state5<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
-                if (matches!(byte, 128u8..= 159u8)) {
-                    offset += 1;
-                    return state11(lex, offset);
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
                 }
-            } else {}
-            return Some(Ok(Token::Any));
-        }
-        fn state6<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            return Some(Ok(Token::Newline));
-        }
-        fn state7<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            return Some(Ok(Token::Any));
-        }
-        fn state8<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
-                    offset += 1;
-                    return state1(lex, offset);
-                }
-            } else {}
-            return Some(Ok(Token::Any));
+            }
         }
         fn state9<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
+            mut context: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
+            context = 3usize;
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
-                if (matches!(byte, 160u8..= 191u8)) {
+                if (matches!(byte, 144u8..= 191u8)) {
                     offset += 1;
-                    return state11(lex, offset);
+                    return state2(lex, offset, context);
                 }
             } else {}
-            return Some(Ok(Token::Any));
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
         }
         fn state10<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
+            mut context: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
+            context = 3usize;
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
                 if (matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
-                    return state11(lex, offset);
+                    return state2(lex, offset, context);
                 }
             } else {}
-            return Some(Ok(Token::Any));
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
         }
         fn state11<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
+            mut context: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 3usize;
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
+                if (matches!(byte, 128u8..= 143u8)) {
                     offset += 1;
-                    return state1(lex, offset);
+                    return state2(lex, offset, context);
                 }
             } else {}
-            return Some(Ok(Token::Any));
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
         }
         fn state12<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 3usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                if (matches!(byte, 128u8..= 159u8)) {
+                    offset += 1;
+                    return state4(lex, offset, context);
+                }
+            } else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state13<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 2usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state14<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
                 if (matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
-                    return state11(lex, offset);
+                    return state5(lex, offset, context);
                 }
             } else {}
-            return Some(Ok(Token::Any));
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
         }
-        state0(lex, lex.offset())
+        fn state15<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 2usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state16<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 1usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state17<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 3usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state18<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 3usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                if (matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state5(lex, offset, context);
+                }
+            } else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state19<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 3usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                if (matches!(byte, 160u8..= 191u8)) {
+                    offset += 1;
+                    return state4(lex, offset, context);
+                }
+            } else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state20<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = 3usize;
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                if (matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state4(lex, offset, context);
+                }
+            } else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state8(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        state8(lex, lex.offset(), 0)
     }
 }

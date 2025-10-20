@@ -76,7 +76,7 @@ impl<'a> Generator<'a> {
         // Sort for repeatability (not dependent on hashmap iteration order)
         all_idents.sort_unstable();
 
-        let error_cb = self.generate_error_cb();
+        let make_token_fn = self.make_token_fn();
         let fast_loop_macro = fast_loop_macro(8);
         let loop_luts = self.render_luts();
 
@@ -84,13 +84,14 @@ impl<'a> Generator<'a> {
             quote! {
                 #fast_loop_macro
                 #loop_luts
-                #error_cb
+                #make_token_fn
                 #[derive(Clone, Copy)]
                 enum LogosState {
                     #(#all_idents),*
                 }
                 let mut state = LogosState::#init_state;
                 let mut offset = lex.offset();
+                let mut context = 0usize;
                 loop {
                     match state {
                         #(#states_rendered)*
@@ -101,9 +102,9 @@ impl<'a> Generator<'a> {
             quote! {
                 #fast_loop_macro
                 #loop_luts
-                #error_cb
+                #make_token_fn
                 #(#states_rendered)*
-                #init_state(lex, lex.offset())
+                #init_state(lex, lex.offset(), 0)
             }
         }
     }
@@ -115,10 +116,18 @@ impl<'a> Generator<'a> {
     // Generates the definition for the `_make_error` function. This can be
     // specified using the `callback` argument of the `error` attribute.
     // Otherwise, it defaults to the `Default::default()`value.
-    fn generate_error_cb(&self) -> TokenStream {
+    fn make_token_fn(&self) -> TokenStream {
         let this = self.this;
 
-        let body = match self.error_callback {
+        let leaf_bodies = self
+            .graph
+            .leaves()
+            .iter()
+            .map(|leaf| self.generate_callback(leaf))
+            .collect::<Vec<_>>();
+        let leaf_indicies = 1..=(leaf_bodies.len());
+
+        let error_body = match self.error_callback {
             Some(Callback::Label(label)) => quote! {
                 let error = #label(lex);
                 error.into()
@@ -136,7 +145,21 @@ impl<'a> Generator<'a> {
         quote! {
             #[inline]
             fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
-                #body
+                #error_body
+            }
+            #[inline]
+            fn _make_token<'s>(lex: &mut _Lexer<'s>, offset: usize, context: usize)
+              -> CallbackResult<'s, #this> {
+                match context {
+                    0 => {
+                        lex.end_to_boundary(offset.max(lex.offset() + 1));
+                        CallbackResult::Error(_make_error(lex))
+                    },
+                    #(#leaf_indicies => {
+                        #leaf_bodies
+                    }),*
+                    _ => unreachable!(),
+                }
             }
         }
     }
@@ -150,7 +173,7 @@ impl<'a> Generator<'a> {
     fn state_action(&self, state_ident: TokenStream) -> TokenStream {
         match self.config.use_state_machine_codegen {
             true => quote! { state = #state_ident; continue; },
-            false => quote! { return #state_ident(lex, offset); },
+            false => quote! { return #state_ident(lex, offset, context); },
         }
     }
 
@@ -179,10 +202,18 @@ impl<'a> Generator<'a> {
         // The 1 comes from the 1 byte delayed match behavior
         // of the regex-automata crate.
         let setup = match state_data.state_type {
-            StateType { early: Some(_), .. } => Some(quote! { lex.end(offset); }),
             StateType {
-                accept: Some(_), ..
-            } => Some(quote! { lex.end(offset - 1); }),
+                early: Some(idx), ..
+            } => {
+                let idx = idx.0 + 1;
+                Some(quote! { lex.end(offset); context = #idx; })
+            }
+            StateType {
+                accept: Some(idx), ..
+            } => {
+                let idx = idx.0 + 1;
+                Some(quote! { lex.end(offset - 1); context = #idx; })
+            }
             StateType { .. } => None,
         };
 
@@ -202,7 +233,7 @@ impl<'a> Generator<'a> {
         } else {
             let this = self.this;
             quote! {
-                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize)
+                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: usize)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
                     #fast_loop
                     #setup

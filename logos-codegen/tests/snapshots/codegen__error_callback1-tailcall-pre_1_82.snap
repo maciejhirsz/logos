@@ -36,9 +36,50 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             let error = callback0(lex);
             error.into()
         }
+        #[inline]
+        fn _make_token<'s>(
+            lex: &mut _Lexer<'s>,
+            offset: usize,
+            context: usize,
+        ) -> CallbackResult<'s, TokenA> {
+            match context {
+                0 => {
+                    lex.end_to_boundary(offset.max(lex.offset() + 1));
+                    CallbackResult::Error(_make_error(lex))
+                }
+                _ => unreachable!(),
+            }
+        }
         fn state0<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
+            mut context: usize,
+        ) -> _Option<_Result<TokenA, <TokenA as Logos<'s>>::Error>> {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state1(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
+        }
+        fn state1<'s>(
+            lex: &mut _Lexer<'s>,
+            mut offset: usize,
+            mut context: usize,
         ) -> _Option<_Result<TokenA, <TokenA as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {} else {
@@ -46,9 +87,25 @@ impl<'s> ::logos::Logos<'s> for TokenA {
                     return None;
                 }
             }
-            lex.end_to_boundary(offset.max(lex.offset() + 1));
-            return Some(Err(_make_error(lex)));
+            let action = _make_token(lex, offset, context);
+            match action {
+                CallbackResult::Emit(tok) => {
+                    return Some(Ok(tok));
+                }
+                CallbackResult::Skip => {
+                    lex.trivia();
+                    offset = lex.offset();
+                    context = 0usize;
+                    return state1(lex, offset, context);
+                }
+                CallbackResult::Error(err) => {
+                    return Some(Err(err));
+                }
+                CallbackResult::DefaultError => {
+                    return Some(Err(_make_error(lex)));
+                }
+            }
         }
-        state0(lex, lex.offset())
+        state1(lex, lex.offset(), 0)
     }
 }

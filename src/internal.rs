@@ -202,6 +202,15 @@ pub enum SkipResult<'a, L: Logos<'a>> {
     Error(L::Error),
 }
 
+impl<'a, L: Logos<'a>> From<SkipResult<'a, L>> for CallbackResult<'a, L> {
+    fn from(value: SkipResult<'a, L>) -> Self {
+        match value {
+            SkipResult::Skip => CallbackResult::Skip,
+            SkipResult::Error(e) => CallbackResult::Error(e),
+        }
+    }
+}
+
 pub trait SkipRetVal<'a, L: Logos<'a>> {
     fn construct(self) -> SkipResult<'a, L>;
 }

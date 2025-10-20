@@ -24,21 +24,6 @@ impl<'a> Generator<'a> {
         }
     }
 
-    /// Generate code for if state edge applies:
-    ///  - return the current token (active context)
-    ///  - or an error (no active context).
-    fn fork_otherwise(&self, state: State) -> TokenStream {
-        if let Some(leaf_id) = self.graph.get_state(state).context {
-            self.generate_leaf(&self.graph.leaves()[leaf_id.0])
-        } else {
-            // Ensure the error token has at least one byte in it
-            quote! {
-                lex.end_to_boundary(offset.max(lex.offset() + 1));
-                return Some(Err(_make_error(lex)));
-            }
-        }
-    }
-
     // Generate code for encountering the end of input.
     // If we are not in the middle of a token, return None (the iterator is ended)
     // If the state has an EOI node, transition to it.
@@ -112,7 +97,7 @@ impl<'a> Generator<'a> {
         }
 
         let eoi = self.fork_eoi(state, state_data);
-        let otherwise = self.fork_otherwise(state);
+        let otherwise = self.generate_leaf();
         quote! {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
@@ -219,27 +204,16 @@ impl<'a> Generator<'a> {
         };
 
         let eoi = self.fork_eoi(state, state_data);
-        let otherwise = self.fork_otherwise(state);
+        let otherwise = self.generate_leaf();
 
-        // TODO: once we optimize more in the graph module, we might not need this anymore
-        if state_data.normal.is_empty() {
-            quote! {
-                let other = lex.read::<u8>(offset);
-                if other.is_none() {
-                    #eoi
-                }
-                #otherwise
+        quote! {
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {
+                #body
+            } else {
+                #eoi
             }
-        } else {
-            quote! {
-                let other = lex.read::<u8>(offset);
-                if let Some(byte) = other {
-                    #body
-                } else {
-                    #eoi
-                }
-                #otherwise
-            }
+            #otherwise
         }
     }
 }

@@ -66,8 +66,6 @@ impl fmt::Display for State {
 /// identify State, which facilitates building a HashMap<State, StateData> structure.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateData {
-    /// The most recently matched leaf (if any)
-    pub context: Option<LeafId>,
     /// The type of the [State] object this struct defines
     pub state_type: StateType,
     /// The "normal" transitions (those that consume a byte of input) from this state to another
@@ -87,17 +85,6 @@ impl StateData {
     /// uniquely to a [State].
     fn new() -> Self {
         Default::default()
-    }
-
-    /// Create a new [StateData] object with the given [LeafId] as context
-    ///
-    /// This is used when constructing the contextualized graph, where each [State] may correspond
-    /// to multiple [StateID]s, and vice versa.
-    fn with_context(context: Option<LeafId>) -> Self {
-        Self {
-            context,
-            ..Default::default()
-        }
     }
 
     /// An iterator over all [State] objects directly reachable from this state
@@ -135,9 +122,6 @@ impl fmt::Display for StateData {
         }
         write!(f, ")")?;
         if f.alternate() {
-            if let Some(context) = self.context {
-                write!(f, " (context: {})", context.0)?;
-            }
             writeln!(f, " {{")?;
             for (bc, state) in &self.normal {
                 writeln!(f, "  {} => {}", &bc.to_string(), state)?;
@@ -345,34 +329,36 @@ impl Graph {
     pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
         // First, construct a context-free graph, then traverse it with a context to build the
         // contextual graph.
-        let mut graph = Self::new_no_context(leaves, config)?;
-        let mut ctx_traverse = ContextTraverse::new(graph.root, &graph);
-
-        while let Some((no_ctx_state, ctx_state)) = ctx_traverse.next_state() {
-            let orig_state_data = &graph.states[no_ctx_state.0];
-            let context = ctx_traverse.ctx_states[ctx_state.0].context;
-
-            let normal = orig_state_data
-                .normal
-                .iter()
-                .cloned()
-                .map(|(bc, next_state)| {
-                    let next_ctx_state = ctx_traverse.get_ctx_state(next_state, context);
-                    (next_ctx_state, bc)
-                })
-                .collect();
-            ctx_traverse.ctx_states[ctx_state.0].set_normal_edges(normal);
-
-            ctx_traverse.ctx_states[ctx_state.0].eoi = orig_state_data
-                .eoi
-                .map(|eoi_state| ctx_traverse.get_ctx_state(eoi_state, context));
-
-            // Don't need back edges anymore, so don't initialize them in the contextualized graph.
-        }
-
-        graph.states = ctx_traverse.ctx_states;
-        // ContextTraverse sets the root to be state 0
-        graph.root = State(0);
+        let graph = Self::new_no_context(leaves, config)?;
+        // println!("No context states: {}", graph.states.len());
+        // let mut ctx_traverse = ContextTraverse::new(graph.root, &graph);
+        //
+        // while let Some((no_ctx_state, ctx_state)) = ctx_traverse.next_state() {
+        //     let orig_state_data = &graph.states[no_ctx_state.0];
+        //     let context = ctx_traverse.ctx_states[ctx_state.0].context;
+        //
+        //     let normal = orig_state_data
+        //         .normal
+        //         .iter()
+        //         .cloned()
+        //         .map(|(bc, next_state)| {
+        //             let next_ctx_state = ctx_traverse.get_ctx_state(next_state, context);
+        //             (next_ctx_state, bc)
+        //         })
+        //         .collect();
+        //     ctx_traverse.ctx_states[ctx_state.0].set_normal_edges(normal);
+        //
+        //     ctx_traverse.ctx_states[ctx_state.0].eoi = orig_state_data
+        //         .eoi
+        //         .map(|eoi_state| ctx_traverse.get_ctx_state(eoi_state, context));
+        //
+        //     // Don't need back edges anymore, so don't initialize them in the contextualized graph.
+        // }
+        // println!("Context states: {}", ctx_traverse.ctx_states.len());
+        //
+        // graph.states = ctx_traverse.ctx_states;
+        // // ContextTraverse sets the root to be state 0
+        // graph.root = State(0);
 
         Ok(graph)
     }
@@ -663,59 +649,59 @@ impl fmt::Display for Graph {
     }
 }
 
-struct ContextTraverse<'a> {
-    /// List of all State representations. This will become the `states` field of the contextual
-    /// graph.
-    ctx_states: Vec<StateData>,
-    /// A map from the context-free state and context to the contextual state
-    ctx_lookup: HashMap<(State, Option<LeafId>), State>,
-    /// A stack of (context-free state, contextual state) pairs to be traversed.
-    ctx_stack: Vec<(State, State)>,
-    /// A reference to the context-free graph we are traversing.
-    no_ctx_graph: &'a Graph,
-}
-
-impl<'a> ContextTraverse<'a> {
-    /// Create a new [ContextTraverse] object using a context-free graph and a root state id.
-    fn new(no_ctx_root: State, no_ctx_graph: &'a Graph) -> Self {
-        let ctx_root = State(0);
-        let init_state = StateData::new();
-        Self {
-            ctx_states: vec![init_state],
-            ctx_lookup: [((no_ctx_root, None), ctx_root)].into_iter().collect(),
-            ctx_stack: vec![(no_ctx_root, ctx_root)],
-            no_ctx_graph,
-        }
-    }
-
-    /// Given a state in the context-free graph and a previous context, determine the new context,
-    /// create a contextual state, and return it.
-    fn get_ctx_state(
-        &mut self,
-        no_ctx_next_state: State,
-        current_context: Option<LeafId>,
-    ) -> State {
-        let next_type = self.no_ctx_graph.states[no_ctx_next_state.0].state_type;
-        let next_context = next_type.early_or_accept().or(current_context);
-
-        match self.ctx_lookup.entry((no_ctx_next_state, next_context)) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let index = self.ctx_states.len();
-                let mut ctx_data = StateData::with_context(next_context);
-                ctx_data.state_type = next_type;
-                self.ctx_states.push(ctx_data);
-                let ctx_state = *entry.insert(State(index));
-                // Since we haven't seen the ctx_state before, make sure we populate its StateData
-                // object later in the traversal
-                self.ctx_stack.push((no_ctx_next_state, ctx_state));
-                ctx_state
-            }
-        }
-    }
-
-    /// Get the next (context-free, contextual) state pair from the traversal stack
-    fn next_state(&mut self) -> Option<(State, State)> {
-        self.ctx_stack.pop()
-    }
-}
+// struct ContextTraverse<'a> {
+//     /// List of all State representations. This will become the `states` field of the contextual
+//     /// graph.
+//     ctx_states: Vec<StateData>,
+//     /// A map from the context-free state and context to the contextual state
+//     ctx_lookup: HashMap<(State, Option<LeafId>), State>,
+//     /// A stack of (context-free state, contextual state) pairs to be traversed.
+//     ctx_stack: Vec<(State, State)>,
+//     /// A reference to the context-free graph we are traversing.
+//     no_ctx_graph: &'a Graph,
+// }
+//
+// impl<'a> ContextTraverse<'a> {
+//     /// Create a new [ContextTraverse] object using a context-free graph and a root state id.
+//     fn new(no_ctx_root: State, no_ctx_graph: &'a Graph) -> Self {
+//         let ctx_root = State(0);
+//         let init_state = StateData::new();
+//         Self {
+//             ctx_states: vec![init_state],
+//             ctx_lookup: [((no_ctx_root, None), ctx_root)].into_iter().collect(),
+//             ctx_stack: vec![(no_ctx_root, ctx_root)],
+//             no_ctx_graph,
+//         }
+//     }
+//
+//     /// Given a state in the context-free graph and a previous context, determine the new context,
+//     /// create a contextual state, and return it.
+//     fn get_ctx_state(
+//         &mut self,
+//         no_ctx_next_state: State,
+//         current_context: Option<LeafId>,
+//     ) -> State {
+//         let next_type = self.no_ctx_graph.states[no_ctx_next_state.0].state_type;
+//         let next_context = next_type.early_or_accept().or(current_context);
+//
+//         match self.ctx_lookup.entry((no_ctx_next_state, next_context)) {
+//             Entry::Occupied(entry) => *entry.get(),
+//             Entry::Vacant(entry) => {
+//                 let index = self.ctx_states.len();
+//                 let mut ctx_data = StateData::with_context(next_context);
+//                 ctx_data.state_type = next_type;
+//                 self.ctx_states.push(ctx_data);
+//                 let ctx_state = *entry.insert(State(index));
+//                 // Since we haven't seen the ctx_state before, make sure we populate its StateData
+//                 // object later in the traversal
+//                 self.ctx_stack.push((no_ctx_next_state, ctx_state));
+//                 ctx_state
+//             }
+//         }
+//     }
+//
+//     /// Get the next (context-free, contextual) state pair from the traversal stack
+//     fn next_state(&mut self) -> Option<(State, State)> {
+//         self.ctx_stack.pop()
+//     }
+// }
