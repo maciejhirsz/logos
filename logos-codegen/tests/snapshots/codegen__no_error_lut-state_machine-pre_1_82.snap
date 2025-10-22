@@ -31,12 +31,23 @@ impl<'s> ::logos::Logos<'s> for Token {
                 { break 'fast_loop; } $offset += 1; } }
             };
         }
+        macro_rules! _take_action {
+            ($lex:ident, $offset:ident, $context:ident, $state:ident) => {
+                { let action = _get_action($lex, $offset, $context); match action {
+                CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
+                CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
+                $context = 0usize; $state = LogosState::state8; continue; },
+                CallbackResult::Error(err) => { return Some(Err(err)); },
+                CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
+                } }
+            };
+        }
         #[inline]
         fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
         #[inline]
-        fn _make_token<'s>(
+        fn _get_action<'s>(
             lex: &mut _Lexer<'s>,
             offset: usize,
             context: usize,
@@ -84,48 +95,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                 LogosState::state0 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state1 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state2 => {
                     let other = lex.read::<u8>(offset);
@@ -136,48 +111,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state3 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state4 => {
                     let other = lex.read::<u8>(offset);
@@ -188,96 +127,24 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state5 => {
                     lex.end(offset);
                     context = 2usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state6 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state7 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state8 => {
                     let other = lex.read::<u8>(offset);
@@ -551,25 +418,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             return None;
                         }
                     }
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state9 => {
                     lex.end(offset);
@@ -582,25 +431,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state10 => {
                     lex.end(offset);
@@ -613,25 +444,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state11 => {
                     lex.end(offset);
@@ -644,25 +457,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state12 => {
                     lex.end(offset);
@@ -675,50 +470,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state13 => {
                     lex.end(offset);
                     context = 2usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state14 => {
                     let other = lex.read::<u8>(offset);
@@ -729,100 +488,28 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state15 => {
                     lex.end(offset);
                     context = 2usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state16 => {
                     lex.end(offset);
                     context = 1usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state17 => {
                     lex.end(offset);
                     context = 3usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state18 => {
                     lex.end(offset);
@@ -835,25 +522,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state19 => {
                     lex.end(offset);
@@ -866,25 +535,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
                 LogosState::state20 => {
                     lex.end(offset);
@@ -897,25 +548,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {}
-                    let action = _make_token(lex, offset, context);
-                    match action {
-                        CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
-                        }
-                        CallbackResult::Skip => {
-                            lex.trivia();
-                            offset = lex.offset();
-                            context = 0usize;
-                            state = LogosState::state8;
-                            continue;
-                        }
-                        CallbackResult::Error(err) => {
-                            return Some(Err(err));
-                        }
-                        CallbackResult::DefaultError => {
-                            return Some(Err(_make_error(lex)));
-                        }
-                    }
+                    _take_action!(lex, offset, context, state)
                 }
             }
         }

@@ -78,11 +78,13 @@ impl<'a> Generator<'a> {
 
         let make_token_fn = self.make_token_fn();
         let fast_loop_macro = fast_loop_macro(8);
+        let take_action_macro = self.take_action_macro();
         let loop_luts = self.render_luts();
 
         if self.config.use_state_machine_codegen {
             quote! {
                 #fast_loop_macro
+                #take_action_macro
                 #loop_luts
                 #make_token_fn
                 #[derive(Clone, Copy)]
@@ -101,6 +103,7 @@ impl<'a> Generator<'a> {
         } else {
             quote! {
                 #fast_loop_macro
+                #take_action_macro
                 #loop_luts
                 #make_token_fn
                 #(#states_rendered)*
@@ -148,8 +151,9 @@ impl<'a> Generator<'a> {
                 #error_body
             }
             #[inline]
-            fn _make_token<'s>(lex: &mut _Lexer<'s>, offset: usize, context: usize)
-              -> CallbackResult<'s, #this> {
+            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: usize)
+                -> CallbackResult<'s, #this>
+            {
                 match context {
                     0 => {
                         lex.end_to_boundary(offset.max(lex.offset() + 1));

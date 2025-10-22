@@ -53,28 +53,36 @@ impl Generator<'_> {
         }
     }
 
-    pub fn generate_leaf(&self) -> TokenStream {
+    pub fn take_action_macro(&self) -> TokenStream {
         // This is the code block used to transition the lexer to a new state
-        let restart_lex = self.state_transition(&self.graph.root());
+        let state_ident = self.state_value(&self.graph.root());
+        let restart_lex = match self.config.use_state_machine_codegen {
+            true => quote! { $state = #state_ident; continue; },
+            false => quote! { return #state_ident($lex, $offset, $context); },
+        };
 
         quote! {
-            let action = _make_token(lex, offset, context);
-            match action {
-                CallbackResult::Emit(tok) => {
-                    return Some(Ok(tok));
-                },
-                CallbackResult::Skip => {
-                    lex.trivia();
-                    offset = lex.offset();
-                    context = 0usize;
-                    #restart_lex
-                },
-                CallbackResult::Error(err) => {
-                    return Some(Err(err));
-                },
-                CallbackResult::DefaultError => {
-                    return Some(Err(_make_error(lex)));
-                },
+            macro_rules! _take_action {
+                ($lex:ident, $offset:ident, $context:ident, $state:ident) => {{
+                    let action = _get_action($lex, $offset, $context);
+                    match action {
+                        CallbackResult::Emit(tok) => {
+                            return Some(Ok(tok));
+                        },
+                        CallbackResult::Skip => {
+                            $lex.trivia();
+                            $offset = $lex.offset();
+                            $context = 0usize;
+                            #restart_lex
+                        },
+                        CallbackResult::Error(err) => {
+                            return Some(Err(err));
+                        },
+                        CallbackResult::DefaultError => {
+                            return Some(Err(_make_error($lex)));
+                        },
+                    }
+                }}
             }
         }
     }

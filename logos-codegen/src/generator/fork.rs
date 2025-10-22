@@ -97,7 +97,6 @@ impl<'a> Generator<'a> {
         }
 
         let eoi = self.fork_eoi(state, state_data);
-        let otherwise = self.generate_leaf();
         quote! {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
@@ -105,7 +104,7 @@ impl<'a> Generator<'a> {
             } else {
                 #eoi
             }
-            #otherwise
+            _take_action!(lex, offset, context, state)
         }
     }
 
@@ -204,7 +203,6 @@ impl<'a> Generator<'a> {
         };
 
         let eoi = self.fork_eoi(state, state_data);
-        let otherwise = self.generate_leaf();
 
         quote! {
             let other = lex.read::<u8>(offset);
@@ -213,7 +211,7 @@ impl<'a> Generator<'a> {
             } else {
                 #eoi
             }
-            #otherwise
+            _take_action!(lex, offset, context, state)
         }
     }
 }
