@@ -53,6 +53,9 @@ impl Generator<'_> {
         }
     }
 
+    /// This function generates the _take_action macro. This macro is called when there are no more
+    /// transitions to follow. It calls the _get_action function, which tells the state machine
+    /// what to do next, and applies that action to the state machine's internal state.
     pub fn take_action_macro(&self) -> TokenStream {
         // This is the code block used to transition the lexer to a new state
         let state_ident = self.state_value(&self.graph.root());

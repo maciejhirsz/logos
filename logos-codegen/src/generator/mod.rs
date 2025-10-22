@@ -116,9 +116,12 @@ impl<'a> Generator<'a> {
         self.idents.get(state).expect("Unreachable state found")
     }
 
-    // Generates the definition for the `_make_error` function. This can be
-    // specified using the `callback` argument of the `error` attribute.
+    // Generates the definition for the `_make_error` function. Its body can be
+    // changed using the `callback` argument of the `error` attribute.
     // Otherwise, it defaults to the `Default::default()`value.
+    //
+    // Also generates the `_make_token` function. This function uses the context to create a new
+    // Self instance (or an error if the context is zero).
     fn make_token_fn(&self) -> TokenStream {
         let this = self.this;
 
