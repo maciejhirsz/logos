@@ -6,11 +6,8 @@ digraph {
 node[shape=box];
 splines=ortho;
 n0[label="State 0",color=black];
-n1[label="State 1",color=black];
-n2[label="State 2",color=black];
-n3[label="State 3",color=black];
-n3->n4 [label="z"];
-n3->n5 [label="a..=y"];
-n4[label="State 4",color=green];
-n5[label="State 5",color=green];
+n0->n1 [label="z"];
+n0->n2 [label="a..=y"];
+n1[label="State 1",color=green];
+n2[label="State 2",color=green];
 }

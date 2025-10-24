@@ -109,6 +109,41 @@ impl StateData {
         self.normal = edges.into_iter().map(|(s, bc)| (bc, s)).collect();
         self.normal.sort_unstable_by_key(|(_bc, s)| *s);
     }
+
+    // Determine if there is a byte that doesn't have a next state (is an error) for this state.
+    fn can_error(&self) -> bool {
+        let mut covered_ranges = self
+            .normal
+            .iter()
+            .flat_map(|(bc, _s)| bc.ranges.iter().cloned())
+            .collect::<Vec<_>>();
+        covered_ranges.sort_unstable_by_key(|r| *r.start());
+
+        if !covered_ranges
+            .first()
+            .map(|bc| *bc.start() == 0)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        if !covered_ranges
+            .last()
+            .map(|bc| *bc.end() == 255)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+
+        for pair in covered_ranges.windows(2) {
+            let first = &pair[0];
+            let second = &pair[1];
+            if *first.end() + 1 < *second.start() {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl fmt::Display for StateData {
@@ -330,35 +365,6 @@ impl Graph {
         // First, construct a context-free graph, then traverse it with a context to build the
         // contextual graph.
         let graph = Self::new_no_context(leaves, config)?;
-        // println!("No context states: {}", graph.states.len());
-        // let mut ctx_traverse = ContextTraverse::new(graph.root, &graph);
-        //
-        // while let Some((no_ctx_state, ctx_state)) = ctx_traverse.next_state() {
-        //     let orig_state_data = &graph.states[no_ctx_state.0];
-        //     let context = ctx_traverse.ctx_states[ctx_state.0].context;
-        //
-        //     let normal = orig_state_data
-        //         .normal
-        //         .iter()
-        //         .cloned()
-        //         .map(|(bc, next_state)| {
-        //             let next_ctx_state = ctx_traverse.get_ctx_state(next_state, context);
-        //             (next_ctx_state, bc)
-        //         })
-        //         .collect();
-        //     ctx_traverse.ctx_states[ctx_state.0].set_normal_edges(normal);
-        //
-        //     ctx_traverse.ctx_states[ctx_state.0].eoi = orig_state_data
-        //         .eoi
-        //         .map(|eoi_state| ctx_traverse.get_ctx_state(eoi_state, context));
-        //
-        //     // Don't need back edges anymore, so don't initialize them in the contextualized graph.
-        // }
-        // println!("Context states: {}", ctx_traverse.ctx_states.len());
-        //
-        // graph.states = ctx_traverse.ctx_states;
-        // // ContextTraverse sets the root to be state 0
-        // graph.root = State(0);
 
         Ok(graph)
     }
@@ -477,19 +483,23 @@ impl Graph {
         // Find early accept states
         for state in graph.iter_states() {
             let state_data = graph.get_state(state);
-            let child_state_types = state_data
-                .iter_children()
-                .map(|child_state| {
-                    let child_state_data = graph.get_state(child_state);
-                    child_state_data.state_type.accept
-                })
-                .collect::<HashSet<_>>();
 
-            let child_state_types_vec = child_state_types.into_iter().collect::<Vec<_>>();
+            // If the state may not have a next state to go to, it cannot be an early match
+            if !state_data.can_error() {
+                let child_state_types = state_data
+                    .iter_children()
+                    .map(|child_state| {
+                        let child_state_data = graph.get_state(child_state);
+                        child_state_data.state_type.accept
+                    })
+                    .collect::<HashSet<_>>();
 
-            // If all children match the same leaf, this state is an early accept state
-            if let &[Some(leaf_id)] = &*child_state_types_vec {
-                graph.states[state.0].state_type.early = Some(leaf_id);
+                let child_state_types_vec = child_state_types.into_iter().collect::<Vec<_>>();
+
+                // If all children match the same leaf, this state is an early accept state
+                if let &[Some(leaf_id)] = &*child_state_types_vec {
+                    graph.states[state.0].state_type.early = Some(leaf_id);
+                }
             }
         }
 
@@ -521,6 +531,8 @@ impl Graph {
                     .is_some()
             })
             .collect::<Vec<_>>();
+        // Don't remove the graph root (only happens when there are no leaves)
+        visit_stack.push(graph.root);
         let mut reach_accept = visit_stack.iter().cloned().collect::<HashSet<_>>();
         while let Some(state) = visit_stack.pop() {
             // Traverse the graph backwards to include any parents of visited nodes in the set of
@@ -543,47 +555,39 @@ impl Graph {
 
             state_data.backward.clear();
         }
-        //
+
+        // And then remove dead states from the graph entirely.
+        graph.retain_states(&reach_accept, true);
+
         // Now we can deduplicate states based on their edges.
+        loop {
+            let graph_size = graph.states.len();
 
-        // A map between a states representation and the canonical State index assigned to it.
-        let mut state_indexes = HashMap::new();
-        // A map of rewrites (key should be rewritten to value in the deduplicated graph).
-        let mut state_lookup = HashMap::new();
+            // A map between a states representation and the canonical State index assigned to it.
+            let mut state_indexes = HashMap::new();
+            // A map of rewrites (key should be rewritten to value in the deduplicated graph).
+            let mut state_lookup = HashMap::new();
 
-        for state in graph.iter_states() {
-            let state_data = &graph.states[state.0];
-            if let Entry::Vacant(e) = state_indexes.entry(state_data) {
-                // State's represntation wasn't in state_indexes, state becomes the canonical index
-                e.insert(state);
-            } else {
-                // State's representation is a duplicate, rewrite it to the canonical one
-                state_lookup.insert(state, state_indexes[&state_data]);
-            }
-        }
-        // Finally, perform the state_lookup rewrites
-        for state in graph.iter_states() {
-            let state_data = &mut graph.states[state.0];
-            // Replace all states with their deduplicated version
-            // Also detect duplicated edges (created by rewrites)
-            let mut edge_dedup = HashMap::<State, ByteClass>::new();
-            for (bc, next_state) in std::mem::take(&mut state_data.normal) {
-                let next_state = *state_lookup.get(&next_state).unwrap_or(&next_state);
-                match edge_dedup.entry(next_state) {
-                    Entry::Occupied(mut entry) => {
-                        entry.get_mut().merge(&bc);
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(bc);
-                    }
+            for state in graph.iter_states() {
+                let state_data = &graph.states[state.0];
+                if let Entry::Vacant(e) = state_indexes.entry(state_data) {
+                    // State's represntation wasn't in state_indexes, state becomes the canonical index
+                    e.insert(state);
+                } else {
+                    // State's representation is a duplicate, rewrite it to the canonical one
+                    state_lookup.insert(state, state_indexes[&state_data]);
                 }
             }
-            state_data.set_normal_edges(edge_dedup);
 
-            if let Some(eoi_state) = &mut state_data.eoi {
-                if let Some(new_eoi_state) = state_lookup.get(eoi_state) {
-                    *eoi_state = *new_eoi_state;
-                }
+            // Perform the state_lookup rewrites
+            graph.rewrite_states(&state_lookup);
+
+            // Remove the duplicate states
+            graph.retain_states(&state_lookup.keys().cloned().collect(), false);
+
+            if graph.states.len() == graph_size {
+                // No more deduplication possible
+                break;
             }
         }
 
@@ -624,6 +628,58 @@ impl Graph {
             })
         } else {
             Ok(StateType::default())
+        }
+    }
+
+    /// Retains only the states in `states` if `keep` is true, otherwise removes them.
+    fn retain_states(&mut self, states: &HashSet<State>, keep: bool) {
+        let rewrite_map: HashMap<State, State> = self
+            .iter_states()
+            .filter(|state| states.contains(state) == keep)
+            .enumerate()
+            .map(|(new_idx, old_state)| (old_state, State(new_idx)))
+            .collect();
+
+        let mut index = 0;
+        self.states.retain(|_state_data| {
+            let retain = states.contains(&State(index)) == keep;
+            index += 1;
+            retain
+        });
+
+        self.rewrite_states(&rewrite_map);
+    }
+
+    /// Rewrites all edges in the graph. Any edge that went to a key state in `rewrites` is changed to
+    /// point to the corresponding value state in `rewrites`.
+    fn rewrite_states(&mut self, rewrites: &HashMap<State, State>) {
+        for state in self.iter_states() {
+            let state_data = &mut self.states[state.0];
+            // Replace all states with their deduplicated version
+            // Also detect duplicated edges (created by rewrites)
+            let mut edge_dedup = HashMap::<State, ByteClass>::new();
+            for (bc, next_state) in std::mem::take(&mut state_data.normal) {
+                let next_state = *rewrites.get(&next_state).unwrap_or(&next_state);
+                match edge_dedup.entry(next_state) {
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().merge(&bc);
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(bc);
+                    }
+                }
+            }
+            state_data.set_normal_edges(edge_dedup);
+
+            if let Some(eoi_state) = &mut state_data.eoi {
+                if let Some(new_eoi_state) = rewrites.get(eoi_state) {
+                    *eoi_state = *new_eoi_state;
+                }
+            }
+        }
+
+        if let Some(new_root) = rewrites.get(&self.root) {
+            self.root = *new_root;
         }
     }
 }

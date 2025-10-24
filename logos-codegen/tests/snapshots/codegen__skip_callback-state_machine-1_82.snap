@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 { let action = _get_action($lex, $offset, $context); match action {
                 CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = 0usize; $state = LogosState::state7; continue; },
+                $context = 0usize; $state = LogosState::state0; continue; },
                 CallbackResult::Error(err) => { return Some(Err(err)); },
                 CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
                 } }
@@ -93,60 +93,18 @@ impl<'s> ::logos::Logos<'s> for Token {
         enum LogosState {
             state0,
             state1,
-            state10,
-            state11,
-            state12,
-            state13,
             state2,
             state3,
             state4,
             state5,
             state6,
-            state7,
-            state8,
-            state9,
         }
-        let mut state = LogosState::state7;
+        let mut state = LogosState::state0;
         let mut offset = lex.offset();
         let mut context = 0usize;
         loop {
             match state {
                 LogosState::state0 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state1 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state2 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state3 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state4 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state5 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state6 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {}
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state7 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
                         const TABLE: [_Option<LogosState>; 256] = [
@@ -247,14 +205,14 @@ impl<'s> ::logos::Logos<'s> for Token {
                             None,
                             None,
                             None,
-                            Some(LogosState::state9),
-                            Some(LogosState::state10),
-                            Some(LogosState::state11),
-                            Some(LogosState::state12),
-                            Some(LogosState::state13),
-                            Some(LogosState::state13),
-                            Some(LogosState::state8),
-                            Some(LogosState::state8),
+                            Some(LogosState::state2),
+                            Some(LogosState::state3),
+                            Some(LogosState::state4),
+                            Some(LogosState::state5),
+                            Some(LogosState::state6),
+                            Some(LogosState::state6),
+                            Some(LogosState::state1),
+                            Some(LogosState::state1),
                             None,
                             None,
                             None,
@@ -420,42 +378,42 @@ impl<'s> ::logos::Logos<'s> for Token {
                     }
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state8 => {
+                LogosState::state1 => {
                     lex.end(offset);
                     context = 6usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state9 => {
+                LogosState::state2 => {
                     lex.end(offset);
                     context = 1usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state10 => {
+                LogosState::state3 => {
                     lex.end(offset);
                     context = 2usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state11 => {
+                LogosState::state4 => {
                     lex.end(offset);
                     context = 3usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state12 => {
+                LogosState::state5 => {
                     lex.end(offset);
                     context = 4usize;
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state13 => {
+                LogosState::state6 => {
                     lex.end(offset);
                     context = 5usize;
                     let other = lex.read::<u8>(offset);

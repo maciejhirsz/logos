@@ -5,13 +5,11 @@ expression: dot
 digraph {
 node[shape=box];
 splines=ortho;
-n0[label="State 0",color=black];
-n1[label="State 1",color=black];
-n2[label="State 2",color=green];
-n2->n3 [label="e"];
+n0[label="State 0",color=green];
+n0->n1 [label="e"];
+n1[label="State 1",color=green];
+n2[label="State 2",color=black];
+n2->n3 [label="f"];
 n3[label="State 3",color=green];
-n4[label="State 4",color=black];
-n4->n5 [label="f"];
-n5[label="State 5",color=green];
-n5->n2 [label="e"];
+n3->n0 [label="e"];
 }

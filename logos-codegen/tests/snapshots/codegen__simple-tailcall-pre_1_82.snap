@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 { let action = _get_action($lex, $offset, $context); match action {
                 CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = 0usize; return state2($lex, $offset, $context); },
+                $context = 0usize; return state0($lex, $offset, $context); },
                 CallbackResult::Error(err) => { return Some(Err(err)); },
                 CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
                 } }
@@ -67,28 +67,10 @@ impl<'s> ::logos::Logos<'s> for Token {
             mut context: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state1<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-            mut context: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state2<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-            mut context: usize,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
                 if (byte == b'a') {
                     offset += 1;
-                    return state5(lex, offset, context);
+                    return state3(lex, offset, context);
                 }
             } else {
                 if lex.offset() == offset {
@@ -97,7 +79,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             }
             _take_action!(lex, offset, context, state)
         }
-        fn state3<'s>(
+        fn state1<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
             mut context: usize,
@@ -106,12 +88,12 @@ impl<'s> ::logos::Logos<'s> for Token {
             if let Some(byte) = other {
                 if (byte == b'z') {
                     offset += 1;
-                    return state4(lex, offset, context);
+                    return state2(lex, offset, context);
                 }
             } else {}
             _take_action!(lex, offset, context, state)
         }
-        fn state4<'s>(
+        fn state2<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
             mut context: usize,
@@ -122,7 +104,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             if let Some(byte) = other {} else {}
             _take_action!(lex, offset, context, state)
         }
-        fn state5<'s>(
+        fn state3<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
             mut context: usize,
@@ -131,11 +113,11 @@ impl<'s> ::logos::Logos<'s> for Token {
             if let Some(byte) = other {
                 if (byte == b'-') {
                     offset += 1;
-                    return state3(lex, offset, context);
+                    return state1(lex, offset, context);
                 }
             } else {}
             _take_action!(lex, offset, context, state)
         }
-        state2(lex, lex.offset(), 0)
+        state0(lex, lex.offset(), 0)
     }
 }

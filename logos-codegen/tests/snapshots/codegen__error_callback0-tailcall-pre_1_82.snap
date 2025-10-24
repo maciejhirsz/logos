@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
                 { let action = _get_action($lex, $offset, $context); match action {
                 CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = 0usize; return state1($lex, $offset, $context); },
+                $context = 0usize; return state0($lex, $offset, $context); },
                 CallbackResult::Error(err) => { return Some(Err(err)); },
                 CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
                 } }
@@ -71,15 +71,6 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             mut context: usize,
         ) -> _Option<_Result<TokenA, <TokenA as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state1<'s>(
-            lex: &mut _Lexer<'s>,
-            mut offset: usize,
-            mut context: usize,
-        ) -> _Option<_Result<TokenA, <TokenA as Logos<'s>>::Error>> {
-            let other = lex.read::<u8>(offset);
             if let Some(byte) = other {} else {
                 if lex.offset() == offset {
                     return None;
@@ -87,6 +78,6 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             }
             _take_action!(lex, offset, context, state)
         }
-        state1(lex, lex.offset(), 0)
+        state0(lex, lex.offset(), 0)
     }
 }

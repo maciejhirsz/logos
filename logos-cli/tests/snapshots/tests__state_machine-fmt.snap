@@ -78,7 +78,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                         $lex.trivia();
                         $offset = $lex.offset();
                         $context = 0usize;
-                        $state = LogosState::state2;
+                        $state = LogosState::state0;
                         continue;
                     }
                     CallbackResult::Error(err) => {
@@ -115,10 +115,8 @@ impl<'s> ::logos::Logos<'s> for Token {
             state1,
             state2,
             state3,
-            state4,
-            state5,
         }
-        let mut state = LogosState::state2;
+        let mut state = LogosState::state0;
         let mut offset = lex.offset();
         let mut context = 0usize;
         loop {
@@ -126,23 +124,9 @@ impl<'s> ::logos::Logos<'s> for Token {
                 LogosState::state0 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
-                    } else {
-                    }
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state1 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {
-                    } else {
-                    }
-                    _take_action!(lex, offset, context, state)
-                }
-                LogosState::state2 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {
                         if (byte == b'a') {
                             offset += 1;
-                            state = LogosState::state5;
+                            state = LogosState::state3;
                             continue;
                         }
                     } else {
@@ -152,19 +136,19 @@ impl<'s> ::logos::Logos<'s> for Token {
                     }
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state3 => {
+                LogosState::state1 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
                         if (byte == b'z') {
                             offset += 1;
-                            state = LogosState::state4;
+                            state = LogosState::state2;
                             continue;
                         }
                     } else {
                     }
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state4 => {
+                LogosState::state2 => {
                     lex.end(offset);
                     context = 1usize;
                     let other = lex.read::<u8>(offset);
@@ -173,12 +157,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                     }
                     _take_action!(lex, offset, context, state)
                 }
-                LogosState::state5 => {
+                LogosState::state3 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {
                         if (byte == b'-') {
                             offset += 1;
-                            state = LogosState::state3;
+                            state = LogosState::state1;
                             continue;
                         }
                     } else {

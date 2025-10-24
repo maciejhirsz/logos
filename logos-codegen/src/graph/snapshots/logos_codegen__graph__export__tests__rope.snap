@@ -6,14 +6,12 @@ digraph {
 node[shape=box];
 splines=ortho;
 n0[label="State 0",color=black];
+n0->n4 [label="r"];
 n1[label="State 1",color=black];
+n1->n2 [label="p"];
 n2[label="State 2",color=black];
-n2->n6 [label="r"];
-n3[label="State 3",color=black];
-n3->n4 [label="p"];
+n2->n3 [label="e"];
+n3[label="State 3",color=green];
 n4[label="State 4",color=black];
-n4->n5 [label="e"];
-n5[label="State 5",color=green];
-n6[label="State 6",color=black];
-n6->n3 [label="o"];
+n4->n1 [label="o"];
 }

@@ -5,47 +5,31 @@ expression: generated_mermaid
 flowchart TB
 n0["State 0"]
 style n0 stroke:#000000
+n0-->|"r"|n7
 n1["State 1"]
-style n1 stroke:#000000
+style n1 stroke:#00C853
+n1-->|"a..=z"|n1
 n2["State 2"]
-style n2 stroke:#000000
-n2-->|"r"|n14
+style n2 stroke:#00C853
+n2-->|"a..=b|d..=z"|n1
+n2-->|"c"|n3
 n3["State 3"]
-style n3 stroke:#000000
+style n3 stroke:#00C853
+n3-->|"a..=s|u..=z"|n1
+n3-->|"t"|n4
 n4["State 4"]
 style n4 stroke:#00C853
-n4-->|"a..=z"|n4
+n4-->|"a..=z"|n1
 n5["State 5"]
-style n5 stroke:#00C853
-n5-->|"a..=b|d..=z"|n4
-n5-->|"c"|n8
+style n5 stroke:#000000
+n5-->|"a..=r|t..=z"|n6
+n5-->|"s"|n8
 n6["State 6"]
-style n6 stroke:#000000
+style n6 stroke:#00C853
 n7["State 7"]
 style n7 stroke:#00C853
-n7-->|"a..=z"|n4
+n7-->|"a..=t|v..=z"|n1
+n7-->|"u"|n2
 n8["State 8"]
 style n8 stroke:#00C853
-n8-->|"a..=s|u..=z"|n4
-n8-->|"t"|n9
-n9["State 9"]
-style n9 stroke:#00C853
-n9-->|"a..=z"|n4
-n10["State 10"]
-style n10 stroke:#000000
-n11["State 11"]
-style n11 stroke:#00C853
-n11-->|"a..=z"|n4
-n12["State 12"]
-style n12 stroke:#000000
-n12-->|"a..=r|t..=z"|n13
-n12-->|"s"|n15
-n13["State 13"]
-style n13 stroke:#00C853
-n14["State 14"]
-style n14 stroke:#00C853
-n14-->|"a..=t|v..=z"|n4
-n14-->|"u"|n5
-n15["State 15"]
-style n15 stroke:#00C853
-n15-->|"t"|n2
+n8-->|"t"|n0
