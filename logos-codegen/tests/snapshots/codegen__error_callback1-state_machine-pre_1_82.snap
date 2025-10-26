@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
                 { let action = _get_action($lex, $offset, $context); match action {
                 CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = 0usize; $state = LogosState::state0; continue; },
+                $context = 0usize; $state = LogosState::State0; continue; },
                 CallbackResult::Error(err) => { return Some(Err(err)); },
                 CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
                 } }
@@ -63,14 +63,14 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         }
         #[derive(Clone, Copy)]
         enum LogosState {
-            state0,
+            State0,
         }
-        let mut state = LogosState::state0;
+        let mut state = LogosState::State0;
         let mut offset = lex.offset();
         let mut context = 0usize;
         loop {
             match state {
-                LogosState::state0 => {
+                LogosState::State0 => {
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {
                         if lex.offset() == offset {

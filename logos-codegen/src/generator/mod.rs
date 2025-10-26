@@ -28,9 +28,8 @@ pub struct Generator<'a> {
     /// Reference to the graph with all of the nodes
     graph: &'a Graph,
     /// Mapping of states to their identifiers.
-    /// Identifiers are enum variants in the state machine codegen
-    /// and function names in the tailcall codegen.
-    idents: Map<State, Ident>,
+    /// First is snake_case, second is PascalCase
+    idents: Map<State, [Ident; 2]>,
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
     /// Bit masks that will be compressed into LUTs for fast looping
@@ -47,7 +46,10 @@ impl<'a> Generator<'a> {
     ) -> Self {
         let idents = graph
             .iter_states()
-            .map(|state| (state, state.to_string().to_ident()))
+            .map(|state| (state, [
+                state.snake_case().to_ident(),
+                state.pascal_case().to_ident(),
+            ]))
             .collect();
 
         Generator {
@@ -71,10 +73,10 @@ impl<'a> Generator<'a> {
             .map(|&state| self.generate_state(state))
             .collect::<Vec<_>>();
 
-        let init_state = &self.idents[&self.graph.root()];
-        let mut all_idents = self.idents.values().collect::<Vec<_>>();
+        let init_state = self.get_ident(self.graph.root());
+        let mut all_idents_pascal = self.idents.values().map(|[_snake, pascal]| pascal).collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
-        all_idents.sort_unstable();
+        all_idents_pascal.sort_unstable();
 
         let make_token_fn = self.make_token_fn();
         let fast_loop_macro = fast_loop_macro(8);
@@ -89,7 +91,7 @@ impl<'a> Generator<'a> {
                 #make_token_fn
                 #[derive(Clone, Copy)]
                 enum LogosState {
-                    #(#all_idents),*
+                    #(#all_idents_pascal),*
                 }
                 let mut state = LogosState::#init_state;
                 let mut offset = lex.offset();
@@ -112,8 +114,12 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn get_ident(&self, state: &State) -> &Ident {
-        self.idents.get(state).expect("Unreachable state found")
+    fn get_ident(&self, state: State) -> &Ident {
+        let idx = match self.config.use_state_machine_codegen {
+            true => 1,
+            false => 0,
+        };
+        &self.idents.get(&state).expect("Unreachable state found")[idx]
     }
 
     // Generates the definition for the `_make_error` function. Its body can be
@@ -172,7 +178,7 @@ impl<'a> Generator<'a> {
     }
 
     /// Generates the code to transition to a state.
-    fn state_transition(&self, state: &State) -> TokenStream {
+    fn state_transition(&self, state: State) -> TokenStream {
         self.state_action(self.state_value(state))
     }
 
@@ -185,7 +191,7 @@ impl<'a> Generator<'a> {
     }
 
     /// Generates the code to quote a state's representation
-    fn state_value(&self, state: &State) -> TokenStream {
+    fn state_value(&self, state: State) -> TokenStream {
         let state_ident = self.get_ident(state);
         match self.config.use_state_machine_codegen {
             true => quote!(LogosState::#state_ident),
@@ -228,7 +234,7 @@ impl<'a> Generator<'a> {
         let fork = self.impl_fork(state, state_data, true);
 
         // Wrap body in a match arm or function depending on the current codegen
-        let this_ident = self.get_ident(&state);
+        let this_ident = self.get_ident(state);
         if self.config.use_state_machine_codegen {
             quote! {
                 LogosState::#this_ident => {

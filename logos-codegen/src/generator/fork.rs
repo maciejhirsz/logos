@@ -34,7 +34,7 @@ impl<'a> Generator<'a> {
             // If we just started lexing and are at the end of input, return None
             eoi.append_all(quote! { if lex.offset() == offset { return None } });
         }
-        if let Some(eoi_state) = &state_data.eoi {
+        if let &Some(eoi_state) = &state_data.eoi {
             let transition = self.state_transition(eoi_state);
             eoi.append_all(quote! {
                 offset += 1;
@@ -87,7 +87,7 @@ impl<'a> Generator<'a> {
 
                 quote! { #(#sub_conditions) ||* }
             };
-            let transition = self.state_transition(next_state);
+            let transition = self.state_transition(*next_state);
             inner_cases.append_all(quote! {
                 if #condition {
                     offset += 1;
@@ -123,7 +123,7 @@ impl<'a> Generator<'a> {
 
             for range in &byte_class.ranges {
                 for byte in range.clone() {
-                    table[byte as usize] = Some(next_state);
+                    table[byte as usize] = Some(*next_state);
                 }
             }
         }
@@ -155,14 +155,14 @@ impl<'a> Generator<'a> {
         } else {
             let states_set = table
                 .iter()
-                .filter_map(|&op| op.cloned())
+                .filter_map(|&op| op)
                 .collect::<HashSet<_>>();
             let mut states = states_set.into_iter().collect::<Vec<_>>();
             // Sort for generated source stability
             states.sort_unstable();
 
             let mut match_body = TokenStream::new();
-            for state in &states {
+            for state in states.iter().cloned() {
                 let ident = self.get_ident(state);
                 let action = self.state_transition(state);
                 match_body.append_all(quote! {
@@ -179,6 +179,7 @@ impl<'a> Generator<'a> {
 
             let state_idents = states
                 .iter()
+                .cloned()
                 .map(|state| self.get_ident(state))
                 .collect::<Vec<_>>();
             let table_elements = table

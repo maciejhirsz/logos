@@ -58,7 +58,7 @@ impl Generator<'_> {
     /// what to do next, and applies that action to the state machine's internal state.
     pub fn take_action_macro(&self) -> TokenStream {
         // This is the code block used to transition the lexer to a new state
-        let state_ident = self.state_value(&self.graph.root());
+        let state_ident = self.state_value(self.graph.root());
         let restart_lex = match self.config.use_state_machine_codegen {
             true => quote! { $state = #state_ident; continue; },
             false => quote! { return #state_ident($lex, $offset, $context); },
