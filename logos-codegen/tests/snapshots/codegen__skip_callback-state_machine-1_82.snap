@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 { let action = _get_action($lex, $offset, $context); match action {
                 CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = 0usize; $state = LogosState::State0; continue; },
+                $context = None; $state = LogosState::State0; continue; },
                 CallbackResult::Error(err) => { return Some(Err(err)); },
                 CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
                 } }
@@ -50,15 +50,15 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn _get_action<'s>(
             lex: &mut _Lexer<'s>,
             offset: usize,
-            context: usize,
+            context: Option<LogosLeaf>,
         ) -> CallbackResult<'s, Token> {
             match context {
-                0 => {
+                None => {
                     lex.end_to_boundary(offset.max(lex.offset() + 1));
                     CallbackResult::Error(_make_error(lex))
                 }
-                1usize => CallbackResult::Skip,
-                2usize => {
+                Some(LogosLeaf::Leaf0) => CallbackResult::Skip,
+                Some(LogosLeaf::Leaf1) => {
                     let cb_result = {
                         let lex = lex;
                         lex.extras.push("inline_callback")
@@ -66,28 +66,36 @@ impl<'s> ::logos::Logos<'s> for Token {
                     let srv = SkipRetVal::<'s, Token>::construct(cb_result);
                     CallbackResult::from(srv)
                 }
-                3usize => {
+                Some(LogosLeaf::Leaf2) => {
                     let cb_result = labelled_callback(lex);
                     let srv = SkipRetVal::<'s, Token>::construct(cb_result);
                     CallbackResult::from(srv)
                 }
-                4usize => {
+                Some(LogosLeaf::Leaf3) => {
                     let cb_result = labelled_skip_callback(lex);
                     let srv = SkipRetVal::<'s, Token>::construct(cb_result);
                     CallbackResult::from(srv)
                 }
-                5usize => {
+                Some(LogosLeaf::Leaf4) => {
                     let cb_result = labelled_result_callback(lex);
                     let srv = SkipRetVal::<'s, Token>::construct(cb_result);
                     CallbackResult::from(srv)
                 }
-                6usize => {
+                Some(LogosLeaf::Leaf5) => {
                     let cb_result = labelled_skip_result_callback(lex);
                     let srv = SkipRetVal::<'s, Token>::construct(cb_result);
                     CallbackResult::from(srv)
                 }
-                _ => unreachable!(),
             }
+        }
+        #[derive(Clone, Copy)]
+        enum LogosLeaf {
+            Leaf0 = 0isize,
+            Leaf1 = 1isize,
+            Leaf2 = 2isize,
+            Leaf3 = 3isize,
+            Leaf4 = 4isize,
+            Leaf5 = 5isize,
         }
         #[derive(Clone, Copy)]
         enum LogosState {
@@ -101,7 +109,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         }
         let mut state = LogosState::State0;
         let mut offset = lex.offset();
-        let mut context = 0usize;
+        let mut context: Option<LogosLeaf> = None;
         loop {
             match state {
                 LogosState::State0 => {
@@ -380,42 +388,42 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
                 LogosState::State1 => {
                     lex.end(offset);
-                    context = 6usize;
+                    context = Some(LogosLeaf::Leaf5);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State2 => {
                     lex.end(offset);
-                    context = 1usize;
+                    context = Some(LogosLeaf::Leaf0);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State3 => {
                     lex.end(offset);
-                    context = 2usize;
+                    context = Some(LogosLeaf::Leaf1);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State4 => {
                     lex.end(offset);
-                    context = 3usize;
+                    context = Some(LogosLeaf::Leaf2);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State5 => {
                     lex.end(offset);
-                    context = 4usize;
+                    context = Some(LogosLeaf::Leaf3);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State6 => {
                     lex.end(offset);
-                    context = 5usize;
+                    context = Some(LogosLeaf::Leaf4);
                     let other = lex.read::<u8>(offset);
                     if let Some(byte) = other {} else {}
                     _take_action!(lex, offset, context, state)

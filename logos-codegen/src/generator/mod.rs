@@ -29,7 +29,9 @@ pub struct Generator<'a> {
     graph: &'a Graph,
     /// Mapping of states to their identifiers.
     /// First is snake_case, second is PascalCase
-    idents: Map<State, [Ident; 2]>,
+    state_idents: Map<State, [Ident; 2]>,
+    /// Mapping of the leaf indexes to their identifiers.
+    leaf_idents: Vec<[Ident; 2]>,
     /// Callback for the default error type
     error_callback: &'a Option<Callback>,
     /// Bit masks that will be compressed into LUTs for fast looping
@@ -44,12 +46,26 @@ impl<'a> Generator<'a> {
         graph: &'a Graph,
         error_callback: &'a Option<Callback>,
     ) -> Self {
-        let idents = graph
+        let state_idents = graph
             .iter_states()
-            .map(|state| (state, [
-                state.snake_case().to_ident(),
-                state.pascal_case().to_ident(),
-            ]))
+            .map(|state| {
+                (
+                    state,
+                    [
+                        state.snake_case().to_ident(),
+                        state.pascal_case().to_ident(),
+                    ],
+                )
+            })
+            .collect();
+
+        let leaf_idents = (0..graph.leaves().len())
+            .map(|leaf_idx| {
+                [
+                    format!("leaf{leaf_idx}").to_ident(),
+                    format!("Leaf{leaf_idx}").to_ident(),
+                ]
+            })
             .collect();
 
         Generator {
@@ -57,7 +73,8 @@ impl<'a> Generator<'a> {
             name,
             this,
             graph,
-            idents,
+            state_idents,
+            leaf_idents,
             error_callback,
             loop_masks: HashMap::new(),
         }
@@ -74,28 +91,47 @@ impl<'a> Generator<'a> {
             .collect::<Vec<_>>();
 
         let init_state = self.get_ident(self.graph.root());
-        let mut all_idents_pascal = self.idents.values().map(|[_snake, pascal]| pascal).collect::<Vec<_>>();
+        let mut all_idents_pascal = self
+            .state_idents
+            .values()
+            .map(|[_snake, pascal]| pascal)
+            .collect::<Vec<_>>();
         // Sort for repeatability (not dependent on hashmap iteration order)
         all_idents_pascal.sort_unstable();
+
+        let leaves_pascal = self
+            .leaf_idents
+            .iter()
+            .map(|[_snake, pascal]| pascal)
+            .collect::<Vec<_>>();
+        let leaves_index = 0..(self.graph.leaves().len() as isize);
 
         let make_token_fn = self.make_token_fn();
         let fast_loop_macro = fast_loop_macro(8);
         let take_action_macro = self.take_action_macro();
         let loop_luts = self.render_luts();
 
-        if self.config.use_state_machine_codegen {
-            quote! {
+        let common = quote! {
                 #fast_loop_macro
                 #take_action_macro
                 #loop_luts
                 #make_token_fn
+                #[derive(Clone, Copy)]
+                enum LogosLeaf {
+                    #(#leaves_pascal = #leaves_index),*
+                }
+        };
+
+        if self.config.use_state_machine_codegen {
+            quote! {
+                #common
                 #[derive(Clone, Copy)]
                 enum LogosState {
                     #(#all_idents_pascal),*
                 }
                 let mut state = LogosState::#init_state;
                 let mut offset = lex.offset();
-                let mut context = 0usize;
+                let mut context: Option<LogosLeaf> = None;
                 loop {
                     match state {
                         #(#states_rendered)*
@@ -104,12 +140,9 @@ impl<'a> Generator<'a> {
             }
         } else {
             quote! {
-                #fast_loop_macro
-                #take_action_macro
-                #loop_luts
-                #make_token_fn
+                #common
                 #(#states_rendered)*
-                #init_state(lex, lex.offset(), 0)
+                #init_state(lex, lex.offset(), None)
             }
         }
     }
@@ -119,7 +152,10 @@ impl<'a> Generator<'a> {
             true => 1,
             false => 0,
         };
-        &self.idents.get(&state).expect("Unreachable state found")[idx]
+        &self
+            .state_idents
+            .get(&state)
+            .expect("Unreachable state found")[idx]
     }
 
     // Generates the definition for the `_make_error` function. Its body can be
@@ -137,7 +173,11 @@ impl<'a> Generator<'a> {
             .iter()
             .map(|leaf| self.generate_callback(leaf))
             .collect::<Vec<_>>();
-        let leaf_indicies = 1..=(leaf_bodies.len());
+        let leaf_indicies = self
+            .leaf_idents
+            .iter()
+            .map(|[_snake, camel]| camel)
+            .collect::<Vec<_>>();
 
         let error_body = match self.error_callback {
             Some(Callback::Label(label)) => quote! {
@@ -160,18 +200,17 @@ impl<'a> Generator<'a> {
                 #error_body
             }
             #[inline]
-            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: usize)
+            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: Option<LogosLeaf>)
                 -> CallbackResult<'s, #this>
             {
                 match context {
-                    0 => {
+                    None => {
                         lex.end_to_boundary(offset.max(lex.offset() + 1));
                         CallbackResult::Error(_make_error(lex))
                     },
-                    #(#leaf_indicies => {
+                    #(Some(LogosLeaf::#leaf_indicies) => {
                         #leaf_bodies
                     }),*
-                    _ => unreachable!(),
                 }
             }
         }
@@ -218,16 +257,22 @@ impl<'a> Generator<'a> {
             StateType {
                 early: Some(idx), ..
             } => {
-                let idx = idx.0 + 1;
-                Some(quote! { lex.end(offset); context = #idx; })
+                let leaf = &self.leaf_idents[idx.0][1];
+                quote! {
+                    lex.end(offset);
+                    context = Some(LogosLeaf::#leaf);
+                }
             }
             StateType {
                 accept: Some(idx), ..
             } => {
-                let idx = idx.0 + 1;
-                Some(quote! { lex.end(offset - 1); context = #idx; })
+                let leaf = &self.leaf_idents[idx.0][1];
+                quote! {
+                    lex.end(offset - 1);
+                    context = Some(LogosLeaf::#leaf);
+                }
             }
-            StateType { .. } => None,
+            StateType { .. } => quote!(),
         };
 
         let fast_loop = self.maybe_impl_fast_loop(state);
@@ -246,7 +291,7 @@ impl<'a> Generator<'a> {
         } else {
             let this = self.this;
             quote! {
-                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: usize)
+                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: Option<LogosLeaf>)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
                     #fast_loop
                     #setup

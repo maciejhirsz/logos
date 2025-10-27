@@ -75,7 +75,7 @@ impl Generator<'_> {
                         CallbackResult::Skip => {
                             $lex.trivia();
                             $offset = $lex.offset();
-                            $context = 0usize;
+                            $context = None;
                             #restart_lex
                         },
                         CallbackResult::Error(err) => {

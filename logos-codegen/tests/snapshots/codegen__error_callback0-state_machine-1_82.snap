@@ -36,7 +36,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
                 { let action = _get_action($lex, $offset, $context); match action {
                 CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = 0usize; $state = LogosState::State0; continue; },
+                $context = None; $state = LogosState::State0; continue; },
                 CallbackResult::Error(err) => { return Some(Err(err)); },
                 CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
                 } }
@@ -55,23 +55,24 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         fn _get_action<'s>(
             lex: &mut _Lexer<'s>,
             offset: usize,
-            context: usize,
+            context: Option<LogosLeaf>,
         ) -> CallbackResult<'s, TokenA> {
             match context {
-                0 => {
+                None => {
                     lex.end_to_boundary(offset.max(lex.offset() + 1));
                     CallbackResult::Error(_make_error(lex))
                 }
-                _ => unreachable!(),
             }
         }
+        #[derive(Clone, Copy)]
+        enum LogosLeaf {}
         #[derive(Clone, Copy)]
         enum LogosState {
             State0,
         }
         let mut state = LogosState::State0;
         let mut offset = lex.offset();
-        let mut context = 0usize;
+        let mut context: Option<LogosLeaf> = None;
         loop {
             match state {
                 LogosState::State0 => {

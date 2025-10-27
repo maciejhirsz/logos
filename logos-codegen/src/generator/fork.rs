@@ -153,10 +153,7 @@ impl<'a> Generator<'a> {
                 }
             }
         } else {
-            let states_set = table
-                .iter()
-                .filter_map(|&op| op)
-                .collect::<HashSet<_>>();
+            let states_set = table.iter().filter_map(|&op| op).collect::<HashSet<_>>();
             let mut states = states_set.into_iter().collect::<Vec<_>>();
             // Sort for generated source stability
             states.sort_unstable();

@@ -68,7 +68,7 @@ impl State {
     }
 
     pub fn snake_case(&self) -> String {
-        format!("{}", self)
+        format!("{self}")
     }
 }
 
