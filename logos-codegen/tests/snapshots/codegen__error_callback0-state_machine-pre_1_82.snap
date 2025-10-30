@@ -8,7 +8,9 @@ impl<'s> ::logos::Logos<'s> for TokenA {
     type Source = str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+    ) -> std::option::Option<
+        std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    > {
         use ::logos::internal::{
             LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
         };
@@ -55,7 +57,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         fn _get_action<'s>(
             lex: &mut _Lexer<'s>,
             offset: usize,
-            context: Option<LogosLeaf>,
+            context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, TokenA> {
             match context {
                 None => {
@@ -73,7 +75,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         }
         let mut state = LogosState::State0;
         let mut offset = lex.offset();
-        let mut context: Option<LogosLeaf> = None;
+        let mut context: _Option<LogosLeaf> = None;
         loop {
             match state {
                 LogosState::State0 => {

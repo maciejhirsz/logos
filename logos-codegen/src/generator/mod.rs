@@ -131,7 +131,7 @@ impl<'a> Generator<'a> {
                 }
                 let mut state = LogosState::#init_state;
                 let mut offset = lex.offset();
-                let mut context: Option<LogosLeaf> = None;
+                let mut context: _Option<LogosLeaf> = None;
                 loop {
                     match state {
                         #(#states_rendered)*
@@ -210,7 +210,7 @@ impl<'a> Generator<'a> {
                 #error_body
             }
             #[inline]
-            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: Option<LogosLeaf>)
+            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: _Option<LogosLeaf>)
                 -> CallbackResult<'s, #this>
             {
                 match context {
@@ -302,7 +302,7 @@ impl<'a> Generator<'a> {
         } else {
             let this = self.this;
             quote! {
-                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: Option<LogosLeaf>)
+                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: _Option<LogosLeaf>)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
                     #fast_loop
                     #setup

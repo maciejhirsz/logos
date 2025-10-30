@@ -8,7 +8,9 @@ impl<'s> ::logos::Logos<'s> for Token {
     type Source = [u8];
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+    ) -> std::option::Option<
+        std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    > {
         use ::logos::internal::{
             LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
         };
@@ -50,7 +52,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn _get_action<'s>(
             lex: &mut _Lexer<'s>,
             offset: usize,
-            context: Option<LogosLeaf>,
+            context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, Token> {
             match context {
                 None => {
@@ -71,7 +73,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state0<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
@@ -85,7 +87,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state1<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
@@ -99,7 +101,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state2<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf1);
@@ -110,7 +112,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state3<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
@@ -437,7 +439,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state4<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -453,7 +455,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state5<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -469,7 +471,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state6<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -485,7 +487,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state7<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -501,7 +503,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state8<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf0);
@@ -512,7 +514,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state9<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -523,7 +525,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state10<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -539,7 +541,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state11<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);
@@ -555,7 +557,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         fn state12<'s>(
             lex: &mut _Lexer<'s>,
             mut offset: usize,
-            mut context: Option<LogosLeaf>,
+            mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf2);

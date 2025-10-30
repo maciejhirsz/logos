@@ -516,3 +516,39 @@ mod merging_asymmetric_loops {
         let _ = Token2::Ignored;
     }
 }
+
+mod error_variant {
+    use super::*;
+
+    // Having an enum variant called `Error` can cause conflicts with
+    // the Logos trait member `Error` if codegen isn't careful
+    #[test]
+    fn must_compile() {
+        #[derive(Logos)]
+        pub enum Token3 {
+            #[token("error")]
+            Error,
+        }
+
+        let _ = Token3::Error;
+    }
+}
+
+mod naming_collision {
+    use super::*;
+
+    #[test]
+    fn must_compile() {
+        struct Option;
+        struct Result;
+        struct Lexer;
+        struct Logos;
+
+        #[derive(Logos)]
+        pub enum Token4 {
+            #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+            Identifier,
+        }
+        let _ = Token4::Identifier;
+    }
+}

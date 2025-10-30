@@ -8,7 +8,9 @@ impl<'s> ::logos::Logos<'s> for Token {
     type Source = str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> std::option::Option<std::result::Result<Self, Self::Error>> {
+    ) -> std::option::Option<
+        std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    > {
         fn _logos_derive_compile_errors() {
             {
                 compile_error!(

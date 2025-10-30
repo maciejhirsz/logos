@@ -293,7 +293,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 type Source = #source;
 
                 fn lex(lex: &mut #logos_path::Lexer<'s, Self>)
-                    -> std::option::Option<std::result::Result<Self, Self::Error>> {
+                    -> std::option::Option<std::result::Result<Self, <Self as #logos_path::Logos<'s>>::Error>> {
                     #body
                 }
             }
