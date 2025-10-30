@@ -194,6 +194,16 @@ impl<'a> Generator<'a> {
             },
         };
 
+        // This is needed in rust versions before 1.83 where you need to match Some
+        // for Option<Enum> even if the enum has no variants.
+        let default_case = if self.graph.leaves().is_empty() {
+            Some(quote! {
+                Some(_) => unreachable!("There are no matchable tokens"),
+            })
+        } else {
+            None
+        };
+
         quote! {
             #[inline]
             fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
@@ -211,6 +221,7 @@ impl<'a> Generator<'a> {
                     #(Some(LogosLeaf::#leaf_indicies) => {
                         #leaf_bodies
                     }),*
+                    #default_case
                 }
             }
         }
