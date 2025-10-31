@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use proc_macro2::TokenStream;
-use quote::{quote, TokenStreamExt};
+use quote::{quote, ToTokens, TokenStreamExt};
 
 use crate::{
     generator::byte_to_tokens,
@@ -158,45 +158,47 @@ impl<'a> Generator<'a> {
             // Sort for generated source stability
             states.sort_unstable();
 
-            let mut match_body = TokenStream::new();
-            for state in states.iter().cloned() {
-                let ident = self.get_ident(state);
-                let action = self.state_transition(state);
-                match_body.append_all(quote! {
-                    Some(LogosNextState::#ident) => {
-                        offset += 1;
-                        #action
-                    },
-                });
-            }
-            // Explicit fallthrough to otherwise case later in the function
-            match_body.append_all(quote! {
-                None => {}
-            });
+            let idents = states
+                .iter()
+                .map(|state| &self.state_idents[state][1])
+                .collect::<Vec<_>>();
 
-            let state_idents = states
+            let actions = states
                 .iter()
                 .cloned()
-                .map(|state| self.get_ident(state))
+                .map(|state| self.state_transition(state))
                 .collect::<Vec<_>>();
+
+            // Explicit fallthrough to otherwise case later in the function
+            let match_body = quote! {
+                #(LogosNextState::#idents => { #actions }),*
+                LogosNextState::___ => {},
+            };
+
             let table_elements = table
                 .into_iter()
                 .map(|state_op| match state_op {
-                    Some(state) => {
-                        let val = self.state_value(state);
-                        quote!(Some(LogosNextState::#val))
-                    }
-                    None => quote!(None),
+                    Some(state) => self.state_idents[&state][1].to_token_stream(),
+                    None => quote!(___),
                 })
                 .collect::<Vec<_>>();
+
+            // Undo the unconditional increment if we don't have a next state
             quote! {
+                #[derive(Copy, Clone)]
                 enum LogosNextState {
-                    #(#state_idents),*
+                    ___,
+                    #(#idents),*
                 }
-                const TABLE: [_Option<LogosNextState>; 256] = [#(#table_elements),*];
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [ #(#table_elements),* ]
+                };
+                offset += 1;
                 match TABLE[byte as usize] {
                     #match_body
                 }
+                offset -= 1;
             }
         };
 

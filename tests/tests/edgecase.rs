@@ -544,6 +544,11 @@ mod naming_collision {
         struct Lexer;
         struct Logos;
 
+        let _ = Option;
+        let _ = Result;
+        let _ = Lexer;
+        let _ = Logos;
+
         #[derive(Logos)]
         pub enum Token4 {
             #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
