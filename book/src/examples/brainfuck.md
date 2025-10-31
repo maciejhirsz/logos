@@ -10,7 +10,7 @@ However, there exists programming languages that are so simple, such as Brainfuc
 
 All other characters must be ignored.
 
-Once the tokens are obtained, a Brainfuck interpreter can be easily created using a [Finite-state machine](https://en.wikipedia.org/wiki/Finite-state_machine). For the sake of simpliciy, we collected all the tokens into one vector called `operations`.
+Once the tokens are obtained, a Brainfuck interpreter can be easily created using a [Finite-state machine](https://en.wikipedia.org/wiki/Finite-state_machine). For the sake of simplicity, we collected all the tokens into one vector called `operations`.
 
 Now, creating an interpreter becomes straightforward[^1]:
 ```rust,no_run,noplayground

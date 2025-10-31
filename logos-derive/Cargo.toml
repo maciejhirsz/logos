@@ -26,6 +26,7 @@ readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include.workspace = true
 
 [package.metadata.release]
 shared-version = true

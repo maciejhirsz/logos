@@ -18,7 +18,7 @@ seeks to remedy this!
 
 There are two main types in **Logos**:
 
-+ The `Logos` trait, which comes out with it's own derive macro. The derive
++ The `Logos` trait, which comes out with its own derive macro. The derive
   macro uses custom attributes (the things using these brackets: `#[...]`)
   with plain string or [regular expression](https://en.wikipedia.org/wiki/Regular_expression)
   syntax on `enum` variants as _patterns_ for some input.
