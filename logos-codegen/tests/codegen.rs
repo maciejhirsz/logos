@@ -13,14 +13,12 @@ use syn::parse_file;
 #[case("prio_conflict")]
 #[case("illegal_utf8")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
-    let rust_ver = if cfg!(rust_1_82) { "1_82" } else { "pre_1_82" };
-
     let codegen_alg = if cfg!(feature = "state_machine_codegen") {
         "state_machine"
     } else {
         "tailcall"
     };
-    let label = format!("{fixture}-{codegen_alg}-{rust_ver}");
+    let label = format!("{fixture}-{codegen_alg}");
     println!("Running case {label}");
 
     let input_dir_path = [env!("CARGO_MANIFEST_DIR"), "tests", "data", "codegen"]
