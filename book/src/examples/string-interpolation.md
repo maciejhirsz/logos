@@ -86,7 +86,7 @@ This callback is triggered when the `VariableDefinitionContext` lexer finds an `
 - After that we clone the lexer and transition to `StringContext` using the `morph` method. Note that cloning is necessary because `morph` takes ownership of the lexer but callbacks only get a mutable reference to it.
 - In the `StringContext` we call the `get_string_content` function which parses the content of the string, concatenating all its parts into `value`.
 - Once the closing `Quote` (`'`) is found, we transition back to `VariableDefinitionContext`.
-- Lastly we insert the key-value pair into the symbol table and return the `(id, value)` touple which Logos will assign to the `Id` token.
+- Lastly we insert the key-value pair into the symbol table and return the `(id, value)` tuple which Logos will assign to the `Id` token.
 
 ### `evaluate_interpolation`
 

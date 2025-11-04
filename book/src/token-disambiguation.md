@@ -21,7 +21,7 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 + `[a-zA-Z]+` has a priority of 2 (lowest possible), because at minimum it can
   match a single byte to a class;
 + `foobar` has a priority of 12;
-+ and `(foo|hello)(bar)?` has a priority of 6, `foo` being it's shortest possible match.
++ and `(foo|hello)(bar)?` has a priority of 6, `foo` being its shortest possible match.
 
 Generally speaking, equivalent regex patterns have the same priority. E.g.,
 `a|b` is equivalent to `[a-b]`, and both have a priority of 2.

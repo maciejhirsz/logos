@@ -18,6 +18,7 @@ readme = "README.md"
 repository = "https://github.com/maciejhirsz/logos"
 rust-version = "1.74.0"
 version = "0.15.1"
+include = ["build.rs", "/src/", "/examples/", "/tests/", "LICENSE-MIT", "LICENSE-APACHE"]
 
 [package]
 name = "logos"
@@ -32,6 +33,7 @@ readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include.workspace = true
 
 [package.metadata.release]
 pre-release-replacements = [
