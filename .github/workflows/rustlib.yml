@@ -14,9 +14,7 @@ jobs:
       matrix:
         rust:
         - 1.80.0 # current MSRV
-        - 1.82.0 # precise capturing
         - stable
-        - beta
         - nightly
         os:
         - macos-latest
@@ -26,6 +24,9 @@ jobs:
         - ""  # default features
         - "--features forbid_unsafe"
         - "--features debug"
+        - "--features state_machine_codegen"
+        - "--features state_machine_codegen,debug"
+        - "--features state_machine_codegen,forbid_unsafe"
 
     runs-on: ${{ matrix.os }}
     steps:
