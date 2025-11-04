@@ -19,7 +19,7 @@
 //!
 //! See the [Logos handbook](https://maciejhirsz.github.io/logos/) for additional documentation and usage examples.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 #![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 #![cfg_attr(feature = "forbid_unsafe", forbid(unsafe_code))]
