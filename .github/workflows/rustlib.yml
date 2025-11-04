@@ -8,28 +8,12 @@ on:
 name: Library testing
 
 jobs:
-  rustdoc:
-    name: Rustdoc
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout sources
-      uses: actions/checkout@v5
-
-    - name: Install nightly toolchain
-      uses: dtolnay/rust-toolchain@nightly
-
-    - name: Cache dependencies
-      uses: Swatinem/rust-cache@v2
-
-    - name: Check rustdoc build
-      run: RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc --features debug -Zunstable-options -Zrustdoc-scrape-examples
-
   tests:
     name: Tests
     strategy:
       matrix:
         rust:
-        - 1.74.0 # current MSRV
+        - 1.80.0 # current MSRV
         - 1.82.0 # precise capturing
         - stable
         - beta
@@ -49,7 +33,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Install stable toolchain
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
         components: rustfmt

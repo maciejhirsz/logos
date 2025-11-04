@@ -33,3 +33,4 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         run: cargo codspeed run --workspace
+        mode: instrumentation
