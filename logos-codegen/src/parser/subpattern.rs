@@ -1,6 +1,6 @@
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
-use lazy_static::lazy_static;
 use proc_macro2::Span;
 use regex_automata::dfa::regex::Regex;
 use syn::Ident;
@@ -29,10 +29,9 @@ pub struct Subpatterns {
     map: HashMap<String, Subpattern>,
 }
 
-lazy_static! {
-    static ref SUBPATTERN_IDENT: Regex = Regex::new(r"[0-9a-zA-Z_]+").unwrap();
-    static ref SUBPATTERN_GROUP: Regex = Regex::new(r"\(\?\&[0-9a-zA-Z_]+\)").unwrap();
-}
+static SUBPATTERN_IDENT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-zA-Z_]+").unwrap());
+static SUBPATTERN_GROUP: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\(\?\&[0-9a-zA-Z_]+\)").unwrap());
 
 impl Subpatterns {
     pub fn new(subpatterns: &Vec<(Ident, Literal)>, utf8_mode: bool, errors: &mut Errors) -> Self {

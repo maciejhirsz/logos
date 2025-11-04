@@ -480,8 +480,6 @@ mod unicode_error_split {
 
     #[test]
     fn test() {
-        use logos::Logos;
-
         #[derive(Logos, Debug, PartialEq)]
         enum Test {
             #[token("a")]
