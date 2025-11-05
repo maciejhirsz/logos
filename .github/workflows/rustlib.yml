@@ -20,13 +20,6 @@ jobs:
         - macos-latest
         - ubuntu-latest
         - windows-latest
-        features:
-        - ""  # default features
-        - "--features forbid_unsafe"
-        - "--features debug"
-        - "--features state_machine_codegen"
-        - "--features state_machine_codegen,debug"
-        - "--features state_machine_codegen,forbid_unsafe"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -43,4 +36,15 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Check that tests run
-      run: cargo test --workspace --verbose ${{ matrix.features }}
+    - uses: taiki-e/install-action@cargo-hack
+    # Excluding the run from cargo-hack as building logos without
+    # export_derive breaks all the examples
+    - run: cargo test --verbose
+    - run: cargo hack test --verbose --feature-powerset
+      working-directory: ./logos-codegen
+    - run: cargo hack test --verbose --feature-powerset
+      working-directory: ./logos-cli
+    - run: cargo hack test --verbose --feature-powerset
+      working-directory: ./examples
+    - run: cargo hack test --verbose --feature-powerset
+      working-directory: ./tests
