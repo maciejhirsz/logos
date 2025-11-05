@@ -38,8 +38,8 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Top level crate tests
-    # Excluding the run from cargo-hack as building logos without
-    # export_derive breaks all the examples
+      # Excluding the run from cargo-hack as building logos without
+      # export_derive breaks all the examples
       run: cargo test --verbose
 
     - name: Codegen Tests
