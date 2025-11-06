@@ -51,7 +51,8 @@ jobs:
       working-directory: ./logos-cli
 
     - name: Examples
-      run: cargo hack test --verbose --feature-powerset
+      # The examples also break without default features
+      run: cargo test --verbose
       working-directory: ./examples
 
     - name: Integration Tests
