@@ -9,12 +9,17 @@ use crate::error::Errors;
 use crate::parser::definition::Literal;
 use crate::pattern::Pattern;
 
+/// This struct represents a logos subpattern, i.e.
+/// #[logos(subpattern my_subpattern = "regex")]
+/// These are regex subexpressions that can be referenced within
+/// token regexes and other subpatterns to simplify complex expressions.
 pub struct Subpattern {
     name: Ident,
     pattern: String,
 }
 
 impl Subpattern {
+    /// Create a new subpattern with a given name and regex
     fn new(name: Ident, pattern_src: &Literal) -> Self {
         let pattern_str = pattern_src.escape(false);
         let flags = if pattern_src.unicode() { "u" } else { "-u" };
@@ -34,6 +39,12 @@ static SUBPATTERN_GROUP: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\(\?\&[0-9a-zA-Z_]+\)").unwrap());
 
 impl Subpatterns {
+    /// Given a list of subpatterns, parse them sequentially and build a map of subpattern names to
+    /// subpatterns.
+    ///
+    /// Returns any errors encountered through the `errors` argument. `utf8_mode` is passed to the
+    /// regex compiler through a (?u:<src) flag. Each subsequent subpattern is allowed to reference
+    /// previous subpatterns.
     pub fn new(subpatterns: &Vec<(Ident, Literal)>, utf8_mode: bool, errors: &mut Errors) -> Self {
         let mut build = Self {
             map: HashMap::new(),
@@ -95,6 +106,9 @@ impl Subpatterns {
         build
     }
 
+    /// Given a new regex string, substitute existing subpatterns into the string.
+    /// i.e. turn (?&my_subpattern) into the actual regex for "my_subpattern"
+    /// Returns none if any non-existent subpatterns are referenced.
     pub fn subst_subpatterns(
         &self,
         pattern: &str,
