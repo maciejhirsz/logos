@@ -11,6 +11,7 @@ pub struct Definition {
     pub literal: Literal,
     pub priority: Option<usize>,
     pub callback: Option<Callback>,
+    pub allow_greedy: Option<bool>,
     pub ignore_flags: IgnoreFlags,
 }
 
@@ -67,6 +68,7 @@ impl Definition {
             literal,
             priority: None,
             callback: None,
+            allow_greedy: None,
             ignore_flags: IgnoreFlags::default(),
         }
     }
@@ -116,6 +118,22 @@ impl Definition {
             }
             ("ignore", _) => {
                 parser.err("Expected: ignore(<flag>, ...)", name.span());
+            }
+            ("allow_greedy", NestedValue::Assign(tokens)) => {
+                let allow = match tokens.to_string().parse() {
+                    Ok(allow) => allow,
+                    Err(_) => {
+                        parser.err("Expected `true` or `false`", tokens.span());
+                        return;
+                    }
+                };
+
+                if self.allow_greedy.replace(allow).is_some() {
+                    parser.err("Resetting previously set allow_greedy", tokens.span());
+                }
+            }
+            ("allow_greedy", _) => {
+                parser.err("Expected: allow_greedy = ...", name.span());
             }
             (unknown, _) => {
                 parser.err(

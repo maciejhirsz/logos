@@ -1,11 +1,22 @@
-use std::fmt;
+use std::{fmt, sync::LazyLock};
 
 use crate::parser::Literal;
 
 use regex_syntax::{
-    hir::{Hir, HirKind},
+    hir::{Dot, Hir, HirKind},
     ParserBuilder,
 };
+
+static DOT_HIRS: LazyLock<[Hir; 6]> = LazyLock::new(|| {
+    [
+        Hir::dot(Dot::AnyChar),
+        Hir::dot(Dot::AnyByte),
+        Hir::dot(Dot::AnyByteExceptLF),
+        Hir::dot(Dot::AnyCharExceptLF),
+        Hir::dot(Dot::AnyByteExceptCRLF),
+        Hir::dot(Dot::AnyCharExceptCRLF),
+    ]
+});
 
 #[derive(Clone, Debug)]
 pub struct Pattern {
@@ -88,6 +99,30 @@ impl Pattern {
             HirKind::Capture(capture) => Self::complexity(&capture.sub),
             HirKind::Concat(hirs) => hirs.iter().map(Self::complexity).sum(),
             HirKind::Alternation(hirs) => hirs.iter().map(Self::complexity).max().unwrap_or(0),
+        }
+    }
+
+    // Return true if this pattern contains a non-greedy `.+` or `.*`
+    pub fn check_for_greedy_all(&self) -> bool {
+        Self::has_greedy_all(&self.hir)
+    }
+
+    fn has_greedy_all(hir: &Hir) -> bool {
+        match hir.kind() {
+            HirKind::Repetition(repetition) => {
+                let is_dot = DOT_HIRS.contains(&repetition.sub);
+                let is_unbounded = repetition.max.is_none();
+                let is_greedy = repetition.greedy;
+
+                is_dot && is_unbounded && is_greedy
+            }
+            HirKind::Empty => false,
+            HirKind::Literal(_literal) => false,
+            HirKind::Class(_class) => false,
+            HirKind::Look(_look) => false,
+            HirKind::Capture(capture) => Self::has_greedy_all(&capture.sub),
+            HirKind::Concat(hirs) => hirs.iter().any(Self::has_greedy_all),
+            HirKind::Alternation(hirs) => hirs.iter().any(Self::has_greedy_all),
         }
     }
 
