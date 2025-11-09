@@ -102,7 +102,7 @@ impl Pattern {
         }
     }
 
-    // Return true if this pattern contains a non-greedy `.+` or `.*`
+    /// Return true if this pattern contains a non-greedy `.+` or `.*`
     pub fn check_for_greedy_all(&self) -> bool {
         Self::has_greedy_all(&self.hir)
     }
