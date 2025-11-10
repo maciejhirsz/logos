@@ -195,7 +195,7 @@ impl Parser {
                     }
                     _ => {
                         parser.err(
-                            "Expected #[logos(export_path = \"path/to/export/dir\")]",
+                            "Expected #[logos(export_dir = \"path/to/export/dir\")]",
                             span,
                         );
                     }
