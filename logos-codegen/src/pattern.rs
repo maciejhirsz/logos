@@ -87,10 +87,10 @@ impl Pattern {
     fn complexity(hir: &Hir) -> usize {
         match hir.kind() {
             HirKind::Empty => 0,
-            // The old logos behavior used the 2 * the number of characters for unicode literals,
-            // but the regex crate's hir doesn't differentiate between them, so it will report
-            // slightly higher complexity for non-ascii unicode patterns.
-            HirKind::Literal(literal) => 2 * literal.0.len(),
+            HirKind::Literal(lit) => match std::str::from_utf8(&lit.0) {
+                Ok(s) => 2 * s.chars().count(),
+                Err(_) => 2 * lit.0.len(),
+            },
             HirKind::Class(_) => 2,
             HirKind::Look(_) => 0,
             HirKind::Repetition(repetition) => {
@@ -98,7 +98,7 @@ impl Pattern {
             }
             HirKind::Capture(capture) => Self::complexity(&capture.sub),
             HirKind::Concat(hirs) => hirs.iter().map(Self::complexity).sum(),
-            HirKind::Alternation(hirs) => hirs.iter().map(Self::complexity).max().unwrap_or(0),
+            HirKind::Alternation(hirs) => hirs.iter().map(Self::complexity).min().unwrap_or(0),
         }
     }
 
