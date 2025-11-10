@@ -1,0 +1,29 @@
+---
+source: logos-codegen/tests/export.rs
+expression: generated_dot
+---
+digraph {
+node[shape=box];
+splines=ortho;
+n0[label="State 0",color=black];
+n0->n7 [label="r"];
+n1[label="State 1",color=green];
+n1->n1 [label="a..=z"];
+n2[label="State 2",color=green];
+n2->n1 [label="a..=b|d..=z"];
+n2->n3 [label="c"];
+n3[label="State 3",color=green];
+n3->n1 [label="a..=s|u..=z"];
+n3->n4 [label="t"];
+n4[label="State 4",color=green];
+n4->n1 [label="a..=z"];
+n5[label="State 5",color=black];
+n5->n6 [label="a..=r|t..=z"];
+n5->n8 [label="s"];
+n6[label="State 6",color=green];
+n7[label="State 7",color=green];
+n7->n1 [label="a..=t|v..=z"];
+n7->n2 [label="u"];
+n8[label="State 8",color=green];
+n8->n0 [label="t"];
+}

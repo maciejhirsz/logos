@@ -1,0 +1,43 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> std::option::Option<
+        std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    > {
+        fn _logos_derive_compile_errors() {
+            {
+                compile_error!(
+                    "The pattern #[token(\"a\")] ::A can match simultaneously with the following variants:\n  #[token(\"a\")] ::B\n\n(all at the priority 2)"
+                )
+            }
+            {
+                compile_error!(
+                    "The pattern #[token(\"a\")] ::B can match simultaneously with the following variants:\n  #[token(\"a\")] ::A\n\n(all at the priority 2)"
+                )
+            }
+            {
+                compile_error!(
+                    "The pattern #[token(\"1\")] ::One can match simultaneously with the following variants:\n  #[regex(\"1\")] ::Two\n  #[regex(\"1\")] ::Three\n\n(all at the priority 2)"
+                )
+            }
+            {
+                compile_error!(
+                    "The pattern #[regex(\"1\")] ::Two can match simultaneously with the following variants:\n  #[token(\"1\")] ::One\n  #[regex(\"1\")] ::Three\n\n(all at the priority 2)"
+                )
+            }
+            {
+                compile_error!(
+                    "The pattern #[regex(\"1\")] ::Three can match simultaneously with the following variants:\n  #[token(\"1\")] ::One\n  #[regex(\"1\")] ::Two\n\n(all at the priority 2)"
+                )
+            }
+        }
+        unimplemented!()
+    }
+}

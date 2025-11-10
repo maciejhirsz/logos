@@ -14,18 +14,12 @@ jobs:
       matrix:
         rust:
         - 1.80.0 # current MSRV
-        - 1.82.0 # precise capturing
         - stable
-        - beta
         - nightly
         os:
         - macos-latest
         - ubuntu-latest
         - windows-latest
-        features:
-        - ""  # default features
-        - "--features forbid_unsafe"
-        - "--features debug"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -38,8 +32,24 @@ jobs:
         toolchain: ${{ matrix.rust }}
         components: rustfmt
 
+    - uses: taiki-e/install-action@cargo-hack
+
     - name: Cache dependencies
       uses: Swatinem/rust-cache@v2
 
-    - name: Check that tests run
-      run: cargo test --workspace --verbose ${{ matrix.features }}
+    - name: Top level crate tests
+      # Excluding the run from cargo-hack as building logos without
+      # export_derive breaks all the examples
+      run: cargo test --verbose
+
+    - name: Codegen Tests
+      run: cargo hack test --verbose --feature-powerset
+      working-directory: ./logos-codegen
+
+    - name: CLI Tests
+      run: cargo hack test --verbose --feature-powerset
+      working-directory: ./logos-cli
+
+    - name: Integration Tests
+      run: cargo hack test --verbose --feature-powerset
+      working-directory: ./tests
