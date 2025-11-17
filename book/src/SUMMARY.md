@@ -11,6 +11,7 @@
 + [Using callbacks](./callbacks.md)
 + [Context-dependent lexing](./context-dependent-lexing.md)
 + [Common regular expressions](./common-regex.md)
++ [Migration Guide](./migrating.md)
 + [Debugging](./debugging.md)
 + [Unsafe Code](./unsafe.md)
 + [Examples](./examples.md)

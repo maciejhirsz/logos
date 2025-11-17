@@ -19,7 +19,7 @@ where `literal` can be any `&str` or `&[u8]` string literal,
 (see [Using callbacks section](../callbacks.md)),
 `priority` can be any positive integer
 (see [Token disambiguation section](../token-disambiguation.md)),
-and `flag` can by of: `case`, `ascii_case`. Only `literal` is **required**,
+and the only `flag` value is: `case`. Only `literal` is **required**,
 others are optional.
 
 You can stack any number of `#[token]` and or `#[regex]` attributes on top of
