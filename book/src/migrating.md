@@ -17,9 +17,13 @@ The update also added some major new features and a handful of breaking changes.
   supported pitfalls, they are disallowed by default, but can be used if you pass
   the attribute argument `allow_greedy = true` or if you make them non-greedy.
   For more information, see [Common performance
-  pitfalls](./common-regex.md#common-performance-pitfalls).
+  pitfalls](./common-regex#common-performance-pitfalls).
 - The error token semantics are now precisely defined. See [Error
-  semantics](./common-regex.md#error-semantics).
+  semantics](./common-regex#error-semantics).
+- The new `state_machine_codegen` feature. If you are experiencing issues with
+  stack overflows, enabling this feature will solve them. It is slower than the
+  default tailcall codegen, but it will never overflow the stack. See [State
+  machine codegen](./state-machine-codegen).
 
 ### Breaking Changes
 
