@@ -3,14 +3,23 @@ source: logos-codegen/src/graph/export.rs
 expression: mmd
 ---
 flowchart TB
-n0["State 0"]
+n0["State 0<br>early(0)"]
 style n0 stroke:#00C853
-n0-->|"e"|n1
-n1["State 1"]
+en0n1{"e"}
+style en0n1 stroke:#000000
+n0-->en0n1
+en0n1-->n1
+n1["State 1<br>early(0)"]
 style n1 stroke:#00C853
 n2["State 2"]
 style n2 stroke:#000000
-n2-->|"f"|n3
-n3["State 3"]
+en2n3{"f"}
+style en2n3 stroke:#000000
+n2-->en2n3
+en2n3-->n3
+n3["State 3<br>early(0)"]
 style n3 stroke:#00C853
-n3-->|"e"|n0
+en3n0{"e"}
+style en3n0 stroke:#000000
+n3-->en3n0
+en3n0-->n0

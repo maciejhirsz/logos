@@ -238,6 +238,9 @@ impl Parser {
                         );
                     }
                 }),
+                ("source", |parser, span, _| {
+                    parser.err("The `source` attribute is deprecated. Use the `utf8` attribute instead", span);
+                }),
                 ("subpattern", |parser, span, value| match value {
                     NestedValue::KeywordAssign(name, value) => {
                         match syn::parse2::<Literal>(value) {

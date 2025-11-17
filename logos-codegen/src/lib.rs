@@ -333,10 +333,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
     };
 
     debug!("Generated Automaton:\n{:?}", graph.dfa());
-
-    if cfg!(feature = "debug") {
-        debug!("Generated Graph:\n{graph}");
-    }
+    debug!("Generated Graph:\n{graph}");
+    debug!("Root node: {:?}", graph.root());
 
     if cfg!(feature = "debug") {
         if let Some(export_path) = parser.export_path.as_ref() {

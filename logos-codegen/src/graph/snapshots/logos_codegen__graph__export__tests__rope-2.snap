@@ -5,15 +5,27 @@ expression: mmd
 flowchart TB
 n0["State 0"]
 style n0 stroke:#000000
-n0-->|"r"|n4
+en0n4{"r"}
+style en0n4 stroke:#000000
+n0-->en0n4
+en0n4-->n4
 n1["State 1"]
 style n1 stroke:#000000
-n1-->|"p"|n2
+en1n2{"p"}
+style en1n2 stroke:#000000
+n1-->en1n2
+en1n2-->n2
 n2["State 2"]
 style n2 stroke:#000000
-n2-->|"e"|n3
-n3["State 3"]
+en2n3{"e"}
+style en2n3 stroke:#000000
+n2-->en2n3
+en2n3-->n3
+n3["State 3<br>early(0)"]
 style n3 stroke:#00C853
 n4["State 4"]
 style n4 stroke:#000000
-n4-->|"o"|n1
+en4n1{"o"}
+style en4n1 stroke:#000000
+n4-->en4n1
+en4n1-->n1

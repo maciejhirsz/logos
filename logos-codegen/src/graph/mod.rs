@@ -263,7 +263,11 @@ impl fmt::Display for ByteClass {
             }
 
             if idx < self.ranges.len() - 1 {
-                write!(f, "|")?;
+                if f.alternate() {
+                    writeln!(f)?;
+                } else {
+                    write!(f, "|")?;
+                }
             }
         }
 
