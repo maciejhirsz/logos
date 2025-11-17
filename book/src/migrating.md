@@ -18,6 +18,16 @@ The update also added some major new features and a handful of breaking changes.
   the attribute argument `allow_greedy = true` or if you make them non-greedy.
   For more information, see [Common performance
   pitfalls](./common-regex#common-performance-pitfalls).
+- Logos now precisely follows regex match semantics. Before 0.16.0, repetitions
+  were greedily followed, which would cause no matches where a match should have
+  been possible. For example, in 0.15.1, it is impossible to match the pattern
+  `a*a` because all `a` bytes are consumed by the repetition. This irregular
+  behavior has been fixed in 0.16.0. The behavior should now be identical to the
+  `regex` crate with the following assumptions:
+  - Every pattern behaves as if it has a start of input anchor (`^`) prepended to it.
+  - Unicode word boundaries, some lookaround, and other advanced features not
+    supported by the DFA regex engine will cause a compile time error because
+    they cannot be matched by the state machine that logos generates.
 - The error token semantics are now precisely defined. See [Error
   semantics](./common-regex#error-semantics).
 - The new `state_machine_codegen` feature. If you are experiencing issues with
