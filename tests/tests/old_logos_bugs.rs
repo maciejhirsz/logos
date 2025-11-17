@@ -1,7 +1,7 @@
 // Tests that fail with Logos as of 2025/11/10
 
-use logos_derive::Logos;
 use logos::Logos as _;
+use logos_derive::Logos;
 use tests::assert_lex;
 
 // https://github.com/maciejhirsz/logos/issues/456
@@ -160,17 +160,17 @@ fn test_384() {
 // https://github.com/maciejhirsz/logos/issues/336
 // reduced examples
 #[derive(Logos)]
-pub enum Token336_1 {
+pub enum _Token336_1 {
     #[regex("(0+)*x?.0+", |_| { Err::<(), ()>(()) })]
     Float,
 }
 #[derive(Logos)]
-enum Token336_2 {
+enum _Token336_2 {
     #[regex("(0+)*.0+")]
     Float,
 }
 #[derive(Logos)]
-enum Token336_3 {
+enum _Token336_3 {
     #[regex("0*.0+")]
     Float,
 }
@@ -204,7 +204,7 @@ fn test_269() {
 
 // https://github.com/maciejhirsz/logos/issues/261
 #[derive(Logos, Debug)]
-enum Token261 {
+enum _Token261 {
     #[regex(r"([0123456789]|#_#)*#.#[0123456789](_|#_#)?")]
     Decimal,
     #[regex(r#"..*"#, allow_greedy = true)]
@@ -223,14 +223,14 @@ fn test_259() {
     for _ in lex {}
 }
 #[derive(Logos, Debug)]
-enum Token259_2 {
+enum _Token259_2 {
     #[regex(r"(A+.)*A+")]
     Varid,
 }
 
 // https://github.com/maciejhirsz/logos/issues/185
 #[derive(Logos)]
-enum Token185 {
+enum _Token185 {
     #[regex(r#"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/"#)]
     BlockComment,
 }

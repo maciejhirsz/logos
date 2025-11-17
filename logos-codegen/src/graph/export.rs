@@ -32,7 +32,13 @@ trait ExportFormat {
 
     fn write_footer(s: &mut String) -> std::fmt::Result;
 
-    fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor, shape: NodeShape) -> std::fmt::Result;
+    fn write_node(
+        s: &mut String,
+        id: &str,
+        label: &str,
+        color: NodeColor,
+        shape: NodeShape,
+    ) -> std::fmt::Result;
 
     fn write_link(s: &mut String, from: &str, to: &str) -> std::fmt::Result;
 
@@ -52,12 +58,23 @@ impl ExportFormat for Dot {
         writeln!(s, "}}")
     }
 
-    fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor, shape: NodeShape) -> std::fmt::Result {
+    fn write_node(
+        s: &mut String,
+        id: &str,
+        label: &str,
+        color: NodeColor,
+        shape: NodeShape,
+    ) -> std::fmt::Result {
         let shape_str = match shape {
             NodeShape::Rectangle => "box",
             NodeShape::Rhombus => "diamond",
         };
-        writeln!(s, "{id}[label=\"{label}\",color={},shape={}];", color.fmt_dot(), shape_str)
+        writeln!(
+            s,
+            "{id}[label=\"{label}\",color={},shape={}];",
+            color.fmt_dot(),
+            shape_str
+        )
     }
 
     fn write_link(s: &mut String, from: &str, to: &str) -> std::fmt::Result {
@@ -82,7 +99,13 @@ impl ExportFormat for Mermaid {
         Ok(())
     }
 
-    fn write_node(s: &mut String, id: &str, label: &str, color: NodeColor, shape: NodeShape) -> std::fmt::Result {
+    fn write_node(
+        s: &mut String,
+        id: &str,
+        label: &str,
+        color: NodeColor,
+        shape: NodeShape,
+    ) -> std::fmt::Result {
         match shape {
             NodeShape::Rectangle => writeln!(s, "{id}[\"{label}\"]")?,
             NodeShape::Rhombus => writeln!(s, "{id}{{\"{label}\"}}")?,
@@ -127,21 +150,28 @@ impl Graph {
     }
 
     fn export_graph<Fmt: ExportFormat>(&self) -> Result<String, std::fmt::Error> {
-        let shape_ids = self.iter_states()
+        let shape_ids = self
+            .iter_states()
             .map(|state| format!("n{}", state.0))
             .collect::<Vec<_>>();
-        let shape_names = self.iter_states() .map(|state| {
-            let state_id = state.0;
-            let rendered = match self.states[state_id].state_type {
-                StateType { early: Some(leaf_id), .. } =>
-                    format!("State {state_id}\nearly({})", leaf_id.0),
-                StateType { accept: Some(leaf_id), .. } =>
-                    format!("State {state_id}\nlate({})", leaf_id.0),
-                _ =>
-                    format!("State {state_id}"),
-            };
-            Fmt::escape(rendered)
-        }).collect::<Vec<_>>();
+        let shape_names = self
+            .iter_states()
+            .map(|state| {
+                let state_id = state.0;
+                let rendered = match self.states[state_id].state_type {
+                    StateType {
+                        early: Some(leaf_id),
+                        ..
+                    } => format!("State {state_id}\nearly({})", leaf_id.0),
+                    StateType {
+                        accept: Some(leaf_id),
+                        ..
+                    } => format!("State {state_id}\nlate({})", leaf_id.0),
+                    _ => format!("State {state_id}"),
+                };
+                Fmt::escape(rendered)
+            })
+            .collect::<Vec<_>>();
 
         let mut s = String::new();
 
@@ -160,14 +190,23 @@ impl Graph {
 
             Fmt::write_node(&mut s, id, label, color, NodeShape::Rectangle)?;
 
-            let normal_edges = data.normal.iter().map(|(bc, to_state)| (Fmt::escape(format!("{:#}", bc)), to_state));
+            let normal_edges = data
+                .normal
+                .iter()
+                .map(|(bc, to_state)| (Fmt::escape(format!("{:#}", bc)), to_state));
 
             let eoi_edge = data.eoi.as_ref().map(|state| (String::from("EOI"), state));
 
             for (label, to_state) in normal_edges.chain(eoi_edge) {
                 let to_id = &shape_ids[to_state.0];
                 let edge_id = format!("e{}{}", id, to_id);
-                Fmt::write_node(&mut s, &edge_id, &label, NodeColor::Black, NodeShape::Rhombus)?;
+                Fmt::write_node(
+                    &mut s,
+                    &edge_id,
+                    &label,
+                    NodeColor::Black,
+                    NodeShape::Rhombus,
+                )?;
                 Fmt::write_link(&mut s, id, &edge_id)?;
                 Fmt::write_link(&mut s, &edge_id, to_id)?;
             }
@@ -184,7 +223,11 @@ mod tests {
     use insta::assert_snapshot;
     use proc_macro2::Span;
 
-    use crate::{graph::{ByteClass, Config}, leaf::Leaf, pattern::Pattern};
+    use crate::{
+        graph::{ByteClass, Config},
+        leaf::Leaf,
+        pattern::Pattern,
+    };
 
     use super::*;
 
