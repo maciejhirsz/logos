@@ -26,10 +26,18 @@ pub struct Config {
     pub utf8_mode: bool,
 }
 
-/// Disambiguation error when a DFA state matches
-/// two (or more) leaves with the same priority
-#[derive(Clone, Debug)]
-pub struct DisambiguationError(pub Vec<LeafId>);
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GraphError {
+    /// Error when the DFA is missing a universal start state
+    NoUniveralStart,
+
+    /// Error when a leaf can match the empty string
+    EmptyMatch(LeafId),
+
+    /// Disambiguation error when a DFA state matches
+    /// two (or more) leaves with the same priority
+    Disambiguation(Vec<LeafId>),
+}
 
 /// This type holds information about a given [State]. Namely, whether
 /// it is a match state for a leaf or not.
@@ -341,7 +349,7 @@ pub struct Graph {
     /// The initial state (root) of the graph
     root: State,
     /// Any disambiguation errors encountered when constructing the graph
-    errors: Vec<DisambiguationError>,
+    errors: Vec<GraphError>,
 }
 
 impl Graph {
@@ -371,25 +379,16 @@ impl Graph {
     }
 
     /// Iterate over all the disambiguation errors encountered while generating this graph
-    pub fn errors<'b>(&'b self) -> impl Iterator<Item = DisambiguationError> + 'b {
-        self.errors.iter().cloned()
+    pub fn errors<'b>(&'b self) -> impl Iterator<Item = &'b GraphError> + 'b {
+        self.errors.iter()
     }
 
-    /// Create a new graph using a given list of [Leaf] objects to match on and a [Config]
+    /// Construct a context-free graph from a set of [Leaf] objects and a [Config]. Context-free
+    /// means that the most recently matched leaf is not inherent to the current state, and must be
+    /// tracked seperately by the matching engine. This is simpler because it means that the
+    /// graph's states correspond 1:1 with the DFA's states, but it means you can't statically
+    /// dispatch the leaf handlers.
     pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
-        // First, construct a context-free graph, then traverse it with a context to build the
-        // contextual graph.
-        let graph = Self::new_no_context(leaves, config)?;
-
-        Ok(graph)
-    }
-
-    /// Construct a context-free graph from a set of leaves and a config. Context-free means that
-    /// the most recently matched leaf is not inherent to the current state, and must be tracked
-    /// seperately by the matching engine. This is simpler because it means that the graph's states
-    /// correspond 1:1 with the DFA's states, but it means you can't statically dispatch the leaf
-    /// handlers.
-    fn new_no_context(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
         let hirs = leaves
             .iter()
             .map(|leaf| leaf.pattern.hir())
@@ -420,41 +419,50 @@ impl Graph {
                 format!("Logos encountered an error compiling the DFA for this regex: {err}")
             })?;
 
-        let Some(start_id) = dfa.universal_start_state(Anchored::Yes) else {
-            return Err(concat!(
-                "This Regex is missing a universal start state, which is unsupported by logos. ",
-                "This is most likely do to a lookbehind assertion at the start of the regex."
-            )
-            .into());
+        let mut graph = Graph {
+            leaves,
+            dfa,
+            states: Vec::new(),
+            root: State(0),
+            errors: Vec::new(),
         };
-        if dfa.has_empty() {
-            return Err(
-                "This Regex may match an empty string, which is unsupported by logos.".into(),
-            );
+
+        let Some(start_id) = graph.dfa.universal_start_state(Anchored::Yes) else {
+            graph.errors.push(GraphError::NoUniveralStart);
+            return Ok(graph);
+        };
+        if graph.dfa.has_empty() {
+            for (leaf_id, leaf) in graph.leaves.iter().enumerate() {
+                if leaf.pattern.hir().properties().minimum_len() == Some(0) {
+                    graph.errors.push(GraphError::EmptyMatch(LeafId(leaf_id)));
+                }
+            }
+            return Ok(graph);
         }
 
         // First, get a list of all states, and map the DFA StateIDs to ascending indexes
-        let dfa_lookup = get_states(&dfa, start_id)
+        let dfa_lookup = get_states(&graph.dfa, start_id)
             .enumerate()
             .map(|(idx, dfa_id)| (dfa_id, State(idx)))
             .collect::<HashMap<StateID, State>>();
-        let mut states = vec![StateData::new(); dfa_lookup.len()];
 
-        let root = dfa_lookup[&start_id];
+        graph.root = dfa_lookup[&start_id];
+        graph.states = vec![StateData::new(); dfa_lookup.len()];
 
         // Now, for each state, construct its edges and determine which leaves it matches
-        let mut errors = Vec::new();
         for (dfa_id, state_id) in dfa_lookup.iter() {
             let dfa_id = *dfa_id;
 
-            let state_data = &mut states[state_id.0];
-            match Self::get_state_type(dfa_id, &leaves, &dfa) {
+            let state_data = &mut graph.states[state_id.0];
+            match Self::get_state_type(dfa_id, &graph.leaves, &graph.dfa) {
                 Ok(state_type) => state_data.state_type = state_type,
-                Err(disambiguation_err) => errors.push(disambiguation_err),
+                Err(ambiguous_leaves) => graph
+                    .errors
+                    .push(GraphError::Disambiguation(ambiguous_leaves)),
             }
             let mut result: HashMap<State, ByteClass> = HashMap::new();
             for input_byte in u8::MIN..=u8::MAX {
-                let next_id = dfa.next_state(dfa_id, input_byte);
+                let next_id = graph.dfa.next_state(dfa_id, input_byte);
 
                 // Don't need to account for the dead state
                 if next_id.as_usize() == 0 {
@@ -471,7 +479,7 @@ impl Graph {
 
             state_data.set_normal_edges(result);
 
-            let eoi_id = dfa.next_eoi_state(dfa_id);
+            let eoi_id = graph.dfa.next_eoi_state(dfa_id);
             state_data.eoi = if eoi_id.as_usize() == 0 {
                 None
             } else {
@@ -479,21 +487,13 @@ impl Graph {
             };
 
             for child in state_data.iter_children().collect::<Vec<_>>() {
-                states[child.0].add_back_edge(*state_id);
+                graph.states[child.0].add_back_edge(*state_id);
             }
         }
 
         // Sort for generated code stability (by leaf id)
         // as the vec in the DisambiguationError is sorted by leaf id already
-        errors.sort_unstable_by_key(|error| error.0[0].0);
-
-        let mut graph = Graph {
-            leaves,
-            dfa,
-            states,
-            root,
-            errors,
-        };
+        graph.errors.sort_unstable();
 
         // Find early accept states
         for state in graph.iter_states() {
@@ -615,7 +615,7 @@ impl Graph {
         state_id: StateID,
         leaves: &[Leaf],
         dfa: &OwnedDFA,
-    ) -> Result<StateType, DisambiguationError> {
+    ) -> Result<StateType, Vec<LeafId>> {
         // Get a list of all leaves that match in this state
         let matching_leaves = iter_matches(state_id, dfa)
             .map(|leaf_id| (leaf_id, leaves[leaf_id.0].priority))
@@ -634,7 +634,7 @@ impl Graph {
                 .collect();
             // Ensure that only one leaf matches at said highest priority
             if matching_prio_leaves.len() > 1 {
-                return Err(DisambiguationError(matching_prio_leaves));
+                return Err(matching_prio_leaves);
             }
 
             Ok(StateType {

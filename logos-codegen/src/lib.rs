@@ -26,7 +26,7 @@ use std::path::Path;
 
 use error::Errors;
 use generator::Generator;
-use graph::{DisambiguationError, Graph};
+use graph::{Graph, GraphError};
 use leaf::Leaf;
 use parser::Parser;
 use pattern::Pattern;
@@ -349,30 +349,50 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Checking if any two tokens have the same priority");
 
-    for DisambiguationError(matching) in graph.errors() {
-        for leaf_id in &matching {
-            let leaf = &graph.leaves()[leaf_id.0];
-            let priority = leaf.priority;
+    for error in graph.errors() {
+        match error {
+            GraphError::Disambiguation(matching) => {
+                for leaf_id in matching {
+                    let leaf = &graph.leaves()[leaf_id.0];
+                    let priority = leaf.priority;
 
-            let matching = matching
-                .iter()
-                .filter(|&id| id != leaf_id)
-                .map(|matchind_id| format!("  {}", &graph.leaves()[matchind_id.0]))
-                .collect::<Vec<_>>()
-                .join("\n");
+                    let matching = matching
+                        .iter()
+                        .filter(|&id| id != leaf_id)
+                        .map(|matchind_id| format!("  {}", &graph.leaves()[matchind_id.0]))
+                        .collect::<Vec<_>>()
+                        .join("\n");
 
-            parser.err(
-                format!(
-                    concat!(
-                        "The pattern {} can match simultaneously with the following variants:\n",
-                        "{}\n",
-                        "\n",
-                        "(all at the priority {})"
+                    parser.err(
+                        format!(
+                            concat!(
+                                "The pattern {} can match simultaneously with the following variants:\n",
+                                "{}\n",
+                                "\n",
+                                "(all at the priority {})"
+                            ),
+                            leaf, matching, priority
+                        ),
+                        leaf.span,
+                    );
+                }
+            }
+            GraphError::NoUniveralStart => {
+                parser.err(concat!(
+                    "The state machine implementing this lexer is missing a universal start state,",
+                    "which is unsupported by logos. This is most likely do to a lookbehind assertion ",
+                    "at the start of the regex."
+                ), item_span);
+            }
+            GraphError::EmptyMatch(leaf_id) => {
+                parser.err(
+                    format!(
+                        "The pattern {} can match the empty string, which is unsupported by logos.",
+                        &graph.leaves()[leaf_id.0],
                     ),
-                    leaf, matching, priority
-                ),
-                leaf.span,
-            );
+                    graph.leaves()[leaf_id.0].span,
+                );
+            }
         }
     }
 
