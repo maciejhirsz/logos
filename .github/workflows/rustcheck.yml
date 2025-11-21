@@ -11,6 +11,6 @@ jobs:
   cargo_check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: taiki-e/install-action@cargo-hack
     - run: cargo hack check --feature-powerset --no-dev-deps
