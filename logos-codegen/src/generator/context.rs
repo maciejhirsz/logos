@@ -26,13 +26,9 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn can_backtrack(&self) -> bool {
-        self.backtrack.is_some()
-    }
-
     pub fn switch(&mut self, miss: Option<NodeId>) -> Option<TokenStream> {
         self.backtrack = Some(miss?);
-        self.bump()
+        None
     }
 
     pub const fn advance(self, n: usize) -> Self {
