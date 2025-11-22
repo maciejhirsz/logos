@@ -13,7 +13,7 @@ The syntax is as follows:
 #[logos(extras = ExtrasType)]
 #[logos(error = ErrorType)]
 #[logos(crate = path::to::logos)]
-#[logos(source = SourceType)]
+#[logos(utf8 = true)]
 #[logos(subpattern subpattern_name = "regex literal")]
 enum Token {
     /* ... */
@@ -70,11 +70,12 @@ with `#[logos(crate = path::to::logos)]`.
 
 ## Custom source type
 
-By default, **Logos**'s lexer will accept `&str` as input, unless any of the
-pattern literals match a non utf-8 bytes sequence. In this case, it will fall
-back to `&[u8]`. You can override this behavior by forcing one of the two
-source types. You can also specify any custom type that implements
-[`Source`](https://docs.rs/logos/latest/logos/source/trait.Source.html).
+By default, **Logos**'s lexer will accept `&str` as input. If any of the tokens
+or regex ptterns can match a non utf-8 bytes sequence, this will cause a
+compile time error. In this case, you should supply `#[logos(utf8 = false)]`.
+This will cause the lexer to accept a `&[u8]` instead.
+
+In the past, you could also specify any custom type, but that feature has been removed.
 
 ## Subpatterns
 

@@ -43,7 +43,7 @@ impl TypeParams {
                 if let Some(previous) = slot.replace(ty) {
                     errors
                         .err(
-                            format!("{} can only have one type assigned to it", param),
+                            format!("{param} can only have one type assigned to it"),
                             param.span(),
                         )
                         .err("Previously assigned here", previous.span());
@@ -51,7 +51,7 @@ impl TypeParams {
             }
             None => {
                 errors.err(
-                    format!("{} is not a declared type parameter", param),
+                    format!("{param} is not a declared type parameter"),
                     param.span(),
                 );
             }
@@ -87,8 +87,7 @@ impl TypeParams {
                         format!(
                             "Generic type parameter without a concrete type\n\
                             \n\
-                            Define a concrete type Logos can use: #[logos(type {} = Type)]",
-                            ty,
+                            Define a concrete type Logos can use: #[logos(type {ty} = Type)]",
                         ),
                         ty.span(),
                     );

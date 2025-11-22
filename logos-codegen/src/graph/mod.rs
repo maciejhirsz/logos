@@ -1,568 +1,721 @@
-use std::cmp::Ordering;
-use std::collections::btree_map::Entry;
-use std::collections::BTreeMap as Map;
-use std::hash::{Hash, Hasher};
-use std::num::NonZeroU32;
-use std::ops::Index;
+use std::ascii::escape_default;
+use std::collections::HashSet;
+use std::fmt;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    ops::RangeInclusive,
+};
 
-use fnv::FnvHasher;
+use dfa_util::{get_states, iter_matches, OwnedDFA};
+use regex_automata::{
+    dfa::{dense::DFA, Automaton, StartKind},
+    nfa::thompson::NFA,
+    util::primitives::StateID,
+    Anchored, MatchKind,
+};
 
-#[cfg(feature = "debug")]
+use crate::leaf::{Leaf, LeafId};
+
+mod dfa_util;
 mod export;
-mod fork;
-mod impls;
-mod meta;
-mod range;
-mod regex;
-mod rope;
 
-pub use self::fork::Fork;
-pub use self::meta::Meta;
-pub use self::range::Range;
-pub use self::rope::Rope;
-
-/// Disambiguation error during the attempt to merge two leaf
-/// nodes with the same priority
+/// A configuration used to construct a graph
 #[derive(Debug)]
-pub struct DisambiguationError(pub NodeId, pub NodeId);
+pub struct Config {
+    /// When true, the graph should only allow matching valid UTF-8 sequences of bytes.
+    pub utf8_mode: bool,
+}
 
-pub struct Graph<Leaf> {
-    /// Internal storage of all allocated nodes. Once a node is
-    /// put here, it should never be mutated.
-    nodes: Vec<Option<Node<Leaf>>>,
-    /// When merging two nodes into a new node, we store the two
-    /// entry keys and the result, so that we don't merge the same
-    /// two nodes multiple times.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GraphError {
+    /// Error when the DFA is missing a universal start state
+    NoUniveralStart,
+
+    /// Error when a leaf can match the empty string
+    EmptyMatch(LeafId),
+
+    /// Disambiguation error when a DFA state matches
+    /// two (or more) leaves with the same priority
+    Disambiguation(Vec<LeafId>),
+}
+
+/// This type holds information about a given [State]. Namely, whether
+/// it is a match state for a leaf or not.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StateType {
+    // If non-None, this state matches this leaf, and the match extends from the start offset
+    // up to (but not including) the most recently read byte.
+    pub accept: Option<LeafId>,
+    // If non-None, this state matches this leaf, and the match extends from the start offset
+    // through the most recently read byte.
+    pub early: Option<LeafId>,
+}
+
+impl StateType {
+    /// Collapse the `early` and `accept` fields into a single field, if either is set. (Priority
+    /// is given to `early`.)
+    fn early_or_accept(&self) -> Option<LeafId> {
+        self.early.or(self.accept)
+    }
+}
+
+/// This type uniquely identifies the state of the Logos state machine.
+/// It is an index into the `states` field of the [Graph] struct.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct State(usize);
+
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "state{}", self.0)
+    }
+}
+
+impl State {
+    pub fn pascal_case(&self) -> String {
+        format!("State{}", self.0)
+    }
+
+    pub fn snake_case(&self) -> String {
+        format!("{self}")
+    }
+}
+
+/// This struct includes all information that should be attached to [State] but does not uniquely
+/// identify State, which facilitates building a HashMap<State, StateData> structure.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct StateData {
+    /// The type of the [State] object this struct defines
+    pub state_type: StateType,
+    /// The "normal" transitions (those that consume a byte of input) from this state to another
+    /// state
+    pub normal: Vec<(ByteClass, State)>,
+    /// The "eoi" transition (the transition taken if this state immediately preceeds the end of
+    /// the input), if any.
+    pub eoi: Option<State>,
+    /// States that can transition to this state
+    /// TODO: list when valid
+    pub backward: Vec<State>,
+}
+
+impl StateData {
+    /// Create a new [StateData] object with the given [StateID]
     ///
-    /// Most of the time the entry we want to find will be the last
-    /// one that has been inserted, so we can use a vec with reverse
-    /// order search to get O(1) searches much faster than any *Map.
-    merges: Map<Merge, NodeId>,
-    /// Another map used for accounting. Before `.push`ing a new node
-    /// onto the graph (inserts are exempt), we hash it and find if
-    /// an identical(!) node has been created before.
-    hashes: Map<u64, NodeId>,
-    /// Instead of handling errors over return types, opt to collect
-    /// them internally.
-    errors: Vec<DisambiguationError>,
-    /// Deferred merges. When when attempting to merge a node with an
-    /// empty reserved slot, the merging operation is deferred until
-    /// the reserved slot is populated. This is a stack that keeps track
-    /// of all such deferred merges
-    deferred: Vec<DeferredMerge>,
-}
-
-/// Trait to be implemented on `Leaf` nodes in order to disambiguate
-/// between them.
-pub trait Disambiguate {
-    fn cmp(left: &Self, right: &Self) -> Ordering;
-}
-
-/// Id of a Node in the graph. `NodeId` can be referencing an empty
-/// slot that is going to be populated later in time.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct NodeId(NonZeroU32);
-
-impl Hash for NodeId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // Always use little-endian byte order for hashing to avoid
-        // different code generation on big-endian platforms due to
-        // iteration over a HashMap,
-        // see https://github.com/maciejhirsz/logos/issues/427.
-        state.write(&self.0.get().to_le_bytes())
-    }
-}
-
-impl NodeId {
-    fn get(self) -> usize {
-        self.0.get() as usize
+    /// This is used when constructing the context free graph, where each DFA [StateID] corresponds
+    /// uniquely to a [State].
+    fn new() -> Self {
+        Default::default()
     }
 
-    fn new(n: usize) -> NodeId {
-        NodeId(NonZeroU32::new(n as u32).expect("Invalid NodeId"))
+    /// An iterator over all [State] objects directly reachable from this state
+    fn iter_children<'a>(&'a self) -> impl Iterator<Item = State> + 'a {
+        self.normal
+            .iter()
+            .map(|(_bc, s)| *s)
+            .chain(self.eoi.iter().cloned())
     }
-}
 
-/// Unique reserved `NodeId` that is guaranteed to point to an
-/// empty allocated slot in the graph. It's safe to create multiple
-/// `NodeId` copies of `ReservedId`, however API users should never
-/// be able to clone a `ReservedId`, or create a new one from `NodeId`.
-///
-/// `ReservedId` is consumed once passed into `Graph::insert`.
-#[derive(Debug)]
-pub struct ReservedId(NodeId);
-
-impl ReservedId {
-    pub fn get(&self) -> NodeId {
-        self.0
-    }
-}
-
-/// Merge key used to lookup whether two nodes have been previously
-/// mered, so we can avoid duplicating merges, potentially running into
-/// loops that blow out the stack.
-///
-/// `Merge::new(a, b)` should always equal to `Merge::new(b, a)` to ensure
-/// that node merges are symmetric.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
-struct Merge(NodeId, NodeId);
-
-impl Merge {
-    fn new(a: NodeId, b: NodeId) -> Self {
-        if a < b {
-            Merge(a, b)
-        } else {
-            Merge(b, a)
-        }
-    }
-}
-
-/// When attempting to merge two nodes, one of which was not yet created,
-/// we can record such attempt, and execute the merge later on when the
-/// `awaiting` has been `insert`ed into the graph.
-#[derive(Debug)]
-pub struct DeferredMerge {
-    awaiting: NodeId,
-    with: NodeId,
-    into: ReservedId,
-}
-
-impl<Leaf> Graph<Leaf> {
-    pub fn new() -> Self {
-        Graph {
-            // Start with an empty slot so we can start
-            // counting NodeIds from 1 and use NonZero
-            // optimizations
-            nodes: vec![None],
-            merges: Map::new(),
-            hashes: Map::new(),
-            errors: Vec::new(),
-            deferred: Vec::new(),
+    /// Add a backreference to the given state, which specifies that `self` is reachable from
+    /// `state`.
+    fn add_back_edge(&mut self, state: State) {
+        if let Err(index) = self.backward.binary_search(&state) {
+            self.backward.insert(index, state);
         }
     }
 
-    pub fn errors(&self) -> &[DisambiguationError] {
-        &self.errors
+    /// Using this function to initialize the edges from a hashmap will
+    /// sort the resulting vec by state number for generated code stability
+    fn set_normal_edges(&mut self, edges: HashMap<State, ByteClass>) {
+        self.normal = edges.into_iter().map(|(s, bc)| (bc, s)).collect();
+        self.normal.sort_unstable_by_key(|(_bc, s)| *s);
     }
 
-    fn next_id(&self) -> NodeId {
-        NodeId::new(self.nodes.len())
-    }
+    // Determine if there is a byte that doesn't have a next state (is an error) for this state.
+    fn can_error(&self) -> bool {
+        let mut covered_ranges = self
+            .normal
+            .iter()
+            .flat_map(|(bc, _s)| bc.ranges.iter().cloned())
+            .collect::<Vec<_>>();
+        covered_ranges.sort_unstable_by_key(|r| *r.start());
 
-    /// Reserve an empty slot for a node on the graph and return an
-    /// id for it. `ReservedId` cannot be cloned, and must be consumed
-    /// by calling `insert` on the graph.
-    pub fn reserve(&mut self) -> ReservedId {
-        let id = self.next_id();
+        if !covered_ranges
+            .first()
+            .map(|bc| *bc.start() == 0)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        if !covered_ranges
+            .last()
+            .map(|bc| *bc.end() == 255)
+            .unwrap_or(false)
+        {
+            return true;
+        }
 
-        self.nodes.push(None);
-
-        ReservedId(id)
-    }
-
-    /// Insert a node at a given, previously reserved id. Returns the
-    /// inserted `NodeId`.
-    pub fn insert<N>(&mut self, reserved: ReservedId, node: N) -> NodeId
-    where
-        N: Into<Node<Leaf>>,
-        Leaf: Disambiguate,
-    {
-        let id = reserved.get();
-
-        self.nodes[id.get()] = Some(node.into());
-
-        let mut awaiting = Vec::new();
-
-        // Partition out all `DeferredMerge`s that can be completed
-        // now that this `ReservedId` has a `Node` inserted into it.
-        for idx in (0..self.deferred.len()).rev() {
-            if self.deferred[idx].awaiting == id {
-                awaiting.push(self.deferred.remove(idx));
+        for pair in covered_ranges.windows(2) {
+            let first = &pair[0];
+            let second = &pair[1];
+            if *first.end() + 1 < *second.start() {
+                return true;
             }
         }
 
-        // Complete deferred merges. We've collected them from the back,
-        // so we must iterate through them from the back as well to restore
-        // proper order of merges in case there is some cascading going on.
-        for DeferredMerge {
-            awaiting,
-            with,
-            into,
-        } in awaiting.into_iter().rev()
-        {
-            self.merge_unchecked(awaiting, with, into);
-        }
+        false
+    }
+}
 
-        id
+impl fmt::Display for StateData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "StateData(")?;
+        if let Some(leaf_id) = self.state_type.accept {
+            write!(f, "accept({}) ", leaf_id.0)?
+        }
+        if let Some(leaf_id) = self.state_type.early {
+            write!(f, "early({}) ", leaf_id.0)?
+        }
+        write!(f, ")")?;
+        if f.alternate() {
+            writeln!(f, " {{")?;
+            for (bc, state) in &self.normal {
+                writeln!(f, "  {} => {}", &bc.to_string(), state)?;
+            }
+            if let Some(eoi_state) = &self.eoi {
+                writeln!(f, "  EOI => {eoi_state}")?;
+            }
+            write!(f, "}}")?;
+        }
+        Ok(())
+    }
+}
+
+/// This struct represents a subset of the possible bytes x00 through xFF
+///
+/// If bytes are added in ascending order (which they are by the graph module), then the ranges are
+/// guaranteed to be sorted, non-overlapping, and seperated by at least one non-matching byte.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ByteClass {
+    pub ranges: Vec<RangeInclusive<u8>>,
+}
+
+impl ByteClass {
+    /// Create a new empty [ByteClass] that doesn't match any bytes.
+    fn new() -> Self {
+        ByteClass { ranges: Vec::new() }
     }
 
-    /// Push a node onto the graph and get an id to it. If an identical
-    /// node has already been pushed on the graph, it will return the id
-    /// of that node instead.
-    pub fn push<B>(&mut self, node: B) -> NodeId
-    where
-        B: Into<Node<Leaf>>,
-    {
-        let node = node.into();
+    /// Add the `byte` to the set of bytes that are included in this class
+    fn add_byte(&mut self, byte: u8) {
+        if let Some(last) = self.ranges.last_mut() {
+            if last.end() + 1 == byte {
+                *last = *last.start()..=byte;
+                return;
+            }
+        }
+        self.ranges.push(byte..=byte);
+    }
 
-        if let Node::Leaf(_) = node {
-            return self.push_unchecked(node);
+    pub fn to_table(&self) -> [bool; 256] {
+        let mut table_bits = [false; 256];
+        for range in self.ranges.iter() {
+            for byte in range.clone() {
+                table_bits[byte as usize] = true;
+            }
         }
 
-        let mut hasher = FnvHasher::default();
-        node.hash(&mut hasher);
+        table_bits
+    }
 
-        let next_id = self.next_id();
+    pub fn merge(&mut self, other: &ByteClass) {
+        // TODO: this could be more efficient
+        let my_table = self.to_table();
+        let other_table = other.to_table();
+        self.ranges.clear();
+        for (byte, (mine, theirs)) in my_table.into_iter().zip(other_table).enumerate() {
+            if mine || theirs {
+                self.add_byte(byte as u8);
+            }
+        }
+    }
 
-        match self.hashes.entry(hasher.finish()) {
-            Entry::Occupied(occupied) => {
-                let id = *occupied.get();
-
-                if self[id].eq(&node) {
-                    return id;
+    /// Implement this [ByteClass] using a list of [Comparisons].
+    pub fn impl_with_cmp(&self) -> Vec<Comparisons> {
+        let mut ranges: Vec<Comparisons> = Vec::new();
+        for next_range in &self.ranges {
+            if let Some(Comparisons { range, except }) = ranges.last_mut() {
+                if *next_range.start() == *range.end() + 2 {
+                    *range = *range.start()..=*next_range.end();
+                    except.push(*next_range.start() - 1);
+                    continue;
                 }
             }
-            Entry::Vacant(vacant) => {
-                vacant.insert(next_id);
+            ranges.push(Comparisons::new(next_range.clone()));
+        }
+
+        ranges
+    }
+}
+
+impl fmt::Display for ByteClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (idx, range) in self.ranges.iter().enumerate() {
+            if range.start() == range.end() {
+                write!(f, "{}", escape_default(*range.start()))?;
+            } else {
+                write!(
+                    f,
+                    "{}..={}",
+                    escape_default(*range.start()),
+                    escape_default(*range.end())
+                )?;
+            }
+
+            if idx < self.ranges.len() - 1 {
+                if f.alternate() {
+                    writeln!(f)?;
+                } else {
+                    write!(f, "|")?;
+                }
             }
         }
 
-        self.push_unchecked(node)
+        Ok(())
     }
+}
 
-    fn push_unchecked(&mut self, node: Node<Leaf>) -> NodeId {
-        let id = self.next_id();
+/// This struct represents a contiguous range with an optional list of isolated holes.
+///
+/// This struct exists because, for example,
+///
+/// `matches!(byte, 5..=10 | 12..=16)`
+///
+/// can be implemented more efficiently as
+///
+/// `(byte >= 5 && byte <= 16 && byte != 11)`
+///
+/// than
+///
+/// `(byte < 5 || byte > 10) && (byte < 12 || byte > 16)`
+///
+/// and the rust compiler does not always do this for more complex ranges.
+pub struct Comparisons {
+    pub range: RangeInclusive<u8>,
+    pub except: Vec<u8>,
+}
 
-        self.nodes.push(Some(node));
-
-        id
-    }
-
-    /// If nodes `a` and `b` have been already merged, return the
-    /// `NodeId` of the node they have been merged into.
-    fn find_merged(&self, a: NodeId, b: NodeId) -> Option<NodeId> {
-        let probe = Merge::new(a, b);
-
-        self.merges.get(&probe).copied()
-    }
-
-    /// Mark that nodes `a` and `b` have been merged into `product`.
-    ///
-    /// This will also mark merging `a` and `product`, as well as
-    /// `b` and `product` into `product`, since those are symmetric
-    /// operations.
-    ///
-    /// This is necessary to break out asymmetric merge loops.
-    fn set_merged(&mut self, a: NodeId, b: NodeId, product: NodeId) {
-        self.merges.insert(Merge::new(a, b), product);
-        self.merges.insert(Merge::new(a, product), product);
-        self.merges.insert(Merge::new(b, product), product);
-    }
-
-    /// Merge the nodes at id `a` and `b`, returning a new id.
-    pub fn merge(&mut self, a: NodeId, b: NodeId) -> NodeId
-    where
-        Leaf: Disambiguate,
-    {
-        if a == b {
-            return a;
+impl Comparisons {
+    pub fn new(range: RangeInclusive<u8>) -> Self {
+        Comparisons {
+            range,
+            except: Vec::new(),
         }
-
-        // If the id pair is already merged (or is being merged), just return the id
-        if let Some(id) = self.find_merged(a, b) {
-            return id;
-        }
-
-        match (self.get(a), self.get(b)) {
-            (None, None) => {
-                panic!(
-                    "Merging two reserved nodes! This is a bug, please report it:\n\
-                    \n\
-                    https://github.com/maciejhirsz/logos/issues"
-                );
-            }
-            (None, Some(_)) => {
-                let reserved = self.reserve();
-                let id = reserved.get();
-                self.deferred.push(DeferredMerge {
-                    awaiting: a,
-                    with: b,
-                    into: reserved,
-                });
-                self.set_merged(a, b, id);
-
-                return id;
-            }
-            (Some(_), None) => {
-                let reserved = self.reserve();
-                let id = reserved.get();
-                self.deferred.push(DeferredMerge {
-                    awaiting: b,
-                    with: a,
-                    into: reserved,
-                });
-                self.set_merged(a, b, id);
-
-                return id;
-            }
-            (Some(Node::Leaf(left)), Some(Node::Leaf(right))) => {
-                return match Disambiguate::cmp(left, right) {
-                    Ordering::Less => b,
-                    Ordering::Greater => a,
-                    Ordering::Equal => {
-                        self.errors.push(DisambiguationError(a, b));
-
-                        a
-                    }
-                };
-            }
-            _ => (),
-        }
-
-        // Reserve the id for the merge and save it. Since the graph can contain loops,
-        // this prevents us from trying to merge the same id pair in a loop, blowing up
-        // the stack.
-        let reserved = self.reserve();
-        self.set_merged(a, b, reserved.get());
-
-        self.merge_unchecked(a, b, reserved)
     }
 
-    /// Unchecked merge of `a` and `b`. This fn assumes that `a` and `b` are
-    /// not pointing to empty slots.
-    fn merge_unchecked(&mut self, a: NodeId, b: NodeId, reserved: ReservedId) -> NodeId
-    where
-        Leaf: Disambiguate,
-    {
-        let merged_rope = match (self.get(a), self.get(b)) {
-            (Some(Node::Rope(rope)), _) => {
-                let rope = rope.clone();
-
-                self.merge_rope(rope, b)
+    pub fn count_ops(&self) -> usize {
+        (if *self.range.start() == *self.range.end() {
+            // Implement with a single == operation
+            1
+        } else {
+            let mut edges = 0;
+            // Only have to check limits that aren't enforced by the type itself
+            if *self.range.start() > u8::MIN {
+                edges += 1
             }
-            (_, Some(Node::Rope(rope))) => {
-                let rope = rope.clone();
-
-                self.merge_rope(rope, a)
+            if *self.range.end() < u8::MAX {
+                edges += 1
             }
-            _ => None,
+            edges
+        }) + self.except.len() // One extra != operation for each exception
+    }
+}
+
+/// This struct represents a complete state machine graph. The semantic are as follows.
+///
+/// Execution starts in the state indicated by the `root` field. To transition to a new state, the
+/// executor reads a byte from the input, and then proceeds to a new state according to the current
+/// states transitions (taking the EOI transition if there are no more bytes to read). Whenever the
+/// executor reaches a state of the type [StateType::Accept], it should save the current offset - 1
+/// into the input. When the executor reads an input byte (or EOI) that has no corresponding
+/// transition, it should return a match on the leaf indicated by its context, using the span of
+/// the input from where it began the match state to the saved offset.
+#[derive(Debug)]
+pub struct Graph {
+    /// The leaves used to construct the graph
+    leaves: Vec<Leaf>,
+    /// The dfa used to construct the graph
+    dfa: OwnedDFA,
+    /// The states (and edges, within [StateData]), that make up the graph
+    states: Vec<StateData>,
+    /// The initial state (root) of the graph
+    root: State,
+    /// Any disambiguation errors encountered when constructing the graph
+    errors: Vec<GraphError>,
+}
+
+impl Graph {
+    /// Get the root (initial) state of the graph
+    pub fn root(&self) -> State {
+        self.root
+    }
+
+    /// Iterate over all of the states of the graph
+    pub fn iter_states(&self) -> impl Iterator<Item = State> {
+        (0..self.states.len()).map(State)
+    }
+
+    /// Get a reference to the [StateData] corresponding to a state
+    pub fn get_state(&self, state: State) -> &StateData {
+        &self.states[state.0]
+    }
+
+    /// Get a reference to the leaves used to generate this graph
+    pub fn leaves(&self) -> &Vec<Leaf> {
+        &self.leaves
+    }
+
+    /// Get a reference to the DFA used to generate this graph
+    pub fn dfa(&self) -> &OwnedDFA {
+        &self.dfa
+    }
+
+    /// Iterate over all the disambiguation errors encountered while generating this graph
+    pub fn errors<'b>(&'b self) -> impl Iterator<Item = &'b GraphError> + 'b {
+        self.errors.iter()
+    }
+
+    /// Construct a context-free graph from a set of [Leaf] objects and a [Config]. Context-free
+    /// means that the most recently matched leaf is not inherent to the current state, and must be
+    /// tracked seperately by the matching engine. This is simpler because it means that the
+    /// graph's states correspond 1:1 with the DFA's states, but it means you can't statically
+    /// dispatch the leaf handlers.
+    pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
+        let hirs = leaves
+            .iter()
+            .map(|leaf| leaf.pattern.hir())
+            .collect::<Vec<_>>();
+
+        let nfa_config = NFA::config().shrink(true).utf8(config.utf8_mode);
+        let nfa = NFA::compiler()
+            .configure(nfa_config)
+            .build_many_from_hir(&hirs)
+            .map_err(|err| {
+                format!("Logos encountered an error compiling the NFA for this regex: {err}")
+            })?;
+
+        let dfa_config = DFA::config()
+            .accelerate(false)
+            // Turning byte classes on makes compilation go faster but makes the DFA
+            // representation harder to interpret
+            .byte_classes(!cfg!(feature = "debug"))
+            // I wasn't able to see a performance difference with this on, but it did
+            // make compiling the dfa in a large project take ~15 sec, so leaving it off
+            .minimize(false)
+            .match_kind(MatchKind::All)
+            .start_kind(StartKind::Anchored);
+        let dfa = DFA::builder()
+            .configure(dfa_config)
+            .build_from_nfa(&nfa)
+            .map_err(|err| {
+                format!("Logos encountered an error compiling the DFA for this regex: {err}")
+            })?;
+
+        let mut graph = Graph {
+            leaves,
+            dfa,
+            states: Vec::new(),
+            root: State(0),
+            errors: Vec::new(),
         };
 
-        if let Some(rope) = merged_rope {
-            return self.insert(reserved, rope);
-        }
-
-        let mut fork = self.fork_off(a);
-        fork.merge(self.fork_off(b), self);
-
-        let mut stack = vec![reserved.get()];
-
-        // Flatten the fork
-        while let Some(miss) = fork.miss {
-            if stack.contains(&miss) {
-                break;
-            }
-            stack.push(miss);
-
-            let other = match self.get(miss) {
-                Some(Node::Fork(other)) => other.clone(),
-                Some(Node::Rope(other)) => other.clone().into_fork(self),
-                _ => break,
-            };
-            match other.miss {
-                Some(id) if self.get(id).is_none() => break,
-                _ => (),
-            }
-            fork.miss = None;
-            fork.merge(other, self);
-        }
-
-        self.insert(reserved, fork)
-    }
-
-    fn merge_rope(&mut self, rope: Rope, other: NodeId) -> Option<Rope>
-    where
-        Leaf: Disambiguate,
-    {
-        match self.get(other) {
-            Some(Node::Fork(fork)) if rope.miss.is_none() => {
-                // Count how many consecutive ranges in this rope would
-                // branch into the fork that results in a loop.
-                //
-                // e.g.: for rope "foobar" and a looping fork [a-z]: 6
-                let count = rope
-                    .pattern
-                    .iter()
-                    .take_while(|range| fork.contains(**range) == Some(other))
-                    .count();
-
-                let mut rope = rope.split_at(count, self)?.miss_any(other);
-
-                rope.then = self.merge(rope.then, other);
-
-                Some(rope)
-            }
-            Some(Node::Rope(other)) => {
-                let (prefix, miss) = rope.prefix(other)?;
-
-                let (a, b) = (rope, other.clone());
-
-                let a = a.remainder(prefix.len(), self);
-                let b = b.remainder(prefix.len(), self);
-
-                let rope = Rope::new(prefix, self.merge(a, b)).miss(miss);
-
-                Some(rope)
-            }
-            Some(Node::Leaf(_)) | None => {
-                if rope.miss.is_none() {
-                    Some(rope.miss(other))
-                } else {
-                    None
+        let Some(start_id) = graph.dfa.universal_start_state(Anchored::Yes) else {
+            graph.errors.push(GraphError::NoUniveralStart);
+            return Ok(graph);
+        };
+        if graph.dfa.has_empty() {
+            for (leaf_id, leaf) in graph.leaves.iter().enumerate() {
+                if leaf.pattern.hir().properties().minimum_len() == Some(0) {
+                    graph.errors.push(GraphError::EmptyMatch(LeafId(leaf_id)));
                 }
             }
-            _ => None,
+            return Ok(graph);
         }
-    }
 
-    pub fn fork_off(&mut self, id: NodeId) -> Fork
-    where
-        Leaf: Disambiguate,
-    {
-        match self.get(id) {
-            Some(Node::Fork(fork)) => fork.clone(),
-            Some(Node::Rope(rope)) => rope.clone().into_fork(self),
-            Some(Node::Leaf(_)) | None => Fork::new().miss(id),
-        }
-    }
+        // First, get a list of all states, and map the DFA StateIDs to ascending indexes
+        let dfa_lookup = get_states(&graph.dfa, start_id)
+            .enumerate()
+            .map(|(idx, dfa_id)| (dfa_id, State(idx)))
+            .collect::<HashMap<StateID, State>>();
 
-    pub fn nodes(&self) -> &[Option<Node<Leaf>>] {
-        &self.nodes
-    }
+        graph.root = dfa_lookup[&start_id];
+        graph.states = vec![StateData::new(); dfa_lookup.len()];
 
-    /// Find all nodes that have no references and remove them.
-    pub fn shake(&mut self, root: NodeId) {
-        let mut filter = vec![false; self.nodes.len()];
+        // Now, for each state, construct its edges and determine which leaves it matches
+        for (dfa_id, state_id) in dfa_lookup.iter() {
+            let dfa_id = *dfa_id;
 
-        filter[root.get()] = true;
+            let state_data = &mut graph.states[state_id.0];
+            match Self::get_state_type(dfa_id, &graph.leaves, &graph.dfa) {
+                Ok(state_type) => state_data.state_type = state_type,
+                Err(ambiguous_leaves) => graph
+                    .errors
+                    .push(GraphError::Disambiguation(ambiguous_leaves)),
+            }
+            let mut result: HashMap<State, ByteClass> = HashMap::new();
+            for input_byte in u8::MIN..=u8::MAX {
+                let next_id = graph.dfa.next_state(dfa_id, input_byte);
 
-        self[root].shake(self, &mut filter);
+                // Don't need to account for the dead state
+                if next_id.as_usize() == 0 {
+                    continue;
+                }
 
-        for (id, referenced) in filter.into_iter().enumerate() {
-            if !referenced {
-                self.nodes[id] = None;
+                let next_state = dfa_lookup[&next_id];
+
+                result
+                    .entry(next_state)
+                    .or_insert(ByteClass::new())
+                    .add_byte(input_byte);
+            }
+
+            state_data.set_normal_edges(result);
+
+            let eoi_id = graph.dfa.next_eoi_state(dfa_id);
+            state_data.eoi = if eoi_id.as_usize() == 0 {
+                None
+            } else {
+                Some(dfa_lookup[&eoi_id])
+            };
+
+            for child in state_data.iter_children().collect::<Vec<_>>() {
+                graph.states[child.0].add_back_edge(*state_id);
             }
         }
+
+        // Sort for generated code stability (by leaf id)
+        // as the vec in the DisambiguationError is sorted by leaf id already
+        graph.errors.sort_unstable();
+
+        // Find early accept states
+        for state in graph.iter_states() {
+            let state_data = graph.get_state(state);
+
+            // If the state may not have a next state to go to, it cannot be an early match
+            if !state_data.can_error() {
+                let child_state_types = state_data
+                    .iter_children()
+                    .map(|child_state| {
+                        let child_state_data = graph.get_state(child_state);
+                        child_state_data.state_type.accept
+                    })
+                    .collect::<HashSet<_>>();
+
+                let child_state_types_vec = child_state_types.into_iter().collect::<Vec<_>>();
+
+                // If all children match the same leaf, this state is an early accept state
+                if let &[Some(leaf_id)] = &*child_state_types_vec {
+                    graph.states[state.0].state_type.early = Some(leaf_id);
+                }
+            }
+        }
+
+        // Remove late matches when all incoming edges contain the early match since they are
+        // unnecessary in this case.
+        for state in graph.iter_states() {
+            let state_data = graph.get_state(state);
+            if let Some(leaf_id) = state_data.state_type.accept {
+                if state_data.backward.iter().all(|&back_state| {
+                    graph.get_state(back_state).state_type.early == Some(leaf_id)
+                }) {
+                    graph.states[state.0].state_type.accept = None;
+                }
+            }
+        }
+
+        // Prune dead ends (states that do not alter the context and do not lead to a state that
+        // does).
+
+        // Setup the visit stack with any state that is accept (and therefore changes the current
+        // context).
+        let mut visit_stack = graph
+            .iter_states()
+            .filter(|state| {
+                graph
+                    .get_state(*state)
+                    .state_type
+                    .early_or_accept()
+                    .is_some()
+            })
+            .collect::<Vec<_>>();
+        // Don't remove the graph root (only happens when there are no leaves)
+        visit_stack.push(graph.root);
+        let mut reach_accept = visit_stack.iter().cloned().collect::<HashSet<_>>();
+        while let Some(state) = visit_stack.pop() {
+            // Traverse the graph backwards to include any parents of visited nodes in the set of
+            // nodes that can reach an accept state.
+            for parent in &graph.get_state(state).backward {
+                if reach_accept.insert(*parent) {
+                    visit_stack.push(*parent);
+                }
+            }
+        }
+
+        // Now that we have a set of non-dead states, we can remove edges going to dead states.
+        for state in graph.iter_states() {
+            let state_data = &mut graph.states[state.0];
+            state_data
+                .normal
+                .retain(|(_bc, next_state)| reach_accept.contains(next_state));
+
+            state_data.eoi = state_data.eoi.filter(|state| reach_accept.contains(state));
+
+            state_data.backward.clear();
+        }
+
+        // And then remove dead states from the graph entirely.
+        graph.retain_states(&reach_accept, true);
+
+        // Now we can deduplicate states based on their edges.
+        loop {
+            let graph_size = graph.states.len();
+
+            // A map between a states representation and the canonical State index assigned to it.
+            let mut state_indexes = HashMap::new();
+            // A map of rewrites (key should be rewritten to value in the deduplicated graph).
+            let mut state_lookup = HashMap::new();
+
+            for state in graph.iter_states() {
+                let state_data = &graph.states[state.0];
+                if let Entry::Vacant(e) = state_indexes.entry(state_data) {
+                    // State's represntation wasn't in state_indexes, state becomes the canonical index
+                    e.insert(state);
+                } else {
+                    // State's representation is a duplicate, rewrite it to the canonical one
+                    state_lookup.insert(state, state_indexes[&state_data]);
+                }
+            }
+
+            // Perform the state_lookup rewrites
+            graph.rewrite_states(&state_lookup);
+
+            // Remove the duplicate states
+            graph.retain_states(&state_lookup.keys().cloned().collect(), false);
+
+            if graph.states.len() == graph_size {
+                // No more deduplication possible
+                break;
+            }
+        }
+
+        Ok(graph)
     }
 
-    pub fn get(&self, id: NodeId) -> Option<&Node<Leaf>> {
-        self.nodes.get(id.get())?.as_ref()
-    }
-}
+    /// Get the [StateType] of a [State] from the cache, or calculate it if it isn't present in the
+    /// cache.
+    fn get_state_type(
+        state_id: StateID,
+        leaves: &[Leaf],
+        dfa: &OwnedDFA,
+    ) -> Result<StateType, Vec<LeafId>> {
+        // Get a list of all leaves that match in this state
+        let matching_leaves = iter_matches(state_id, dfa)
+            .map(|leaf_id| (leaf_id, leaves[leaf_id.0].priority))
+            .collect::<Vec<_>>();
 
-impl<Leaf> Index<NodeId> for Graph<Leaf> {
-    type Output = Node<Leaf>;
+        // Find the highest priority that matches at this state
+        if let Some(&(highest_leaf_id, highest_priority)) = matching_leaves
+            .iter()
+            .max_by_key(|(_leaf_id, priority)| priority)
+        {
+            // Find all the leaves that match at said highest priority
+            let matching_prio_leaves: Vec<LeafId> = matching_leaves
+                .into_iter()
+                .filter(|(_leaf_id, priority)| *priority == highest_priority)
+                .map(|(leaf_id, _priority)| leaf_id)
+                .collect();
+            // Ensure that only one leaf matches at said highest priority
+            if matching_prio_leaves.len() > 1 {
+                return Err(matching_prio_leaves);
+            }
 
-    fn index(&self, id: NodeId) -> &Node<Leaf> {
-        self.get(id).expect(
-            "Indexing into an empty node. This is a bug, please report it at:\n\
-            \n\
-            https://github.com/maciejhirsz/logos/issues",
-        )
-    }
-}
-
-impl std::fmt::Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0, f)
-    }
-}
-
-#[cfg_attr(test, derive(PartialEq))]
-pub enum Node<Leaf> {
-    /// Fork node, can lead to more than one state
-    Fork(Fork),
-    /// Rope node, can lead to one state on match, one state on miss
-    Rope(Rope),
-    /// Leaf node, terminal state
-    Leaf(Leaf),
-}
-
-impl<Leaf> Node<Leaf> {
-    pub fn miss(&self) -> Option<NodeId> {
-        match self {
-            Node::Rope(rope) => rope.miss.first(),
-            Node::Fork(fork) => fork.miss,
-            Node::Leaf(_) => None,
+            Ok(StateType {
+                accept: Some(highest_leaf_id),
+                early: None,
+            })
+        } else {
+            Ok(StateType::default())
         }
     }
 
-    fn eq(&self, other: &Node<Leaf>) -> bool {
-        match (self, other) {
-            (Node::Fork(a), Node::Fork(b)) => a == b,
-            (Node::Rope(a), Node::Rope(b)) => a == b,
-            _ => false,
-        }
+    /// Retains only the states in `states` if `keep` is true, otherwise removes them.
+    fn retain_states(&mut self, states: &HashSet<State>, keep: bool) {
+        let rewrite_map: HashMap<State, State> = self
+            .iter_states()
+            .filter(|state| states.contains(state) == keep)
+            .enumerate()
+            .map(|(new_idx, old_state)| (old_state, State(new_idx)))
+            .collect();
+
+        let mut index = 0;
+        self.states.retain(|_state_data| {
+            let retain = states.contains(&State(index)) == keep;
+            index += 1;
+            retain
+        });
+
+        self.rewrite_states(&rewrite_map);
     }
 
-    fn shake(&self, graph: &Graph<Leaf>, filter: &mut [bool]) {
-        match self {
-            Node::Fork(fork) => fork.shake(graph, filter),
-            Node::Rope(rope) => rope.shake(graph, filter),
-            Node::Leaf(_) => (),
-        }
-    }
+    /// Rewrites all edges in the graph. Any edge that went to a key state in `rewrites` is changed to
+    /// point to the corresponding value state in `rewrites`.
+    fn rewrite_states(&mut self, rewrites: &HashMap<State, State>) {
+        for state in self.iter_states() {
+            let state_data = &mut self.states[state.0];
+            // Replace all states with their deduplicated version
+            // Also detect duplicated edges (created by rewrites)
+            let mut edge_dedup = HashMap::<State, ByteClass>::new();
+            for (bc, next_state) in std::mem::take(&mut state_data.normal) {
+                let next_state = *rewrites.get(&next_state).unwrap_or(&next_state);
+                match edge_dedup.entry(next_state) {
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().merge(&bc);
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(bc);
+                    }
+                }
+            }
+            state_data.set_normal_edges(edge_dedup);
 
-    pub fn unwrap_leaf(&self) -> &Leaf {
-        match self {
-            Node::Fork(_) => panic!("Internal Error: called unwrap_leaf on a fork"),
-            Node::Rope(_) => panic!("Internal Error: called unwrap_leaf on a rope"),
-            Node::Leaf(leaf) => leaf,
+            if let Some(eoi_state) = &mut state_data.eoi {
+                if let Some(new_eoi_state) = rewrites.get(eoi_state) {
+                    *eoi_state = *new_eoi_state;
+                }
+            }
+        }
+
+        if let Some(new_root) = rewrites.get(&self.root) {
+            self.root = *new_root;
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
+impl fmt::Display for Graph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let graph_rendered = self
+            .iter_states()
+            .map(|state| {
+                let transitions = format!("{:#}", self.get_state(state));
+                let indented = transitions
+                    .lines()
+                    .enumerate()
+                    .map(|(idx, line)| format!("{}{line}", if idx > 0 { "  " } else { "" }))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                format!("  {state} => {indented}")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
 
-    #[test]
-    fn leaf_stack_size() {
-        use std::mem::size_of;
-
-        const WORD: usize = size_of::<usize>();
-        const NODE: usize = size_of::<Node<()>>();
-
-        assert!(NODE <= 6 * WORD, "Size of Node<()> is {} bytes!", NODE);
-    }
-
-    #[test]
-    fn create_a_loop() {
-        let mut graph = Graph::new();
-
-        let token = graph.push(Node::Leaf("IDENT"));
-        let id = graph.reserve();
-        let fork = Fork::new().branch('a'..='z', id.get()).miss(token);
-        let root = graph.insert(id, fork);
-
-        assert_eq!(graph[token], Node::Leaf("IDENT"));
-        assert_eq!(graph[root], Fork::new().branch('a'..='z', root).miss(token),);
-    }
-
-    #[test]
-    fn fork_off() {
-        let mut graph = Graph::new();
-
-        let leaf = graph.push(Node::Leaf("LEAF"));
-        let rope = graph.push(Rope::new("rope", leaf));
-        let fork = graph.push(Fork::new().branch(b'!', leaf));
-
-        assert_eq!(graph.fork_off(leaf), Fork::new().miss(leaf));
-        assert_eq!(
-            graph.fork_off(rope),
-            Fork::new().branch(b'r', NodeId::new(graph.nodes.len() - 1))
-        );
-        assert_eq!(graph.fork_off(fork), Fork::new().branch(b'!', leaf));
+        f.write_str(&graph_rendered)
     }
 }
