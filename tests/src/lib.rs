@@ -90,6 +90,38 @@
 //!     Dotall,
 //! }
 //! ```
+//!
+//! https://github.com/maciejhirsz/logos/issues/232
+//! This example fails because the subpattern can match the empty string,
+//! ```compile_fail
+//! use logos::Logos;
+//!
+//! #[derive(Logos)]
+//! #[logos(subpattern example = r"(a|)+")]
+//! enum Example1 {
+//!     #[regex("(?&example)+")]
+//!     Subpattern,
+//! }
+//!
+//! #[derive(Logos)]
+//! #[logos(subpattern example = r"(a|)+")]
+//! enum Example2 {
+//!     #[regex("(?&example)")]
+//!     Subpattern,
+//! }
+//! ```
+//!
+//! This example fails because it has a priority conflict
+//! ```compile_fail
+//! use logos::Logos;
+//!
+//! #[derive(logos::Logos)]
+//! enum Tokens {
+//!     #[regex(r#"'(?:'?(?:[[:ascii:][^\\']]|\\[[:ascii:]]))*'"#)]
+//!     #[regex(r#"'(?:"?(?:[[:ascii:][^\\"]]|\\[[:ascii:]]))*'"#)]
+//!     Problem,
+//! }
+
 use logos::source::Source;
 use logos::Logos;
 
