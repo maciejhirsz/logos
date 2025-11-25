@@ -24,6 +24,7 @@ fn test_unicode_dot_str_unicode() {
 }
 
 #[derive(Logos, Debug, PartialEq)]
+#[logos(utf8 = false)]
 enum TestUnicodeDotBytes {
     #[regex(".", priority = 100)]
     Dot,

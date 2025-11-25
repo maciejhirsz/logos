@@ -26,32 +26,6 @@
 //! Token::lexer("This shouldn't work with a string literal!");
 //! ```
 //!
-//! Matching against .* (or .+) should fail to compile:
-//!
-//! ```compile_fail
-//! use logos::Logos;
-//! use logos_derive::Logos;
-//!
-//! #[derive(Logos, Debug, PartialEq)]
-//! enum Token {
-//!     #[regex(r"\(.*\)")]
-//!     BetweenParen,
-//!
-//! }
-//! ```
-//!
-//! ```compile_fail
-//! use logos::Logos;
-//! use logos_derive::Logos;
-//!
-//! #[derive(Logos, Debug, PartialEq)]
-//! enum Token {
-//!     #[regex(r"\(.+\)")]
-//!     BetweenParen,
-//!
-//! }
-//! ```
-//!
 //! And also when working with bytes:
 //!
 //! ```compile_fail
@@ -90,6 +64,64 @@
 //! #[logos(export_dir = "target/tmp")]
 //! enum Token {}
 //! ```
+//!
+//! A ".+" pattern shouldn't compile without `allow_greedy = true`
+//!
+//! ```compile_fail
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos)]
+//! enum Token {
+//!     #[regex("(a|b.*)")]
+//!     Dotall,
+//! }
+//! ```
+//!
+//! A ".+" pattern should compile with `allow_greedy = true`
+//!
+//! ```
+//! use logos::Logos;
+//! use logos_derive::Logos;
+//!
+//! #[derive(Logos)]
+//! enum Token {
+//!     #[regex("(a|b.*)", allow_greedy = true)]
+//!     Dotall,
+//! }
+//! ```
+//!
+//! https://github.com/maciejhirsz/logos/issues/232
+//! This example fails because the subpattern can match the empty string,
+//! ```compile_fail
+//! use logos::Logos;
+//!
+//! #[derive(Logos)]
+//! #[logos(subpattern example = r"(a|)+")]
+//! enum Example1 {
+//!     #[regex("(?&example)+")]
+//!     Subpattern,
+//! }
+//!
+//! #[derive(Logos)]
+//! #[logos(subpattern example = r"(a|)+")]
+//! enum Example2 {
+//!     #[regex("(?&example)")]
+//!     Subpattern,
+//! }
+//! ```
+//!
+//! This example fails because it has a priority conflict
+//! ```compile_fail
+//! use logos::Logos;
+//!
+//! #[derive(logos::Logos)]
+//! enum Tokens {
+//!     #[regex(r#"'(?:'?(?:[[:ascii:][^\\']]|\\[[:ascii:]]))*'"#)]
+//!     #[regex(r#"'(?:"?(?:[[:ascii:][^\\"]]|\\[[:ascii:]]))*'"#)]
+//!     Problem,
+//! }
+
 use logos::source::Source;
 use logos::Logos;
 

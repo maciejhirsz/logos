@@ -1,4 +1,4 @@
-# Common regular expressions
+# Regular expressions
 
 Maybe the most important feature of **Logos** is its ability to accept
 regex patterns in your tokens' definition.
@@ -13,38 +13,66 @@ and could be matched with the following regex: `"[A-Z]{3}[0-9]{3}"`.
 For more details about regexes in Rust, refer to the
 [regex](https://crates.io/crates/regex) crate.
 
-## Valid regexes that are not supported
+## Common performance pitfalls
 
-Because **Logos** aims at generating high-performance code, it never allows to
-do backtracking. This means that anytime a byte is read from the input source,
-it will never be read again. This implementation choice comes at a cost: not
-all valid regexes are supported by **Logos**[^1].
+Because **Logos** aims at generating high-performance code, its matching engine
+will never backtrack during a token. However, it is possible that it will have
+to re-read bytes that it already read while lexing the previous token. As an
+example, consider the regex `"a(.*b)?"`. When trying to parse tokens on a file
+full of `a` characters, the engine must read the entire file to see if there is
+a `b` character anywhere. Properly tokenizing this pattern creates a surprising
+performance of `O(n^2)` where `n` is the size of the file. Indeed, any pattern
+that contains an unbounded greedy dot repetition requires reading the entire
+file before returning the next token. Since this is almost never the intended
+behavior, logos returns a compile time error by default when encountering
+patterns containing `.*` and `.+`. If this is truly your intention, you can add
+the flag `allow_greedy = true` to your `#[regex]` attribute. But first
+consider whether you can instead use a non-greedy repetition, which would also
+resolve the performance concern.
 
-For reference, **Logos** parses regexes using `regex-syntax = 0.8.2`, and
-transforms its high-level intermediate representation (HIR) into some
-medium intermediate representation (MIR). From HIR, MIR does not support
-the following
-[`HirKind`](https://docs.rs/regex-syntax/0.8.2/regex_syntax/hir/enum.HirKind.html)s:
+For reference, **Logos** parses regexes using the `regex-syntax` and
+`regex-automata` crates, and transforms the deterministic finite automata
+created by the `regex-automata` crate into rust code that implements the
+matching state machine. Every regex is compiled with an implicit `^` anchor at
+its start, since that is how a tokenizer works.
 
-+ Non-greedy repetitions, i.e., matching as little as possible as given pattern.
-+ `".*"` and `".+"` repetition patterns, because they will potentially consume
-  all the input source, breaking the non-backtracking rule.
-  For solutions, see footnote[^1] or read the error message.
-+ Word boundaries, i.e., r`"\b"`.
-+ Anchors, because input source does not treat lines separately.
+Additionally, note that capture groups will be silently changed to *non
+capturing*, because **Logos** does not support capturing groups, only the whole
+match group returned by `lex.slice()`.
 
-Additionally, note that capture groups will silently be *ungrouped*,
-because **Logos** does not support capturing groups, but the main slice
-(`lex.slice()`).
+If any of these limitations are problematic, you can move more of your matching
+logic into a callback, possibly using the
+[`Lexer::bump`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.bump)
+function.
 
-[^1]: Most of time, however, it is possible to circumvent this issue by
-rewriting your regex another way, or by using callbacks.
-E.g., see
-[#302](https://github.com/maciejhirsz/logos/issues/302#issuecomment-1521342541).
+## Error semantics
+
+The matching semantics for returning an error are as follows. An error is
+generated when the lexer encounters a byte that doesn't have an transition for
+its current state. This means that this adding this byte to the currently read
+byte string makes it impossible to match any defined `#[regex]` or
+`#[token]`. An error token is then returned with a span up to but not
+including the byte that caused the error, unless that would return an empty
+span, in which case that byte is included.
+
+This is usually a good heuristic for generating error spans because the first
+token that cannot match anything is likely to be the start of another valid
+token.
+
+## Limitations
+
+While Logos strives to have a feature complete regex implementation, there are
+some limitations. Unicode word boundaries, some lookarounds, and other advanced
+features not supported by the DFA matching engine in the `regex` crate are not
+possible to match using Logos's generated state machine.
+
+However, attempting to use a missing feature will result in a compile time
+error. If your code compiles, the matcher behavior is exactly the same as the
+`regex` crate.
 
 ## Other issues
 
-**Logos**' support for regexes is not yet complete, and errors can still exist.
+**Logos**' support for regexes is feature complete, but errors can still exist.
 Some are found at compile time, and others will create wrong matches or panic.
 
 If you ever feel like your patterns do not match the expected source slices,

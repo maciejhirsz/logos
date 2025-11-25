@@ -6,6 +6,8 @@ logos-codegen = {version = "0.15.1", path = "../logos-codegen"}
 debug = ["logos-codegen/debug"]
 # Don't use or generate unsafe code
 forbid_unsafe = ["logos-codegen/forbid_unsafe"]
+# Use the state machine codegen instead of the tailcall codegen
+state_machine_codegen = ["logos-codegen/state_machine_codegen"]
 
 [lib]
 bench = false
