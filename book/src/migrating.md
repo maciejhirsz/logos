@@ -17,7 +17,7 @@ The update also added some major new features and a handful of breaking changes.
   supported pitfalls, they are disallowed by default, but can be used if you pass
   the attribute argument `allow_greedy = true` or if you make them non-greedy.
   For more information, see [Common performance
-  pitfalls](./common-regex#common-performance-pitfalls).
+  pitfalls](./common-regex.md#common-performance-pitfalls).
 - Logos now precisely follows regex match semantics. Before 0.16.0, repetitions
   were greedily followed, which would cause no matches where a match should have
   been possible. For example, in 0.15.1, it is impossible to match the pattern
@@ -29,11 +29,11 @@ The update also added some major new features and a handful of breaking changes.
     supported by the DFA regex engine will cause a compile time error because
     they cannot be matched by the state machine that logos generates.
 - The error token semantics are now precisely defined. See [Error
-  semantics](./common-regex#error-semantics).
+  semantics](./common-regex.md#error-semantics).
 - The new `state_machine_codegen` feature. If you are experiencing issues with
   stack overflows, enabling this feature will solve them. It is slower than the
   default tailcall codegen, but it will never overflow the stack. See [State
-  machine codegen](./state-machine-codegen).
+  machine codegen](./state-machine-codegen.md).
 
 ### Breaking Changes
 
@@ -41,7 +41,7 @@ The update also added some major new features and a handful of breaking changes.
   `ignore_case` attribute, which also works on non-unicode patterns. If you
   explicitly want to ignore case for ascii characters but not others, you will
   have to do it manually using character classes. See [`#[token]` and
-  `#[regex]`](.attributes/token_and_regex).
+  `#[regex]`](attributes/token_and_regex.md).
 - The `source` attribute has been removed. You can now use the `utf8` attribute
   to select either `&str` or `&[u8]` as the source type. Custom source types
   are no longer supported. If you need this feature, you can either stay on

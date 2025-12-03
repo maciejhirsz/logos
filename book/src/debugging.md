@@ -145,7 +145,7 @@ See the [graphviz](https://graphviz.org/doc/info/command.html) and
 [mermaid](https://mermaid.js.org/config/usage.html) documentations for more
 details.
 
-![graph](/assets/debug_graph_example.png)
+![graph](assets/debug_graph_example.png)
 
 ```admonish info
 This graphviz graph has been modified with the graph attribute `rankdir="LR";`
