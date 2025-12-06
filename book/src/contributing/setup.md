@@ -4,7 +4,7 @@ On this page, you will find all the information needed to run and test your
 own version of the Logos crate, locally.
 
 We assume you have basic knowledge with git and GitHub. If that is not the
-case, please refer to the link mentioned in [Contributing](./contributing.md).
+case, please refer to the link mentioned in [Contributing](../contributing.md).
 
 ## Prerequisites
 

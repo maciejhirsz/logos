@@ -411,6 +411,9 @@ mod priority_disambiguate_2 {
     }
 }
 
+// This is a case where behavior has changed with the new regex engine
+// Also, the behavior used to be incorrect here, as it should be impossible
+// for the pattern to match "ffoof"
 mod loop_in_loop {
     use super::*;
 
@@ -432,10 +435,13 @@ mod loop_in_loop {
                 (Ok(Token::Foo), "foooo", 22..27),
                 (Ok(Token::Foo), "foofffffoo", 28..38),
                 (Ok(Token::Foo), "f", 39..40),
-                (Err(()), "ff", 41..43),
-                (Err(()), "ff", 44..46),
+                (Ok(Token::Foo), "f", 41..42),
+                (Ok(Token::Foo), "f", 42..43),
+                (Ok(Token::Foo), "f", 44..45),
+                (Ok(Token::Foo), "f", 45..46),
                 (Err(()), "o", 46..47),
-                (Err(()), "ffoof", 48..53),
+                (Ok(Token::Foo), "ffoo", 48..52),
+                (Ok(Token::Foo), "f", 52..53),
                 (Err(()), "o", 53..54),
             ],
         );
@@ -474,8 +480,6 @@ mod unicode_error_split {
 
     #[test]
     fn test() {
-        use logos::Logos;
-
         #[derive(Logos, Debug, PartialEq)]
         enum Test {
             #[token("a")]
@@ -506,5 +510,48 @@ mod merging_asymmetric_loops {
             #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip, priority = 3)]
             Ignored,
         }
+
+        let _ = Token2::Ignored;
+    }
+}
+
+mod error_variant {
+    use super::*;
+
+    // Having an enum variant called `Error` can cause conflicts with
+    // the Logos trait member `Error` if codegen isn't careful
+    #[test]
+    fn must_compile() {
+        #[derive(Logos)]
+        pub enum Token3 {
+            #[token("error")]
+            Error,
+        }
+
+        let _ = Token3::Error;
+    }
+}
+
+mod naming_collision {
+    use super::*;
+
+    #[test]
+    fn must_compile() {
+        struct Option;
+        struct Result;
+        struct Lexer;
+        struct Logos;
+
+        let _ = Option;
+        let _ = Result;
+        let _ = Lexer;
+        let _ = Logos;
+
+        #[derive(Logos)]
+        pub enum Token4 {
+            #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+            Identifier,
+        }
+        let _ = Token4::Identifier;
     }
 }

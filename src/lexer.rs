@@ -13,11 +13,6 @@ pub type Span = core::ops::Range<usize>;
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
 
-    #[cfg(not(feature = "forbid_unsafe"))]
-    token: core::mem::ManuallyDrop<Option<Result<Token, Token::Error>>>,
-    #[cfg(feature = "forbid_unsafe")]
-    token: Option<Result<Token, Token::Error>>,
-
     token_start: usize,
     token_end: usize,
 
@@ -58,7 +53,6 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     pub fn with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
         Lexer {
             source,
-            token: Default::default(),
             extras,
             token_start: 0,
             token_end: 0,
@@ -184,7 +178,6 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     {
         Lexer {
             source: self.source,
-            token: Default::default(),
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
@@ -215,7 +208,6 @@ where
     fn clone(&self) -> Self {
         Lexer {
             extras: self.extras.clone(),
-            token: Default::default(),
             ..*self
         }
     }
@@ -231,20 +223,7 @@ where
     fn next(&mut self) -> Option<Result<Token, Token::Error>> {
         self.token_start = self.token_end;
 
-        Token::lex(self);
-
-        // This basically treats self.token as a temporary field.
-        // Since we always immediately return a newly set token here,
-        // we don't have to replace it with `None` or manually drop
-        // it later.
-        #[cfg(not(feature = "forbid_unsafe"))]
-        unsafe {
-            core::mem::ManuallyDrop::take(&mut self.token)
-        }
-        #[cfg(feature = "forbid_unsafe")]
-        {
-            self.token.take()
-        }
+        Token::lex(self)
     }
 }
 
@@ -313,56 +292,11 @@ where
     /// Read a `Chunk` at current position of the `Lexer`. If end
     /// of the `Source` has been reached, this will return `0`.
     #[inline]
-    fn read<Chunk>(&self) -> Option<Chunk>
+    fn read<Chunk>(&self, offset: usize) -> Option<Chunk>
     where
         Chunk: source::Chunk<'source>,
     {
-        self.source.read(self.token_end)
-    }
-
-    /// Read a `Chunk` at a position offset by `n`.
-    #[inline]
-    fn read_at<Chunk>(&self, n: usize) -> Option<Chunk>
-    where
-        Chunk: source::Chunk<'source>,
-    {
-        self.source.read(self.token_end + n)
-    }
-
-    #[inline]
-    #[cfg(not(feature = "forbid_unsafe"))]
-    unsafe fn read_byte_unchecked(&self, n: usize) -> u8 {
-        self.source.read_byte_unchecked(self.token_end + n)
-    }
-
-    #[inline]
-    #[cfg(feature = "forbid_unsafe")]
-    fn read_byte(&self, n: usize) -> u8 {
-        self.source.read_byte(self.token_end + n)
-    }
-
-    /// Test a chunk at current position with a closure.
-    #[inline]
-    fn test<T, F>(&self, test: F) -> bool
-    where
-        T: source::Chunk<'source>,
-        F: FnOnce(T) -> bool,
-    {
-        match self.source.read::<T>(self.token_end) {
-            Some(chunk) => test(chunk),
-            None => false,
-        }
-    }
-
-    /// Bump the position `Lexer` is reading from by `size`.
-    #[inline]
-    fn bump_unchecked(&mut self, size: usize) {
-        debug_assert!(
-            self.token_end + size <= self.source.len(),
-            "Bumping out of bounds!"
-        );
-
-        self.token_end += size;
+        self.source.read(offset)
     }
 
     /// Reset `token_start` to `token_end`.
@@ -374,31 +308,17 @@ where
     /// Set the current token to appropriate `#[error]` variant.
     /// Guarantee that `token_end` is at char boundary for `&str`.
     #[inline]
-    fn error(&mut self) {
-        self.token_end = self.source.find_boundary(self.token_end);
-        Token::make_error(self);
+    fn end_to_boundary(&mut self, offset: usize) {
+        self.token_end = self.source.find_boundary(offset);
     }
 
     #[inline]
-    fn end(&mut self) {
-        self.token = Default::default();
+    fn end(&mut self, offset: usize) {
+        self.token_end = offset;
     }
 
     #[inline]
-    fn set(
-        &mut self,
-        token: Result<
-            Self::Token,
-            <<Self as LexerInternal<'source>>::Token as Logos<'source>>::Error,
-        >,
-    ) {
-        #[cfg(not(feature = "forbid_unsafe"))]
-        {
-            self.token = core::mem::ManuallyDrop::new(Some(token));
-        }
-        #[cfg(feature = "forbid_unsafe")]
-        {
-            self.token = Some(token)
-        }
+    fn offset(&self) -> usize {
+        self.token_start
     }
 }

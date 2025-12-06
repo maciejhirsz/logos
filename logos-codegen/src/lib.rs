@@ -10,34 +10,37 @@
 
 mod error;
 mod generator;
-#[cfg(not(feature = "fuzzing"))]
 mod graph;
-#[cfg(feature = "fuzzing")]
-pub mod graph;
 mod leaf;
-#[cfg(not(feature = "fuzzing"))]
-mod mir;
-#[cfg(feature = "fuzzing")]
-pub mod mir;
 mod parser;
+mod pattern;
 mod util;
 
 #[macro_use]
 #[allow(missing_docs)]
 mod macros;
 
-use generator::Generator;
-use graph::{DisambiguationError, Fork, Graph, Rope};
-use leaf::Leaf;
-use parser::{IgnoreFlags, Mode, Parser};
-use quote::ToTokens;
-use util::MaybeVoid;
+use std::error::Error;
+use std::ffi::OsStr;
+use std::path::Path;
 
-use proc_macro2::{Delimiter, TokenStream, TokenTree};
+use error::Errors;
+use generator::Generator;
+use graph::{Graph, GraphError};
+use leaf::Leaf;
+use parser::Parser;
+use pattern::Pattern;
+use quote::ToTokens;
+
+use proc_macro2::{TokenStream, TokenTree};
 use quote::quote;
-use syn::parse_quote;
 use syn::spanned::Spanned;
+use syn::{parse_quote, LitBool};
 use syn::{Fields, ItemEnum};
+
+use crate::graph::Config;
+use crate::leaf::VariantKind;
+use crate::parser::{ErrorType, Subpatterns};
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -49,6 +52,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Reading input token streams");
 
     let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
+    let item_span = item.span();
 
     let name = &item.ident;
 
@@ -62,40 +66,56 @@ pub fn generate(input: TokenStream) -> TokenStream {
         parser.try_parse_logos(attr);
     }
 
-    let mut ropes = Vec::new();
-    let mut regex_ids = Vec::new();
-    let mut graph = Graph::new();
+    debug!("Iterating through subpatterns and skips");
 
-    {
-        let errors = &mut parser.errors;
+    let utf8_mode = parser
+        .utf8_mode
+        .as_ref()
+        .map(LitBool::value)
+        .unwrap_or(true);
+    let config = Config { utf8_mode };
+    let subpatterns = Subpatterns::new(&parser.subpatterns, utf8_mode, &mut parser.errors);
 
-        for mut skip in parser.skips.drain(..) {
-            match skip
-                .literal
-                .to_mir(&parser.subpatterns, IgnoreFlags::Empty, errors)
-            {
-                Ok(mir) => {
-                    let then = graph.push(
-                        Leaf::new_skip(skip.literal.span())
-                            .priority(skip.priority.take().unwrap_or_else(|| mir.priority()))
-                            .callback(Some(skip.into_callback())),
-                    );
-                    let id = graph.regex(mir, then);
+    let mut pats = Vec::new();
 
-                    regex_ids.push(id);
-                }
-                Err(err) => {
-                    errors.err(err, skip.literal.span());
-                }
+    for skip in parser.skips.drain(..) {
+        let Some(pattern_source) = subpatterns.subst_subpatterns(
+            &skip.literal.escape(false),
+            skip.literal.span(),
+            &mut parser.errors,
+        ) else {
+            continue;
+        };
+
+        let pattern = match Pattern::compile(
+            false,
+            &pattern_source,
+            skip.literal.token().to_string(),
+            skip.literal.unicode(),
+            false,
+        ) {
+            Ok(pattern) => pattern,
+            Err(err) => {
+                parser.errors.err(err, skip.literal.span());
+                continue;
             }
-        }
+        };
+
+        let default_priority = pattern.priority();
+        pats.push(
+            Leaf::new(skip.literal.span(), pattern)
+                .priority(skip.priority.unwrap_or(default_priority))
+                .callback(skip.into_callback()),
+        );
     }
 
     debug!("Iterating through enum variants");
 
     for variant in &mut item.variants {
-        let field = match &mut variant.fields {
-            Fields::Unit => MaybeVoid::Void,
+        let var_ident = variant.ident.clone();
+
+        let var_kind = match &mut variant.fields {
+            Fields::Unit => VariantKind::Unit(var_ident),
             Fields::Unnamed(fields) => {
                 if fields.unnamed.len() != 1 {
                     parser.err(
@@ -114,18 +134,14 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     .ty;
                 let ty = parser.get_type(ty);
 
-                MaybeVoid::Some(ty)
+                VariantKind::Value(var_ident, ty)
             }
             Fields::Named(fields) => {
                 parser.err("Logos doesn't support named fields yet.", fields.span());
 
-                MaybeVoid::Void
+                VariantKind::Skip
             }
         };
-
-        // Lazy leaf constructor to avoid cloning
-        let var_ident = &variant.ident;
-        let leaf = move |span| Leaf::new(var_ident, span).field(field.clone());
 
         for attr in &mut variant.attrs {
             let attr_name = match attr.path().get_ident() {
@@ -137,12 +153,12 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 ERROR_ATTR => {
                     // TODO: Remove in future versions
                     parser.err(
-                        "\
-                        Since 0.13 Logos no longer requires the #[error] variant.\n\
-                        \n\
-                        For help with migration see release notes: \
-                        https://github.com/maciejhirsz/logos/releases\
-                        ",
+                        concat!(
+                            "Since 0.13 Logos no longer requires the #[error] variant.",
+                            "\n\n",
+                            "For help with migration see release notes: ",
+                            "https://github.com/maciejhirsz/logos/releases"
+                        ),
                         attr.span(),
                     );
                 }
@@ -155,35 +171,38 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    if definition.ignore_flags.is_empty() {
-                        let bytes = definition.literal.to_bytes();
-                        let then = graph.push(
-                            leaf(definition.literal.span())
-                                .priority(definition.priority.unwrap_or(bytes.len() * 2))
-                                .callback(definition.callback),
-                        );
-
-                        ropes.push(Rope::new(bytes, then));
+                    let pattern_res = if definition.ignore_flags.ignore_case {
+                        let pattern_src = definition.literal.escape(true);
+                        Pattern::compile(
+                            true,
+                            &pattern_src,
+                            definition.literal.token().to_string(),
+                            definition.literal.unicode(),
+                            true,
+                        )
                     } else {
-                        let mir = definition
-                            .literal
-                            .escape_regex()
-                            .to_mir(
-                                &Default::default(),
-                                definition.ignore_flags,
-                                &mut parser.errors,
-                            )
-                            .expect("The literal should be perfectly valid regex");
+                        Pattern::compile_lit(&definition.literal)
+                    };
 
-                        let then = graph.push(
-                            leaf(definition.literal.span())
-                                .priority(definition.priority.unwrap_or_else(|| mir.priority()))
-                                .callback(definition.callback),
-                        );
-                        let id = graph.regex(mir, then);
+                    let pattern = match pattern_res {
+                        Ok(pattern) => pattern,
+                        Err(err) => {
+                            parser.err(err, definition.literal.span());
+                            continue;
+                        }
+                    };
 
-                        regex_ids.push(id);
-                    }
+                    let literal_len = match &definition.literal {
+                        parser::Literal::Utf8(lit_str) => lit_str.value().len(),
+                        parser::Literal::Bytes(lit_byte_str) => lit_byte_str.value().len(),
+                    };
+
+                    pats.push(
+                        Leaf::new(definition.literal.span(), pattern)
+                            .variant_kind(var_kind.clone())
+                            .priority(definition.priority.unwrap_or(literal_len * 2))
+                            .callback(definition.callback),
+                    );
                 }
                 REGEX_ATTR => {
                     let definition = match parser.parse_definition(attr) {
@@ -193,76 +212,84 @@ pub fn generate(input: TokenStream) -> TokenStream {
                             continue;
                         }
                     };
-                    let mir = match definition.literal.to_mir(
-                        &parser.subpatterns,
-                        definition.ignore_flags,
+
+                    let Some(pattern_source) = subpatterns.subst_subpatterns(
+                        &definition.literal.escape(false),
+                        definition.literal.span(),
                         &mut parser.errors,
+                    ) else {
+                        continue;
+                    };
+
+                    let unicode = definition.literal.unicode();
+                    let ignore_case = definition.ignore_flags.ignore_case;
+                    let pattern = match Pattern::compile(
+                        false,
+                        &pattern_source,
+                        definition.literal.token().to_string(),
+                        unicode,
+                        ignore_case,
                     ) {
-                        Ok(mir) => mir,
+                        Ok(pattern) => pattern,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
                             continue;
                         }
                     };
 
-                    let then = graph.push(
-                        leaf(definition.literal.span())
-                            .priority(definition.priority.unwrap_or_else(|| mir.priority()))
+                    let allow_greedy = definition.allow_greedy.unwrap_or(false);
+                    if !allow_greedy && pattern.check_for_greedy_all() {
+                        parser.err(concat!(
+                            "This pattern contains an unbounded greedy dot repetition (.* or .+). ",
+                            "This will cause the entirety of the input to be read for every token. ",
+                            "Consider making your repetition non-greedy or changing it to a more ",
+                            "specific character class. If this is the intended behavior, add ",
+                            "#[regex(..., allow_greedy = true)]"
+                        ), definition.literal.span());
+                    }
+
+                    let default_priority = pattern.priority();
+                    pats.push(
+                        Leaf::new(definition.literal.span(), pattern)
+                            .variant_kind(var_kind.clone())
+                            .priority(definition.priority.unwrap_or(default_priority))
                             .callback(definition.callback),
                     );
-                    let id = graph.regex(mir, then);
-
-                    regex_ids.push(id);
                 }
                 _ => (),
             }
         }
     }
 
-    let mut root = Fork::new();
+    debug!("Parsing additional options (extras, utf8, ...)");
 
-    debug!("Parsing additional options (extras, source, ...)");
-
-    let (error_type, error_callback) = parser::ErrorType::unwrap(parser.error_type.take());
+    let ErrorType {
+        ty: error_type,
+        callback: error_callback,
+    } = parser.error_type.take().unwrap_or_default();
     let extras = parser.extras.take();
-    let source = parser
-        .source
-        .take()
-        .map(strip_wrapping_parens)
-        .unwrap_or(match parser.mode {
-            Mode::Utf8 => quote!(str),
-            Mode::Binary => quote!([u8]),
-        });
+    let non_utf8_pats = pats
+        .iter()
+        .filter(|leaf| !leaf.pattern.hir().properties().is_utf8())
+        .collect::<Vec<_>>();
+    if utf8_mode && !non_utf8_pats.is_empty() {
+        // If utf8 mode is specified, make sure no patterns match illegal utf8
+        for leaf in non_utf8_pats {
+            parser.err(format!(concat!(
+                "UTF-8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8.\n",
+                "You can disable UTF-8 mode with #[logos(utf8 = false)]"
+            ), leaf.pattern.source(), leaf.kind), leaf.span);
+        }
+    };
+
+    let source = match utf8_mode {
+        true => quote!(str),
+        false => quote!([u8]),
+    };
     let logos_path = parser
         .logos_path
         .take()
         .unwrap_or_else(|| parse_quote!(::logos));
-
-    let make_error_impl = match error_callback {
-        Some(leaf::Callback::Label(label)) => Some(quote! {
-            #[inline]
-            fn make_error(mut lex: &mut #logos_path::Lexer<'s, Self>) {
-                use #logos_path::{Lexer, internal::LexerInternal};
-
-                let error = #label(&mut lex);
-                lex.set(Err(error));
-            }
-        }),
-        Some(leaf::Callback::Inline(inline)) => {
-            let leaf::InlineCallback { arg, body, .. } = *inline;
-
-            Some(quote! {
-                #[inline]
-                fn make_error(#arg: &mut #logos_path::Lexer<'s, Self>) {
-                    use #logos_path::internal::LexerInternal;
-
-                    let error = { #body };
-                    #arg.set(Err(error))
-                }
-            })
-        }
-        _ => None,
-    };
 
     let generics = parser.generics();
     let this = quote!(#name #generics);
@@ -276,149 +303,124 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
                 type Source = #source;
 
-                fn lex(lex: &mut #logos_path::Lexer<'s, Self>) {
+                fn lex(lex: &mut #logos_path::Lexer<'s, Self>)
+                    -> std::option::Option<std::result::Result<Self, <Self as #logos_path::Logos<'s>>::Error>> {
                     #body
                 }
-
-                #make_error_impl
             }
         }
     };
 
-    for id in regex_ids {
-        let fork = graph.fork_off(id);
-
-        root.merge(fork, &mut graph);
+    if cfg!(feature = "debug") {
+        let leaves_rendered = pats
+            .iter()
+            .enumerate()
+            .map(|(leaf_id, leaf)| format!("  {}: {} (priority: {})", leaf_id, leaf, leaf.priority))
+            .collect::<Vec<_>>()
+            .join("\n");
+        debug!("Generated leaves:\n{leaves_rendered}");
     }
-    for rope in ropes {
-        root.merge(rope.into_fork(&mut graph), &mut graph);
-    }
-    while let Some(id) = root.miss.take() {
-        let fork = graph.fork_off(id);
 
-        if fork.branches().next().is_some() {
-            root.merge(fork, &mut graph);
-        } else {
-            break;
+    debug!("Generating graph from leaves");
+
+    let graph = match Graph::new(pats, config) {
+        Ok(nfa) => nfa,
+        Err(msg) => {
+            let mut errors = Errors::default();
+            errors.err(msg, item_span);
+            return impl_logos(errors.render().unwrap());
+        }
+    };
+
+    debug!("Generated Automaton:\n{:?}", graph.dfa());
+    debug!("Generated Graph:\n{graph}");
+    debug!("Root node: {:?}", graph.root());
+
+    if cfg!(feature = "debug") {
+        if let Some(export_path) = parser.export_path.as_ref() {
+            debug!("Exporting graphs");
+            let lower_name = name.to_string().to_lowercase();
+
+            if let Err(err) = generate_graphs(export_path, &lower_name, &graph) {
+                debug!("Failed to export graphs: {err}");
+            }
         }
     }
 
     debug!("Checking if any two tokens have the same priority");
 
-    for &DisambiguationError(a, b) in graph.errors() {
-        let a = graph[a].unwrap_leaf();
-        let b = graph[b].unwrap_leaf();
-        let disambiguate = a.priority + 1;
+    for error in graph.errors() {
+        match error {
+            GraphError::Disambiguation(matching) => {
+                for leaf_id in matching {
+                    let leaf = &graph.leaves()[leaf_id.0];
+                    let priority = leaf.priority;
 
-        let mut err = |a: &Leaf, b: &Leaf| {
-            parser.err(
-                format!(
-                    "\
-                    A definition of variant `{a}` can match the same input as another definition of variant `{b}`.\n\
-                    \n\
-                    hint: Consider giving one definition a higher priority: \
-                    #[{attr}(..., priority = {disambiguate})]\
-                    ",
-                    attr = match a.callback {
-                        Some(_) => "regex",
-                        None => "skip"
-                    }
-                ),
-                a.span
-            );
-        };
+                    let matching = matching
+                        .iter()
+                        .filter(|&id| id != leaf_id)
+                        .map(|matchind_id| format!("  {}", &graph.leaves()[matchind_id.0]))
+                        .collect::<Vec<_>>()
+                        .join("\n");
 
-        err(a, b);
-        err(b, a);
+                    parser.err(
+                        format!(
+                            concat!(
+                                "The pattern {} can match simultaneously with the following variants:\n",
+                                "{}\n",
+                                "\n",
+                                "(all at the priority {})"
+                            ),
+                            leaf, matching, priority
+                        ),
+                        leaf.span,
+                    );
+                }
+            }
+            GraphError::NoUniveralStart => {
+                parser.err(concat!(
+                    "The state machine implementing this lexer is missing a universal start state,",
+                    "which is unsupported by logos. This is most likely do to a lookbehind assertion ",
+                    "at the start of the regex."
+                ), item_span);
+            }
+            GraphError::EmptyMatch(leaf_id) => {
+                parser.err(
+                    format!(
+                        "The pattern {} can match the empty string, which is unsupported by logos.",
+                        &graph.leaves()[leaf_id.0],
+                    ),
+                    graph.leaves()[leaf_id.0].span,
+                );
+            }
+        }
     }
 
     if let Some(errors) = parser.errors.render() {
         return impl_logos(errors);
     }
 
-    let root = graph.push(root);
+    debug!("Generating code from graph");
 
-    graph.shake(root);
-
-    #[cfg(feature = "debug")]
-    {
-        debug!("Generating graphs");
-
-        if let Some(path) = parser.export_dir {
-            let path = std::path::Path::new(&path);
-            let dir = if path.extension().is_none() {
-                path
-            } else {
-                path.parent().unwrap_or(std::path::Path::new(""))
-            };
-            match std::fs::create_dir_all(dir) {
-                Ok(()) => {
-                    if path.extension() == Some(std::ffi::OsStr::new("dot"))
-                        || path.extension().is_none()
-                    {
-                        match graph.get_dot() {
-                            Ok(s) => {
-                                let dot_path = if path.extension().is_none() {
-                                    path.join(format!("{}.dot", name.to_string().to_lowercase()))
-                                } else {
-                                    path.to_path_buf()
-                                };
-                                if let Err(e) = std::fs::write(dot_path, s) {
-                                    debug!("Error writing dot graph: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                debug!("Error generating dot graph: {}", e);
-                            }
-                        }
-                    }
-
-                    if path.extension() == Some(std::ffi::OsStr::new("mmd"))
-                        || path.extension().is_none()
-                    {
-                        match graph.get_mermaid() {
-                            Ok(s) => {
-                                let mermaid_path = if path.extension().is_none() {
-                                    path.join(format!("{}.mmd", name.to_string().to_lowercase()))
-                                } else {
-                                    path.to_path_buf()
-                                };
-                                if let Err(e) = std::fs::write(mermaid_path, s) {
-                                    debug!("Error writing mermaid graph: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                debug!("Error generating mermaid graph: {}", e);
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    debug!("Error creating graph export dir: {}", e);
-                }
-            }
-        }
-    }
-
-    debug!("Generating code from graph:\n{graph:#?}");
-
-    let generator = Generator::new(name, &this, root, &graph);
+    let config = crate::generator::Config {
+        use_state_machine_codegen: cfg!(feature = "state_machine_codegen"),
+    };
+    let mut generator = Generator::new(config, name, &this, &graph, &error_callback);
 
     let body = generator.generate();
     impl_logos(quote! {
-        use #logos_path::internal::{LexerInternal, CallbackResult, SkipCallbackResult};
+        use #logos_path::internal::{
+            LexerInternal,
+            CallbackRetVal,
+            CallbackResult,
+            SkipRetVal,
+            SkipResult,
+        };
+        use std::result::Result as _Result;
+        use std::option::Option as _Option;
+        use #logos_path::Logos;
 
-        type Lexer<'s> = #logos_path::Lexer<'s, #this>;
-
-        fn _end<'s>(lex: &mut Lexer<'s>) {
-            lex.end()
-        }
-
-        fn _error<'s>(lex: &mut Lexer<'s>) {
-            lex.bump_unchecked(1);
-
-            lex.error();
-        }
+        type _Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         #body
     })
@@ -470,21 +472,39 @@ fn is_logos_attr(attr: &syn::Attribute) -> bool {
         || attr.path().is_ident(REGEX_ATTR)
 }
 
-fn strip_wrapping_parens(t: TokenStream) -> TokenStream {
-    let tts: Vec<TokenTree> = t.into_iter().collect();
+fn generate_graphs(path_str: &str, name: &str, graph: &Graph) -> Result<(), Box<dyn Error>> {
+    let path = Path::new(path_str).to_owned();
 
-    if tts.len() != 1 {
-        tts.into_iter().collect()
-    } else {
-        match tts.into_iter().next().unwrap() {
-            TokenTree::Group(g) => {
-                if g.delimiter() == Delimiter::Parenthesis {
-                    g.stream()
-                } else {
-                    core::iter::once(TokenTree::Group(g)).collect()
-                }
-            }
-            tt => core::iter::once(tt).collect(),
+    let (dot_path, mmd_path) = match path.extension().map(OsStr::to_str) {
+        Some(Some("dot")) => (Some(path), None),
+        Some(Some("mmd")) => (None, Some(path)),
+        Some(_) => {
+            return Err(String::from(
+                "Export path must end in '.dot' or '.mmd', or it must be a directory.",
+            )
+            .into())
         }
+        None => {
+            let dot_path = path.join(format!("{name}.dot"));
+            let mmd_path = path.join(format!("{name}.mmd"));
+            (Some(dot_path), Some(mmd_path))
+        }
+    };
+
+    for (path, is_dot) in [(dot_path, true), (mmd_path, false)] {
+        let Some(path) = path else { continue };
+
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let s = if is_dot {
+            graph.get_dot()
+        } else {
+            graph.get_mermaid()
+        }?;
+        std::fs::write(path, s)?;
     }
+
+    Ok(())
 }

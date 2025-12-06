@@ -66,6 +66,7 @@ enum Token {
 
 /* ANCHOR: values */
 /// Represent any valid JSON value.
+#[allow(unused)]
 #[derive(Debug)]
 enum Value {
     /// null.

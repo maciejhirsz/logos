@@ -57,7 +57,7 @@ pub fn main() -> Result<()> {
             Ok(())
         }
     } else {
-        println!("{}", output);
+        println!("{output}");
         Ok(())
     }
 }

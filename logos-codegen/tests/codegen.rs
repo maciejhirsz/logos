@@ -1,5 +1,6 @@
 use insta::assert_snapshot;
 use std::{error::Error, path::PathBuf};
+use syn::parse_file;
 
 #[rstest::rstest]
 #[case("simple")]
@@ -9,24 +10,30 @@ use std::{error::Error, path::PathBuf};
 #[case("error_callback0")]
 #[case("error_callback1")]
 #[case("error_callback_failure")]
+#[case("prio_conflict")]
+#[case("illegal_utf8")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
-    let mut fixture_dir = PathBuf::new();
-    fixture_dir.push(env!("CARGO_MANIFEST_DIR"));
-    fixture_dir.push("tests");
-    fixture_dir.push("data");
-    fixture_dir.push("codegen");
-    fixture_dir.push(fixture);
+    let codegen_alg = if cfg!(feature = "state_machine_codegen") {
+        "state_machine"
+    } else {
+        "tailcall"
+    };
+    let label = format!("{fixture}-{codegen_alg}");
+    println!("Running case {label}");
 
-    let input = fixture_dir.join("input.rs");
-    let input = std::fs::read_to_string(input)?;
+    let input_dir_path = [env!("CARGO_MANIFEST_DIR"), "tests", "data", "codegen"]
+        .iter()
+        .collect::<PathBuf>();
+
+    let input_path = input_dir_path.join(format!("{fixture}.rs"));
+    let input = std::fs::read_to_string(input_path)?;
 
     let generated = logos_codegen::generate(input.parse()?).to_string();
 
-    if cfg!(rust_1_82) {
-        assert_snapshot!(format!("{fixture}-1_82"), generated);
-    } else {
-        assert_snapshot!(format!("{fixture}-pre_1_82"), generated);
-    }
+    let formatted =
+        prettyplease::unparse(&parse_file(&generated).expect("Logos output is unparseable"));
+
+    assert_snapshot!(label, formatted);
 
     Ok(())
 }

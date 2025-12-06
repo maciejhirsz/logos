@@ -14,7 +14,7 @@ In this example, we implement a simple calculator that evaluates arithmetic expr
 
 We use `logos` as the lexer generator and [`chumsky`](https://github.com/zesterer/chumsky) as the parser generator.
 
-![flow chart](/assets/calculator_example_flow.png)
+![flow chart](../assets/calculator_example_flow.png)
 
 ## 1. Try It
 
@@ -122,7 +122,7 @@ Evaluating the AST is straightforward. We just implement it using [depth-first s
 
 Evaluating `1 + 3 * 12` will proceed as below.
 
-![how evaluator works](/assets/calculator_example_how_evaluator_works.png)
+![how evaluator works](../assets/calculator_example_how_evaluator_works.png)
 
 ## 5. `main()` Function
 

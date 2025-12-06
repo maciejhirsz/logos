@@ -2,7 +2,7 @@ use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Lit, Meta, Type};
+use syn::{Attribute, GenericParam, Ident, Lit, LitBool, Meta, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -21,30 +21,21 @@ pub use self::definition::{Definition, Literal};
 pub use self::error_type::ErrorType;
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
-pub use self::skip::{Skip, SkipCallback};
+pub use self::skip::Skip;
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
 #[derive(Default)]
 pub struct Parser {
     pub errors: Errors,
-    pub mode: Mode,
-    pub source: Option<TokenStream>,
+    pub utf8_mode: Option<LitBool>,
     pub skips: Vec<Skip>,
     pub extras: MaybeVoid,
+    pub subpatterns: Vec<(Ident, Literal)>,
     pub error_type: Option<ErrorType>,
-    pub subpatterns: Subpatterns,
     pub logos_path: Option<TokenStream>,
-    #[cfg(feature = "debug")]
-    pub export_dir: Option<String>,
+    pub export_path: Option<String>,
     types: TypeParams,
-}
-
-#[derive(Default)]
-pub enum Mode {
-    #[default]
-    Utf8,
-    Binary,
 }
 
 impl Parser {
@@ -183,15 +174,14 @@ impl Parser {
                     }
                 }),
                 ("export_dir", |parser, span, value| match value {
-                    #[cfg(feature = "debug")]
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
                         match syn::parse2::<Literal>(value) {
                             Ok(Literal::Utf8(str)) => {
-                                if let Some(previous) = parser.export_dir.replace(str.value()) {
+                                if let Some(previous) = parser.export_path.replace(str.value()) {
                                     parser
-                                        .err("Export dir can be defined only once", span)
+                                        .err("Export path can be defined only once", span)
                                         .err("Previous definition here", previous.span());
                                 }
                             }
@@ -203,16 +193,11 @@ impl Parser {
                             }
                         }
                     }
-                    #[cfg(feature = "debug")]
                     _ => {
                         parser.err(
                             "Expected #[logos(export_dir = \"path/to/export/dir\")]",
                             span,
                         );
-                    }
-                    #[cfg(not(feature = "debug"))]
-                    _ => {
-                        parser.err("Enable the 'debug' feature to export graphs", span);
                     }
                 }),
                 ("extras", |parser, span, value| match value {
@@ -253,22 +238,22 @@ impl Parser {
                         );
                     }
                 }),
-                ("source", |parser, span, value| match value {
-                    NestedValue::Assign(value) => {
-                        let span = value.span();
-                        if let Some(previous) = parser.source.replace(value) {
-                            parser
-                                .err("Source can be defined only once", span)
-                                .err("Previous definition here", previous.span());
-                        }
-                    }
-                    _ => {
-                        parser.err("Expected: #[logos(source = SomeType)]", span);
-                    }
+                ("source", |parser, span, _| {
+                    parser.err(
+                        "The `source` attribute is deprecated. Use the `utf8` attribute instead",
+                        span,
+                    );
                 }),
                 ("subpattern", |parser, span, value| match value {
                     NestedValue::KeywordAssign(name, value) => {
-                        parser.subpatterns.add(name, value, &mut parser.errors);
+                        match syn::parse2::<Literal>(value) {
+                            Ok(lit) => {
+                                parser.subpatterns.push((name, lit));
+                            }
+                            Err(e) => {
+                                parser.errors.err(e.to_string(), e.span());
+                            }
+                        };
                     }
                     _ => {
                         parser.err(r#"Expected: #[logos(subpattern name = r"regex")]"#, span);
@@ -282,7 +267,32 @@ impl Parser {
                         parser.err("Expected: #[logos(type T = SomeType)]", span);
                     }
                 }),
+                ("utf8", |parser, span, value| match value {
+                    NestedValue::Assign(value) => {
+                        let span = value.span();
+
+                        match syn::parse2::<LitBool>(value) {
+                            Ok(lit) => {
+                                if let Some(previous) = parser.utf8_mode.replace(lit) {
+                                    parser
+                                        .err("Utf8 mode can be defined only once", span)
+                                        .err("Previous definition here", previous.span());
+                                }
+                            }
+                            Err(e) => {
+                                parser.err(format!("Expected a boolean literal: {e}"), span);
+                            }
+                        }
+                    }
+                    _ => {
+                        parser.err("Expected: #[logos(utf8 = true)]", span);
+                    }
+                }),
             ];
+
+            // Vec::is_sorted_by_key was stabilized in 1.82
+            // debug_assert!(NESTED_LOOKUP.is_sorted_by_key(|(n, _)| n));
+            debug_assert!(NESTED_LOOKUP.windows(2).all(|w| w[0].0 < w[1].0));
 
             match NESTED_LOOKUP.binary_search_by_key(&name.to_string().as_str(), |(n, _)| n) {
                 Ok(idx) => NESTED_LOOKUP[idx].1(self, name.span(), value),
@@ -324,7 +334,7 @@ impl Parser {
                     self.err("Unexpected token in attribute", tokens.span());
                 }
                 Nested::Unnamed(tokens) => match position {
-                    0 => skip.callback = self.parse_skip_callback(tokens),
+                    0 => skip.callback = self.parse_callback(tokens),
                     _ => {
                         self.err(
                             "\
@@ -348,11 +358,7 @@ impl Parser {
     pub fn parse_literal(&mut self, lit: Lit) -> Option<Literal> {
         match lit {
             Lit::Str(string) => Some(Literal::Utf8(string)),
-            Lit::ByteStr(bytes) => {
-                self.mode = Mode::Binary;
-
-                Some(Literal::Bytes(bytes))
-            }
+            Lit::ByteStr(bytes) => Some(Literal::Bytes(bytes)),
             _ => {
                 self.err("Expected a &str or &[u8] slice", lit.span());
 
@@ -449,23 +455,6 @@ impl Parser {
         let inline = InlineCallback { arg, body, span };
 
         Some(inline.into())
-    }
-
-    fn parse_skip_callback(&mut self, tokens: TokenStream) -> Option<SkipCallback> {
-        let span = tokens.span();
-        Some(match self.parse_callback(tokens) {
-            Some(Callback::Inline(inline)) => SkipCallback::Inline(inline),
-            Some(Callback::Label(label)) => SkipCallback::Label(label),
-            Some(Callback::Skip(_) | Callback::SkipCallback(_)) => {
-                unreachable!(
-                    "internal error: `parse_callback` should only return Some(Callback::{{Inline, Label}}) or None.",
-                )
-            }
-            None => {
-                self.err("Not a valid callback", span);
-                return None;
-            }
-        })
     }
 
     /// Checks if `ty` is a declared generic param, if so replaces it

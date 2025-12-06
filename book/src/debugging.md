@@ -2,7 +2,7 @@
 
 Instructions on how to debug your Logos lexer.
 
-## Visualizing Logos Graph 
+## Visualizing Logos Graph
 
 Logos works by creating a graph that gets derived from
 the tokens that you defined.
@@ -10,7 +10,7 @@ This graph describes how the lexer moves through different
 states when processing input.
 
 Hence, it may be beneficial during debugging to be able to
-visualize this graph, to understand how Logos will match the various tokens. 
+visualize this graph, to understand how Logos will match the various tokens.
 
 If we take this example:
 
@@ -40,35 +40,47 @@ fn main() {
 }
 ```
 
-Logos actually constructs a graph that contains the logic for matching tokens:
+and compile with the `debug` feature, we can see debugging information about
+the regex compilation and resulting state machine. First, it outputs a list of
+the "leaves", or different patterns that can be matched by the state machine. A
+leaf is generated for each `#[token(...)]` and `#[regex(...)]` attribute.
 
 ```
-graph = {
-    1: ::Fast,
-    2: ::Period,
-    3: ::Text,
-    4: {
-        [A-Z] ⇒ 4,
-        [a-z] ⇒ 4,
-        _ ⇒ 3,
-    },
-    7: [
-        ast ⇒ 8,
-        _ ⇒ 4*,
-    ],
-    8: {
-        [A-Z] ⇒ 4,
-        [a-z] ⇒ 4,
-        _ ⇒ 1,
-    },
-    9: {
-        . ⇒ 2,
-        [A-Z] ⇒ 4,
-        [a-e] ⇒ 4,
-        f ⇒ 7,
-        [g-z] ⇒ 4,
-    },
-}
+  0: #[token("fast")] ::Fast (priority: 8)
+  1: #[token(".")] ::Period (priority: 2)
+  2: #[regex("[a-zA-Z]+")] ::Text (priority: 2)
+```
+
+Next, the debug representation of the DFA is printed. For more information on decoding this, see the [`regex-cli` docs](https://docs.rs/crate/regex-cli/latest). Lastly, the actual graph that that the generated rust code follows is printed (this is usually slightly different than the `regex-automata` graph due to various optimizations that are applied). For our above example, it looks like this:
+
+```
+  state0 => StateData(early(2) ) {
+    A..=Z|a..=z => state0
+  }
+  state1 => StateData(early(2) ) {
+    A..=Z|a..=r|t..=z => state0
+    s => state2
+  }
+  state2 => StateData(early(2) ) {
+    A..=Z|a..=s|u..=z => state0
+    t => state3
+  }
+  state3 => StateData(early(0) ) {
+    A..=Z|a..=z => state0
+  }
+  state4 => StateData() {
+    A..=Z|a..=e|g..=z => state0
+    . => state5
+    f => state6
+  }
+  state5 => StateData(early(1) ) {
+  }
+  state6 => StateData(early(2) ) {
+    A..=Z|b..=z => state0
+    a => state1
+  }
+
+  Root node: State(4)
 ```
 This graph can help us understand how our patterns are matched,
 and maybe understand why we have a bug at some point.
@@ -76,26 +88,34 @@ and maybe understand why we have a bug at some point.
 Let's get started by trying to understand how Logos is matching the
 `.` character, which we've tokenized as `Token::Period`.
 
-We can begin our search by looking at number `9` for the character `.`.
-We can see that if Logos matches a `.` it will jump `=>` to number `2`.
-We can then follow that by looking at `2` which resolves to our `::Period` token. 
+We can begin our search by looking at state `4`, as that is the root node.
+We can see that if Logos matches a `.` it will jump `=>` to state `5`.
+We can then follow that by looking at `state5` which resolves leaf `1`, which
+we saw earlier as corresponding to the `Token::Period` variant.
 
-Logos will then continue to look for any matches past our `.` character.
-This is required in case there is potential continuation after the `.` character.
-Although, in the *input* we provided, there are no any additional characters,
-since it is the end of our input.
+```admonish info
+If you are curious why it says `early(1)`, that is because this is an early
+match. A "late" match means that the current character is not part of the
+returned token. Usually this is because the current character is the imaginary
+end-of-file character, used for matching patterns that end in `$`.
+```
 
-We also can try to identify how the token `fast` works by looking at `9`,
-first, and seeing that `f` will cause Logos to jump to `7`.
-This will then resolve the last letters of our word *fast* by matching `ast`
-which jumps to `8`. Since our provided _input_ to the lexer does not include
-alphabetic characters after the word "fast", but rather a whitespace,
-the token `::Fast` will be recognized.
-Then, the graph will look for further potential continuation (here, `[g-z] => 4`)
+Logos would also continue to look for any matches past our `.` character.
+However, since there is not another leaf that could possibly match, it instead
+stops. This is indicated by the fact that there are no "next state" edges
+within `state5`.
+
+We also can try to identify how the token `fast` works by looking at `4`,
+first, and seeing that `f` will cause Logos to jump to `6`, then `a` to `1`,
+`s` to `2`, and finally, `t` to `3`. In this state, you can see that there is a
+match for leaf `0`, but also a continuation to `state0`. This will be taken if
+the lexer is passed something like `faster`, which will be eventually lexed to
+a `Token::Text` token instead.
 
 ## Visual Representation
 
-Logos can generate Mermaid charts and DOT graphs to visualize the lexer’s state transitions.
+Logos can generate Mermaid charts and DOT graphs to visualize the lexer’s state
+transitions.
 
 Specify an export directory with the `export_dir` attribute to save these graphs:
 ```rust,no_run,noplayground
@@ -121,12 +141,18 @@ You can also specify the name of the file to export to.
 
 To render the graphs, you can install a plugin in your IDE or use an online tool.
 
-See the [graphviz](https://graphviz.org/doc/info/command.html) and [mermaid](https://mermaid.js.org/config/usage.html)
-documentations for more details.
+See the [graphviz](https://graphviz.org/doc/info/command.html) and
+[mermaid](https://mermaid.js.org/config/usage.html) documentations for more
+details.
 
-![graph](/assets/debug_graph_example.png)
+![graph](assets/debug_graph_example.png)
 
-## Enabling 
+```admonish info
+This graphviz graph has been modified with the graph attribute `rankdir="LR";`
+to make it fit better on screen.
+```
+
+## Enabling
 
 To enable debugging output you can define a `debug` feature in your
 `Cargo.toml` file, like this:

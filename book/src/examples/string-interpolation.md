@@ -61,9 +61,9 @@ The idea for our parser will be the following:
    - It recognizes `Id`s and may encounter nested strings. Upon finding a quote (`'`), it transitions back to `StringContext` to start lexing the nested string.
    - The closing curly brace (`}`) signals the end of the interpolation, allowing a return to `StringContext` to continue lexing the original string.
 
-We also want to store the values for each defined variable in a map, enabling us to replace their values during interpolation. To achieve this, we utilized [`Logos::Extras`](./extras.md), adding a hash map (`SymbolTable`) to the lexers to keep track of variable definitions.
+We also want to store the values for each defined variable in a map, enabling us to replace their values during interpolation. To achieve this, we utilized [`Logos::Extras`](../extras.md), adding a hash map (`SymbolTable`) to the lexers to keep track of variable definitions.
 
-Additionally, we incorporated some [callbacks](./callbacks.md) to handle the heavy lifting. These callbacks will process the string content, manage context transitions, and perform interpolation evaluation. As a result, we’ll have the final key-value pairs stored in our main lexer, ready for use.
+Additionally, we incorporated some [callbacks](../callbacks.md) to handle the heavy lifting. These callbacks will process the string content, manage context transitions, and perform interpolation evaluation. As a result, we’ll have the final key-value pairs stored in our main lexer, ready for use.
 
 Below is an example of how the main function of our parser would look like:
 

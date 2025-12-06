@@ -23,4 +23,4 @@
   you want to reduce compilation time overhead caused by derive macros.
 - `logos-fuzz` is an internal crate (i.e., unpublished) that uses [afl.rs](https://github.com/rust-fuzz/afl.rs)
   to find confusing panics before they reach the developer.
-  To use this tool, see the [Fuzzing guide]('./fuzzing.md')
+  To use this tool, see the [Fuzzing guide](fuzzing.md)

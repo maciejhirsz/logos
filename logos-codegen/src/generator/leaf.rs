@@ -1,95 +1,92 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::generator::{Context, Generator};
-use crate::leaf::{Callback, Leaf};
-use crate::parser::SkipCallback;
-use crate::util::MaybeVoid;
+use crate::generator::Generator;
+use crate::leaf::{Callback, Leaf, VariantKind};
 
 impl Generator<'_> {
-    pub fn generate_leaf(&mut self, leaf: &Leaf, mut ctx: Context) -> TokenStream {
-        let bump = ctx.bump();
-
-        let ident = &leaf.ident;
+    /// This function generates the code responsible for calling user callbacks and returning
+    /// an enum variant to the caller of [Logos::lex].
+    /// Its return value is placed into the generated code whenever a match is encountered.
+    /// The `leaf` parameter is the leaf node that was matched.
+    pub fn generate_callback(&self, leaf: &Leaf) -> TokenStream {
         let name = self.name;
         let this = self.this;
-        let ty = &leaf.field;
 
-        let constructor = match leaf.field {
-            MaybeVoid::Some(_) => quote!(#name::#ident),
-            MaybeVoid::Void => quote!(|()| #name::#ident),
+        let callback_op = leaf.callback.as_ref().map(|cb| match cb {
+            Callback::Label(ident) => quote!(#ident(lex)),
+            Callback::Inline(inline_callback) => {
+                let arg = &inline_callback.arg;
+                let body = &inline_callback.body;
+
+                quote! {{
+                    let #arg = lex;
+                    #body
+                }}
+            }
+        });
+
+        // Finally, based on both the kind of variant and the
+        // presence / absence of a callback, implement the leaf.
+        match (&leaf.kind, callback_op) {
+            (VariantKind::Skip, None) => quote!(CallbackResult::Skip),
+            (VariantKind::Skip, Some(cb)) => quote! {
+                let cb_result = #cb;
+                let srv = SkipRetVal::<'s, #this>::construct(cb_result);
+                CallbackResult::from(srv)
+            },
+            (VariantKind::Unit(ident), None) => quote! {
+                CallbackResult::Emit(#name::#ident)
+            },
+            (VariantKind::Unit(ident), Some(cb)) => quote! {
+                let cb_result = #cb;
+                CallbackRetVal::<'s, (), #this>::construct(cb_result, |()| #name::#ident)
+            },
+            (VariantKind::Value(ident, _), None) => quote! {
+                let token = #name::#ident(lex.slice());
+                CallbackResult::Emit(token)
+            },
+            (VariantKind::Value(ident, ret_type), Some(cb)) => quote! {
+                let cb_result = #cb;
+                CallbackRetVal::<'s, #ret_type, #this>::construct(cb_result, #name::#ident)
+            },
+        }
+    }
+
+    /// This function generates the _take_action macro. This macro is called when there are no more
+    /// transitions to follow. It calls the _get_action function, which tells the state machine
+    /// what to do next, and applies that action to the state machine's internal state.
+    pub fn take_action_macro(&self) -> TokenStream {
+        // This is the code block used to transition the lexer to a new state
+        let state_ident = self.state_value(self.graph.root());
+        let restart_lex = match self.config.use_state_machine_codegen {
+            true => quote! { $state = #state_ident; continue; },
+            false => quote! { return #state_ident($lex, $offset, $context); },
         };
 
-        match &leaf.callback {
-            Some(Callback::Label(callback)) => quote! {
-                #bump
-                #callback(lex).construct(#constructor, lex);
-            },
-            Some(Callback::Inline(inline)) => {
-                let arg = &inline.arg;
-                let body = &inline.body;
-
-                #[cfg(not(rust_1_82))]
-                let ret = quote!(impl CallbackResult<'s, #ty, #this>);
-
-                #[cfg(rust_1_82)]
-                let ret = quote!(impl CallbackResult<'s, #ty, #this> + use<'s>);
-
-                quote! {
-                    #bump
-
-                    #[inline]
-                    fn callback<'s>(#arg: &mut Lexer<'s>) -> #ret {
-                        #body
+        quote! {
+            macro_rules! _take_action {
+                ($lex:ident, $offset:ident, $context:ident, $state:ident) => {{
+                    let action = _get_action($lex, $offset, $context);
+                    match action {
+                        CallbackResult::Emit(tok) => {
+                            return Some(Ok(tok));
+                        },
+                        CallbackResult::Skip => {
+                            $lex.trivia();
+                            $offset = $lex.offset();
+                            $context = None;
+                            #restart_lex
+                        },
+                        CallbackResult::Error(err) => {
+                            return Some(Err(err));
+                        },
+                        CallbackResult::DefaultError => {
+                            return Some(Err(_make_error($lex)));
+                        },
                     }
-
-                    callback(lex).construct(#constructor, lex);
-                }
+                }}
             }
-            Some(Callback::SkipCallback(SkipCallback::Label(label))) => {
-                quote! {
-                    #bump
-
-                    #label(lex).construct_skip(lex);
-                }
-            }
-            Some(Callback::SkipCallback(SkipCallback::Inline(inline))) => {
-                let arg = &inline.arg;
-                let body = &inline.body;
-
-                #[cfg(not(rust_1_82))]
-                let ret = quote!(impl SkipCallbackResult<'s, #this>);
-
-                #[cfg(rust_1_82)]
-                let ret = quote!(impl SkipCallbackResult<'s, #this> + use<'s>);
-
-                quote! {
-                    #bump
-
-                    fn callback<'s>(#arg: &mut Lexer) -> #ret {
-                        #body
-                    }
-
-                    callback(lex).construct_skip(lex);
-                }
-            }
-            Some(Callback::Skip(_)) => {
-                quote! {
-                    #bump
-
-                    lex.trivia();
-                    #name::lex(lex);
-                }
-            }
-            None if matches!(leaf.field, MaybeVoid::Void) => quote! {
-                #bump
-                lex.set(Ok(#name::#ident));
-            },
-            None => quote! {
-                #bump
-                let token = #name::#ident(lex.slice());
-                lex.set(Ok(token));
-            },
         }
     }
 }

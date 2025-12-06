@@ -1,3 +1,6 @@
+#![cfg(any())]
+// TODO: Custom source support
+
 use std::ops::Range;
 
 use logos::{Logos as _, Source};

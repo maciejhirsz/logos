@@ -1,0 +1,21 @@
+---
+source: logos-codegen/src/graph/export.rs
+expression: dot
+---
+digraph {
+node[shape=box];
+splines=ortho;
+n0[label="State 0\nearly(0)",color=green,shape=box];
+en0n1[label="e",color=black,shape=diamond];
+n0->en0n1;
+en0n1->n1;
+n1[label="State 1\nearly(0)",color=green,shape=box];
+n2[label="State 2",color=black,shape=box];
+en2n3[label="f",color=black,shape=diamond];
+n2->en2n3;
+en2n3->n3;
+n3[label="State 3\nearly(0)",color=green,shape=box];
+en3n0[label="e",color=black,shape=diamond];
+n3->en3n0;
+en3n0->n0;
+}

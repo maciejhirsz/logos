@@ -1,0 +1,19 @@
+---
+source: logos-codegen/src/graph/export.rs
+expression: mmd
+---
+flowchart TB
+n0["State 0"]
+style n0 stroke:#000000
+en0n1{"z"}
+style en0n1 stroke:#000000
+n0-->en0n1
+en0n1-->n1
+en0n2{"a..=y"}
+style en0n2 stroke:#000000
+n0-->en0n2
+en0n2-->n2
+n1["State 1<br>early(1)"]
+style n1 stroke:#00C853
+n2["State 2<br>early(0)"]
+style n2 stroke:#00C853

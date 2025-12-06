@@ -34,17 +34,12 @@ jobs:
     - name: Setup mdBook
       uses: peaceiris/actions-mdbook@v2
       with:
-        mdbook-version: 0.4.28
+        mdbook-version: 0.5.1
 
-    - name: Install mbBook-admonish
+    - name: Install mbBook-linkcheck2
       uses: taiki-e/install-action@v2
       with:
-        tool: mdbook-admonish
-
-    - name: Download assets
-      run: |
-        cd book/
-        mdbook-admonish install
+        tool: mdbook-linkcheck2
 
     - name: Build book
       run: mdbook build book
