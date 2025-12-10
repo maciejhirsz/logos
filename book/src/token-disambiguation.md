@@ -6,8 +6,8 @@ to decide which pattern should match.
 
 The rule of thumb is:
 
-- Longer beats shorter.
-- Specific beats generic.
++ Longer beats shorter.
++ Specific beats generic.
 
 If any two definitions could match the same input, like `fast` and `[a-zA-Z]+`
 in the example above, it's the longer and more specific definition of `Token::Fast`
@@ -18,10 +18,10 @@ consecutive, non-repeating single byte adds 2 to the priority, while every range
 or regex class adds 1.
 Loops or optional blocks are ignored, while alternations count the shortest alternative:
 
-- `[a-zA-Z]+` has a priority of 2 (lowest possible), because at minimum it can
++ `[a-zA-Z]+` has a priority of 2 (lowest possible), because at minimum it can
   match a single byte to a class;
-- `foobar` has a priority of 12;
-- and `(foo|hello)(bar)?` has a priority of 6, `foo` being its shortest possible match.
++ `foobar` has a priority of 12;
++ and `(foo|hello)(bar)?` has a priority of 6, `foo` being its shortest possible match.
 
 Generally speaking, equivalent regex patterns have the same priority. E.g.,
 `a|b` is equivalent to `[a-b]`, and both have a priority of 2.

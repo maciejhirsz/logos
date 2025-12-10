@@ -11,8 +11,8 @@ case, please refer to the link mentioned in [Contributing](../contributing.md).
 You need to have both git and Rust installed on your computer,
 see installation procedures:
 
-- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
-- [Rust](https://www.rust-lang.org/tools/install).
++ [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
++ [Rust](https://www.rust-lang.org/tools/install).
 
 Once it's done, clone the Logos repository on your computer:
 
