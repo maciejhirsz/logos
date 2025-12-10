@@ -8,14 +8,14 @@ impl<'s> ::logos::Logos<'s> for Token {
     type Source = str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> std::option::Option<
-        std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    ) -> core::option::Option<
+        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
         use ::logos::internal::{
             LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
         };
-        use std::result::Result as _Result;
-        use std::option::Option as _Option;
+        use core::result::Result as _Result;
+        use core::option::Option as _Option;
         use ::logos::Logos;
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         macro_rules! _fast_loop {

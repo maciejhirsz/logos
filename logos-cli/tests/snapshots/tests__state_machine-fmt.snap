@@ -12,13 +12,13 @@ impl<'s> ::logos::Logos<'s> for Token {
     type Source = str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> std::option::Option<std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>> {
+    ) -> core::option::Option<core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>> {
+        use core::option::Option as _Option;
+        use core::result::Result as _Result;
         use logos::internal::{
             CallbackResult, CallbackRetVal, LexerInternal, SkipResult, SkipRetVal,
         };
         use logos::Logos;
-        use std::option::Option as _Option;
-        use std::result::Result as _Result;
         type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         macro_rules! _fast_loop {
             ($ lex : ident , $ test : ident , $ offset : ident) => {
