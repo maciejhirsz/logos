@@ -58,13 +58,14 @@ Add(
 -2
 ```
 
-~~~admonish note title="Full Code" collapsible=true
+<details>
+<summary><strong>Full source code</strong></summary>
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/calculator.rs:all}}
 ```
 
-~~~
+</details>
 
 ## 2. Lexer
 

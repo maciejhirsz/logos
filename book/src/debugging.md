@@ -82,6 +82,7 @@ Next, the debug representation of the DFA is printed. For more information on de
 
   Root node: State(4)
 ```
+
 This graph can help us understand how our patterns are matched,
 and maybe understand why we have a bug at some point.
 
@@ -93,12 +94,12 @@ We can see that if Logos matches a `.` it will jump `=>` to state `5`.
 We can then follow that by looking at `state5` which resolves leaf `1`, which
 we saw earlier as corresponding to the `Token::Period` variant.
 
-```admonish info
-If you are curious why it says `early(1)`, that is because this is an early
-match. A "late" match means that the current character is not part of the
-returned token. Usually this is because the current character is the imaginary
-end-of-file character, used for matching patterns that end in `$`.
-```
+> [!INFO]
+>
+> If you are curious why it says `early(1)`, that is because this is an early
+> match. A "late" match means that the current character is not part of the
+> returned token. Usually this is because the current character is the imaginary
+> end-of-file character, used for matching patterns that end in `$`.
 
 Logos would also continue to look for any matches past our `.` character.
 However, since there is not another leaf that could possibly match, it instead
@@ -118,6 +119,7 @@ Logos can generate Mermaid charts and DOT graphs to visualize the lexer’s stat
 transitions.
 
 Specify an export directory with the `export_dir` attribute to save these graphs:
+
 ```rust,no_run,noplayground
 #[derive(Logos)]
 #[logos(export_dir = "path/to/export/dir")]
@@ -147,10 +149,10 @@ details.
 
 ![graph](assets/debug_graph_example.png)
 
-```admonish info
-This graphviz graph has been modified with the graph attribute `rankdir="LR";`
-to make it fit better on screen.
-```
+> [!INFO]
+>
+> This graphviz graph has been modified with the graph attribute `rankdir="LR";`
+> to make it fit better on screen.
 
 ## Enabling
 
