@@ -26,7 +26,7 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 Generally speaking, equivalent regex patterns have the same priority. E.g.,
 `a|b` is equivalent to `[a-b]`, and both have a priority of 2.
 
-> [!INFO]
+> [!NOTE]
 >
 > When two different patterns have the same priority,
 > **Logos** will issue an compilation error.

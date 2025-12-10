@@ -94,7 +94,7 @@ We can see that if Logos matches a `.` it will jump `=>` to state `5`.
 We can then follow that by looking at `state5` which resolves leaf `1`, which
 we saw earlier as corresponding to the `Token::Period` variant.
 
-> [!INFO]
+> [!NOTE]
 >
 > If you are curious why it says `early(1)`, that is because this is an early
 > match. A "late" match means that the current character is not part of the
@@ -149,7 +149,7 @@ details.
 
 ![graph](assets/debug_graph_example.png)
 
-> [!INFO]
+> [!NOTE]
 >
 > This graphviz graph has been modified with the graph attribute `rankdir="LR";`
 > to make it fit better on screen.
