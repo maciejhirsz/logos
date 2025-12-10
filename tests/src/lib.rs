@@ -1,6 +1,5 @@
 //! ```compile_fail
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
 //! enum Token {
@@ -15,7 +14,6 @@
 //!
 //! ```compile_fail
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
 //! enum Token {
@@ -30,7 +28,6 @@
 //!
 //! ```compile_fail
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
@@ -42,7 +39,6 @@
 //!
 //! ```compile_fail
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos, Debug, PartialEq)]
 //! enum Token {
@@ -57,7 +53,6 @@
 //!
 //! ```compile_fail
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
 //! #[logos(export_dir = "target/tmp")]
@@ -69,7 +64,6 @@
 //!
 //! ```compile_fail
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
 //! enum Token {
@@ -82,7 +76,6 @@
 //!
 //! ```
 //! use logos::Logos;
-//! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
 //! enum Token {
