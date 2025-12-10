@@ -9,5 +9,5 @@ enum _Token {
     #[regex("[0-9]+")]
     Number,
     #[token("+")]
-    Plus
+    Plus,
 }
