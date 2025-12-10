@@ -8,8 +8,8 @@ impl<'s> ::logos::Logos<'s> for TokenA {
     type Source = str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> std::option::Option<
-        std::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    ) -> core::option::Option<
+        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
         fn _logos_derive_compile_errors() {
             { compile_error!("Error type can be defined only once") }

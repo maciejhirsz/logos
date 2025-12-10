@@ -304,7 +304,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 type Source = #source;
 
                 fn lex(lex: &mut #logos_path::Lexer<'s, Self>)
-                    -> std::option::Option<std::result::Result<Self, <Self as #logos_path::Logos<'s>>::Error>> {
+                    -> core::option::Option<core::result::Result<Self, <Self as #logos_path::Logos<'s>>::Error>> {
                     #body
                 }
             }
@@ -416,8 +416,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
             SkipRetVal,
             SkipResult,
         };
-        use std::result::Result as _Result;
-        use std::option::Option as _Option;
+        use core::result::Result as _Result;
+        use core::option::Option as _Option;
         use #logos_path::Logos;
 
         type _Lexer<'s> = #logos_path::Lexer<'s, #this>;
