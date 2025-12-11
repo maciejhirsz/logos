@@ -241,7 +241,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     if !allow_greedy && pattern.check_for_greedy_all() {
                         parser.err(concat!(
                             "This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` ",
-                            "(or a character class that is equivalent to a dot, i.e. `[^\\n]*`). ",
+                            "(or a character class that is equivalent to a dot, i.e., `[^\\n]*`). ",
                             "This will cause the entirety of the input to be read for every token. ",
                             "Consider making your repetition non-greedy or changing it to a more ",
                             "specific character class. If this is the intended behavior, add ",

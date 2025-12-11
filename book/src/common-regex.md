@@ -18,7 +18,7 @@ For more details about regexes in Rust, refer to the
 Regular expression flags are a useful way to change the behavior of regular
 expressions. For example, enabling the`m` flag (stands for "multiline") causes
 the dot `.` to match newlines. The `i` flag causes the pattern to ignore case.
-To enable a pattern, either toggle it on with `(?<flag>)`, or enable it using a
+To enable a flag, either toggle it on with `(?<flag>)`, or enable it using a
 flag group, like so `(?<flag>:<pattern>)`. For example
 
 - `r"(?m).*"` will match the entire input. Without the `m` flag, it would only match the entire first line.
