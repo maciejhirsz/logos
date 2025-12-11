@@ -1,5 +1,5 @@
 [book]
-authors = ["Maciej Hirsz <hello@maciej.codes>", "Jérome Eertmans (maintainer) <jeertmans@icloud.com>",]
+authors = ["Maciej Hirsz <hello@maciej.codes>", "Jérome Eertmans (maintainer) <jeertmans@icloud.com>"]
 language = "en"
 src = "src"
 title = "Logos Handbook"
