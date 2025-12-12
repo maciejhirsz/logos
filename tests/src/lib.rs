@@ -1,5 +1,4 @@
 //! ```compile_fail
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
@@ -14,7 +13,6 @@
 //! Same, but with regex:
 //!
 //! ```compile_fail
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
@@ -29,7 +27,6 @@
 //! And also when working with bytes:
 //!
 //! ```compile_fail
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos, Debug, PartialEq)]
@@ -41,7 +38,6 @@
 //! ```
 //!
 //! ```compile_fail
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos, Debug, PartialEq)]
@@ -56,7 +52,6 @@
 //! When debug is not enabled, this also should not compile.
 //!
 //! ```compile_fail
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
@@ -68,7 +63,6 @@
 //! A ".+" pattern shouldn't compile without `allow_greedy = true`
 //!
 //! ```compile_fail
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
@@ -81,7 +75,6 @@
 //! A ".+" pattern should compile with `allow_greedy = true`
 //!
 //! ```
-//! use logos::Logos;
 //! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
@@ -94,7 +87,7 @@
 //! https://github.com/maciejhirsz/logos/issues/232
 //! This example fails because the subpattern can match the empty string,
 //! ```compile_fail
-//! use logos::Logos;
+//! use logos_derive::Logos;
 //!
 //! #[derive(Logos)]
 //! #[logos(subpattern example = r"(a|)+")]
@@ -113,9 +106,9 @@
 //!
 //! This example fails because it has a priority conflict
 //! ```compile_fail
-//! use logos::Logos;
+//! use logos_derive::Logos;
 //!
-//! #[derive(logos::Logos)]
+//! #[derive(logos_derive::Logos)]
 //! enum Tokens {
 //!     #[regex(r#"'(?:'?(?:[[:ascii:][^\\']]|\\[[:ascii:]]))*'"#)]
 //!     #[regex(r#"'(?:"?(?:[[:ascii:][^\\"]]|\\[[:ascii:]]))*'"#)]
