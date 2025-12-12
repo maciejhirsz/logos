@@ -16,12 +16,12 @@ Knowing that, we can construct a lexer with `Logos` that will identify all those
 {{#include ../../../examples/json.rs:tokens}}
 ```
 
-```admonish note
-The hardest part is to define valid regexes for `Number` and `String` variants.
-The present solution was inspired by
-[this stackoverflow thread](https://stackoverflow.com/questions/32155133/regex-to-match-a-json-string)
-and checked against [the JSON specification](https://www.json.org/json-en.html).
-```
+> [!NOTE]
+>
+> The hardest part is to define valid regexes for `Number` and `String` variants.
+> The present solution was inspired by
+> [this stackoverflow thread](https://stackoverflow.com/questions/32155133/regex-to-match-a-json-string)
+> and checked against [the JSON specification](https://www.json.org/json-en.html).
 
 Once we have our tokens, we must parse them into actual JSON values. We will proceed be creating 3 functions:
 
@@ -48,6 +48,7 @@ A similar approach is used for objects, where the only difference is that we exp
 ```
 
 Finally, we provide you the full code that you should be able to run with[^1]:
+
 ```bash
 cargo run --example json examples/example.json
 ```
