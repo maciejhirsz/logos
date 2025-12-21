@@ -13,23 +13,6 @@ inside of a loop, and state transitions are implemented by assigning to the
 current state variable and then `continue`ing to the start of the loop again.
 
 ```rust,no_run,noplayground
-fn state0(lexer: Lexer, context: Context) -> Token {
-    match lexer.read() {
-        'a' => state1(lexer, context),
-        'b' => state2(lexer, context),
-        _ => Token::Error,
-    }
-}
-
-// Etc ...
-```
-
-## Feature Disabled
-
-The tailcall code generation creates functions for each state, and state
-transitions are implemented by calling the next state's function.
-
-```rust,no_run,noplayground
 let mut state = State::State0;
 loop {
     match state {
@@ -43,6 +26,23 @@ loop {
         // Etc...
     }
 }
+```
+
+## Feature Disabled
+
+The tailcall code generation creates functions for each state, and state
+transitions are implemented by calling the next state's function.
+
+```rust,no_run,noplayground
+fn state0(lexer: Lexer, context: Context) -> Token {
+    match lexer.read() {
+        'a' => state1(lexer, context),
+        'b' => state2(lexer, context),
+        _ => Token::Error,
+    }
+}
+
+// Etc ...
 ```
 
 ## Considerations
