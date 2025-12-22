@@ -50,21 +50,20 @@ fn state0(lexer: Lexer, context: Context) -> Token {
 The tailcall code generation generates significantly faster code and is
 therefore the default. However, until rust gets guaranteed tail calls with the
 `become` keyword, it is possible to overflow the stack using it. This usually
-happens when many "skip" tokens are matched in a row. This can usually be
-solved by wrapping your skip pattern in a repetition, but not always. In any
-case, if you don't want to worry about possible stack overflows, you can use
-the `state_machine_codegen` feature.
+happens when many "skip" tokens are matched in a row. This can be solved by
+wrapping your skip pattern in a repetition, though this is not always the case.
+If you don't want to worry about possible stack overflows, you can use the
+`state_machine_codegen` feature.
 
 ### Performance Explanation
 
-The reason that tailcall code generation is faster is that LLVM currently
-does not optimize a switch within a loop well. The resulting machine code
-usually ends up with each state having a jump back to the top of the loop where
-the next state is looked up out of a jump table. In contrast, the tail call
-generation which usually ends up with an unconditional jump at the end of the
-state directly to the next state. The unconditional jump is a little bit better
-in terms of instruction count, but the real gains are in the tail call codegen
-being much nicer to the branch predictor.
+Tailcall code generation is faster because LLVM does not currently optimize switches
+within loops well. The resulting machine code usually has each state jump back to the
+top of the loop, where the next state is looked up in a jump table. In contrast, tail
+call generation usually results in an unconditional jump at the end of the state to
+the next state. While the unconditional jump is slightly better in terms of instruction
+count, the real advantage lies in the tail call code generation being much nicer to the
+branch predictor.
 
 ### Potential Mitigations
 
@@ -76,7 +75,7 @@ generators (but the state machine has the added benefit of no possiblity of
 stack overflows). This option can be added using a `config.toml` file
 ([example](https://github.com/0x2a-42/herring/blob/main/.cargo/config.toml)).
 It is probably not a good idea to do this in production code, as adding new
-LLVM passes to rust increases the possiblity of finding compiler bugs. There is
+LLVM passes to rust increases the possibility of facing compiler bugs. There is
 also the possibility of this optimization being added at the rust level. This
 is being explored by [RFC 3720](https://github.com/rust-lang/rfcs/pull/3720).
 If that RFC is implemented, the logos state machine codegen could use the new
