@@ -10,7 +10,7 @@ use crate::parser::definition::Literal;
 use crate::pattern::Pattern;
 
 /// This struct represents a logos subpattern, i.e.
-/// #[logos(subpattern my_subpattern = "regex")]
+/// `#[logos(subpattern my_subpattern = "regex")]`
 /// These are regex subexpressions that can be referenced within
 /// token regexes and other subpatterns to simplify complex expressions.
 pub struct Subpattern {

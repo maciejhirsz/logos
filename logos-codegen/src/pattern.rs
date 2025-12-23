@@ -65,7 +65,7 @@ impl Pattern {
 
     /// Create a pattern that matches a literal.
     ///
-    /// This function avoids escaping by constructing an Hir literal directly.
+    /// This function avoids escaping by constructing an `Hir::literal` directly.
     pub fn compile_lit(source: &Literal) -> Result<Pattern, String> {
         let hir = match source {
             Literal::Utf8(lit_str) => Hir::literal(lit_str.value().as_bytes()),

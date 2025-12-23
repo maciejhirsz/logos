@@ -85,7 +85,7 @@ impl Leaf {
     }
 }
 
-impl fmt::Display for Leaf {
+impl Display for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}", self.pattern, self.kind)
     }

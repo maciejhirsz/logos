@@ -9,7 +9,7 @@ pub struct IgnoreFlags {
 }
 
 impl IgnoreFlags {
-    /// Parses an identifier an enables it for `self`.
+    /// Parses an identifier and enables it for `self`.
     ///
     /// Valid inputs are (that produces `true`):
     /// * `"case"`
