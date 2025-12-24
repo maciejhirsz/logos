@@ -47,7 +47,7 @@ fn state0(lexer: Lexer, context: Context) -> Token {
 
 ## Considerations
 
-The tailcall code generation generates significantly faster code and is
+The tail call code generation generates significantly faster code and is
 therefore the default. However, until rust gets guaranteed tail calls with the
 `become` keyword, it is possible to overflow the stack using it. This usually
 happens when many "skip" tokens are matched in a row. This can be solved by
