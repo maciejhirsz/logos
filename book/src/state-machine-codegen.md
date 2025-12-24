@@ -57,7 +57,7 @@ If you don't want to worry about possible stack overflows, you can use the
 
 ### Performance Explanation
 
-Tailcall code generation is faster because LLVM does not currently optimize switches
+Tail call code generation is faster because LLVM does not currently optimize switches
 within loops well. The resulting machine code usually has each state jump back to the
 top of the loop, where the next state is looked up in a jump table. In contrast, tail
 call generation usually results in an unconditional jump at the end of the state to
