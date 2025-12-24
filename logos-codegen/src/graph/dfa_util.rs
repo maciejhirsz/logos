@@ -25,7 +25,7 @@ pub fn iter_matches<'a>(state_id: StateID, dfa: &'a OwnedDFA) -> impl Iterator<I
 }
 
 /// Returns an iterator over the child states of a given dfa state. Returns children in order of
-/// input byte (0..=255), then eoi. No deduplication of child states is performed.
+/// input byte `(0..=255)`, then eoi. No deduplication of child states is performed.
 pub fn iter_children<'a>(dfa: &'a OwnedDFA, state: StateID) -> impl Iterator<Item = StateID> + 'a {
     (0..=u8::MAX)
         .map(move |byte| dfa.next_state(state, byte))

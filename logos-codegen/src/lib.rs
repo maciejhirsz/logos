@@ -360,7 +360,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     let matching = matching
                         .iter()
                         .filter(|&id| id != leaf_id)
-                        .map(|matchind_id| format!("  {}", &graph.leaves()[matchind_id.0]))
+                        .map(|match_id| format!("  {}", &graph.leaves()[match_id.0]))
                         .collect::<Vec<_>>()
                         .join("\n");
 
@@ -378,7 +378,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     );
                 }
             }
-            GraphError::NoUniveralStart => {
+            GraphError::NoUniversalStart => {
                 parser.err(concat!(
                     "The state machine implementing this lexer is missing a universal start state,",
                     "which is unsupported by logos. This is most likely do to a lookbehind assertion ",
@@ -403,7 +403,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     debug!("Generating code from graph");
 
-    let config = crate::generator::Config {
+    let config = generator::Config {
         use_state_machine_codegen: cfg!(feature = "state_machine_codegen"),
     };
     let mut generator = Generator::new(config, name, &this, &graph, &error_callback);

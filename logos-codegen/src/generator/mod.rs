@@ -25,7 +25,7 @@ pub struct Generator<'a> {
     name: &'a Ident,
     /// Name of the type with any generics it might need
     this: &'a TokenStream,
-    /// Reference to the graph with all of the nodes
+    /// Reference to the graph with all the nodes
     graph: &'a Graph,
     /// Mapping of states to their identifiers.
     /// First is snake_case, second is PascalCase
@@ -173,7 +173,7 @@ impl<'a> Generator<'a> {
             .iter()
             .map(|leaf| self.generate_callback(leaf))
             .collect::<Vec<_>>();
-        let leaf_indicies = self
+        let leaf_indices = self
             .leaf_idents
             .iter()
             .map(|[_snake, camel]| camel)
@@ -218,7 +218,7 @@ impl<'a> Generator<'a> {
                         lex.end_to_boundary(offset.max(lex.offset() + 1));
                         CallbackResult::Error(_make_error(lex))
                     },
-                    #(Some(LogosLeaf::#leaf_indicies) => {
+                    #(Some(LogosLeaf::#leaf_indices) => {
                         #leaf_bodies
                     }),*
                     #default_case
@@ -255,7 +255,7 @@ impl<'a> Generator<'a> {
     /// It also instantiates the relevant leaf, if `state` has a context.
     ///
     /// In state machine codegen, the body is wrapped in a match arm for the
-    /// `state`'s variant. In tailcall codegen, the body is inside of
+    /// `state`'s variant. In tail-call codegen, the body is inside
     /// `state`'s function.
     fn generate_state(&mut self, state: State) -> TokenStream {
         let state_data = self.graph.get_state(state);

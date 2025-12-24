@@ -30,14 +30,11 @@ pub struct Pattern {
 
 impl Pattern {
     /// Create a new pattern from a regex string source.
-    /// - `utf8_mode` determines if the pattern should refuse to match invalid utf8 sequences
-    /// - `unicode` determines if the regex pattern should match bytes (false) or utf8 codepoints
-    ///   (true)
-    /// - `ignore_case` sets the (?i) flag for the entire pattern.
     ///
-    /// There are some cases where the value of `utf8_mode` and `unicode` may not match. For
-    /// example, if your input is a `[u8]`, but you want to match specific parts of it as UTF-8, you
-    /// would have only `unicode` set.
+    /// # Arguments
+    ///
+    /// - `unicode`: whether the regex pattern should match bytes (false), or utf8 codepoints (true)
+    /// - `ignore_case`: whether to set the `(?i)` flag for the entire pattern.
     pub fn compile(
         is_literal: bool,
         regex: &str,
@@ -65,7 +62,7 @@ impl Pattern {
 
     /// Create a pattern that matches a literal.
     ///
-    /// This function avoids escaping by constructing an Hir literal directly.
+    /// This function avoids escaping by constructing an `Hir::literal` directly.
     pub fn compile_lit(source: &Literal) -> Result<Pattern, String> {
         let hir = match source {
             Literal::Utf8(lit_str) => Hir::literal(lit_str.value().as_bytes()),

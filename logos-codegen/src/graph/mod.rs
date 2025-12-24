@@ -29,7 +29,7 @@ pub struct Config {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GraphError {
     /// Error when the DFA is missing a universal start state
-    NoUniveralStart,
+    NoUniversalStart,
 
     /// Error when a leaf can match the empty string
     EmptyMatch(LeafId),
@@ -89,7 +89,7 @@ pub struct StateData {
     /// The "normal" transitions (those that consume a byte of input) from this state to another
     /// state
     pub normal: Vec<(ByteClass, State)>,
-    /// The "eoi" transition (the transition taken if this state immediately preceeds the end of
+    /// The "eoi" transition (the transition taken if this state immediately precedes the end of
     /// the input), if any.
     pub eoi: Option<State>,
     /// States that can transition to this state
@@ -192,7 +192,7 @@ impl fmt::Display for StateData {
 /// This struct represents a subset of the possible bytes x00 through xFF
 ///
 /// If bytes are added in ascending order (which they are by the graph module), then the ranges are
-/// guaranteed to be sorted, non-overlapping, and seperated by at least one non-matching byte.
+/// guaranteed to be sorted, non-overlapping, and separated by at least one non-matching byte.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ByteClass {
     pub ranges: Vec<RangeInclusive<u8>>,
@@ -385,7 +385,7 @@ impl Graph {
 
     /// Construct a context-free graph from a set of [Leaf] objects and a [Config]. Context-free
     /// means that the most recently matched leaf is not inherent to the current state, and must be
-    /// tracked seperately by the matching engine. This is simpler because it means that the
+    /// tracked separately by the matching engine. This is simpler because it means that the
     /// graph's states correspond 1:1 with the DFA's states, but it means you can't statically
     /// dispatch the leaf handlers.
     pub fn new(leaves: Vec<Leaf>, config: Config) -> Result<Self, String> {
@@ -428,7 +428,7 @@ impl Graph {
         };
 
         let Some(start_id) = graph.dfa.universal_start_state(Anchored::Yes) else {
-            graph.errors.push(GraphError::NoUniveralStart);
+            graph.errors.push(GraphError::NoUniversalStart);
             return Ok(graph);
         };
         if graph.dfa.has_empty() {
@@ -511,7 +511,7 @@ impl Graph {
 
                 let child_state_types_vec = child_state_types.into_iter().collect::<Vec<_>>();
 
-                // If all children match the same leaf, this state is an early accept state
+                // If all children match the same leaf, this state is an early accepted state
                 if let &[Some(leaf_id)] = &*child_state_types_vec {
                     graph.states[state.0].state_type.early = Some(leaf_id);
                 }
@@ -534,8 +534,8 @@ impl Graph {
         // Prune dead ends (states that do not alter the context and do not lead to a state that
         // does).
 
-        // Setup the visit stack with any state that is accept (and therefore changes the current
-        // context).
+        // Set up the visit stack with any state that is accepted (and therefore changes the
+        // current context).
         let mut visit_stack = graph
             .iter_states()
             .filter(|state| {
@@ -586,7 +586,8 @@ impl Graph {
             for state in graph.iter_states() {
                 let state_data = &graph.states[state.0];
                 if let Entry::Vacant(e) = state_indexes.entry(state_data) {
-                    // State's represntation wasn't in state_indexes, state becomes the canonical index
+                    // State's representation wasn't in state_indexes, state becomes the canonical
+                    // index
                     e.insert(state);
                 } else {
                     // State's representation is a duplicate, rewrite it to the canonical one
