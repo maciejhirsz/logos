@@ -1,7 +1,7 @@
-use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::{quote_spanned, ToTokens, TokenStreamExt};
+use std::borrow::Cow;
 
 #[derive(Default)]
 pub struct Errors {
