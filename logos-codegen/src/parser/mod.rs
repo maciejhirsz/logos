@@ -1,6 +1,6 @@
-use beef::lean::Cow;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
+use std::borrow::Cow;
 use syn::spanned::Spanned;
 use syn::{Attribute, GenericParam, Ident, Lit, LitBool, Meta, Type};
 
