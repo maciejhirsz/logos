@@ -1,0 +1,17 @@
+error: The pattern #[regex(r#"'(?:'?(?:[[:ascii:][^\\']]|\\[[:ascii:]]))*'"#)] ::Problem can match simultaneously with the following variants:
+         #[regex(r#"'(?:"?(?:[[:ascii:][^\\"]]|\\[[:ascii:]]))*'"#)] ::Problem
+
+       (all at the priority 4)
+ --> tests/ui/err/priority-conflict.rs:5:13
+  |
+5 |     #[regex(r#"'(?:'?(?:[[:ascii:][^\\']]|\\[[:ascii:]]))*'"#)]
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: The pattern #[regex(r#"'(?:"?(?:[[:ascii:][^\\"]]|\\[[:ascii:]]))*'"#)] ::Problem can match simultaneously with the following variants:
+         #[regex(r#"'(?:'?(?:[[:ascii:][^\\']]|\\[[:ascii:]]))*'"#)] ::Problem
+
+       (all at the priority 4)
+ --> tests/ui/err/priority-conflict.rs:6:13
+  |
+6 |     #[regex(r#"'(?:"?(?:[[:ascii:][^\\"]]|\\[[:ascii:]]))*'"#)]
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

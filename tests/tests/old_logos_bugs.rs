@@ -1,7 +1,6 @@
 //! Tests that fail with Logos as of 2025/11/10
 
-use logos::Logos as _;
-use logos_derive::Logos;
+use logos::Logos;
 use tests::assert_lex;
 
 // https://github.com/maciejhirsz/logos/issues/160

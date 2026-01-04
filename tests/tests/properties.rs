@@ -1,4 +1,4 @@
-use logos_derive::Logos;
+use logos::Logos;
 use tests::assert_lex;
 
 mod binary;

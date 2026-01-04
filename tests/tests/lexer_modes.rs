@@ -1,6 +1,5 @@
 use logos::Lexer;
-use logos::Logos as _;
-use logos_derive::Logos;
+use logos::Logos;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
 enum Outer {

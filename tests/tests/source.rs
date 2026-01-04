@@ -3,8 +3,8 @@
 
 use std::ops::Range;
 
-use logos::{Logos as _, Source};
-use logos_derive::Logos;
+use logos::Logos;
+use logos::Source;
 
 struct RefSource<'s, S: ?Sized + Source>(&'s S);
 

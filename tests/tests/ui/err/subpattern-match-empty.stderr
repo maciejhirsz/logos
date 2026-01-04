@@ -1,0 +1,11 @@
+error: The pattern #[regex("(?&example)+")] ::Subpattern can match the empty string, which is unsupported by logos.
+ --> tests/ui/err/subpattern-match-empty.rs:6:13
+  |
+6 |     #[regex("(?&example)+")]
+  |             ^^^^^^^^^^^^^^
+
+error: The pattern #[regex("(?&example)")] ::Subpattern can match the empty string, which is unsupported by logos.
+  --> tests/ui/err/subpattern-match-empty.rs:13:13
+   |
+13 |     #[regex("(?&example)")]
+   |             ^^^^^^^^^^^^^
