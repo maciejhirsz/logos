@@ -1,4 +1,4 @@
-use logos_derive::Logos;
+use logos::Logos;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq)]
 #[logos(subpattern xdigit = r"[0-9a-fA-F]")]

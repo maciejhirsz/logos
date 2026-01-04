@@ -1,5 +1,5 @@
 mod ignore_ascii_case {
-    use logos_derive::Logos;
+    use logos::Logos;
     use tests::assert_lex;
 
     #[derive(Logos, Debug, PartialEq, Eq)]
@@ -155,7 +155,7 @@ mod ignore_ascii_case {
 }
 
 mod ignore_case {
-    use logos_derive::Logos;
+    use logos::Logos;
     use tests::assert_lex;
 
     #[derive(Logos, Debug, PartialEq, Eq)]

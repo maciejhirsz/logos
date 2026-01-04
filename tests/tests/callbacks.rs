@@ -1,5 +1,5 @@
-use logos::{Lexer, Logos as _, Skip};
-use logos_derive::Logos;
+use logos::Logos;
+use logos::{Lexer, Skip};
 use tests::assert_lex;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -99,7 +99,7 @@ mod rust {
     /// Adaptation of implementation by matklad:
     /// https://github.com/matklad/fall/blob/527ab331f82b8394949041bab668742868c0c282/lang/rust/syntax/src/rust.fall#L1294-L1324
     fn parse_raw_string(lexer: &mut Lexer<Token>) -> bool {
-        // Who needs more then 25 hashes anyway? :)
+        // Who needs more than 25 hashes anyway? :)
         let q_hashes = concat!('"', "######", "######", "######", "######", "######");
         let closing = &q_hashes[..lexer.slice().len() - 1]; // skip initial 'r'
 

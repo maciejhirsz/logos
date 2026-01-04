@@ -1,5 +1,4 @@
-use logos::Logos as _;
-use logos_derive::Logos;
+use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
 enum TestUnicodeDot {

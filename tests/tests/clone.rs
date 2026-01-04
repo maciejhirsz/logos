@@ -1,7 +1,6 @@
 use std::cell::Cell;
 
-use logos::Logos as _;
-use logos_derive::Logos;
+use logos::Logos;
 
 #[derive(Logos, Clone, Debug, PartialEq)]
 pub enum Token {

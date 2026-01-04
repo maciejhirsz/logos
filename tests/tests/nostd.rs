@@ -2,7 +2,7 @@
 
 #![no_std]
 
-use logos_derive::Logos;
+use logos::Logos;
 
 #[derive(Logos)]
 enum _Token {

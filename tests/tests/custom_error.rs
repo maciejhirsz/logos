@@ -1,5 +1,5 @@
 use logos::Lexer;
-use logos_derive::Logos;
+use logos::Logos;
 use std::num::{IntErrorKind, ParseIntError};
 use tests::assert_lex;
 

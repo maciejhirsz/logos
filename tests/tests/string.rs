@@ -1,5 +1,5 @@
-use logos::{Lexer, Logos as _};
-use logos_derive::Logos;
+use logos::Lexer;
+use logos::Logos;
 
 #[derive(Logos, Clone, Debug, PartialEq)]
 #[logos(skip " ")]
