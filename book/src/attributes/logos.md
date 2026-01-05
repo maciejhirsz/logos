@@ -81,7 +81,7 @@ In the past, you could also specify any custom type, but that feature has been r
 
 We can use subpatterns to reuse regular expressions in our tokens or other subpatterns.
 
-The syntax tu use a previously defined subpattern, like `#[logos(subpattern subpattern_name = "regex literal")]`,
+The syntax to use a previously defined subpattern, like `#[logos(subpattern subpattern_name = "regex literal")]`,
 in a new regular expression is `"(?&subpattern_name)"`.
 
 For example:
