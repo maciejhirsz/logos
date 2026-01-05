@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use logos_derive::Logos;
+use logos::Logos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 pub enum Token {
@@ -121,8 +121,6 @@ static CANDIDATES: [(&str, &str); 3] = [
 
 #[allow(unused_must_use)]
 fn iterate(s: &str) {
-    use logos::Logos;
-
     let mut lex = Token::lexer(s);
 
     while let Some(token) = lex.next() {
@@ -131,8 +129,6 @@ fn iterate(s: &str) {
 }
 
 fn count_ok(s: &str) -> usize {
-    use logos::Logos;
-
     Token::lexer(s).filter_map(|res| res.ok()).count()
 }
 

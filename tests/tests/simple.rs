@@ -1,5 +1,5 @@
-use logos::{Lexer, Logos as _};
-use logos_derive::Logos;
+use logos::Lexer;
+use logos::Logos;
 use tests::assert_lex;
 
 #[derive(Default)]

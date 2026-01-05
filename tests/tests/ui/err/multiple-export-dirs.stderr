@@ -1,0 +1,13 @@
+error: Export path can be defined only once
+ --> tests/ui/err/multiple-export-dirs.rs:5:22
+  |
+5 | #[logos(export_dir = "target/tmp")]
+  |                      ^^^^^^^^^^^^
+
+error: Previous definition here
+ --> tests/ui/err/multiple-export-dirs.rs:3:10
+  |
+3 | #[derive(Logos)]
+  |          ^^^^^
+  |
+  = note: this error originates in the derive macro `Logos` (in Nightly builds, run with -Z macro-backtrace for more info)
