@@ -28,8 +28,7 @@ jobs:
   build-book:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
     - name: Setup mdBook
       uses: peaceiris/actions-mdbook@v2
@@ -51,7 +50,7 @@ jobs:
 
   # Deployment job
   deploy:
-    if: github.event_name != 'pull_request'
+    if: ${{ github.event_name != 'pull_request' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
