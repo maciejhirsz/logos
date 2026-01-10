@@ -12,5 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+    - name: Install toolchain
+      uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
     - uses: taiki-e/install-action@cargo-hack
-    - run: cargo hack check --feature-powerset --no-dev-deps
+    - name: Check all feature combinations
+      run: cargo hack check --feature-powerset --no-dev-deps

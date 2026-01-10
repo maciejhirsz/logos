@@ -23,19 +23,15 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
     - name: Install stable toolchain
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
         components: rustfmt
-
     - uses: taiki-e/install-action@cargo-hack
-
-    - name: Cache dependencies
-      uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@v2
 
     - name: Top level crate tests
       # Excluding the run from cargo-hack as building logos without
