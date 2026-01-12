@@ -12,8 +12,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
     - name: Install stable toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -27,8 +26,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
     - name: Install stable toolchain
       uses: dtolnay/rust-toolchain@stable

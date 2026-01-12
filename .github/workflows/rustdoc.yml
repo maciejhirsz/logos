@@ -12,14 +12,11 @@ jobs:
     name: Build docs
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
     - name: Install nightly toolchain
       uses: dtolnay/rust-toolchain@nightly
-
-    - name: Cache dependencies
-      uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@v2
 
     - name: Check rustdoc build
       run: RUSTDOCFLAGS='--cfg docsrs' cargo +nightly doc --features debug -Zunstable-options -Zrustdoc-scrape-examples --no-deps

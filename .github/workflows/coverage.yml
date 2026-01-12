@@ -18,16 +18,16 @@ jobs:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
-    - name: Install rustfmt
-      run: |
-        rustup component add rustfmt
-    
+    - name: Install toolchain
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rustfmt
+    - uses: Swatinem/rust-cache@v2
+
     - name: Generate code coverage
-      run: |
-        cargo +nightly tarpaulin --verbose --features debug --workspace --timeout 120 --out Xml
+      run: cargo +nightly tarpaulin --verbose --features debug --workspace --timeout 120 --out Xml
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v5
