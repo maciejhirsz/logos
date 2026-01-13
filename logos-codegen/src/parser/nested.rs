@@ -4,6 +4,7 @@ use quote::quote;
 
 use crate::util::{expect_punct, is_punct};
 
+#[derive(Debug)]
 pub enum NestedValue {
     /// `name = ...`
     Assign(TokenStream),
@@ -15,6 +16,7 @@ pub enum NestedValue {
     KeywordAssign(Ident, TokenStream),
 }
 
+#[derive(Debug)]
 pub enum Nested {
     /// Unnamed nested attribute, such as a string,
     /// callback closure, or a lone ident/path

@@ -549,7 +549,7 @@ mod issue_258 {
     use super::*;
 
     #[derive(Logos)]
-    #[logos(skip r".*->.+\[")]
+    #[logos(skip(r".*->.+\[", allow_greedy = true))]
     enum _Token258 {
         #[regex(r"->")]
         Arrow,

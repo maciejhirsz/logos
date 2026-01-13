@@ -5,7 +5,7 @@ error: UTF-8 mode is requested, but the pattern b"\xFF" of variant `::NonUtf8` c
 5 |     #[regex(b"\xFF")]
   |             ^^^^^^^
 
-error: This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` (or a character class that is equivalent to a dot, i.e., `[^\n]*`). This will cause the entirety of the input to be read for every token. Consider making your repetition non-greedy or changing it to a more specific character class. If this is the intended behavior, add #[regex(..., allow_greedy = true)]
+error: This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` (or a character class that is equivalent to a dot, i.e., `[^\n]*`). This will cause the entirety of the input to be read for every token. Consider making your repetition non-greedy or changing it to a more specific character class. If this is the intended behavior, add #[regex(..., allow_greedy = true)] or#[logos(skip(..., allow_greedy = true))]
   --> tests/ui/err/regex-non-utf8.rs:11:13
    |
 11 |     #[regex(b"\x00.*")]
@@ -18,7 +18,7 @@ error: UTF-8 mode is requested, but the pattern b"\x00.*" of variant `::NonUtf8`
 11 |     #[regex(b"\x00.*")]
    |             ^^^^^^^^^
 
-error: This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` (or a character class that is equivalent to a dot, i.e., `[^\n]*`). This will cause the entirety of the input to be read for every token. Consider making your repetition non-greedy or changing it to a more specific character class. If this is the intended behavior, add #[regex(..., allow_greedy = true)]
+error: This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` (or a character class that is equivalent to a dot, i.e., `[^\n]*`). This will cause the entirety of the input to be read for every token. Consider making your repetition non-greedy or changing it to a more specific character class. If this is the intended behavior, add #[regex(..., allow_greedy = true)] or#[logos(skip(..., allow_greedy = true))]
   --> tests/ui/err/regex-non-utf8.rs:17:13
    |
 17 |     #[regex(b"\x00.+")]

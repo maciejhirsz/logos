@@ -22,6 +22,7 @@ mod macros;
 
 use std::error::Error;
 use std::ffi::OsStr;
+use std::mem;
 use std::path::Path;
 
 use error::Errors;
@@ -40,7 +41,7 @@ use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
 use crate::leaf::VariantKind;
-use crate::parser::{ErrorType, Subpatterns};
+use crate::parser::{Definition, ErrorType, Subpatterns};
 
 const LOGOS_ATTR: &str = "logos";
 const ERROR_ATTR: &str = "error";
@@ -78,7 +79,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let mut pats = Vec::new();
 
-    for skip in parser.skips.drain(..) {
+    for skip in mem::take(&mut parser.skips) {
         let Some(pattern_source) = subpatterns.subst_subpatterns(
             &skip.literal.escape(false),
             skip.literal.span(),
@@ -100,12 +101,13 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 continue;
             }
         };
+        greedy_dotall_check(&skip, &pattern, &mut parser);
 
         let default_priority = pattern.priority();
         pats.push(
             Leaf::new(skip.literal.span(), pattern)
                 .priority(skip.priority.unwrap_or(default_priority))
-                .callback(skip.into_callback()),
+                .callback(skip.callback),
         );
     }
 
@@ -163,7 +165,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     );
                 }
                 TOKEN_ATTR => {
-                    let definition = match parser.parse_definition(attr) {
+                    let definition = match parser.parse_definition_attr(attr) {
                         Some(definition) => definition,
                         None => {
                             parser.err("Expected #[token(...)]", attr.span());
@@ -205,7 +207,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                     );
                 }
                 REGEX_ATTR => {
-                    let definition = match parser.parse_definition(attr) {
+                    let definition = match parser.parse_definition_attr(attr) {
                         Some(definition) => definition,
                         None => {
                             parser.err("Expected #[regex(...)]", attr.span());
@@ -237,18 +239,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                         }
                     };
 
-                    let allow_greedy = definition.allow_greedy.unwrap_or(false);
-                    if !allow_greedy && pattern.check_for_greedy_all() {
-                        parser.err(concat!(
-                            "This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` ",
-                            "(or a character class that is equivalent to a dot, i.e., `[^\\n]*`). ",
-                            "This will cause the entirety of the input to be read for every token. ",
-                            "Consider making your repetition non-greedy or changing it to a more ",
-                            "specific character class. If this is the intended behavior, add ",
-                            "#[regex(..., allow_greedy = true)]"
-                        ), definition.literal.span());
-                    }
-
+                    greedy_dotall_check(&definition, &pattern, &mut parser);
                     let default_priority = pattern.priority();
                     pats.push(
                         Leaf::new(definition.literal.span(), pattern)
@@ -425,6 +416,22 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
         #body
     })
+}
+
+fn greedy_dotall_check(definition: &Definition, pattern: &Pattern, parser: &mut Parser) {
+    let allow_greedy = definition.allow_greedy.unwrap_or(false);
+    if !allow_greedy && pattern.check_for_greedy_all() {
+        parser.err(concat!(
+            "This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` ",
+            "(or a character class that is equivalent to a dot, i.e., `[^\\n]*`). ",
+            "This will cause the entirety of the input to be read for every token. ",
+            "Consider making your repetition non-greedy or changing it to a more ",
+            "specific character class. If this is the intended behavior, add ",
+            "#[regex(..., allow_greedy = true)] or",
+            "#[logos(skip(..., allow_greedy = true))]"
+        ), definition.literal.span());
+    }
+
 }
 
 /// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.

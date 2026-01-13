@@ -13,7 +13,6 @@ mod definition;
 mod error_type;
 mod ignore_flags;
 mod nested;
-mod skip;
 mod subpattern;
 mod type_params;
 
@@ -21,7 +20,6 @@ pub use self::definition::{Definition, Literal};
 pub use self::error_type::ErrorType;
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
-pub use self::skip::Skip;
 pub use self::subpattern::Subpatterns;
 use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 
@@ -29,7 +27,7 @@ use self::type_params::{replace_lifetime, traverse_type, TypeParams};
 pub struct Parser {
     pub errors: Errors,
     pub utf8_mode: Option<LitBool>,
-    pub skips: Vec<Skip>,
+    pub skips: Vec<Definition>,
     pub extras: MaybeVoid,
     pub subpatterns: Vec<(Ident, Literal)>,
     pub error_type: Option<ErrorType>,
@@ -217,12 +215,12 @@ impl Parser {
                 ("skip", |parser, span, value| match value {
                     NestedValue::Literal(lit) => {
                         if let Some(literal) = parser.parse_literal(Lit::new(lit)) {
-                            parser.skips.push(Skip::new(literal));
+                            parser.skips.push(Definition::new(literal));
                         }
                     }
                     NestedValue::Group(tokens) => {
                         let token_span = tokens.span();
-                        if let Some(skip) = parser.parse_skip(tokens) {
+                        if let Some(skip) = parser.parse_definition(AttributeParser::new(tokens)) {
                             parser.skips.push(skip);
                         } else {
                             parser.err(
@@ -313,10 +311,29 @@ impl Parser {
         }
     }
 
-    pub fn parse_skip(&mut self, stream: TokenStream) -> Option<Skip> {
-        // We don't call parse_attr here because we only want to parse what is inside the parentheses
-        let mut nested = AttributeParser::new(stream);
+    pub fn parse_literal(&mut self, lit: Lit) -> Option<Literal> {
+        match lit {
+            Lit::Str(string) => Some(Literal::Utf8(string)),
+            Lit::ByteStr(bytes) => Some(Literal::Bytes(bytes)),
+            _ => {
+                self.err("Expected a &str or &[u8] slice", lit.span());
 
+                None
+            }
+        }
+    }
+
+    /// Parse attribute definition of a token:
+    ///
+    /// + `#[token(literal[, callback])]`
+    /// + `#[regex(literal[, callback])]`
+    pub fn parse_definition_attr(&mut self, attr: &mut Attribute) -> Option<Definition> {
+        let nested = self.parse_attr(attr)?;
+
+        self.parse_definition(nested)
+    }
+
+    fn parse_definition(&mut self, mut nested: AttributeParser) -> Option<Definition> {
         let literal = match nested.parsed::<Lit>()? {
             Ok(lit) => self.parse_literal(lit)?,
             Err(err) => {
@@ -326,7 +343,7 @@ impl Parser {
             }
         };
 
-        let mut skip = Skip::new(literal);
+        let mut skip = Definition::new(literal);
 
         for (position, next) in nested.enumerate() {
             match next {
@@ -355,62 +372,6 @@ impl Parser {
         Some(skip)
     }
 
-    pub fn parse_literal(&mut self, lit: Lit) -> Option<Literal> {
-        match lit {
-            Lit::Str(string) => Some(Literal::Utf8(string)),
-            Lit::ByteStr(bytes) => Some(Literal::Bytes(bytes)),
-            _ => {
-                self.err("Expected a &str or &[u8] slice", lit.span());
-
-                None
-            }
-        }
-    }
-
-    /// Parse attribute definition of a token:
-    ///
-    /// + `#[token(literal[, callback])]`
-    /// + `#[regex(literal[, callback])]`
-    pub fn parse_definition(&mut self, attr: &mut Attribute) -> Option<Definition> {
-        let mut nested = self.parse_attr(attr)?;
-
-        let literal = match nested.parsed::<Lit>()? {
-            Ok(lit) => self.parse_literal(lit)?,
-            Err(err) => {
-                self.err(err.to_string(), err.span());
-
-                return None;
-            }
-        };
-
-        let mut def = Definition::new(literal);
-
-        for (position, next) in nested.enumerate() {
-            match next {
-                Nested::Unexpected(tokens) => {
-                    self.err("Unexpected token in attribute", tokens.span());
-                }
-                Nested::Unnamed(tokens) => match position {
-                    0 => def.callback = self.parse_callback(tokens),
-                    _ => {
-                        self.err(
-                            "\
-                            Expected a named argument at this position\n\
-                            \n\
-                            hint: If you are trying to define a callback here use: callback = ...\
-                            ",
-                            tokens.span(),
-                        );
-                    }
-                },
-                Nested::Named(name, value) => {
-                    def.named_attr(name, value, self);
-                }
-            }
-        }
-
-        Some(def)
-    }
 
     fn parse_callback(&mut self, tokens: TokenStream) -> Option<Callback> {
         let span = tokens.span();
