@@ -35,7 +35,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             { compile_error!("Expected: callback = ...") }
             {
                 compile_error!(
-                    "Unknown nested attribute: unknown\n\nExpected: callback or priority"
+                    "Unknown nested attribute: unknown\n\nExpected one of: priority, callback"
                 )
             }
             {
