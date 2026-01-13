@@ -90,24 +90,23 @@ impl Parser {
                 }
             };
 
-            // IMPORTANT: Keep these sorted alphabetically for binary search down the line
-            #[allow(clippy::type_complexity)]
-            static NESTED_LOOKUP: &[(&str, fn(&mut Parser, Span, NestedValue))] = &[
-                ("crate", |parser, span, value| match value {
-                    NestedValue::Assign(logos_path) => parser.logos_path = Some(logos_path),
+            let span = name.span();
+
+            match name.to_string().as_str() {
+                "crate" => match value {
+                    NestedValue::Assign(logos_path) => self.logos_path = Some(logos_path),
                     _ => {
-                        parser.err("Expected: #[logos(crate = path::to::logos)]", span);
+                        self.err("Expected: #[logos(crate = path::to::logos)]", span);
                     }
-                }),
-                ("error", |parser, span, value| match value {
+                },
+                "error" => match value {
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
                         let error_ty = ErrorType::new(value);
 
-                        if let Some(previous) = parser.error_type.replace(error_ty) {
-                            parser
-                                .err("Error type can be defined only once", span)
+                        if let Some(previous) = self.error_type.replace(error_ty) {
+                            self.err("Error type can be defined only once", span)
                                 .err("Previous definition here", previous.span());
                         }
                     }
@@ -117,11 +116,11 @@ impl Parser {
                         let ty = match nested.parsed::<Type>() {
                             Some(Ok(ty)) => ty,
                             Some(Err(e)) => {
-                                parser.err(e.to_string(), e.span());
+                                self.err(e.to_string(), e.span());
                                 return;
                             }
                             None => {
-                                parser.err("Expected #[logos(error(SomeType))]", span);
+                                self.err("Expected #[logos(error(SomeType))]", span);
                                 return;
                             }
                         };
@@ -134,12 +133,12 @@ impl Parser {
                         for (position, next) in nested.enumerate() {
                             match next {
                                 Nested::Unexpected(tokens) => {
-                                    parser.err("Unexpected token in attribute", tokens.span());
+                                    self.err("Unexpected token in attribute", tokens.span());
                                 }
                                 Nested::Unnamed(tokens) => match position {
-                                    0 => error_type.callback = parser.parse_callback(tokens),
+                                    0 => error_type.callback = self.parse_callback(tokens),
                                     _ => {
-                                        parser.err(
+                                        self.err(
                                             "\
                                             Expected a named argument at this position\n\
                                             \n\
@@ -150,19 +149,18 @@ impl Parser {
                                     }
                                 },
                                 Nested::Named(name, value) => {
-                                    error_type.named_attr(name, value, parser);
+                                    error_type.named_attr(name, value, self);
                                 }
                             }
                         }
 
-                        if let Some(previous) = parser.error_type.replace(error_type) {
-                            parser
-                                .err("Error type can be defined only once", span)
+                        if let Some(previous) = self.error_type.replace(error_type) {
+                            self.err("Error type can be defined only once", span)
                                 .err("Previous definition here", previous.span());
                         }
                     }
                     _ => {
-                        parser.err(
+                        self.err(
                             concat!(
                                 "Expected: #[logos(error = SomeType)] or ",
                                 "#[logos(error(SomeType[, callback))]"
@@ -170,142 +168,121 @@ impl Parser {
                             span,
                         );
                     }
-                }),
-                ("export_dir", |parser, span, value| match value {
+                },
+                "export_dir" => match value {
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
                         match syn::parse2::<Literal>(value) {
                             Ok(Literal::Utf8(str)) => {
-                                if let Some(previous) = parser.export_path.replace(str.value()) {
-                                    parser
-                                        .err("Export path can be defined only once", span)
+                                if let Some(previous) = self.export_path.replace(str.value()) {
+                                    self.err("Export path can be defined only once", span)
                                         .err("Previous definition here", previous.span());
                                 }
                             }
                             Ok(_) => {
-                                parser.err("Expected a &str", span);
+                                self.err("Expected a &str", span);
                             }
                             Err(e) => {
-                                parser.err(e.to_string(), span);
+                                self.err(e.to_string(), span);
                             }
                         }
                     }
                     _ => {
-                        parser.err(
+                        self.err(
                             "Expected #[logos(export_dir = \"path/to/export/dir\")]",
                             span,
                         );
                     }
-                }),
-                ("extras", |parser, span, value| match value {
+                },
+                "extras" => match value {
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
-                        if let MaybeVoid::Some(previous) = parser.extras.replace(value) {
-                            parser
-                                .err("Extras can be defined only once", span)
+                        if let MaybeVoid::Some(previous) = self.extras.replace(value) {
+                            self.err("Extras can be defined only once", span)
                                 .err("Previous definition here", previous.span());
                         }
                     }
                     _ => {
-                        parser.err("Expected: #[logos(extras = SomeType)]", span);
+                        self.err("Expected: #[logos(extras = SomeType)]", span);
                     }
-                }),
-                ("skip", |parser, span, value| match value {
+                },
+                "skip" => match value {
                     NestedValue::Literal(lit) => {
-                        if let Some(literal) = parser.parse_literal(Lit::new(lit)) {
-                            parser.skips.push(Definition::new(literal));
+                        if let Some(literal) = self.parse_literal(Lit::new(lit)) {
+                            self.skips.push(Definition::new(literal));
                         }
                     }
                     NestedValue::Group(tokens) => {
                         let token_span = tokens.span();
-                        if let Some(skip) = parser.parse_definition(AttributeParser::new(tokens)) {
-                            parser.skips.push(skip);
+                        if let Some(skip) = self.parse_definition(AttributeParser::new(tokens)) {
+                            self.skips.push(skip);
                         } else {
-                            parser.err(
+                            self.err(
                                 "Expected #[logos(skip(\"regex literal\"[, [callback = ] callback, priority = priority]))]",
                                 token_span,
                             );
                         }
                     }
                     _ => {
-                        parser.err(
+                        self.err(
                             "Expected: #[logos(skip \"regex literal\")] or #[logos(skip(...))]",
                             span,
                         );
                     }
-                }),
-                ("source", |parser, span, _| {
-                    parser.err(
+                },
+                "source" => {
+                    self.err(
                         "The `source` attribute is deprecated. Use the `utf8` attribute instead",
                         span,
                     );
-                }),
-                ("subpattern", |parser, span, value| match value {
+                }
+                "subpattern" => match value {
                     NestedValue::KeywordAssign(name, value) => {
                         match syn::parse2::<Literal>(value) {
                             Ok(lit) => {
-                                parser.subpatterns.push((name, lit));
+                                self.subpatterns.push((name, lit));
                             }
                             Err(e) => {
-                                parser.errors.err(e.to_string(), e.span());
+                                self.errors.err(e.to_string(), e.span());
                             }
                         };
                     }
                     _ => {
-                        parser.err(r#"Expected: #[logos(subpattern name = r"regex")]"#, span);
+                        self.err(r#"Expected: #[logos(subpattern name = r"regex")]"#, span);
                     }
-                }),
-                ("type", |parser, span, value| match value {
+                },
+                "type" => match value {
                     NestedValue::KeywordAssign(generic, ty) => {
-                        parser.types.set(generic, ty, &mut parser.errors);
+                        self.types.set(generic, ty, &mut self.errors);
                     }
                     _ => {
-                        parser.err("Expected: #[logos(type T = SomeType)]", span);
+                        self.err("Expected: #[logos(type T = SomeType)]", span);
                     }
-                }),
-                ("utf8", |parser, span, value| match value {
+                },
+                "utf8" => match value {
                     NestedValue::Assign(value) => {
                         let span = value.span();
 
                         match syn::parse2::<LitBool>(value) {
                             Ok(lit) => {
-                                if let Some(previous) = parser.utf8_mode.replace(lit) {
-                                    parser
-                                        .err("Utf8 mode can be defined only once", span)
+                                if let Some(previous) = self.utf8_mode.replace(lit) {
+                                    self.err("Utf8 mode can be defined only once", span)
                                         .err("Previous definition here", previous.span());
                                 }
                             }
                             Err(e) => {
-                                parser.err(format!("Expected a boolean literal: {e}"), span);
+                                self.err(format!("Expected a boolean literal: {e}"), span);
                             }
                         }
                     }
                     _ => {
-                        parser.err("Expected: #[logos(utf8 = true)]", span);
+                        self.err("Expected: #[logos(utf8 = true)]", span);
                     }
-                }),
-            ];
-
-            // Vec::is_sorted_by_key was stabilized in 1.82
-            // debug_assert!(NESTED_LOOKUP.is_sorted_by_key(|(n, _)| n));
-            debug_assert!(NESTED_LOOKUP.windows(2).all(|w| w[0].0 < w[1].0));
-
-            match NESTED_LOOKUP.binary_search_by_key(&name.to_string().as_str(), |(n, _)| n) {
-                Ok(idx) => NESTED_LOOKUP[idx].1(self, name.span(), value),
-                Err(_) => {
-                    let mut err = format!(
-                        "Unknown nested attribute #[logos({name})], expected one of: {}",
-                        NESTED_LOOKUP[0].0
-                    );
-
-                    for (allowed, _) in &NESTED_LOOKUP[1..] {
-                        err.push_str(", ");
-                        err.push_str(allowed);
-                    }
-
-                    self.err(err, name.span());
+                },
+                name => {
+                    self.err(format!("Unknown nested attribute #[logos({name})]",), span);
                 }
             }
         }
@@ -371,7 +348,6 @@ impl Parser {
 
         Some(skip)
     }
-
 
     fn parse_callback(&mut self, tokens: TokenStream) -> Option<Callback> {
         let span = tokens.span();

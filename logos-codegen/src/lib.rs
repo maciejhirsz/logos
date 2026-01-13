@@ -421,17 +421,19 @@ pub fn generate(input: TokenStream) -> TokenStream {
 fn greedy_dotall_check(definition: &Definition, pattern: &Pattern, parser: &mut Parser) {
     let allow_greedy = definition.allow_greedy.unwrap_or(false);
     if !allow_greedy && pattern.check_for_greedy_all() {
-        parser.err(concat!(
-            "This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` ",
-            "(or a character class that is equivalent to a dot, i.e., `[^\\n]*`). ",
-            "This will cause the entirety of the input to be read for every token. ",
-            "Consider making your repetition non-greedy or changing it to a more ",
-            "specific character class. If this is the intended behavior, add ",
-            "#[regex(..., allow_greedy = true)] or",
-            "#[logos(skip(..., allow_greedy = true))]"
-        ), definition.literal.span());
+        parser.err(
+            concat!(
+                "This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.+` ",
+                "(or a character class that is equivalent to a dot, i.e., `[^\\n]*`). ",
+                "This will cause the entirety of the input to be read for every token. ",
+                "Consider making your repetition non-greedy or changing it to a more ",
+                "specific character class. If this is the intended behavior, add ",
+                "#[regex(..., allow_greedy = true)] or",
+                "#[logos(skip(..., allow_greedy = true))]"
+            ),
+            definition.literal.span(),
+        );
     }
-
 }
 
 /// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.
