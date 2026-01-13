@@ -320,7 +320,7 @@ impl Parser {
             }
         };
 
-        let mut skip = Definition::new(literal);
+        let mut def = Definition::new(literal);
 
         for (position, next) in nested.enumerate() {
             match next {
@@ -328,7 +328,7 @@ impl Parser {
                     self.err("Unexpected token in attribute", tokens.span());
                 }
                 Nested::Unnamed(tokens) => match position {
-                    0 => skip.callback = self.parse_callback(tokens),
+                    0 => def.callback = self.parse_callback(tokens),
                     _ => {
                         self.err(
                             "\
@@ -341,12 +341,12 @@ impl Parser {
                     }
                 },
                 Nested::Named(name, value) => {
-                    skip.named_attr(name, value, self);
+                    def.named_attr(name, value, self);
                 }
             }
         }
 
-        Some(skip)
+        Some(def)
     }
 
     fn parse_callback(&mut self, tokens: TokenStream) -> Option<Callback> {
