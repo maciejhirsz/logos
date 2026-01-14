@@ -26,9 +26,9 @@ Loops or optional blocks are ignored, while alternations count the shortest alte
 Generally speaking, equivalent regex patterns have the same priority. E.g.,
 `a|b` is equivalent to `[a-b]`, and both have a priority of 2.
 
-```admonish info
-When two different patterns have the same priority,
-**Logos** will issue an compilation error.
-To prevent this from happening, you can manually set the priority of a given
-pattern with, e.g., `#[token("foobar", priority = 20)]`.
-```
+> [!NOTE]
+>
+> When two different patterns have the same priority,
+> **Logos** will issue an compilation error.
+> To prevent this from happening, you can manually set the priority of a given
+> pattern with, e.g., `#[token("foobar", priority = 20)]`.

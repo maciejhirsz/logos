@@ -88,10 +88,9 @@ RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc \
     --open \
 ```
 
-
 ## Building the book
 
-Logos' book can be built with mbBook.
+Logos' book can be built with mdBook.
 
 This tool can be installed with `cargo`:
 
@@ -99,16 +98,13 @@ This tool can be installed with `cargo`:
 cargo install mdbook
 ```
 
-You also need to install `mdbook-admonish` and its assets:
+You also need to install `mdbook-linkcheck2`:
 
 ```bash
-cargo install mdbook-admonish
-cd book/  # You must run the next command from the book/ directory
-mdbook-admonish install
-cd ../ # Back to project root
+cargo install mdbook-linkcheck2
 ```
 
-Then, you can build the book with:
+Then, from the root folder, you can build and serve the book with:
 
 ```bash
 mdbook serve book --open
