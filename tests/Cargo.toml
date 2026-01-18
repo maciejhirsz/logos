@@ -21,11 +21,6 @@ state_machine_codegen = [
 
 [dev-dependencies]
 trybuild = { version = "1.0.114" }
-criterion = { version = "2.10.1", package = "codspeed-criterion-compat" }
 
 [package.metadata.release]
 release = false
-
-[[bench]]
-harness = false
-name = "bench"

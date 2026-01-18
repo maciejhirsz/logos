@@ -41,9 +41,6 @@ pre-release-replacements = [
 ]
 shared-version = true
 
-[lib]
-bench = false
-
 [features]
 # Enables debug messages
 debug = ["logos-derive?/debug"]
@@ -74,6 +71,11 @@ logos-derive = {version = "0.16.0", path = "./logos-derive", optional = true}
 [dev-dependencies]
 ariadne = {version = "0.4", features = ["auto-color"]}
 chumsky = {version = "0.10.0" }
+criterion = { version = "2.10.1", package = "codspeed-criterion-compat" }
+
+[[bench]]
+harness = false
+name = "bench"
 
 [[example]]
 doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
