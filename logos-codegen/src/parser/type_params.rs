@@ -6,32 +6,53 @@ use syn::{Lifetime, LifetimeParam, Path, Type};
 use crate::error::Errors;
 
 #[derive(Default)]
+pub enum SourceLifetime {
+    /// Equivalent to `Fresh` if there are no lifetime parameters, `Named` if there is exactly one and an error otherwise
+    #[default]
+    Implicit,
+    /// Generate a fresh lifetime to use as the source
+    Fresh(Span),
+    /// Use the lifetime from the parameter list matching the provided lifetime
+    Named(Lifetime),
+}
+
 pub struct TypeParams {
-    lifetime: bool,
+    lifetime_params: Vec<LifetimeParam>,
+    fresh_lifetime_name: String,
+    source_lifetime: SourceLifetime,
     type_params: Vec<(Ident, Option<Type>)>,
 }
 
-impl TypeParams {
-    pub fn explicit_lifetime(&mut self, lt: LifetimeParam, errors: &mut Errors) {
-        if self.lifetime {
-            let span = lt.span();
-
-            errors.err("Logos types can only have one lifetime", span);
+impl Default for TypeParams {
+    fn default() -> Self {
+        Self {
+            lifetime_params: Default::default(),
+            fresh_lifetime_name: String::from("s"),
+            source_lifetime: Default::default(),
+            type_params: Default::default(),
         }
+    }
+}
 
-        self.lifetime = true;
+impl TypeParams {
+    pub fn add_lifetime(&mut self, lt: LifetimeParam) {
+        self.lifetime_params.push(lt);
+        while self
+            .lifetime_params
+            .iter()
+            .any(|lt| lt.lifetime.ident == self.fresh_lifetime_name)
+        {
+            self.fresh_lifetime_name += "_";
+        }
     }
 
-    pub fn add(&mut self, param: Ident) {
+    pub fn add_type(&mut self, param: Ident) {
         self.type_params.push((param, None));
     }
 
-    pub fn set(&mut self, param: Ident, ty: TokenStream, errors: &mut Errors) {
+    pub fn set_type(&mut self, param: Ident, ty: TokenStream, errors: &mut Errors) {
         let ty = match syn::parse2::<Type>(ty) {
-            Ok(mut ty) => {
-                replace_lifetimes(&mut ty);
-                ty
-            }
+            Ok(ty) => ty,
             Err(err) => {
                 errors.err(err.to_string(), err.span());
                 return;
@@ -58,6 +79,46 @@ impl TypeParams {
         }
     }
 
+    pub fn set_source_lifetime(&mut self, source_lifetime: TokenStream, errors: &mut Errors) {
+        mod kw {
+            syn::custom_keyword!(none);
+        }
+
+        if let Ok(none) = syn::parse2::<kw::none>(source_lifetime.clone()) {
+            self.source_lifetime = SourceLifetime::Fresh(none.span());
+        } else {
+            match syn::parse2::<Lifetime>(source_lifetime) {
+                Ok(lt) => {
+                    if self.lifetime_params.iter().all(|ltp| ltp.lifetime != lt) {
+                        let list = self
+                            .lifetime_params
+                            .iter()
+                            .map(|lt| format!("`{}`", lt.lifetime))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+
+                        errors.err(
+                            format!("Lifetime `{lt}` not found in parameters\nAvailable lifetimes: {list}"),
+                            lt.span(),
+                        );
+                    }
+                    self.source_lifetime = SourceLifetime::Named(lt);
+                }
+                Err(err) => {
+                    errors.err(err.to_string(), err.span());
+                }
+            }
+        }
+    }
+
+    pub fn source_lifetime_span(&self) -> Option<Span> {
+        match &self.source_lifetime {
+            SourceLifetime::Implicit => None,
+            SourceLifetime::Fresh(span) => Some(*span),
+            SourceLifetime::Named(lifetime) => Some(lifetime.span()),
+        }
+    }
+
     pub fn find(&self, path: &Path) -> Option<Type> {
         for (ident, ty) in &self.type_params {
             if path.is_ident(ident) {
@@ -68,16 +129,53 @@ impl TypeParams {
         None
     }
 
+    pub fn source_lifetime(&self, errors: Option<&mut Errors>) -> TokenStream {
+        let fresh = || {
+            Lifetime::new(
+                &std::format!("'{}", self.fresh_lifetime_name),
+                Span::call_site(),
+            )
+        };
+        match &self.source_lifetime {
+            SourceLifetime::Implicit => {
+                if self.lifetime_params.is_empty() {
+                    let lt = fresh();
+                    quote!(#lt)
+                } else {
+                    if let Some(errors) = errors {
+                        if self.lifetime_params.len() > 1 {
+                            self.lifetime_params.iter().fold(errors, |errors, lt| {
+                                errors.err(
+                                    format!("Source lifetime must be explicitly specified when more than one lifetime is present\n\
+                                    Use #[logos(lifetime = {})] to use this lifetime for the source", lt.lifetime), lt.span())
+                            });
+                        }
+                    }
+                    let lt = &self.lifetime_params[0].lifetime;
+                    quote!(#lt)
+                }
+            }
+            SourceLifetime::Fresh(_) => {
+                let lt = fresh();
+                quote!(#lt)
+            }
+            SourceLifetime::Named(lt) => quote!(#lt),
+        }
+    }
+
     pub fn generics(&self, errors: &mut Errors) -> Option<TokenStream> {
-        if !self.lifetime && self.type_params.is_empty() {
+        if self.lifetime_params.is_empty() && self.type_params.is_empty() {
             return None;
         }
 
-        let mut generics = Vec::new();
-
-        if self.lifetime {
-            generics.push(quote!('s));
-        }
+        let mut generics = self
+            .lifetime_params
+            .iter()
+            .map(|lt| {
+                let lt = &lt.lifetime;
+                quote!(#lt)
+            })
+            .collect::<Vec<_>>();
 
         for (ty, replace) in self.type_params.iter() {
             match replace {
@@ -101,40 +199,19 @@ impl TypeParams {
             Some(quote!(<#(#generics),*>))
         }
     }
-}
 
-pub fn replace_lifetimes(ty: &mut Type) {
-    traverse_type(ty, &mut replace_lifetime)
-}
+    pub fn lifetime_bounds(&self) -> TokenStream {
+        let mut bounds = match self.source_lifetime {
+            SourceLifetime::Implicit if self.lifetime_params.is_empty() => {
+                vec![self.source_lifetime(None)]
+            }
+            SourceLifetime::Fresh(_) => vec![self.source_lifetime(None)],
+            SourceLifetime::Implicit | SourceLifetime::Named(_) => Vec::new(),
+        };
 
-pub fn replace_lifetime(ty: &mut Type) {
-    use syn::{GenericArgument, PathArguments};
+        bounds.extend(self.lifetime_params.iter().map(|lt| quote!(#lt)));
 
-    match ty {
-        Type::Path(p) => {
-            p.path
-                .segments
-                .iter_mut()
-                .filter_map(|segment| match &mut segment.arguments {
-                    PathArguments::AngleBracketed(ab) => Some(ab),
-                    _ => None,
-                })
-                .flat_map(|ab| ab.args.iter_mut())
-                .for_each(|arg| {
-                    if let GenericArgument::Lifetime(lt) = arg {
-                        *lt = Lifetime::new("'s", lt.span());
-                    }
-                });
-        }
-        Type::Reference(r) => {
-            let span = match r.lifetime.take() {
-                Some(lt) => lt.span(),
-                None => Span::call_site(),
-            };
-
-            r.lifetime = Some(Lifetime::new("'s", span));
-        }
-        _ => (),
+        quote!(<#(#bounds),*>)
     }
 }
 
