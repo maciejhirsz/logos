@@ -7,7 +7,7 @@ use crate::error::Errors;
 
 #[derive(Default)]
 pub enum SourceLifetime {
-    /// Equivalent to `Fresh` if there are no lifetime parameters, `Named` if there is exactly one and an error otherwise
+    /// Uses 's as the source and fixes all lifetimes to the source
     #[default]
     Implicit,
     /// Generate a fresh lifetime to use as the source
@@ -27,7 +27,7 @@ impl Default for TypeParams {
     fn default() -> Self {
         Self {
             lifetime_params: Default::default(),
-            fresh_lifetime_name: String::from("s"),
+            fresh_lifetime_name: String::from("'s"),
             source_lifetime: Default::default(),
             type_params: Default::default(),
         }
@@ -40,7 +40,7 @@ impl TypeParams {
         while self
             .lifetime_params
             .iter()
-            .any(|lt| lt.lifetime.ident == self.fresh_lifetime_name)
+            .any(|lt| lt.lifetime.ident == self.fresh_lifetime_name.trim_start_matches("\'"))
         {
             self.fresh_lifetime_name += "_";
         }
@@ -52,7 +52,10 @@ impl TypeParams {
 
     pub fn set_type(&mut self, param: Ident, ty: TokenStream, errors: &mut Errors) {
         let ty = match syn::parse2::<Type>(ty) {
-            Ok(ty) => ty,
+            Ok(mut ty) => {
+                self.fix_source_lifetime_implicit(&mut ty);
+                ty
+            }
             Err(err) => {
                 errors.err(err.to_string(), err.span());
                 return;
@@ -130,30 +133,20 @@ impl TypeParams {
     }
 
     pub fn source_lifetime(&self, errors: Option<&mut Errors>) -> TokenStream {
-        let fresh = || {
-            Lifetime::new(
-                &std::format!("'{}", self.fresh_lifetime_name),
-                Span::call_site(),
-            )
-        };
+        let fresh = || Lifetime::new(&self.fresh_lifetime_name, Span::call_site());
         match &self.source_lifetime {
             SourceLifetime::Implicit => {
-                if self.lifetime_params.is_empty() {
-                    let lt = fresh();
-                    quote!(#lt)
-                } else {
-                    if let Some(errors) = errors {
-                        if self.lifetime_params.len() > 1 {
-                            self.lifetime_params.iter().fold(errors, |errors, lt| {
+                if let Some(errors) = errors {
+                    if self.lifetime_params.len() > 1 {
+                        self.lifetime_params.iter().fold(errors, |errors, lt| {
                                 errors.err(
                                     format!("Source lifetime must be explicitly specified when more than one lifetime is present\n\
                                     Use #[logos(lifetime = {})] to use this lifetime for the source", lt.lifetime), lt.span())
                             });
-                        }
                     }
-                    let lt = &self.lifetime_params[0].lifetime;
-                    quote!(#lt)
                 }
+                let lt = fresh();
+                quote!(#lt)
             }
             SourceLifetime::Fresh(_) => {
                 let lt = fresh();
@@ -176,6 +169,13 @@ impl TypeParams {
                 quote!(#lt)
             })
             .collect::<Vec<_>>();
+
+        // Rename first lifetime to 's when source lifetime is implicit for backwards compatibility
+        if matches!(&self.source_lifetime, SourceLifetime::Implicit) {
+            if let Some(lt) = generics.first_mut() {
+                *lt = self.source_lifetime(None);
+            }
+        }
 
         for (ty, replace) in self.type_params.iter() {
             match replace {
@@ -202,16 +202,55 @@ impl TypeParams {
 
     pub fn lifetime_bounds(&self) -> TokenStream {
         let mut bounds = match self.source_lifetime {
-            SourceLifetime::Implicit if self.lifetime_params.is_empty() => {
-                vec![self.source_lifetime(None)]
-            }
-            SourceLifetime::Fresh(_) => vec![self.source_lifetime(None)],
-            SourceLifetime::Implicit | SourceLifetime::Named(_) => Vec::new(),
+            SourceLifetime::Implicit | SourceLifetime::Fresh(_) => vec![self.source_lifetime(None)],
+            SourceLifetime::Named(_) => Vec::new(),
         };
 
         bounds.extend(self.lifetime_params.iter().map(|lt| quote!(#lt)));
 
         quote!(<#(#bounds),*>)
+    }
+
+    /// Replaces all lifetimes with 's when source lifetime is implicit for backwards compatibility
+    pub fn fix_source_lifetime_implicit(&self, ty: &mut Type) {
+        if matches!(&self.source_lifetime, SourceLifetime::Implicit) {
+            replace_lifetimes(ty, &self.fresh_lifetime_name);
+        }
+    }
+}
+
+pub fn replace_lifetimes(ty: &mut Type, lt_ident: &str) {
+    traverse_type(ty, &mut |ty| replace_lifetime(ty, lt_ident))
+}
+
+pub fn replace_lifetime(ty: &mut Type, lt_ident: &str) {
+    use syn::{GenericArgument, PathArguments};
+
+    match ty {
+        Type::Path(p) => {
+            p.path
+                .segments
+                .iter_mut()
+                .filter_map(|segment| match &mut segment.arguments {
+                    PathArguments::AngleBracketed(ab) => Some(ab),
+                    _ => None,
+                })
+                .flat_map(|ab| ab.args.iter_mut())
+                .for_each(|arg| {
+                    if let GenericArgument::Lifetime(lt) = arg {
+                        *lt = Lifetime::new(lt_ident, lt.span());
+                    }
+                });
+        }
+        Type::Reference(r) => {
+            let span = match r.lifetime.take() {
+                Some(lt) => lt.span(),
+                None => Span::call_site(),
+            };
+
+            r.lifetime = Some(Lifetime::new(lt_ident, span));
+        }
+        _ => (),
     }
 }
 

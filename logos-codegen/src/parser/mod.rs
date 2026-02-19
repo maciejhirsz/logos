@@ -416,6 +416,9 @@ impl Parser {
 
     /// Checks if `ty` is a declared generic param, if so replaces it
     /// with a concrete type defined using #[logos(type T = Type)]
+    ///
+    /// If no matching generic param is found, all lifetimes are fixed
+    /// to the source lifetime (only when implicit)
     pub fn get_type(&self, ty: &mut Type) -> TokenStream {
         traverse_type(ty, &mut |ty| {
             if let Type::Path(tp) = ty {
@@ -428,6 +431,8 @@ impl Parser {
                     }
                 }
             }
+            // If `ty` is a concrete type, fix its lifetimes to 'source (when 'source is implicit)
+            self.types.fix_source_lifetime_implicit(ty);
         });
 
         quote!(#ty)
