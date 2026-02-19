@@ -17,7 +17,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         use core::result::Result as _Result;
         use core::option::Option as _Option;
         use ::logos::Logos;
-        type _Lexer<'s> = ::logos::Lexer<'s, Token>;
+        use ::logos::Lexer as _Lexer;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
                 'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
@@ -45,12 +45,12 @@ impl<'s> ::logos::Logos<'s> for Token {
             };
         }
         #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+        fn _make_error<'s>(lex: &mut _Lexer<'s, Token>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
         #[inline]
         fn _get_action<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             offset: usize,
             context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, Token> {
@@ -100,7 +100,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             Leaf5 = 5isize,
         }
         fn state0<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
@@ -408,7 +408,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             _take_action!(lex, offset, context, state)
         }
         fn state1<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
@@ -419,7 +419,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             _take_action!(lex, offset, context, state)
         }
         fn state2<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
@@ -430,7 +430,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             _take_action!(lex, offset, context, state)
         }
         fn state3<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
@@ -441,7 +441,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             _take_action!(lex, offset, context, state)
         }
         fn state4<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
@@ -452,7 +452,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             _take_action!(lex, offset, context, state)
         }
         fn state5<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
@@ -463,7 +463,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             _take_action!(lex, offset, context, state)
         }
         fn state6<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, Token>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
