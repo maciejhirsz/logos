@@ -26,7 +26,7 @@ The update also added some major new features and a handful of breaking changes.
   `regex` crate with the following assumptions:
   - Every pattern behaves as if it has a start of input anchor (`^`) prepended to it.
   - Unicode word boundaries, some lookaround, and other advanced features not
-    supported by the DFA regex engine will cause a compile time error because
+    supported by the DFA regex engine will cause a compile-time error because
     they cannot be matched by the state machine that logos generates.
 - The error token semantics are now precisely defined. See [Error
   semantics](./common-regex.md#error-semantics).
