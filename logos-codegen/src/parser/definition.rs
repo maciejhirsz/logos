@@ -141,7 +141,7 @@ impl Definition {
                         "\
                         Unknown nested attribute: {unknown}\n\
                         \n\
-                        Expected one of: priority, callback\
+                        Expected one of: priority, callback, ignore, allow_greedy\
                         "
                     ),
                     name.span(),
