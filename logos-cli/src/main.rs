@@ -90,7 +90,7 @@ fn rustfmt(input: String) -> Result<String> {
         anyhow::bail!("rustfmt returned unsuccessful exit code");
     }
 
-    String::from_utf8(output.stdout).context("failed to parse rustfmt output as utf-8")
+    String::from_utf8(output.stdout).context("failed to parse rustfmt output as UTF-8")
 }
 
 fn eq_ignore_newlines(lhs: &str, rhs: &str) -> bool {

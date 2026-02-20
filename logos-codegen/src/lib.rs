@@ -265,10 +265,10 @@ pub fn generate(input: TokenStream) -> TokenStream {
         .filter(|leaf| !leaf.pattern.hir().properties().is_utf8())
         .collect::<Vec<_>>();
     if utf8_mode && !non_utf8_pats.is_empty() {
-        // If utf8 mode is specified, make sure no patterns match illegal utf8
+        // If UTF-8 mode is specified, make sure no patterns match illegal UTF-8
         for leaf in non_utf8_pats {
             parser.err(format!(concat!(
-                "UTF-8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8.\n",
+                "UTF-8 mode is requested, but the pattern {} of variant `{}` can match invalid UTF-8.\n",
                 "You can disable UTF-8 mode with #[logos(utf8 = false)]"
             ), leaf.pattern.source(), leaf.kind), leaf.span);
         }

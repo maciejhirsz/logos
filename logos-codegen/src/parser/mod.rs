@@ -268,7 +268,7 @@ impl Parser {
                         match syn::parse2::<LitBool>(value) {
                             Ok(lit) => {
                                 if let Some(previous) = self.utf8_mode.replace(lit) {
-                                    self.err("Utf8 mode can be defined only once", span)
+                                    self.err("UTF-8 mode can be defined only once", span)
                                         .err("Previous definition here", previous.span());
                                 }
                             }

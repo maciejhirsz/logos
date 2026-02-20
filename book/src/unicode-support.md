@@ -3,7 +3,7 @@
 By default, logos is unicode aware. It accepts input in the form of a rust
 `&str` that is valid UTF-8 and it compiles its regular expressions to match
 unicode codepoints. When it returns spans for tokens, these spans are
-guaranteed to not split utf-8 codepoints. These behaviors can all be changed,
+guaranteed to not split UTF-8 codepoints. These behaviors can all be changed,
 however.
 
 ## Using `&[u8]` input
@@ -27,5 +27,5 @@ docs](https://docs.rs/regex/latest/regex/#grouping-and-flags) for more
 information.
 
 Logos will automatically detect if any of your patterns can match a byte
-sequence that is invalid utf8. If one exists and you haven't set the lexer to
+sequence that is invalid UTF-8. If one exists and you haven't set the lexer to
 use `&[u8]` input, it will issue a compile error.

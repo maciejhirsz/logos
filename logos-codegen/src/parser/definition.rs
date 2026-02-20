@@ -34,7 +34,7 @@ impl Literal {
                     if byte <= 127 {
                         if literal {
                             let buf = [byte];
-                            let s = std::str::from_utf8(&buf).expect("ASCII is always valid utf8");
+                            let s = std::str::from_utf8(&buf).expect("ASCII is always valid UTF-8");
                             regex_syntax::escape_into(s, &mut pattern);
                             Ok(())
                         } else {
