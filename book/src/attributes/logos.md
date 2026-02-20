@@ -14,6 +14,7 @@ The syntax is as follows:
 #[logos(error = ErrorType)]
 #[logos(crate = path::to::logos)]
 #[logos(utf8 = true)]
+#[logos(lifetime = 's)]
 #[logos(subpattern subpattern_name = "regex literal")]
 enum Token {
     /* ... */
@@ -76,6 +77,33 @@ compile time error. In this case, you should supply `#[logos(utf8 = false)]`.
 This will cause the lexer to accept a `&[u8]` instead.
 
 In the past, you could also specify any custom type, but that feature has been removed.
+
+## Explicit source lifetime
+
+When the source lifetime is left unspecified, **Logos** will use the lifetime of the
+token type as the source (in `enum Token<'a>`, `'a` will become the source lifetime).
+The token lifetime is set to `'s` in the extras type, in concrete type declarations and
+in callbacks when using an implicit source lifetime. When no lifetime is present on the
+token type, a new `'s` lifetime is generated as the source.
+
+You can specify the source lifetime explicitly using `#[logos(lifetime = 'a)]` to use
+lifetime `'a` from the token lifetime parameters, or use `#[logos(lifetime = none)]` to
+add a new source lifetime `'s` instead. Token lifetimes are not set to `'s` when using
+an explicit source lifetime. If your token type has multiple lifetimes, the source
+lifetime must be set explicitly.
+
+Here is an example using an explicit source lifetime:
+
+```rust,no_run,noplayground
+#[derive(Logos)]
+#[logos(lifetime = 's)]
+enum Foo<'s, 'a> {
+    #[token("bar", |lex| lex.slice())]
+    Bar(&'s str),
+    #[token("baz", |_| "static")]
+    Baz(&'a str),
+}
+```
 
 ## Subpatterns
 
