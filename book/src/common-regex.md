@@ -46,7 +46,7 @@ resolve the performance concern.
 
 For reference, **Logos** parses regexes using the `regex-syntax` and
 `regex-automata` crates, and transforms the deterministic finite automata
-created by the `regex-automata` crate into rust code that implements the
+created by the `regex-automata` crate into Rust code that implements the
 matching state machine. Every regex is compiled with an implicit `^` anchor at
 its start, since that is how a tokenizer works.
 

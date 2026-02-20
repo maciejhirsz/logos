@@ -1,6 +1,6 @@
 # Unicode support
 
-By default, logos is unicode aware. It accepts input in the form of a rust
+By default, logos is unicode aware. It accepts input in the form of a Rust
 `&str` that is valid UTF-8 and it compiles its regular expressions to match
 unicode codepoints. When it returns spans for tokens, these spans are
 guaranteed to not split UTF-8 codepoints. These behaviors can all be changed,

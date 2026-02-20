@@ -12,7 +12,7 @@ It is important to note that:
 
 ## Example
 
-The following example demonstrates how to use `morph` to handle a C-style language that also supports python blocks:
+The following example demonstrates how to use `morph` to handle a C-style language that also supports Python blocks:
 
 ```rust
 #[derive(Logos, Debug, PartialEq, Clone)]

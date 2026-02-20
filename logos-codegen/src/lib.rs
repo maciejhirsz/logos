@@ -48,7 +48,7 @@ const ERROR_ATTR: &str = "error";
 const TOKEN_ATTR: &str = "token";
 const REGEX_ATTR: &str = "regex";
 
-/// Generate a `Logos` implementation for the given enum, provided as a stream of rust tokens.
+/// Generate a `Logos` implementation for the given enum, provided as a stream of Rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Reading input token streams");
 

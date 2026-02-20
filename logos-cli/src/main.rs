@@ -66,7 +66,7 @@ fn codegen(input: String) -> Result<String> {
     let input_tokens: TokenStream = input
         .parse()
         .map_err(|err: LexError| anyhow::Error::msg(err.to_string()))
-        .context("failed to parse input as rust code")?;
+        .context("failed to parse input as Rust code")?;
 
     let mut output = String::new();
     write!(
