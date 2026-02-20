@@ -39,7 +39,7 @@ The update also added some major new features and a handful of breaking changes.
 
 - The `ignore_ascii_case` attribute was removed. You can switch to using the
   `ignore_case` attribute, which also works on non-unicode patterns. If you
-  explicitly want to ignore case for ascii characters but not others, you will
+  explicitly want to ignore case for ASCII characters but not others, you will
   have to do it manually using character classes. See [`#[token]` and
   `#[regex]`](attributes/token_and_regex.md).
 - The `source` attribute has been removed. You can now use the `utf8` attribute

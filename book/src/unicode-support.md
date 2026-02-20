@@ -17,7 +17,7 @@ did was add that attribute and you called the lexer with
 before.
 
 ## Matching bytes rather than Unicode codepoints
-If you want to ignore unicode altogether and match ascii, raw bytes, or
+If you want to ignore unicode altogether and match ASCII, raw bytes, or
 whatever esoteric character encoding you want, you can compile your regular
 expressions with unicode mode off. This can be done by either removing the
 unicode flag manually with `(?-u)` in your regular expression, or if you supply
