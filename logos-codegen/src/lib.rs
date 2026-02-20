@@ -48,11 +48,11 @@ const ERROR_ATTR: &str = "error";
 const TOKEN_ATTR: &str = "token";
 const REGEX_ATTR: &str = "regex";
 
-/// Generate a `Logos` implementation for the given struct, provided as a stream of rust tokens.
+/// Generate a `Logos` implementation for the given enum, provided as a stream of rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Reading input token streams");
 
-    let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
+    let mut item: ItemEnum = syn::parse2(input).expect("Logos can only be derived for enums");
     let item_span = item.span();
 
     let name = &item.ident;
@@ -436,9 +436,9 @@ fn greedy_dotall_check(definition: &Definition, pattern: &Pattern, parser: &mut 
     }
 }
 
-/// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.
+/// Strip all logos attributes from the given enum, allowing it to be used in code without `logos-derive` present.
 pub fn strip_attributes(input: TokenStream) -> TokenStream {
-    let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
+    let mut item: ItemEnum = syn::parse2(input).expect("Logos can only be derived for enums");
 
     strip_attrs_from_vec(&mut item.attrs);
 
