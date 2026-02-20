@@ -78,7 +78,7 @@ token.
 While Logos strives to have a feature complete regex implementation, there are
 some limitations. Unicode word boundaries, some lookarounds, and other advanced
 features not supported by the DFA matching engine in the `regex` crate are not
-possible to match using Logos's generated state machine.
+possible to match using Logos' generated state machine.
 
 However, attempting to use a missing feature will result in a compile time
 error. If your code compiles, the matcher behavior is exactly the same as the

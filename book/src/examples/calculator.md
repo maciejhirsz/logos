@@ -97,11 +97,11 @@ First, we define the AST.
 
 Note that
 
-- We name the enum not `AST` but `Expr` because an AST is just nested expressions.
+- We name the `enum` not `AST` but `Expr` because an AST is just nested expressions.
 
 - There is no `Parenthesized` variant because parentheses only affect the order of operations (i.e., precedence), which is reflected in the AST structure.
 
-- `Box` is used as [a recursive enum is not allowed in Rust](https://stackoverflow.com/questions/25296195/why-are-recursive-struct-types-illegal-in-rust).
+- `Box` is used as [a recursive `enum` is not allowed in Rust](https://stackoverflow.com/questions/25296195/why-are-recursive-struct-types-illegal-in-rust).
 
 ### 3.2 Parser Implementation
 

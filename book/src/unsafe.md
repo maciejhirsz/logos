@@ -30,7 +30,7 @@ code disabled.
 
 Generally, disabling unsafe code will result in a slower parser.
 
-However making definitive statements around performance of safe-only code is difficult,
+However, making definitive statements about performance of safe-only code is difficult,
 as there are too many variables to consider between compiler optimizations,
 the specific grammar being parsed, and the target processor. The automated benchmarks
 of this crate show around a 10% slowdown in safe-only code at the time of this writing.

@@ -7,7 +7,7 @@ and stack memory usage.
 
 ## Feature enabled
 
-The state machine codegen creates an Enum variant for each state, and puts the
+The state machine codegen creates an `enum` variant for each state, and puts the
 state bodies in the arms of a match statement. The match statement is put
 inside of a loop, and state transitions are implemented by assigning to the
 current state variable and then `continue`ing to the start of the loop again.
