@@ -16,8 +16,8 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         };
         use core::result::Result as _Result;
         use core::option::Option as _Option;
+        use ::logos::Lexer as _Lexer;
         use ::logos::Logos;
-        type _Lexer<'s> = ::logos::Lexer<'s, TokenA>;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
                 'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
@@ -45,13 +45,15 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             };
         }
         #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <TokenA as Logos<'s>>::Error {
+        fn _make_error<'s>(
+            lex: &mut _Lexer<'s, TokenA>,
+        ) -> <TokenA as Logos<'s>>::Error {
             let error = callback0(lex);
             error.into()
         }
         #[inline]
         fn _get_action<'s>(
-            lex: &mut _Lexer<'s>,
+            lex: &mut _Lexer<'s, TokenA>,
             offset: usize,
             context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, TokenA> {

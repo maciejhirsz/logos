@@ -16,8 +16,8 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         };
         use core::result::Result as _Result;
         use core::option::Option as _Option;
-        use ::logos::Logos;
         use ::logos::Lexer as _Lexer;
+        use ::logos::Logos;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
                 'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >

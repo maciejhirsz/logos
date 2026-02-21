@@ -420,8 +420,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
         };
         use core::result::Result as _Result;
         use core::option::Option as _Option;
-        use #logos_path::Logos;
         use #logos_path::Lexer as _Lexer;
+        use #logos_path::Logos;
 
         #body
     })
