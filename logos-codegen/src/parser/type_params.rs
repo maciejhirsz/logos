@@ -133,7 +133,6 @@ impl TypeParams {
     }
 
     pub fn source_lifetime(&self, errors: Option<&mut Errors>) -> TokenStream {
-        let fresh = || Lifetime::new(&self.fresh_lifetime_name, Span::call_site());
         match &self.source_lifetime {
             SourceLifetime::Implicit => {
                 if let Some(errors) = errors {
@@ -145,11 +144,11 @@ impl TypeParams {
                             });
                     }
                 }
-                let lt = fresh();
+                let lt = Lifetime::new("'s", Span::call_site());
                 quote!(#lt)
             }
             SourceLifetime::Fresh(_) => {
-                let lt = fresh();
+                let lt = Lifetime::new(&self.fresh_lifetime_name, Span::call_site());
                 quote!(#lt)
             }
             SourceLifetime::Named(lt) => quote!(#lt),
@@ -202,11 +201,20 @@ impl TypeParams {
 
     pub fn lifetime_bounds(&self) -> TokenStream {
         let mut bounds = match self.source_lifetime {
-            SourceLifetime::Implicit | SourceLifetime::Fresh(_) => vec![self.source_lifetime(None)],
-            SourceLifetime::Named(_) => Vec::new(),
+            SourceLifetime::Implicit | SourceLifetime::Named(_) => Vec::new(),
+            SourceLifetime::Fresh(_) => vec![self.source_lifetime(None)],
         };
 
         bounds.extend(self.lifetime_params.iter().map(|lt| quote!(#lt)));
+
+        if matches!(self.source_lifetime, SourceLifetime::Implicit) {
+            let lt = Lifetime::new("'s", Span::call_site());
+            if bounds.is_empty() {
+                bounds.push(quote!(#lt));
+            } else {
+                bounds[0] = quote!(#lt);
+            }
+        }
 
         quote!(<#(#bounds),*>)
     }
@@ -214,16 +222,16 @@ impl TypeParams {
     /// Replaces all lifetimes with 's when source lifetime is implicit for backwards compatibility
     pub fn fix_source_lifetime_implicit(&self, ty: &mut Type) {
         if matches!(&self.source_lifetime, SourceLifetime::Implicit) {
-            replace_lifetimes(ty, &self.fresh_lifetime_name);
+            replace_lifetimes(ty);
         }
     }
 }
 
-pub fn replace_lifetimes(ty: &mut Type, lt_ident: &str) {
-    traverse_type(ty, &mut |ty| replace_lifetime(ty, lt_ident))
+pub fn replace_lifetimes(ty: &mut Type) {
+    traverse_type(ty, &mut replace_lifetime)
 }
 
-pub fn replace_lifetime(ty: &mut Type, lt_ident: &str) {
+pub fn replace_lifetime(ty: &mut Type) {
     use syn::{GenericArgument, PathArguments};
 
     match ty {
@@ -238,7 +246,7 @@ pub fn replace_lifetime(ty: &mut Type, lt_ident: &str) {
                 .flat_map(|ab| ab.args.iter_mut())
                 .for_each(|arg| {
                     if let GenericArgument::Lifetime(lt) = arg {
-                        *lt = Lifetime::new(lt_ident, lt.span());
+                        *lt = Lifetime::new("'s", lt.span());
                     }
                 });
         }
@@ -248,7 +256,7 @@ pub fn replace_lifetime(ty: &mut Type, lt_ident: &str) {
                 None => Span::call_site(),
             };
 
-            r.lifetime = Some(Lifetime::new(lt_ident, span));
+            r.lifetime = Some(Lifetime::new("'s", span));
         }
         _ => (),
     }
