@@ -1,0 +1,13 @@
+error: Source lifetime must be explicitly specified when more than one lifetime is present
+       Use #[logos(lifetime = 'a)] to use this lifetime for the source
+ --> tests/ui/err/multiple-lifetimes-without-attribute.rs:4:12
+  |
+4 | enum Token<'a, 'b> {
+  |            ^^
+
+error: Source lifetime must be explicitly specified when more than one lifetime is present
+       Use #[logos(lifetime = 'b)] to use this lifetime for the source
+ --> tests/ui/err/multiple-lifetimes-without-attribute.rs:4:16
+  |
+4 | enum Token<'a, 'b> {
+  |                ^^
