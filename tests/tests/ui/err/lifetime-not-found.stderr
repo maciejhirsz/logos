@@ -1,0 +1,14 @@
+error: Lifetime `'s` not found in parameters
+       Available lifetimes: `'a`, `'b`
+ --> tests/ui/err/lifetime-not-found.rs:4:20
+  |
+4 | #[logos(lifetime = 's)]
+  |                    ^^
+
+error[E0261]: use of undeclared lifetime name `'s`
+ --> tests/ui/err/lifetime-not-found.rs:4:20
+  |
+3 | #[derive(Logos)]
+  |          ----- lifetime `'s` is missing in item created through this procedural macro
+4 | #[logos(lifetime = 's)]
+  |                    ^^ undeclared lifetime

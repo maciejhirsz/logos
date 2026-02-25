@@ -554,3 +554,18 @@ mod naming_collision {
         let _ = Token4::Identifier;
     }
 }
+
+mod implicit_source_lifetime_collision {
+    use super::*;
+
+    #[test]
+    fn must_compile() {
+        #[derive(Logos)]
+        #[logos(lifetime = none)]
+        pub enum Token<'s_, 's, 's___, 's__> {
+            #[token("a", |_| ((&5, &true, &-2, &())))]
+            A((&'s u8, &'s___ bool, &'s__ i8, &'s_ ())),
+        }
+        let Token::A((..)) = Token::A((&5, &true, &-2, &()));
+    }
+}
