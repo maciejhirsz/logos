@@ -1,0 +1,23 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+impl<'a, 'b> ::logos::Logos<'lt> for Token<'a, 'b> {
+    type Error = ();
+    type Extras = ();
+    type Source = str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'lt, Self>,
+    ) -> core::option::Option<
+        core::result::Result<Self, <Self as ::logos::Logos<'lt>>::Error>,
+    > {
+        fn _logos_derive_compile_errors() {
+            {
+                compile_error!(
+                    "Lifetime `'lt` not found in parameters\nAvailable lifetimes: `'a`, `'b`"
+                )
+            }
+        }
+        unimplemented!()
+    }
+}
