@@ -11,29 +11,27 @@
 //!     cargo run --example array_language examples/array_program.txt
 
 /* ANCHOR: all */
-use logos::Logos;
+use logos::{Lexer, Logos};
 
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::hash::{DefaultHasher, Hash as _, Hasher as _};
 use std::num::ParseIntError;
 use std::path::Path;
 
 /* ANCHOR: error_type */
 /// Token error type, tied to the lifetime of the source.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 enum LexingError<'s> {
     UnknownSymbol(&'s str),
-    InvalidInteger { err: ParseIntError, source: &'s str },
+    InvalidInteger {
+        err: ParseIntError,
+        source: &'s str,
+    },
     UnknownVariable(&'s str),
+    #[default]
+    Other,
 }
 /* ANCHOR_END: error_type */
-
-impl Default for LexingError<'_> {
-    fn default() -> Self {
-        Self::UnknownSymbol("")
-    }
-}
 
 impl Display for LexingError<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -43,6 +41,7 @@ impl Display for LexingError<'_> {
                 write!(f, "int error in source `{source}`: {err}")
             }
             Self::UnknownVariable(s) => write!(f, "unknown variable `{s}`"),
+            Self::Other => write!(f, "unknown error"),
         }
     }
 }
@@ -50,23 +49,26 @@ impl Display for LexingError<'_> {
 /// Structure to map variable names to values.
 type Environment = HashMap<String, Vec<i128>>;
 
-fn number_callback<'s>(lex: &mut logos::Lexer<'s, Token>) -> Result<i128, LexingError<'s>> {
+/* ANCHOR: callbacks */
+/// Parse lexer slice as an i128
+fn number_callback<'s>(lex: &mut Lexer<'s, Token>) -> Result<i128, LexingError<'s>> {
     let source = lex.slice();
     let res = source.parse();
     res.map_err(|err| LexingError::InvalidInteger { err, source })
 }
 
-fn var_callback<'s, 'a>(
-    lex: &mut logos::Lexer<'s, Token<'a>>,
-) -> Result<&'a [i128], LexingError<'s>> {
+/// Look up the lexer slice in the variable environment,
+/// yielding a borrow of the variable's value.
+fn var_callback<'s, 'a>(lex: &mut Lexer<'s, Token<'a>>) -> Result<&'a [i128], LexingError<'s>> {
     match lex.extras.get(lex.slice()) {
         Some(arr) => Ok(arr.as_slice()),
         None => Err(LexingError::UnknownVariable(lex.slice())),
     }
 }
+/* ANCHOR_END: callbacks */
 
 /* ANCHOR: tokens */
-#[derive(Debug, Logos, PartialEq)]
+#[derive(Debug, Logos)]
 #[logos(lifetime = none)]
 #[logos(error(LexingError<'s>, |lex| LexingError::UnknownSymbol(lex.slice())))]
 #[logos(extras = &'a Environment)]
@@ -80,28 +82,31 @@ enum Token<'a> {
     Product,
     #[token("+")]
     Sum,
+    #[token("~")]
+    Reverse,
 }
 /* ANCHOR_END: tokens */
 
 /* ANCHOR: evaluate */
 /// Evaluate a sequence of tokens to produce an array.
 fn evaluate(tokens: &[Token]) -> Vec<i128> {
-    let mut out = Vec::new();
+    let mut accumulator = Vec::new();
     for tok in tokens {
         match *tok {
-            Token::Number(n) => out.push(n),
-            Token::Array(arr) => out.extend(arr),
+            Token::Number(n) => accumulator.push(n),
+            Token::Array(arr) => accumulator.extend(arr),
             Token::Product => {
-                let n = out.drain(..).product();
-                out.push(n);
+                let n = accumulator.drain(..).product();
+                accumulator.push(n);
             }
             Token::Sum => {
-                let n = out.drain(..).sum();
-                out.push(n);
+                let n = accumulator.drain(..).sum();
+                accumulator.push(n);
             }
+            Token::Reverse => accumulator.reverse(),
         }
     }
-    out
+    accumulator
 }
 /* ANCHOR_END: evaluate */
 
@@ -115,9 +120,10 @@ fn lex_file<'a>(path: &Path, env: &'a Environment) -> Vec<Result<Vec<Token<'a>>,
         let mut handles = Vec::new();
         for line in source.lines() {
             handles.push(s.spawn(|| {
-                Token::lexer_with_extras(line, env)
-                    .map(|res| res.map_err(|e| e.to_string()))
-                    .collect()
+                let lexer = Token::lexer_with_extras(line, env);
+                // Convert the lexer errors to strings before returning,
+                // because the source is scoped to this function.
+                lexer.map(|res| res.map_err(|e| e.to_string())).collect()
             }));
         }
         handles.into_iter().flat_map(|h| h.join()).collect()
@@ -125,38 +131,16 @@ fn lex_file<'a>(path: &Path, env: &'a Environment) -> Vec<Result<Vec<Token<'a>>,
 }
 /* ANCHOR_END: lex_file */
 
-/// Simple pseudorandom number generator.
-struct Minstd(u64);
-
-impl Minstd {
-    const M: u64 = 2u64.pow(31) - 1;
-    const A: u64 = 7u64.pow(5);
-
-    /// Generate `count` number of pseudorandom integers
-    /// between `low` and `high`, inclusive.
-    fn next(&mut self, count: usize, low: i128, high: i128) -> Vec<i128> {
-        std::iter::from_fn(|| {
-            self.0 = (self.0 * Self::A) % Self::M;
-            Some(self.0 as i128 % (high + 1 - low) + low)
-        })
-        .take(count)
-        .collect()
-    }
-}
-
 fn main() {
     let filename = std::env::args().nth(1).expect("Expected file argument");
-
-    // Seed PRNG with hash of filename.
-    let mut minstd = Minstd({
-        let mut hasher = DefaultHasher::new();
-        filename.hash(&mut hasher);
-        hasher.finish() % Minstd::M
-    });
-
-    // Create environment with variables A0 to A9.
-    // Each is an array of 3 random integers (range -9..=9).
-    let env = Environment::from_iter((0..10).map(|n| (format!("A{n}"), minstd.next(3, -9, 9))));
+    let env = Environment::from([
+        ("NAT".to_owned(), (1..=10).collect()),
+        ("EVEN".to_owned(), (2..=20).step_by(2).collect()),
+        ("ODD".to_owned(), (1..=20).step_by(2).collect()),
+        ("PRIME".to_owned(), vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29]),
+        ("FIB".to_owned(), vec![0, 1, 1, 2, 3, 5, 8, 13, 21, 34]),
+        ("POW2".to_owned(), (0..=10).map(|n| 2i128.pow(n)).collect()),
+    ]);
 
     let results = lex_file(Path::new(&filename), &env);
     for res in &results {

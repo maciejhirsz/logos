@@ -92,7 +92,7 @@ add a new source lifetime `'s` instead. Token lifetimes are not set to `'s` when
 an explicit source lifetime. If your token type has multiple lifetimes, the source
 lifetime must be set explicitly.
 
-Here is an example using an explicit source lifetime:
+Here is a small example using an explicit source lifetime:
 
 ```rust,no_run,noplayground
 #[derive(Logos)]
@@ -104,6 +104,8 @@ enum Foo<'s, 'a> {
     Baz(&'a str),
 }
 ```
+
+For a more complete example, see the [array language example](../examples/array-language.md).
 
 ## Subpatterns
 
