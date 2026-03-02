@@ -2,7 +2,7 @@
 
 Sometimes, a single lexer is insufficient to properly handle complex grammars. To address this, many lexer generators offer the ability to have separate lexers with their own set of patterns and tokens, allowing you to dynamically switch between them based on the context.
 
-In Logos, context switching is handled using the [`morph`](https://docs.rs/logos/0.11.0-rc2/logos/struct.Lexer.html#method.morph) method of the `logos::Lexer` struct.
+In Logos, context switching is handled using the [`morph`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.morph) method of the `logos::Lexer` struct.
 This method takes ownership of the current lexer and transforms it into a lexer for a new token type.
 
 It is important to note that:
