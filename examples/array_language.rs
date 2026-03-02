@@ -46,8 +46,9 @@ impl Display for LexingError<'_> {
     }
 }
 
-/// Structure to map variable names to values.
+/* ANCHOR: environment */
 type Environment = HashMap<String, Vec<i128>>;
+/* ANCHOR_END: environment */
 
 /* ANCHOR: callbacks */
 /// Parse lexer slice as an i128

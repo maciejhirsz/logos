@@ -23,6 +23,12 @@ cargo run --example array_language examples/array_program.txt
 
 ## Lexing
 
+The variable environment maps variable names to values.
+
+```rust,no_run,noplayground
+{{#include ../../../examples/array_language.rs:environment}}
+```
+
 The token type is paremeterized by the lifetime `'a`, which is used in the lexer extras
 as the lifetime of the borrow of the variable environment.
 
