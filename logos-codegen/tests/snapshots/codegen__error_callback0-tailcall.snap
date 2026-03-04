@@ -4,10 +4,10 @@ expression: formatted
 ---
 impl<'s> ::logos::Logos<'s> for TokenA {
     type Error = &'static str;
-    type Extras = Vec<&'static str>;
+    type Extras<'e> = Vec<&'static str>;
     type Source = str;
     fn lex(
-        lex: &mut ::logos::Lexer<'s, Self>,
+        lex: &mut ::logos::Lexer<'s, '_, Self>,
     ) -> core::option::Option<
         core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
@@ -17,7 +17,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         use core::result::Result as _Result;
         use core::option::Option as _Option;
         use ::logos::Logos;
-        type _Lexer<'s> = ::logos::Lexer<'s, TokenA>;
+        type _Lexer<'s, 'e> = ::logos::Lexer<'s, 'e, TokenA>;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
                 'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
@@ -45,7 +45,9 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             };
         }
         #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <TokenA as Logos<'s>>::Error {
+        fn _make_error<'s, 'e>(
+            lex: &mut _Lexer<'s, 'e>,
+        ) -> <TokenA as Logos<'s>>::Error {
             let lex = lex;
             let error = {
                 lex.extras.push("a");
@@ -54,8 +56,8 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             error.into()
         }
         #[inline]
-        fn _get_action<'s>(
-            lex: &mut _Lexer<'s>,
+        fn _get_action<'s, 'e>(
+            lex: &mut _Lexer<'s, 'e>,
             offset: usize,
             context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, TokenA> {
@@ -69,8 +71,8 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         }
         #[derive(Clone, Copy)]
         enum LogosLeaf {}
-        fn state0<'s>(
-            lex: &mut _Lexer<'s>,
+        fn state0<'s, 'e>(
+            lex: &mut _Lexer<'s, 'e>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<_Result<TokenA, <TokenA as Logos<'s>>::Error>> {

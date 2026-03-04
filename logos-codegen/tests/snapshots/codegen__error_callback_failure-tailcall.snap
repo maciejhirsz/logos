@@ -4,10 +4,10 @@ expression: formatted
 ---
 impl<'s> ::logos::Logos<'s> for TokenA {
     type Error = ();
-    type Extras = ();
+    type Extras<'e> = ();
     type Source = str;
     fn lex(
-        lex: &mut ::logos::Lexer<'s, Self>,
+        lex: &mut ::logos::Lexer<'s, '_, Self>,
     ) -> core::option::Option<
         core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {

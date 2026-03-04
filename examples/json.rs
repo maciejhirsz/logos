@@ -86,7 +86,7 @@ enum Value {
 
 /* ANCHOR: value */
 /// Parse a token stream into a JSON value.
-fn parse_value(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
+fn parse_value(lexer: &mut Lexer<'_, '_, Token>) -> Result<Value> {
     if let Some(token) = lexer.next() {
         match token {
             Ok(Token::Bool(b)) => Ok(Value::Bool(b)),
@@ -111,7 +111,7 @@ fn parse_value(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
 /// a valid terminator is found.
 ///
 /// > NOTE: we assume '[' was consumed.
-fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
+fn parse_array(lexer: &mut Lexer<'_, '_, Token>) -> Result<Value> {
     let mut array = Vec::new();
     let span = lexer.span();
     let mut awaits_comma = false;
@@ -165,7 +165,7 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
 /// a valid terminator is found.
 ///
 /// > NOTE: we assume '{' was consumed.
-fn parse_object(lexer: &mut Lexer<'_, Token>) -> Result<Value> {
+fn parse_object(lexer: &mut Lexer<'_, '_, Token>) -> Result<Value> {
     let mut map = HashMap::new();
     let span = lexer.span();
     let mut awaits_comma = false;

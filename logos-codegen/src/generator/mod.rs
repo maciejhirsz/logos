@@ -206,11 +206,11 @@ impl<'a> Generator<'a> {
 
         quote! {
             #[inline]
-            fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
+            fn _make_error<'s, 'e>(lex: &mut _Lexer<'s, 'e>) -> <#this as Logos<'s>>::Error {
                 #error_body
             }
             #[inline]
-            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: _Option<LogosLeaf>)
+            fn _get_action<'s, 'e>(lex: &mut _Lexer<'s, 'e>, offset: usize, context: _Option<LogosLeaf>)
                 -> CallbackResult<'s, #this>
             {
                 match context {
@@ -302,7 +302,7 @@ impl<'a> Generator<'a> {
         } else {
             let this = self.this;
             quote! {
-                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: _Option<LogosLeaf>)
+                fn #this_ident<'s, 'e>(lex: &mut _Lexer<'s, 'e>, mut offset: usize, mut context: _Option<LogosLeaf>)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
                     #fast_loop
                     #setup

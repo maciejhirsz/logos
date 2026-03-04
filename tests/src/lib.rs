@@ -5,7 +5,7 @@ use std::fmt;
 use std::ops::Range;
 
 #[allow(clippy::type_complexity)]
-pub fn assert_lex<'a, Token>(
+pub fn assert_lex<'a, 'b, Token: 'a + 'b>(
     source: &'a Token::Source,
     tokens: &[(
         Result<Token, Token::Error>,
@@ -14,7 +14,8 @@ pub fn assert_lex<'a, Token>(
     )],
 ) where
     Token: Logos<'a> + fmt::Debug + PartialEq,
-    Token::Extras: Default,
+    Token::Extras<'b>: Default,
+    'a: 'b,
 {
     let mut lex = Token::lexer(source);
 

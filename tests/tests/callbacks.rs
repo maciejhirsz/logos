@@ -194,7 +194,9 @@ mod return_result_skip {
         Comment,
     }
 
-    fn skip_comment<'src>(lexer: &mut Lexer<'src, Token<'src>>) -> Result<Skip, LexerError> {
+    fn skip_comment<'src, 'ext>(
+        lexer: &mut Lexer<'src, 'ext, Token<'src>>,
+    ) -> Result<Skip, LexerError> {
         let end = lexer
             .remainder()
             .find("-->")
@@ -228,7 +230,7 @@ mod skip_callback_function {
         Tag(&'src str),
     }
 
-    fn skip_comment<'src>(lexer: &mut Lexer<'src, Token<'src>>) {
+    fn skip_comment<'src, 'ext>(lexer: &mut Lexer<'src, 'ext, Token<'src>>) {
         let end = lexer
             .remainder()
             .find("-->")
@@ -357,14 +359,14 @@ mod skip_all_callback_types {
     #[logos(skip("g|h", labelled_skip_result_callback))]
     enum Token {}
 
-    fn labelled_callback(lex: &mut Lexer<'_, Token>) -> () {
+    fn labelled_callback(lex: &mut Lexer<'_, '_, Token>) -> () {
         lex.extras.push("labelled_callback")
     }
-    fn labelled_skip_callback(lex: &mut Lexer<'_, Token>) -> Skip {
+    fn labelled_skip_callback(lex: &mut Lexer<'_, '_, Token>) -> Skip {
         lex.extras.push("labelled_skip_callback");
         Skip
     }
-    fn labelled_result_callback(lex: &mut Lexer<'_, Token>) -> Result<(), &'static str> {
+    fn labelled_result_callback(lex: &mut Lexer<'_, '_, Token>) -> Result<(), &'static str> {
         lex.extras.push("labelled_result_callback");
 
         match lex.slice() {
@@ -373,7 +375,7 @@ mod skip_all_callback_types {
             _ => unreachable!(),
         }
     }
-    fn labelled_skip_result_callback(lex: &mut Lexer<'_, Token>) -> Result<Skip, &'static str> {
+    fn labelled_skip_result_callback(lex: &mut Lexer<'_, '_, Token>) -> Result<Skip, &'static str> {
         lex.extras.push("labelled_skip_result_callback");
 
         match lex.slice() {

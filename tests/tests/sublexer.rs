@@ -2,6 +2,7 @@ use logos::Lexer;
 use logos::Logos;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
+#[logos(extras = &'e mut bool)]
 enum Alpha<'s> {
     #[regex("[a-z]+")]
     Value(&'s str),
@@ -25,13 +26,13 @@ enum AlphaNumeric<'s> {
 }
 
 impl<'s> Logos<'s> for AlphaNumeric<'s> {
-    type Extras = bool;
+    type Extras<'e> = bool;
     type Source = str;
     type Error = ();
-    fn lex(lexer: &mut Lexer<'s, Self>) -> Option<Result<Self, Self::Error>> {
+    fn lex<'b>(lexer: &mut Lexer<'s, '_, Self>) -> Option<Result<Self, Self::Error>> {
         if !lexer.extras {
             let result = {
-                let mut sublexer = lexer.sublexer::<Alpha>();
+                let mut sublexer = lexer.sublexer_with::<Alpha>(|that| that);
                 sublexer.next()?
             };
             let Ok(Alpha::Value(that)) = result else {
