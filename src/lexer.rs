@@ -184,6 +184,37 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         }
     }
 
+    /// Call next on this lexer, as if it had a different token type.
+    pub fn morph_next<Token2>(&mut self) -> Option<Result<Token2, <Token2 as Logos<'_>>::Error>>
+    where
+        Token2: for<'s> Logos<'s, Source = Token::Source>,
+        for<'s> <Token2 as Logos<'s>>::Extras: Default,
+    {
+        self.morph_next_with_extras(|_| Default::default())
+    }
+
+    /// Call next on this lexer, as if it had a different token type.
+    ///
+    /// The passed closure allows the new token's lexer to share extras with this.
+    pub fn morph_next_with_extras<Token2>(
+        &mut self,
+        extras: impl FnOnce(&mut Token::Extras) -> <Token2 as Logos<'_>>::Extras,
+    ) -> Option<Result<Token2, <Token2 as Logos<'_>>::Error>>
+    where
+        Token2: for<'s> Logos<'s, Source = Token::Source>,
+    {
+        let mut child = Lexer {
+            source: self.source,
+            extras: extras(&mut self.extras),
+            token_start: self.token_start,
+            token_end: self.token_end,
+        };
+        let result = child.next();
+        self.token_start = child.token_start;
+        self.token_end = child.token_end;
+        result
+    }
+
     /// Bumps the end of currently lexed token by `n` bytes.
     ///
     /// # Panics
