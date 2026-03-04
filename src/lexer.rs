@@ -184,39 +184,6 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
         }
     }
 
-    /// Call next on this lexer, as if it had a different token type.
-    pub fn morph_next<Token2>(
-        &mut self,
-    ) -> Option<Result<Token2, <Token2 as Logos<'source>>::Error>>
-    where
-        Token2: for<'s> Logos<'s, Source = Token::Source>,
-        for<'s> <Token2 as Logos<'s>>::Extras: Default,
-    {
-        self.morph_next_with(|_| Default::default())
-    }
-
-    /// Call next on this lexer, as if it had a different token type.
-    ///
-    /// The passed closure allows the new token's lexer to share extras with this.
-    pub fn morph_next_with<Token2>(
-        &mut self,
-        extras: impl for<'s> FnOnce(&mut Self) -> <Token2 as Logos<'source>>::Extras,
-    ) -> Option<Result<Token2, <Token2 as Logos<'source>>::Error>>
-    where
-        Token2: Logos<'source, Source = Token::Source>,
-    {
-        let mut child = Lexer::<Token2> {
-            source: self.source,
-            token_start: self.token_start,
-            token_end: self.token_end,
-            extras: extras(self),
-        };
-        let result = child.next();
-        self.token_start = child.token_start;
-        self.token_end = child.token_end;
-        result
-    }
-
     /// Creates a sublexer with a different token type.
     ///
     /// When the `Sublexer` is dropped it updates the current span.
@@ -354,7 +321,7 @@ where
     }
 }
 
-/// Creates a `Sublexer` to change a token type in different lexer modes.
+/// A `Sublexer` to change token type in different lexer modes.
 ///
 /// The parent `Lexer`'s span is updated when this is dropped.
 pub struct Sublexer<'a, 'source, Token: Logos<'source>> {
