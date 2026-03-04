@@ -125,13 +125,13 @@ impl<'source> Logos<'source> for Tokens {
     type Error = ();
     fn lex(lexer: &mut Lexer<'source, Self>) -> Option<Result<Self, Self::Error>> {
         if lexer.extras {
-            let result = lexer.morph_next();
+            let result = lexer.sublex();
             if Some(Ok(Inner::EndString)) == result {
                 lexer.extras = false;
             }
             result.map(|inner| inner.map(Tokens::InnerToken))
         } else {
-            let result = lexer.morph_next();
+            let result = lexer.sublex();
             if Some(Ok(Outer::StartString)) == result {
                 lexer.extras = true;
             }

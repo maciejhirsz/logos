@@ -185,34 +185,79 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     }
 
     /// Call next on this lexer, as if it had a different token type.
-    pub fn morph_next<Token2>(&mut self) -> Option<Result<Token2, <Token2 as Logos<'_>>::Error>>
+    pub fn morph_next<Token2>(
+        &mut self,
+    ) -> Option<Result<Token2, <Token2 as Logos<'source>>::Error>>
     where
         Token2: for<'s> Logos<'s, Source = Token::Source>,
         for<'s> <Token2 as Logos<'s>>::Extras: Default,
     {
-        self.morph_next_with_extras(|_| Default::default())
+        self.morph_next_with(|_| Default::default())
     }
 
     /// Call next on this lexer, as if it had a different token type.
     ///
     /// The passed closure allows the new token's lexer to share extras with this.
-    pub fn morph_next_with_extras<Token2>(
+    pub fn morph_next_with<Token2>(
         &mut self,
-        extras: impl FnOnce(&mut Token::Extras) -> <Token2 as Logos<'_>>::Extras,
-    ) -> Option<Result<Token2, <Token2 as Logos<'_>>::Error>>
+        extras: impl for<'s> FnOnce(&mut Self) -> <Token2 as Logos<'source>>::Extras,
+    ) -> Option<Result<Token2, <Token2 as Logos<'source>>::Error>>
     where
-        Token2: for<'s> Logos<'s, Source = Token::Source>,
+        Token2: Logos<'source, Source = Token::Source>,
     {
-        let mut child = Lexer {
+        let mut child = Lexer::<Token2> {
             source: self.source,
-            extras: extras(&mut self.extras),
             token_start: self.token_start,
             token_end: self.token_end,
+            extras: extras(self),
         };
         let result = child.next();
         self.token_start = child.token_start;
         self.token_end = child.token_end;
         result
+    }
+
+    /// Creates a sublexer with a different token type.
+    ///
+    /// When the `Sublexer` is dropped it updates the current span.
+    pub fn sublexer<Token2>(&mut self) -> Sublexer<'_, 'source, Token2>
+    where
+        Token2: Logos<'source, Source = Token::Source>,
+        <Token2 as Logos<'source>>::Extras: Default,
+    {
+        Sublexer {
+            lexer: Lexer {
+                source: self.source,
+                token_start: self.token_start,
+                token_end: self.token_end,
+                extras: Default::default(),
+            },
+            token_start_mut: &mut self.token_start,
+            token_end_mut: &mut self.token_end,
+        }
+    }
+
+    /// Creates a sublexer with a different token type.
+    /// When the `Sublexer` is dropped it updates the current span.
+    ///
+    /// The sublexer's extras are created from the given closure, it is dropped with the `Sublexer`.
+    pub fn sublexer_with<Token2>(
+        &mut self,
+        extras: impl for<'s> FnOnce(&mut Self) -> <Token2 as Logos<'source>>::Extras,
+    ) -> Sublexer<'_, 'source, Token2>
+    where
+        Token2: Logos<'source, Source = Token::Source>,
+    {
+        Sublexer {
+            lexer: Lexer {
+                source: self.source,
+                token_start: self.token_start,
+                token_end: self.token_end,
+                extras: extras(self),
+            },
+            token_start_mut: &mut self.token_start,
+            token_end_mut: &mut self.token_end,
+        }
     }
 
     /// Bumps the end of currently lexed token by `n` bytes.
@@ -305,6 +350,32 @@ where
     Token: Logos<'source>,
 {
     fn deref_mut(&mut self) -> &mut Lexer<'source, Token> {
+        &mut self.lexer
+    }
+}
+
+/// Creates a `Sublexer` to change a token type in different lexer modes.
+///
+/// The parent `Lexer`'s span is updated when this is dropped.
+pub struct Sublexer<'a, 'source, Token: Logos<'source>> {
+    token_start_mut: &'a mut usize,
+    token_end_mut: &'a mut usize,
+    lexer: Lexer<'source, Token>,
+}
+impl<'a, 'source, Token: Logos<'source>> Drop for Sublexer<'a, 'source, Token> {
+    fn drop(&mut self) {
+        *self.token_start_mut = self.lexer.token_start;
+        *self.token_end_mut = self.lexer.token_end;
+    }
+}
+impl<'a, 'source, Token: Logos<'source>> Deref for Sublexer<'a, 'source, Token> {
+    type Target = Lexer<'source, Token>;
+    fn deref(&self) -> &Self::Target {
+        &self.lexer
+    }
+}
+impl<'a, 'source, Token: Logos<'source>> DerefMut for Sublexer<'a, 'source, Token> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.lexer
     }
 }
