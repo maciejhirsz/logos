@@ -10,7 +10,7 @@ attribute `#[logos(extras = <some type>)]` on your `enum` declaration.
 
 For example, one may want to know the location, both line and column indices,
 of each token. This is especially useful when one needs to report an erroneous
-token to the user, in an user-friendly manner.
+token to the user, in a user-friendly manner.
 
 ```rust,no_run,noplayground
 {{#include ../../examples/extras.rs:tokens}}
