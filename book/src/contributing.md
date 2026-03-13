@@ -19,7 +19,7 @@ There are many ways to help us, and here is a short list of some of them:
 
 In any case, GitHub is the place-to-go for anything related to contributing.
 
-Below, we provide a few help pages (or links) to content that can help you
+Below, we provide a few help pages (or links) that can help you
 understand Logos' internals and how you can submit a contribution.
 
 + If you are new to GitHub or git, please consider reading those two guides:
