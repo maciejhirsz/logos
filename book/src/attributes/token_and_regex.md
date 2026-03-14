@@ -1,9 +1,9 @@
 # `#[token]` and `#[regex]`
 
-For each variant your declare in your `enum` that uses the `Logos` derive macro,
+For each variant you declare in your `enum` that uses the `Logos` derive macro,
 you can specify one or more string literal or regex it can match.
 
-The usage syntax is a follows:
+The usage syntax is as follows:
 
 ```rust,no_run,no_playground
 #[derive(Logos)]

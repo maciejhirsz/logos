@@ -71,7 +71,7 @@ with `#[logos(crate = path::to::logos)]`.
 ## Custom source type
 
 By default, **Logos**'s lexer will accept `&str` as input. If any of the tokens
-or regex ptterns can match a non utf-8 bytes sequence, this will cause a
+or regex patterns can match a non utf-8 bytes sequence, this will cause a
 compile time error. In this case, you should supply `#[logos(utf8 = false)]`.
 This will cause the lexer to accept a `&[u8]` instead.
 
