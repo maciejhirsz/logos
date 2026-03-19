@@ -258,13 +258,5 @@ pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Sk
 }
 
 #[cfg(doctest)]
-mod test_readme {
-    macro_rules! external_doc_test {
-        ($x:expr) => {
-            #[doc = $x]
-            extern "C" {}
-        };
-    }
-
-    external_doc_test!(include_str!("../README.md"));
-}
+#[doc = include_str!("../README.md")]
+struct ReadMe;
