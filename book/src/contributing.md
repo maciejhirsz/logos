@@ -1,6 +1,6 @@
 # Contributing
 
-If you are considering contributing to Logos, then this place it for you!
+If you are considering contributing to Logos, then this place is for you!
 
 First, we really appreciate people that can help this project grow, and we
 would like to guide you through the standard contribution process.
@@ -19,8 +19,8 @@ There are many ways to help us, and here is a short list of some of them:
 
 In any case, GitHub is the place-to-go for anything related to contributing.
 
-Below, we provide a few help pages (or links) to contents that can help you
-understand Logos' internals and how you can create submit a contribution.
+Below, we provide a few help pages (or links) that can help you
+understand Logos' internals and how you can submit a contribution.
 
 + If you are new to GitHub or git, please consider reading those two guides:
   + [GitHub’s Hello World](https://docs.github.com/en/get-started/quickstart/hello-world);
