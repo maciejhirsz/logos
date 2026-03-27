@@ -30,12 +30,12 @@ cargo afl fuzz -i in -o out ../target/debug/logos-fuzz
 ```
 
 Note that it may run for a (very) long time before
-it encounter any bug.
+encountering any bug.
 
 ## Replaying a Crash
 
 If you happen to find a bug that crashes the program,
-you can reply it with
+you can replay it with
 
 ```bash
 cargo afl run logos-fuzz < out/default/crashes/crash_file
