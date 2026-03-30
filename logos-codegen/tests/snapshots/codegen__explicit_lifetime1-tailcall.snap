@@ -2,14 +2,14 @@
 source: logos-codegen/tests/codegen.rs
 expression: formatted
 ---
-impl<'s> ::logos::Logos<'s> for Token {
-    type Error = &'static str;
-    type Extras = Vec<&'static str>;
+impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
+    type Error = ();
+    type Extras = (&'a [String], &'c [bool]);
     type Source = str;
     fn lex(
-        lex: &mut ::logos::Lexer<'s, Self>,
+        lex: &mut ::logos::Lexer<'b, Self>,
     ) -> core::option::Option<
-        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+        core::result::Result<Self, <Self as ::logos::Logos<'b>>::Error>,
     > {
         use ::logos::internal::{
             LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
@@ -45,48 +45,58 @@ impl<'s> ::logos::Logos<'s> for Token {
             };
         }
         #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s, Token>) -> <Token as Logos<'s>>::Error {
-            <Token as Logos<'s>>::Error::default()
+        fn _make_error<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+        ) -> <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error {
+            <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error::default()
         }
         #[inline]
-        fn _get_action<'s>(
-            lex: &mut _Lexer<'s, Token>,
+        fn _get_action<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
             offset: usize,
             context: _Option<LogosLeaf>,
-        ) -> CallbackResult<'s, Token> {
+        ) -> CallbackResult<'b, Token<'a, 'b, 'c, 'd>> {
             match context {
                 None => {
                     lex.end_to_boundary(offset.max(lex.offset() + 1));
                     CallbackResult::Error(_make_error(lex))
                 }
-                Some(LogosLeaf::Leaf0) => CallbackResult::Skip,
-                Some(LogosLeaf::Leaf1) => {
+                Some(LogosLeaf::Leaf0) => {
                     let cb_result = {
                         let lex = lex;
-                        lex.extras.push("inline_callback")
+                        lex.extras.0[2].trim()
                     };
-                    let srv = SkipRetVal::<'s, Token>::construct(cb_result);
-                    CallbackResult::from(srv)
+                    CallbackRetVal::<
+                        'b,
+                        &'a str,
+                        Token<'a, 'b, 'c, 'd>,
+                    >::construct(cb_result, Token::A)
+                }
+                Some(LogosLeaf::Leaf1) => {
+                    let token = Token::B(lex.slice());
+                    CallbackResult::Emit(token)
                 }
                 Some(LogosLeaf::Leaf2) => {
-                    let cb_result = labelled_callback(lex);
-                    let srv = SkipRetVal::<'s, Token>::construct(cb_result);
-                    CallbackResult::from(srv)
+                    let cb_result = {
+                        let lex = lex;
+                        &lex.extras.1[9]
+                    };
+                    CallbackRetVal::<
+                        'b,
+                        &'c bool,
+                        Token<'a, 'b, 'c, 'd>,
+                    >::construct(cb_result, Token::C)
                 }
                 Some(LogosLeaf::Leaf3) => {
-                    let cb_result = labelled_skip_callback(lex);
-                    let srv = SkipRetVal::<'s, Token>::construct(cb_result);
-                    CallbackResult::from(srv)
-                }
-                Some(LogosLeaf::Leaf4) => {
-                    let cb_result = labelled_result_callback(lex);
-                    let srv = SkipRetVal::<'s, Token>::construct(cb_result);
-                    CallbackResult::from(srv)
-                }
-                Some(LogosLeaf::Leaf5) => {
-                    let cb_result = labelled_skip_result_callback(lex);
-                    let srv = SkipRetVal::<'s, Token>::construct(cb_result);
-                    CallbackResult::from(srv)
+                    let cb_result = {
+                        let _ = lex;
+                        &0.5
+                    };
+                    CallbackRetVal::<
+                        'b,
+                        &'d f32,
+                        Token<'a, 'b, 'c, 'd>,
+                    >::construct(cb_result, Token::D)
                 }
             }
         }
@@ -96,14 +106,14 @@ impl<'s> ::logos::Logos<'s> for Token {
             Leaf1 = 1isize,
             Leaf2 = 2isize,
             Leaf3 = 3isize,
-            Leaf4 = 4isize,
-            Leaf5 = 5isize,
         }
-        fn state0<'s>(
-            lex: &mut _Lexer<'s, Token>,
+        fn state0<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+        ) -> _Option<
+            _Result<Token<'a, 'b, 'c, 'd>, <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error>,
+        > {
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {
                 #[derive(Copy, Clone)]
@@ -113,8 +123,6 @@ impl<'s> ::logos::Logos<'s> for Token {
                     State2,
                     State3,
                     State4,
-                    State5,
-                    State6,
                 }
                 const TABLE: [LogosNextState; 256] = {
                     use LogosNextState::*;
@@ -219,11 +227,11 @@ impl<'s> ::logos::Logos<'s> for Token {
                         State2,
                         State3,
                         State4,
-                        State5,
-                        State6,
-                        State6,
                         State1,
-                        State1,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
                         ___,
                         ___,
                         ___,
@@ -391,12 +399,6 @@ impl<'s> ::logos::Logos<'s> for Token {
                     LogosNextState::State4 => {
                         return state4(lex, offset, context);
                     }
-                    LogosNextState::State5 => {
-                        return state5(lex, offset, context);
-                    }
-                    LogosNextState::State6 => {
-                        return state6(lex, offset, context);
-                    }
                     LogosNextState::___ => {}
                 }
                 offset -= 1;
@@ -407,68 +409,54 @@ impl<'s> ::logos::Logos<'s> for Token {
             }
             _take_action!(lex, offset, context, state)
         }
-        fn state1<'s>(
-            lex: &mut _Lexer<'s, Token>,
+        fn state1<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            context = Some(LogosLeaf::Leaf5);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state2<'s>(
-            lex: &mut _Lexer<'s, Token>,
-            mut offset: usize,
-            mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            context = Some(LogosLeaf::Leaf0);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state3<'s>(
-            lex: &mut _Lexer<'s, Token>,
-            mut offset: usize,
-            mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            context = Some(LogosLeaf::Leaf1);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state4<'s>(
-            lex: &mut _Lexer<'s, Token>,
-            mut offset: usize,
-            mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
-            lex.end(offset);
-            context = Some(LogosLeaf::Leaf2);
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {} else {}
-            _take_action!(lex, offset, context, state)
-        }
-        fn state5<'s>(
-            lex: &mut _Lexer<'s, Token>,
-            mut offset: usize,
-            mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+        ) -> _Option<
+            _Result<Token<'a, 'b, 'c, 'd>, <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error>,
+        > {
             lex.end(offset);
             context = Some(LogosLeaf::Leaf3);
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {} else {}
             _take_action!(lex, offset, context, state)
         }
-        fn state6<'s>(
-            lex: &mut _Lexer<'s, Token>,
+        fn state2<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
             mut offset: usize,
             mut context: _Option<LogosLeaf>,
-        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+        ) -> _Option<
+            _Result<Token<'a, 'b, 'c, 'd>, <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error>,
+        > {
             lex.end(offset);
-            context = Some(LogosLeaf::Leaf4);
+            context = Some(LogosLeaf::Leaf0);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            _take_action!(lex, offset, context, state)
+        }
+        fn state3<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            mut offset: usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<
+            _Result<Token<'a, 'b, 'c, 'd>, <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error>,
+        > {
+            lex.end(offset);
+            context = Some(LogosLeaf::Leaf1);
+            let other = lex.read::<u8>(offset);
+            if let Some(byte) = other {} else {}
+            _take_action!(lex, offset, context, state)
+        }
+        fn state4<'a, 'b, 'c, 'd>(
+            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            mut offset: usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<
+            _Result<Token<'a, 'b, 'c, 'd>, <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error>,
+        > {
+            lex.end(offset);
+            context = Some(LogosLeaf::Leaf2);
             let other = lex.read::<u8>(offset);
             if let Some(byte) = other {} else {}
             _take_action!(lex, offset, context, state)

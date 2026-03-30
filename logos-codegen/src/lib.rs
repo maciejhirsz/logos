@@ -285,18 +285,20 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let generics = parser.generics();
     let this = quote!(#name #generics);
+    let lt_bounds = parser.lifetime_bounds();
+    let src_lt = parser.source_lifetime();
 
     let impl_logos = |body| {
         quote! {
-            impl<'s> #logos_path::Logos<'s> for #this {
+            impl #lt_bounds #logos_path::Logos<#src_lt> for #this {
                 type Error = #error_type;
 
                 type Extras = #extras;
 
                 type Source = #source;
 
-                fn lex(lex: &mut #logos_path::Lexer<'s, Self>)
-                    -> core::option::Option<core::result::Result<Self, <Self as #logos_path::Logos<'s>>::Error>> {
+                fn lex(lex: &mut #logos_path::Lexer<#src_lt, Self>)
+                    -> core::option::Option<core::result::Result<Self, <Self as #logos_path::Logos<#src_lt>>::Error>> {
                     #body
                 }
             }
@@ -397,7 +399,15 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let config = generator::Config {
         use_state_machine_codegen: cfg!(feature = "state_machine_codegen"),
     };
-    let mut generator = Generator::new(config, name, &this, &graph, &error_callback);
+    let mut generator = Generator::new(
+        config,
+        name,
+        &this,
+        &src_lt,
+        &lt_bounds,
+        &graph,
+        &error_callback,
+    );
 
     let body = generator.generate();
     impl_logos(quote! {
@@ -410,9 +420,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
         };
         use core::result::Result as _Result;
         use core::option::Option as _Option;
+        use #logos_path::Lexer as _Lexer;
         use #logos_path::Logos;
-
-        type _Lexer<'s> = #logos_path::Lexer<'s, #this>;
 
         #body
     })
