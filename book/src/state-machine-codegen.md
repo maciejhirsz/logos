@@ -1,13 +1,13 @@
 # State machine codegen
 
-The method of implementing the DFA state machine in rust code can be changed by
+The method of implementing the DFA state machine in Rust code can be changed by
 enabling or disabling the crate feature `state_machine_codegen`. This has no
 behavioral differences when enabled or disabled, it only affects performance
 and stack memory usage.
 
 ## Feature enabled
 
-The state machine codegen creates an Enum variant for each state, and puts the
+The state machine codegen creates an `enum` variant for each state, and puts the
 state bodies in the arms of a match statement. The match statement is put
 inside of a loop, and state transitions are implemented by assigning to the
 current state variable and then `continue`ing to the start of the loop again.
@@ -48,7 +48,7 @@ fn state0(lexer: Lexer, context: Context) -> Token {
 ## Considerations
 
 The tail call code generation generates significantly faster code and is
-therefore the default. However, until rust gets guaranteed tail calls with the
+therefore the default. However, until Rust gets guaranteed tail calls with the
 `become` keyword, it is possible to overflow the stack using it. This usually
 happens when many "skip" tokens are matched in a row. This can be solved by
 wrapping your skip pattern in a repetition, though this is not always the case.
@@ -75,8 +75,8 @@ generators (but the state machine has the added benefit of no possiblity of
 stack overflows). This option can be added using a `config.toml` file
 ([example](https://github.com/0x2a-42/herring/blob/main/.cargo/config.toml)).
 It is probably not a good idea to do this in production code, as adding new
-LLVM passes to rust increases the possibility of facing compiler bugs. There is
-also the possibility of this optimization being added at the rust level. This
+LLVM passes to rustc increases the possibility of facing compiler bugs. There is
+also the possibility of this optimization being added at the Rust level. This
 is being explored by [RFC 3720](https://github.com/rust-lang/rfcs/pull/3720).
 If that RFC is implemented, the logos state machine codegen could use the new
 `loop match` construct to obtain a similar optimization.

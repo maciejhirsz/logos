@@ -12,7 +12,7 @@ When you implement an interpreter for a [domain-specific language (DSL)](https:/
 
 In this example, we implement a simple calculator that evaluates arithmetic expressions such as `1 + 2 * 3` or `((1 + 2) * 3 + 4) * 2 + 4 / 3`.
 
-We use `logos` as the lexer generator and [`chumsky`](https://github.com/zesterer/chumsky) as the parser generator.
+We use `logos` as the lexer generator and [`chumsky`](https://github.com/zesterer/chumsky) as the parser library.
 
 ![flow chart](../assets/calculator_example_flow.png)
 
@@ -85,7 +85,7 @@ Our calculator supports the following tokens:
 
 ## 3. Parser
 
-While it is easy enough to manually implement a parser in this case (e.g., [Pratt parsing](https://en.wikipedia.org/wiki/Operator-precedence_parser#Pratt_parsing)), let's just use [`chumsky`](https://github.com/zesterer/chumsky) crate, which is one of the most popular parser generator libraries in Rust.
+While it is easy enough to manually implement a parser in this case (e.g., [Pratt parsing](https://en.wikipedia.org/wiki/Operator-precedence_parser#Pratt_parsing)), let's just use the [`chumsky`](https://github.com/zesterer/chumsky) crate, which is a popular parser combinator library in Rust.
 
 ### 3.1 AST Definition
 
@@ -97,11 +97,11 @@ First, we define the AST.
 
 Note that
 
-- We name the enum not `AST` but `Expr` because an AST is just nested expressions.
+- We name the `enum` not `AST` but `Expr` because an AST is just nested expressions.
 
 - There is no `Parenthesized` variant because parentheses only affect the order of operations (i.e., precedence), which is reflected in the AST structure.
 
-- `Box` is used as [a recursive enum is not allowed in Rust](https://stackoverflow.com/questions/25296195/why-are-recursive-struct-types-illegal-in-rust).
+- `Box` is used as [a recursive `enum` is not allowed in Rust](https://stackoverflow.com/questions/25296195/why-are-recursive-struct-types-illegal-in-rust).
 
 ### 3.2 Parser Implementation
 

@@ -14,7 +14,7 @@ the [API docs for Logos at docs.rs](https://docs.rs/logos/)), it's not the easie
 document custom syntax used by procedural macros, of which Logos has a bit. This Handbook
 seeks to remedy this!
 
-## In a nut shell
+## In a nutshell
 
 There are two main types in **Logos**:
 

@@ -1,13 +1,13 @@
 # Contributing
 
-If you are considering to contribute to Logos, then this place is for you!
+If you are considering contributing to Logos, then this place is for you!
 
 First, we really appreciate people that can help this project grow, and we
 would like to guide you through the standard contribution process.
 
 There are many ways to help us, and here is a short list of some of them:
 
-+ fixing an [BUG](https://github.com/maciejhirsz/logos/labels/bug), by providing
++ fixing a [BUG](https://github.com/maciejhirsz/logos/labels/bug), by providing
   a patch (or suggesting in the comments how one could fix it);
 + correcting some typos in the documentation, the book, or anywhere else;
 + raising an issue about a problem (i.e.,

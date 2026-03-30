@@ -22,7 +22,7 @@ pub enum Literal {
 
 impl Literal {
     /// Escape this literal into a regex_syntax compatible pattern string.
-    /// - `literal`: if true, escape any metacharacters the pattern so that it matches literally.
+    /// - `literal`: if true, escape any metacharacters in the pattern so that it matches literally.
     ///   This is necessary so that literal byte strings can be implemented properly.
     pub fn escape(&self, literal: bool) -> String {
         match self {
@@ -34,7 +34,7 @@ impl Literal {
                     if byte <= 127 {
                         if literal {
                             let buf = [byte];
-                            let s = std::str::from_utf8(&buf).expect("Ascii is always valid utf8");
+                            let s = std::str::from_utf8(&buf).expect("ASCII is always valid UTF-8");
                             regex_syntax::escape_into(s, &mut pattern);
                             Ok(())
                         } else {
@@ -141,7 +141,7 @@ impl Definition {
                         "\
                         Unknown nested attribute: {unknown}\n\
                         \n\
-                        Expected one of: priority, callback\
+                        Expected one of: priority, callback, ignore, allow_greedy\
                         "
                     ),
                     name.span(),

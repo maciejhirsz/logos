@@ -38,7 +38,7 @@ a `b` character anywhere. Properly tokenizing this pattern creates a surprising
 performance of `O(n^2)` where `n` is the size of the file. Indeed, any pattern
 that contains an unbounded greedy dot repetition requires reading the entire
 file before returning the next token. Since this is almost never the intended
-behavior, logos returns a compile time error by default when encountering
+behavior, logos returns a compile-time error by default when encountering
 patterns containing `.*` and `.+`. If this is truly your intention, you can add
 the flag `allow_greedy = true` to your `#[regex]` attribute. But first
 consider whether you can instead use a non-greedy repetition, which would also
@@ -46,7 +46,7 @@ resolve the performance concern.
 
 For reference, **Logos** parses regexes using the `regex-syntax` and
 `regex-automata` crates, and transforms the deterministic finite automata
-created by the `regex-automata` crate into rust code that implements the
+created by the `regex-automata` crate into Rust code that implements the
 matching state machine. Every regex is compiled with an implicit `^` anchor at
 its start, since that is how a tokenizer works.
 
@@ -78,9 +78,9 @@ token.
 While Logos strives to have a feature complete regex implementation, there are
 some limitations. Unicode word boundaries, some lookarounds, and other advanced
 features not supported by the DFA matching engine in the `regex` crate are not
-possible to match using Logos's generated state machine.
+possible to match using Logos' generated state machine.
 
-However, attempting to use a missing feature will result in a compile time
+However, attempting to use a missing feature will result in a compile-time
 error. If your code compiles, the matcher behavior is exactly the same as the
 `regex` crate.
 

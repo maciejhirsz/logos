@@ -33,7 +33,7 @@ impl Pattern {
     ///
     /// # Arguments
     ///
-    /// - `unicode`: whether the regex pattern should match bytes (false), or utf8 codepoints (true)
+    /// - `unicode`: whether the regex pattern should match bytes (false), or UTF-8 codepoints (true)
     /// - `ignore_case`: whether to set the `(?i)` flag for the entire pattern.
     pub fn compile(
         is_literal: bool,
@@ -44,7 +44,7 @@ impl Pattern {
     ) -> Result<Pattern, String> {
         // UTF-8 mode is disabled here so we can give prettier error messages
         // later in the compilation process. See logos_codegen/src/lib.rs for
-        // the utf8 checking.
+        // the UTF-8 checking.
         let hir = ParserBuilder::new()
             .utf8(false)
             .unicode(unicode)

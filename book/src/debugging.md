@@ -51,7 +51,7 @@ leaf is generated for each `#[token(...)]` and `#[regex(...)]` attribute.
   2: #[regex("[a-zA-Z]+")] ::Text (priority: 2)
 ```
 
-Next, the debug representation of the DFA is printed. For more information on decoding this, see the [`regex-cli` docs](https://docs.rs/crate/regex-cli/latest). Lastly, the actual graph that that the generated rust code follows is printed (this is usually slightly different than the `regex-automata` graph due to various optimizations that are applied). For our above example, it looks like this:
+Next, the debug representation of the DFA is printed. For more information on decoding this, see the [`regex-cli` docs](https://docs.rs/crate/regex-cli/latest). Lastly, the actual graph that that the generated Rust code follows is printed (this is usually slightly different than the `regex-automata` graph due to various optimizations that are applied). For our above example, it looks like this:
 
 ```
   state0 => StateData(early(2) ) {

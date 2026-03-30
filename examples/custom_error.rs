@@ -1,7 +1,7 @@
 //! ASCII tokens lexer with custom error type.
 //!
 //! Takes tabs-or-spaces separated words or u8 numbers,
-//! only accepting ascii letters.
+//! only accepting ASCII letters.
 //!
 //! Usage:
 //!     cargo run --example custom_error
@@ -48,7 +48,7 @@ enum Token {
 
 fn main() {
     // 256 overflows u8, since u8's max value is 255.
-    // 'é' is not a valid ascii letter.
+    // 'é' is not a valid ASCII letter.
     let mut lex = Token::lexer("Hello 256 Jérome");
 
     assert_eq!(lex.next(), Some(Ok(Token::Word)));

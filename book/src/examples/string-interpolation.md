@@ -71,7 +71,7 @@ Below is an example of how the main function of our parser would look like:
 {{#include ../../../examples/string-interpolation.rs:main}}
 ```
 
-Now, let’s define the callbacks that make this functionality possible. In Logos, context switching is handled using the [`morph`](https://docs.rs/logos/0.11.0-rc2/logos/struct.Lexer.html#method.morph) method. This method takes ownership of the current Lexer and transforms it into a lexer for a new token type.
+Now, let’s define the callbacks that make this functionality possible. In Logos, context switching is handled using the [`morph`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.morph) method. This method takes ownership of the current Lexer and transforms it into a lexer for a new token type.
 
 ### `variable_definition`
 

@@ -194,7 +194,7 @@ impl<'a> Generator<'a> {
             },
         };
 
-        // This is needed in rust versions before 1.83 where you need to match Some
+        // This is needed in Rust versions before 1.83 where you need to match Some
         // for Option<Enum> even if the enum has no variants.
         let default_case = if self.graph.leaves().is_empty() {
             Some(quote! {
