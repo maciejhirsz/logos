@@ -309,7 +309,10 @@ where
     /// Guarantee that `token_end` is at char boundary for `&str`.
     #[inline]
     fn end_to_boundary(&mut self, offset: usize) {
-        self.token_end = self.source.find_boundary(offset);
+        // Clamp offset to prevent infinite loop in `find_boundary` when
+        // offset exceeds source length (str::is_char_boundary returns false
+        // for indices past the end of the string).
+        self.token_end = self.source.find_boundary(offset.min(self.source.len()));
     }
 
     #[inline]
