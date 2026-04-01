@@ -8,10 +8,10 @@ enum Token {
 }
 impl<'s> ::logos::Logos<'s> for Token {
     type Error = ();
-    type Extras = ();
+    type Extras<'e> = ();
     type Source = str;
     fn lex(
-        lex: &mut ::logos::Lexer<'s, Self>,
+        lex: &mut ::logos::Lexer<'s, '_, Self>,
     ) -> core::option::Option<core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>> {
         use core::option::Option as _Option;
         use core::result::Result as _Result;
@@ -91,12 +91,12 @@ impl<'s> ::logos::Logos<'s> for Token {
             }};
         }
         #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
+        fn _make_error<'s, 'e>(lex: &mut _Lexer<'s, 'e>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
         #[inline]
-        fn _get_action<'s>(
-            lex: &mut _Lexer<'s>,
+        fn _get_action<'s, 'e>(
+            lex: &mut _Lexer<'s, 'e>,
             offset: usize,
             context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, Token> {

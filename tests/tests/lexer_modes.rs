@@ -52,12 +52,12 @@ fn main() {
     assert_eq!(outer.next(), None);
 }
 
-enum Modes<'source> {
-    Outer(Lexer<'source, Outer>),
-    Inner(Lexer<'source, Inner>),
+enum Modes<'source, 'extras> {
+    Outer(Lexer<'source, 'extras, Outer>),
+    Inner(Lexer<'source, 'extras, Inner>),
 }
 
-impl<'source> Modes<'source> {
+impl<'source, 'extras> Modes<'source, 'extras> {
     fn new(s: &'source str) -> Self {
         Self::Outer(Outer::lexer(s))
     }
@@ -69,12 +69,12 @@ enum Tokens {
     OuterToken(Outer),
 }
 
-struct ModeBridge<'source> {
-    mode: Modes<'source>,
+struct ModeBridge<'source, 'extras> {
+    mode: Modes<'source, 'extras>,
 }
 
 // Clones as we switch between modes
-impl<'source> Iterator for ModeBridge<'source> {
+impl<'source, 'extras> Iterator for ModeBridge<'source, 'extras> {
     type Item = Result<Tokens, ()>;
     fn next(&mut self) -> Option<Self::Item> {
         use Tokens::*;

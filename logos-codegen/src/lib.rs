@@ -291,11 +291,11 @@ pub fn generate(input: TokenStream) -> TokenStream {
             impl<'s> #logos_path::Logos<'s> for #this {
                 type Error = #error_type;
 
-                type Extras = #extras;
+                type Extras<'e> = #extras;
 
                 type Source = #source;
 
-                fn lex(lex: &mut #logos_path::Lexer<'s, Self>)
+                fn lex(lex: &mut #logos_path::Lexer<'s, '_, Self>)
                     -> core::option::Option<core::result::Result<Self, <Self as #logos_path::Logos<'s>>::Error>> {
                     #body
                 }
@@ -412,7 +412,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         use core::option::Option as _Option;
         use #logos_path::Logos;
 
-        type _Lexer<'s> = #logos_path::Lexer<'s, #this>;
+        type _Lexer<'s, 'e> = #logos_path::Lexer<'s, 'e, #this>;
 
         #body
     })
