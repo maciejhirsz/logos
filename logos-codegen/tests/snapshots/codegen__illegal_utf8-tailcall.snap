@@ -5,11 +5,11 @@ expression: formatted
 impl<'s> ::logos::Logos<'s> for Token {
     type Error = ();
     type Extras = ();
-    type Source = str;
+    type Source = ::core::primitive::str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> core::option::Option<
-        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    ) -> ::core::option::Option<
+        ::core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
         fn _logos_derive_compile_errors() {
             {

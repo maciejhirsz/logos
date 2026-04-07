@@ -131,7 +131,7 @@ impl<'a> Generator<'a> {
                 }
                 let mut state = LogosState::#init_state;
                 let mut offset = lex.offset();
-                let mut context: _Option<LogosLeaf> = None;
+                let mut context: _Option<LogosLeaf> = _Option::None;
                 loop {
                     match state {
                         #(#states_rendered)*
@@ -142,7 +142,7 @@ impl<'a> Generator<'a> {
             quote! {
                 #common
                 #(#states_rendered)*
-                #init_state(lex, lex.offset(), None)
+                #init_state(lex, lex.offset(), _Option::None)
             }
         }
     }
@@ -198,7 +198,7 @@ impl<'a> Generator<'a> {
         // for Option<Enum> even if the enum has no variants.
         let default_case = if self.graph.leaves().is_empty() {
             Some(quote! {
-                Some(_) => unreachable!("There are no matchable tokens"),
+                _Option::Some(_) => unreachable!("There are no matchable tokens"),
             })
         } else {
             None
@@ -210,15 +210,15 @@ impl<'a> Generator<'a> {
                 #error_body
             }
             #[inline]
-            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: usize, context: _Option<LogosLeaf>)
+            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: ::core::primitive::usize, context: _Option<LogosLeaf>)
                 -> CallbackResult<'s, #this>
             {
                 match context {
-                    None => {
+                    _Option::None => {
                         lex.end_to_boundary(offset.max(lex.offset() + 1));
                         CallbackResult::Error(_make_error(lex))
                     },
-                    #(Some(LogosLeaf::#leaf_indices) => {
+                    #(_Option::Some(LogosLeaf::#leaf_indices) => {
                         #leaf_bodies
                     }),*
                     #default_case
@@ -271,7 +271,7 @@ impl<'a> Generator<'a> {
                 let leaf = &self.leaf_idents[idx.0][1];
                 quote! {
                     lex.end(offset);
-                    context = Some(LogosLeaf::#leaf);
+                    context = _Option::Some(LogosLeaf::#leaf);
                 }
             }
             StateType {
@@ -280,7 +280,7 @@ impl<'a> Generator<'a> {
                 let leaf = &self.leaf_idents[idx.0][1];
                 quote! {
                     lex.end(offset - 1);
-                    context = Some(LogosLeaf::#leaf);
+                    context = _Option::Some(LogosLeaf::#leaf);
                 }
             }
             StateType { .. } => quote!(),
@@ -302,7 +302,7 @@ impl<'a> Generator<'a> {
         } else {
             let this = self.this;
             quote! {
-                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: usize, mut context: _Option<LogosLeaf>)
+                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: ::core::primitive::usize, mut context: _Option<LogosLeaf>)
                     -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
                     #fast_loop
                     #setup
@@ -353,7 +353,7 @@ impl<'a> Generator<'a> {
             }
 
             let ident = Self::table_ident(lut_idx);
-            quote! { const #ident: [u8; 256] = [#(#byte_arr),*]; }
+            quote! { const #ident: [::core::primitive::u8; 256] = [#(#byte_arr),*]; }
         });
 
         quote! { #(#decls)* }
