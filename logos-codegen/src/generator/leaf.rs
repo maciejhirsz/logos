@@ -70,19 +70,19 @@ impl Generator<'_> {
                     let action = _get_action($lex, $offset, $context);
                     match action {
                         CallbackResult::Emit(tok) => {
-                            return Some(Ok(tok));
+                            return _Option::Some(_Result::Ok(tok));
                         },
                         CallbackResult::Skip => {
                             $lex.trivia();
                             $offset = $lex.offset();
-                            $context = None;
+                            $context = _Option::None;
                             #restart_lex
                         },
                         CallbackResult::Error(err) => {
-                            return Some(Err(err));
+                            return _Option::Some(_Result::Err(err));
                         },
                         CallbackResult::DefaultError => {
-                            return Some(Err(_make_error($lex)));
+                            return _Option::Some(_Result::Err(_make_error($lex)));
                         },
                     }
                 }}
