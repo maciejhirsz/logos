@@ -190,7 +190,7 @@ impl<'a> Generator<'a> {
                 error.into()
             },
             None => quote! {
-                <#this as Logos<'s>>::Error::default()
+                <<#this as Logos<'s>>::Error as ::core::default::Default>::default()
             },
         };
 
