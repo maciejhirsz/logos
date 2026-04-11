@@ -80,7 +80,7 @@ impl<'a> Generator<'a> {
                         if range.len() == 1 {
                             quote! { (byte == #start) }
                         } else {
-                            quote! { (matches!(byte, #start ..= #end) #(#exceptions)*) }
+                            quote! { (::core::matches!(byte, #start ..= #end) #(#exceptions)*) }
                         }
                     })
                     .collect::<Vec<_>>();
@@ -185,7 +185,7 @@ impl<'a> Generator<'a> {
 
             // Undo the unconditional increment if we don't have a next state
             quote! {
-                #[derive(Copy, Clone)]
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
                 enum LogosNextState {
                     ___,
                     #(#idents),*

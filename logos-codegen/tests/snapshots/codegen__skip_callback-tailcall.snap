@@ -91,7 +91,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
             }
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosLeaf {
             Leaf0 = 0isize,
             Leaf1 = 1isize,
@@ -107,7 +107,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                #[derive(Copy, Clone)]
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
                 enum LogosNextState {
                     ___,
                     State1,

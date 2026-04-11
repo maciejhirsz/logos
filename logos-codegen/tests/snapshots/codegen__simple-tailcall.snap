@@ -63,7 +63,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 _Option::Some(LogosLeaf::Leaf0) => CallbackResult::Emit(Token::Letter),
             }
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosLeaf {
             Leaf0 = 0isize,
         }

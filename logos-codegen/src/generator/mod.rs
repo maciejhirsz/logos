@@ -116,7 +116,7 @@ impl<'a> Generator<'a> {
                 #take_action_macro
                 #loop_luts
                 #make_token_fn
-                #[derive(Clone, Copy)]
+                #[derive(::core::clone::Clone, ::core::marker::Copy)]
                 enum LogosLeaf {
                     #(#leaves_pascal = #leaves_index),*
                 }
@@ -125,7 +125,7 @@ impl<'a> Generator<'a> {
         if self.config.use_state_machine_codegen {
             quote! {
                 #common
-                #[derive(Clone, Copy)]
+                #[derive(::core::clone::Clone, ::core::marker::Copy)]
                 enum LogosState {
                     #(#all_idents_pascal),*
                 }
@@ -198,7 +198,7 @@ impl<'a> Generator<'a> {
         // for Option<Enum> even if the enum has no variants.
         let default_case = if self.graph.leaves().is_empty() {
             Some(quote! {
-                _Option::Some(_) => unreachable!("There are no matchable tokens"),
+                _Option::Some(_) => ::core::unreachable!("There are no matchable tokens"),
             })
         } else {
             None

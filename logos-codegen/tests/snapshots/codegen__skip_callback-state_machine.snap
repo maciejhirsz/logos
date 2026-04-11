@@ -91,7 +91,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
             }
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosLeaf {
             Leaf0 = 0isize,
             Leaf1 = 1isize,
@@ -100,7 +100,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             Leaf4 = 4isize,
             Leaf5 = 5isize,
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosState {
             State0,
             State1,

@@ -67,7 +67,7 @@ impl<'s> ::logos::Logos<'s> for Token {
                 _Option::Some(LogosLeaf::Leaf2) => CallbackResult::Emit(Token::Any),
             }
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosLeaf {
             Leaf0 = 0isize,
             Leaf1 = 1isize,
@@ -80,7 +80,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
                     return state1(lex, offset, context);
                 }
@@ -94,7 +94,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
                     return state2(lex, offset, context);
                 }
@@ -119,7 +119,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                #[derive(Copy, Clone)]
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
                 enum LogosNextState {
                     ___,
                     State2,
@@ -445,7 +445,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 144u8..= 191u8)) {
+                if (::core::matches!(byte, 144u8..= 191u8)) {
                     offset += 1;
                     return state0(lex, offset, context);
                 }
@@ -461,7 +461,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
                     return state0(lex, offset, context);
                 }
@@ -477,7 +477,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 143u8)) {
+                if (::core::matches!(byte, 128u8..= 143u8)) {
                     offset += 1;
                     return state0(lex, offset, context);
                 }
@@ -493,7 +493,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 159u8)) {
+                if (::core::matches!(byte, 128u8..= 159u8)) {
                     offset += 1;
                     return state1(lex, offset, context);
                 }
@@ -531,7 +531,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
                     return state2(lex, offset, context);
                 }
@@ -547,7 +547,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 160u8..= 191u8)) {
+                if (::core::matches!(byte, 160u8..= 191u8)) {
                     offset += 1;
                     return state1(lex, offset, context);
                 }
@@ -563,7 +563,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             context = _Option::Some(LogosLeaf::Leaf2);
             let other = lex.read::<::core::primitive::u8>(offset);
             if let _Option::Some(byte) = other {
-                if (matches!(byte, 128u8..= 191u8)) {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
                     offset += 1;
                     return state1(lex, offset, context);
                 }

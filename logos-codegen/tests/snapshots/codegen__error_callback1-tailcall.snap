@@ -61,10 +61,10 @@ impl<'s> ::logos::Logos<'s> for TokenA {
                     lex.end_to_boundary(offset.max(lex.offset() + 1));
                     CallbackResult::Error(_make_error(lex))
                 }
-                _Option::Some(_) => unreachable!("There are no matchable tokens"),
+                _Option::Some(_) => ::core::unreachable!("There are no matchable tokens"),
             }
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosLeaf {}
         fn state0<'s>(
             lex: &mut _Lexer<'s>,
