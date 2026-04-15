@@ -33,7 +33,7 @@ impl Errors {
                     #(#errors)*
                 }
 
-                unimplemented!()
+                ::core::unimplemented!()
             }),
         }
     }
@@ -50,7 +50,7 @@ impl ToTokens for SpannedError {
         let message = &*self.message;
 
         tokens.append_all(quote_spanned!(self.span => {
-            compile_error!(#message)
+            ::core::compile_error!(#message)
         }))
     }
 }
