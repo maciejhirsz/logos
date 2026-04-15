@@ -27,10 +27,10 @@ where
     Token::Extras: Debug,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_map()
-            .entry(&"source", &self.source)
-            .entry(&"extras", &self.extras)
-            .finish()
+        fmt.debug_struct("Lexer")
+            .field("source", &self.source)
+            .field("extras", &self.extras)
+            .finish_non_exhaustive()
     }
 }
 
