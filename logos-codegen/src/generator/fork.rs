@@ -29,12 +29,24 @@ impl<'a> Generator<'a> {
     // If the state has an EOI node, transition to it.
     // Otherwise, fall through to later code.
     fn fork_eoi(&self, state: State, state_data: &StateData) -> TokenStream {
-        let mut eoi = TokenStream::new();
+        // If we don't have all input, we return `None`
+        let mut eoi = TokenStream::default();
+
+        // If the input buffer is a prefix and some transitions are still possible, return None
+        if !state_data.normal.is_empty() {
+            eoi.append_all(quote! {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None
+                }
+            });
+        }
+
         if state == self.graph.root() {
             // If we just started lexing and are at the end of input, return None
             eoi.append_all(quote! { if lex.offset() == offset { return _Option::None } });
         }
-        if let &Some(eoi_state) = &state_data.eoi {
+        if let Some(eoi_state) = state_data.eoi {
             let transition = self.state_transition(eoi_state);
             eoi.append_all(quote! {
                 offset += 1;

@@ -126,6 +126,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                     return state3(lex, offset, context);
                 }
             } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
                 if lex.offset() == offset {
                     return _Option::None;
                 }
@@ -144,6 +148,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                     return state2(lex, offset, context);
                 }
             } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
             }
             _take_action!(lex, offset, context, state)
         }
@@ -172,6 +180,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                     return state1(lex, offset, context);
                 }
             } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
             }
             _take_action!(lex, offset, context, state)
         }
