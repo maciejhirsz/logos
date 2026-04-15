@@ -48,11 +48,11 @@ const ERROR_ATTR: &str = "error";
 const TOKEN_ATTR: &str = "token";
 const REGEX_ATTR: &str = "regex";
 
-/// Generate a `Logos` implementation for the given struct, provided as a stream of rust tokens.
+/// Generate a `Logos` implementation for the given enum, provided as a stream of Rust tokens.
 pub fn generate(input: TokenStream) -> TokenStream {
     debug!("Reading input token streams");
 
-    let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
+    let mut item: ItemEnum = syn::parse2(input).expect("Logos can only be derived for enums");
     let item_span = item.span();
 
     let name = &item.ident;
@@ -265,18 +265,18 @@ pub fn generate(input: TokenStream) -> TokenStream {
         .filter(|leaf| !leaf.pattern.hir().properties().is_utf8())
         .collect::<Vec<_>>();
     if utf8_mode && !non_utf8_pats.is_empty() {
-        // If utf8 mode is specified, make sure no patterns match illegal utf8
+        // If UTF-8 mode is specified, make sure no patterns match illegal UTF-8
         for leaf in non_utf8_pats {
             parser.err(format!(concat!(
-                "UTF-8 mode is requested, but the pattern {} of variant `{}` can match invalid utf8.\n",
+                "UTF-8 mode is requested, but the pattern {} of variant `{}` can match invalid UTF-8.\n",
                 "You can disable UTF-8 mode with #[logos(utf8 = false)]"
             ), leaf.pattern.source(), leaf.kind), leaf.span);
         }
     };
 
     let source = match utf8_mode {
-        true => quote!(str),
-        false => quote!([u8]),
+        true => quote!(::core::primitive::str),
+        false => quote!([::core::primitive::u8]),
     };
     let logos_path = parser
         .logos_path
@@ -298,7 +298,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
                 type Source = #source;
 
                 fn lex(lex: &mut #logos_path::Lexer<#src_lt, Self>)
-                    -> core::option::Option<core::result::Result<Self, <Self as #logos_path::Logos<#src_lt>>::Error>> {
+                    -> ::core::option::Option<::core::result::Result<Self, <Self as #logos_path::Logos<#src_lt>>::Error>> {
                     #body
                 }
             }
@@ -418,8 +418,8 @@ pub fn generate(input: TokenStream) -> TokenStream {
             SkipRetVal,
             SkipResult,
         };
-        use core::result::Result as _Result;
-        use core::option::Option as _Option;
+        use ::core::result::Result as _Result;
+        use ::core::option::Option as _Option;
         use #logos_path::Lexer as _Lexer;
         use #logos_path::Logos;
 
@@ -445,9 +445,9 @@ fn greedy_dotall_check(definition: &Definition, pattern: &Pattern, parser: &mut 
     }
 }
 
-/// Strip all logos attributes from the given struct, allowing it to be used in code without `logos-derive` present.
+/// Strip all logos attributes from the given enum, allowing it to be used in code without `logos-derive` present.
 pub fn strip_attributes(input: TokenStream) -> TokenStream {
-    let mut item: ItemEnum = syn::parse2(input).expect("Logos can be only be derived for enums");
+    let mut item: ItemEnum = syn::parse2(input).expect("Logos can only be derived for enums");
 
     strip_attrs_from_vec(&mut item.attrs);
 

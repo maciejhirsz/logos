@@ -1,4 +1,4 @@
-error: UTF-8 mode is requested, but the pattern b"\xFF" of variant `::NonUtf8` can match invalid utf8.
+error: UTF-8 mode is requested, but the pattern b"\xFF" of variant `::NonUtf8` can match invalid UTF-8.
        You can disable UTF-8 mode with #[logos(utf8 = false)]
  --> tests/ui/err/regex-non-utf8.rs:5:13
   |
@@ -11,7 +11,7 @@ error: This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.
 11 |     #[regex(b"\x00.*")]
    |             ^^^^^^^^^
 
-error: UTF-8 mode is requested, but the pattern b"\x00.*" of variant `::NonUtf8` can match invalid utf8.
+error: UTF-8 mode is requested, but the pattern b"\x00.*" of variant `::NonUtf8` can match invalid UTF-8.
        You can disable UTF-8 mode with #[logos(utf8 = false)]
   --> tests/ui/err/regex-non-utf8.rs:11:13
    |
@@ -24,7 +24,7 @@ error: This pattern contains an unbounded greedy dot repetition, i.e. `.*` or `.
 17 |     #[regex(b"\x00.+")]
    |             ^^^^^^^^^
 
-error: UTF-8 mode is requested, but the pattern b"\x00.+" of variant `::NonUtf8` can match invalid utf8.
+error: UTF-8 mode is requested, but the pattern b"\x00.+" of variant `::NonUtf8` can match invalid UTF-8.
        You can disable UTF-8 mode with #[logos(utf8 = false)]
   --> tests/ui/err/regex-non-utf8.rs:17:13
    |

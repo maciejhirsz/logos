@@ -297,7 +297,7 @@ impl fmt::Display for ByteClass {
 ///
 /// `(byte < 5 || byte > 10) && (byte < 12 || byte > 16)`
 ///
-/// and the rust compiler does not always do this for more complex ranges.
+/// and the Rust compiler does not always do this for more complex ranges.
 pub struct Comparisons {
     pub range: RangeInclusive<u8>,
     pub except: Vec<u8>,

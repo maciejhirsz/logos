@@ -66,7 +66,7 @@ fn codegen(input: String) -> Result<String> {
     let input_tokens: TokenStream = input
         .parse()
         .map_err(|err: LexError| anyhow::Error::msg(err.to_string()))
-        .context("failed to parse input as rust code")?;
+        .context("failed to parse input as Rust code")?;
 
     let mut output = String::new();
     write!(
@@ -90,7 +90,7 @@ fn rustfmt(input: String) -> Result<String> {
         anyhow::bail!("rustfmt returned unsuccessful exit code");
     }
 
-    String::from_utf8(output.stdout).context("failed to parse rustfmt output as utf-8")
+    String::from_utf8(output.stdout).context("failed to parse rustfmt output as UTF-8")
 }
 
 fn eq_ignore_newlines(lhs: &str, rhs: &str) -> bool {

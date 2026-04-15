@@ -87,7 +87,7 @@ impl Subpatterns {
                     let utf8_pat = pat.hir().properties().is_utf8();
                     if utf8_mode && !utf8_pat {
                         errors.err(format!(concat!(
-                            "UTF-8 mode is requested, but the subpattern {} = {} can match invalid utf8.\n",
+                            "UTF-8 mode is requested, but the subpattern {} = {} can match invalid UTF-8.\n",
                             "You can disable UTF-8 mode with #[logos(utf8 = false)]"
                         ), name, pat.source()), pattern.span());
                         continue;

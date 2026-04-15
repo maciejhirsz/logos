@@ -5,43 +5,44 @@ expression: formatted
 impl<'s> ::logos::Logos<'s> for TokenA {
     type Error = &'static str;
     type Extras = Vec<&'static str>;
-    type Source = str;
+    type Source = ::core::primitive::str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> core::option::Option<
-        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    ) -> ::core::option::Option<
+        ::core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
         use ::logos::internal::{
             LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
         };
-        use core::result::Result as _Result;
-        use core::option::Option as _Option;
+        use ::core::result::Result as _Result;
+        use ::core::option::Option as _Option;
         use ::logos::Lexer as _Lexer;
         use ::logos::Logos;
         macro_rules! _fast_loop {
             ($lex:ident, $test:ident, $offset:ident) => {
-                'fast_loop : { while let Some(arr) = $lex .read:: < & [u8; 8usize] >
-                ($offset) { if $test (arr[0usize]) { $offset += 0usize; break 'fast_loop;
-                } if $test (arr[1usize]) { $offset += 1usize; break 'fast_loop; } if
-                $test (arr[2usize]) { $offset += 2usize; break 'fast_loop; } if $test
-                (arr[3usize]) { $offset += 3usize; break 'fast_loop; } if $test
-                (arr[4usize]) { $offset += 4usize; break 'fast_loop; } if $test
-                (arr[5usize]) { $offset += 5usize; break 'fast_loop; } if $test
-                (arr[6usize]) { $offset += 6usize; break 'fast_loop; } if $test
-                (arr[7usize]) { $offset += 7usize; break 'fast_loop; } $offset += 8usize;
-                } while let Some(byte) = $lex .read:: < u8 > ($offset) { if $test (byte)
-                { break 'fast_loop; } $offset += 1; } }
+                'fast_loop : { while let _Option::Some(arr) = $lex .read:: < &
+                [::core::primitive::u8; 8usize] > ($offset) { if $test (arr[0usize]) {
+                $offset += 0usize; break 'fast_loop; } if $test (arr[1usize]) { $offset
+                += 1usize; break 'fast_loop; } if $test (arr[2usize]) { $offset +=
+                2usize; break 'fast_loop; } if $test (arr[3usize]) { $offset += 3usize;
+                break 'fast_loop; } if $test (arr[4usize]) { $offset += 4usize; break
+                'fast_loop; } if $test (arr[5usize]) { $offset += 5usize; break
+                'fast_loop; } if $test (arr[6usize]) { $offset += 6usize; break
+                'fast_loop; } if $test (arr[7usize]) { $offset += 7usize; break
+                'fast_loop; } $offset += 8usize; } while let _Option::Some(byte) = $lex
+                .read:: < ::core::primitive::u8 > ($offset) { if $test (byte) { break
+                'fast_loop; } $offset += 1; } }
             };
         }
         macro_rules! _take_action {
             ($lex:ident, $offset:ident, $context:ident, $state:ident) => {
                 { let action = _get_action($lex, $offset, $context); match action {
-                CallbackResult::Emit(tok) => { return Some(Ok(tok)); },
+                CallbackResult::Emit(tok) => { return _Option::Some(_Result::Ok(tok)); },
                 CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
-                $context = None; $state = LogosState::State0; continue; },
-                CallbackResult::Error(err) => { return Some(Err(err)); },
-                CallbackResult::DefaultError => { return Some(Err(_make_error($lex))); },
-                } }
+                $context = _Option::None; $state = LogosState::State0; continue; },
+                CallbackResult::Error(err) => { return _Option::Some(_Result::Err(err));
+                }, CallbackResult::DefaultError => { return
+                _Option::Some(_Result::Err(_make_error($lex))); }, } }
             };
         }
         #[inline]
@@ -54,33 +55,33 @@ impl<'s> ::logos::Logos<'s> for TokenA {
         #[inline]
         fn _get_action<'s>(
             lex: &mut _Lexer<'s, TokenA>,
-            offset: usize,
+            offset: ::core::primitive::usize,
             context: _Option<LogosLeaf>,
         ) -> CallbackResult<'s, TokenA> {
             match context {
-                None => {
+                _Option::None => {
                     lex.end_to_boundary(offset.max(lex.offset() + 1));
                     CallbackResult::Error(_make_error(lex))
                 }
-                Some(_) => unreachable!("There are no matchable tokens"),
+                _Option::Some(_) => ::core::unreachable!("There are no matchable tokens"),
             }
         }
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosLeaf {}
-        #[derive(Clone, Copy)]
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
         enum LogosState {
             State0,
         }
         let mut state = LogosState::State0;
         let mut offset = lex.offset();
-        let mut context: _Option<LogosLeaf> = None;
+        let mut context: _Option<LogosLeaf> = _Option::None;
         loop {
             match state {
                 LogosState::State0 => {
-                    let other = lex.read::<u8>(offset);
-                    if let Some(byte) = other {} else {
+                    let other = lex.read::<::core::primitive::u8>(offset);
+                    if let _Option::Some(byte) = other {} else {
                         if lex.offset() == offset {
-                            return None;
+                            return _Option::None;
                         }
                     }
                     _take_action!(lex, offset, context, state)

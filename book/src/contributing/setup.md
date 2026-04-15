@@ -3,7 +3,7 @@
 On this page, you will find all the information needed to run and test your
 own version of the Logos crate, locally.
 
-We assume you have basic knowledge with git and GitHub. If that is not the
+We assume you have basic knowledge of git and GitHub. If that is not the
 case, please refer to the link mentioned in [Contributing](../contributing.md).
 
 ## Prerequisites
@@ -53,8 +53,8 @@ fail to pass the automated tests.
 
 ## Testing your code
 
-A code that compiles isn't necessarily correct, and testing it against known
-cases is of good practice:
+Code that compiles isn't necessarily correct, and testing it against known
+cases is good practice:
 
 ```bash
 cargo test --workspace

@@ -40,8 +40,8 @@ impl<'a> Generator<'a> {
 
         quote! {
             #[inline]
-            fn loop_test(byte: u8) -> bool {
-                #ident[byte as usize] & #loop_mask == 0
+            fn loop_test(byte: ::core::primitive::u8) -> ::core::primitive::bool {
+                #ident[byte as ::core::primitive::usize] & #loop_mask == 0
             }
             _fast_loop!(lex, loop_test, offset);
         }
@@ -58,12 +58,12 @@ pub fn fast_loop_macro(unroll_factor: usize) -> TokenStream {
             ($lex:ident, $test:ident, $offset:ident) => {
                 // Do one bounds check for multiple bytes till EOF
                 'fast_loop: {
-                    while let Some(arr) = $lex.read::<&[u8; #unroll_factor]>($offset) {
+                    while let _Option::Some(arr) = $lex.read::<&[::core::primitive::u8; #unroll_factor]>($offset) {
                         #(if $test(arr[#index])   { $offset += #index; break 'fast_loop; })*
                         $offset += #unroll_factor;
                     }
 
-                    while let Some(byte) = $lex.read::<u8>($offset) {
+                    while let _Option::Some(byte) = $lex.read::<::core::primitive::u8>($offset) {
                         if $test(byte) { break 'fast_loop; }
                         $offset += 1;
                     }

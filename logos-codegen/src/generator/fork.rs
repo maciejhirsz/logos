@@ -32,7 +32,7 @@ impl<'a> Generator<'a> {
         let mut eoi = TokenStream::new();
         if state == self.graph.root() {
             // If we just started lexing and are at the end of input, return None
-            eoi.append_all(quote! { if lex.offset() == offset { return None } });
+            eoi.append_all(quote! { if lex.offset() == offset { return _Option::None } });
         }
         if let &Some(eoi_state) = &state_data.eoi {
             let transition = self.state_transition(eoi_state);
@@ -63,7 +63,7 @@ impl<'a> Generator<'a> {
 
             let condition = if cmp_count > 2 {
                 let (test_ident, test_mask) = self.add_test_to_lut(byte_class);
-                quote! { #test_ident[byte as usize] & #test_mask != 0 }
+                quote! { #test_ident[byte as ::core::primitive::usize] & #test_mask != 0 }
             } else {
                 let sub_conditions = comparisons
                     .into_iter()
@@ -80,7 +80,7 @@ impl<'a> Generator<'a> {
                         if range.len() == 1 {
                             quote! { (byte == #start) }
                         } else {
-                            quote! { (matches!(byte, #start ..= #end) #(#exceptions)*) }
+                            quote! { (::core::matches!(byte, #start ..= #end) #(#exceptions)*) }
                         }
                     })
                     .collect::<Vec<_>>();
@@ -98,8 +98,8 @@ impl<'a> Generator<'a> {
 
         let eoi = self.fork_eoi(state, state_data);
         quote! {
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
                 #inner_cases
             } else {
                 #eoi
@@ -137,17 +137,17 @@ impl<'a> Generator<'a> {
                 .map(|state_op| match state_op {
                     Some(state) => {
                         let val = self.state_value(state);
-                        quote!(Some(#val))
+                        quote!(_Option::Some(#val))
                     }
-                    None => quote!(None),
+                    None => quote!(_Option::None),
                 })
                 .collect::<Vec<_>>();
 
             let action = self.state_action(quote!(next_state));
             quote! {
                 const TABLE: [_Option<LogosState>; 256] = [#(#table_elements),*];
-                let next_state = TABLE[byte as usize];
-                if let Some(next_state) = next_state {
+                let next_state = TABLE[byte as ::core::primitive::usize];
+                if let _Option::Some(next_state) = next_state {
                     offset += 1;
                     #action
                 }
@@ -185,7 +185,7 @@ impl<'a> Generator<'a> {
 
             // Undo the unconditional increment if we don't have a next state
             quote! {
-                #[derive(Copy, Clone)]
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
                 enum LogosNextState {
                     ___,
                     #(#idents),*
@@ -195,7 +195,7 @@ impl<'a> Generator<'a> {
                     [ #(#table_elements),* ]
                 };
                 offset += 1;
-                match TABLE[byte as usize] {
+                match TABLE[byte as ::core::primitive::usize] {
                     #match_body
                 }
                 offset -= 1;
@@ -205,8 +205,8 @@ impl<'a> Generator<'a> {
         let eoi = self.fork_eoi(state, state_data);
 
         quote! {
-            let other = lex.read::<u8>(offset);
-            if let Some(byte) = other {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
                 #body
             } else {
                 #eoi

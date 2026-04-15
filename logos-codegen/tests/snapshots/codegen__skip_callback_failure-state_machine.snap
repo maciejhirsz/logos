@@ -5,68 +5,68 @@ expression: formatted
 impl<'s> ::logos::Logos<'s> for Token {
     type Error = ();
     type Extras = ();
-    type Source = str;
+    type Source = ::core::primitive::str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> core::option::Option<
-        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    ) -> ::core::option::Option<
+        ::core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
         fn _logos_derive_compile_errors() {
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Expected #[logos(skip(\"regex literal\"[, [callback = ] callback, priority = priority]))]"
                 )
             }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Expected a named argument at this position\n\nhint: If you are trying to define a callback here use: callback = ..."
                 )
             }
-            { compile_error!("Expected: priority = <integer>") }
-            { compile_error!("Expected an unsigned integer") }
-            { compile_error!("Resetting previously set priority") }
+            { ::core::compile_error!("Expected: priority = <integer>") }
+            { ::core::compile_error!("Expected an unsigned integer") }
+            { ::core::compile_error!("Resetting previously set priority") }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Inline callbacks must use closure syntax with exactly one parameter"
                 )
             }
-            { compile_error!("Callback has been already set") }
-            { compile_error!("Previous callback set here") }
-            { compile_error!("Expected: callback = ...") }
+            { ::core::compile_error!("Callback has been already set") }
+            { ::core::compile_error!("Previous callback set here") }
+            { ::core::compile_error!("Expected: callback = ...") }
             {
-                compile_error!(
-                    "Unknown nested attribute: unknown\n\nExpected one of: priority, callback"
+                ::core::compile_error!(
+                    "Unknown nested attribute: unknown\n\nExpected one of: priority, callback, ignore, allow_greedy"
                 )
             }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Expected: #[logos(skip \"regex literal\")] or #[logos(skip(...))]"
                 )
             }
-            { compile_error!("expected literal") }
+            { ::core::compile_error!("expected literal") }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Expected #[logos(skip(\"regex literal\"[, [callback = ] callback, priority = priority]))]"
                 )
             }
-            { compile_error!("Expected a &str or &[u8] slice") }
-            { compile_error!("Invalid nested attribute") }
+            { ::core::compile_error!("Expected a &str or &[u8] slice") }
+            { ::core::compile_error!("Invalid nested attribute") }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "The pattern #[regex(\"a\")] ::<skip> can match simultaneously with the following variants:\n  #[regex(\"a\")] ::<skip>\n  #[regex(\"a\")] ::A\n\n(all at the priority 2)"
                 )
             }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "The pattern #[regex(\"a\")] ::<skip> can match simultaneously with the following variants:\n  #[regex(\"a\")] ::<skip>\n  #[regex(\"a\")] ::A\n\n(all at the priority 2)"
                 )
             }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "The pattern #[regex(\"a\")] ::A can match simultaneously with the following variants:\n  #[regex(\"a\")] ::<skip>\n  #[regex(\"a\")] ::<skip>\n\n(all at the priority 2)"
                 )
             }
         }
-        unimplemented!()
+        ::core::unimplemented!()
     }
 }

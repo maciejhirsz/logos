@@ -5,24 +5,24 @@ expression: formatted
 impl<'s, 'a> ::logos::Logos<'s> for Token<'s, 'a> {
     type Error = ();
     type Extras = ();
-    type Source = str;
+    type Source = ::core::primitive::str;
     fn lex(
         lex: &mut ::logos::Lexer<'s, Self>,
-    ) -> core::option::Option<
-        core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    ) -> ::core::option::Option<
+        ::core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
     > {
         fn _logos_derive_compile_errors() {
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Source lifetime must be explicitly specified when more than one lifetime is present\nUse #[logos(lifetime = 's)] to use this lifetime for the source"
                 )
             }
             {
-                compile_error!(
+                ::core::compile_error!(
                     "Source lifetime must be explicitly specified when more than one lifetime is present\nUse #[logos(lifetime = 'a)] to use this lifetime for the source"
                 )
             }
         }
-        unimplemented!()
+        ::core::unimplemented!()
     }
 }

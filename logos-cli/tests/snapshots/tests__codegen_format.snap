@@ -16,10 +16,10 @@ impl<'s> ::logos::Logos<'s> for Token {
         use logos::internal::{
             CallbackResult, CallbackRetVal, LexerInternal, SkipResult, SkipRetVal,
         };
-        use logos::Lexer as _Lexer;
         use logos::Logos;
         use std::option::Option as _Option;
         use std::result::Result as _Result;
+        type _Lexer<'s> = ::logos::Lexer<'s, Token>;
         macro_rules! _fast_loop {
             ($ lex : ident , $ test : ident , $ offset : ident) => {
                 'fast_loop: {
@@ -68,11 +68,11 @@ impl<'s> ::logos::Logos<'s> for Token {
             };
         }
         #[inline]
-        fn _make_error<'s>(lex: &mut _Lexer<'s, Token>) -> <Token as Logos<'s>>::Error {
+        fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
             <Token as Logos<'s>>::Error::default()
         }
         fn state0<'s>(
-            lex: &mut _Lexer<'s, Token>,
+            lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
@@ -90,7 +90,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             return Some(Err(_make_error(lex)));
         }
         fn state1<'s>(
-            lex: &mut _Lexer<'s, Token>,
+            lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
@@ -105,7 +105,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             return Some(Err(_make_error(lex)));
         }
         fn state2<'s>(
-            lex: &mut _Lexer<'s, Token>,
+            lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);
@@ -120,7 +120,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             return Some(Err(_make_error(lex)));
         }
         fn state3<'s>(
-            lex: &mut _Lexer<'s, Token>,
+            lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             lex.end(offset);
@@ -131,7 +131,7 @@ impl<'s> ::logos::Logos<'s> for Token {
             return Some(Ok(Token::Letter));
         }
         fn state4<'s>(
-            lex: &mut _Lexer<'s, Token>,
+            lex: &mut _Lexer<'s>,
             mut offset: usize,
         ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
             let other = lex.read::<u8>(offset);

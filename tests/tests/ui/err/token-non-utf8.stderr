@@ -1,4 +1,4 @@
-error: UTF-8 mode is requested, but the pattern b"\xFF" of variant `::NonUtf8` can match invalid utf8.
+error: UTF-8 mode is requested, but the pattern b"\xFF" of variant `::NonUtf8` can match invalid UTF-8.
        You can disable UTF-8 mode with #[logos(utf8 = false)]
  --> tests/ui/err/token-non-utf8.rs:5:13
   |
