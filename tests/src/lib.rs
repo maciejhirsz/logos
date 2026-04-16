@@ -15,6 +15,7 @@ pub fn assert_lex<'a, Token>(
 ) where
     Token: Logos<'a> + fmt::Debug + PartialEq,
     Token::Extras: Default,
+    Token::Error: fmt::Debug + PartialEq,
 {
     let mut lex = Token::lexer(source);
 
