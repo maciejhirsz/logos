@@ -2,7 +2,7 @@ use logos::Lexer;
 use logos::Logos;
 use tests::assert_lex;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct MockExtras {
     spaces: usize,
     line_breaks: usize,
@@ -406,4 +406,12 @@ fn uints() {
     assert_eq!(lex.extras.byte_size, 4);
 
     assert_eq!(lex.next(), None);
+}
+
+#[test]
+fn debug() {
+    assert_eq!(
+        format!("{:?}", Token::lexer("")),
+        "Lexer { source: \"\", extras: MockExtras { spaces: 0, line_breaks: 0, numbers: 0, byte_size: 0 }, .. }"
+    );
 }
