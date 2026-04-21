@@ -47,7 +47,7 @@ impl<'s> ::logos::Logos<'s> for Token {
         }
         #[inline]
         fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <Token as Logos<'s>>::Error {
-            <Token as Logos<'s>>::Error::default()
+            <<Token as Logos<'s>>::Error as ::core::default::Default>::default()
         }
         #[inline]
         fn _get_action<'s>(
