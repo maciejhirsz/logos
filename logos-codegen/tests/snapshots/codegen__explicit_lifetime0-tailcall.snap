@@ -49,7 +49,10 @@ impl<'s, 'a> ::logos::Logos<'s> for Token<'a, &'static str> {
         fn _make_error<'s, 'a>(
             lex: &mut _Lexer<'s, Token<'a, &'static str>>,
         ) -> <Token<'a, &'static str> as Logos<'s>>::Error {
-            <Token<'a, &'static str> as Logos<'s>>::Error::default()
+            <<Token<
+                'a,
+                &'static str,
+            > as Logos<'s>>::Error as ::core::default::Default>::default()
         }
         #[inline]
         fn _get_action<'s, 'a>(
