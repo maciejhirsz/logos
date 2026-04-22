@@ -19,6 +19,7 @@
 + [Examples](./examples.md)
   + [Brainfuck interpreter](./examples/brainfuck.md)
   + [Simple calculator](./examples/calculator.md)
+  + [Simple array language](./examples/array-language.md)
   + [JSON parser](./examples/json.md)
   + [JSON-borrowed parser](./examples/json_borrowed.md)
   + [String interpolation](./examples/string-interpolation.md)

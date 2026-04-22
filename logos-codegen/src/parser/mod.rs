@@ -21,7 +21,7 @@ pub use self::error_type::ErrorType;
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
 pub use self::subpattern::Subpatterns;
-use self::type_params::{replace_lifetime, traverse_type, TypeParams};
+use self::type_params::{traverse_type, TypeParams};
 
 #[derive(Default)]
 pub struct Parser {
@@ -40,10 +40,10 @@ impl Parser {
     pub fn parse_generic(&mut self, param: GenericParam) {
         match param {
             GenericParam::Lifetime(lt) => {
-                self.types.explicit_lifetime(lt, &mut self.errors);
+                self.types.add_lifetime(lt);
             }
             GenericParam::Type(ty) => {
-                self.types.add(ty.ident);
+                self.types.add_type(ty.ident);
             }
             GenericParam::Const(c) => {
                 self.err("Logos doesn't support const generics.", c.span());
@@ -53,6 +53,14 @@ impl Parser {
 
     pub fn generics(&mut self) -> Option<TokenStream> {
         self.types.generics(&mut self.errors)
+    }
+
+    pub fn lifetime_bounds(&mut self) -> TokenStream {
+        self.types.lifetime_bounds()
+    }
+
+    pub fn source_lifetime(&mut self) -> TokenStream {
+        self.types.source_lifetime(Some(&mut self.errors))
     }
 
     fn parse_attr(&mut self, attr: &mut Attribute) -> Option<AttributeParser> {
@@ -255,7 +263,7 @@ impl Parser {
                 },
                 "type" => match value {
                     NestedValue::KeywordAssign(generic, ty) => {
-                        self.types.set(generic, ty, &mut self.errors);
+                        self.types.set_type(generic, ty, &mut self.errors);
                     }
                     _ => {
                         self.err("Expected: #[logos(type T = SomeType)]", span);
@@ -279,6 +287,18 @@ impl Parser {
                     }
                     _ => {
                         self.err("Expected: #[logos(utf8 = true)]", span);
+                    }
+                },
+                "lifetime" => match value {
+                    NestedValue::Assign(value) => {
+                        if let Some(span) = self.types.source_lifetime_span() {
+                            self.err("Lifetime can be defined only once", value.span())
+                                .err("Previous definition here", span);
+                        }
+                        self.types.set_source_lifetime(value, &mut self.errors);
+                    }
+                    _ => {
+                        self.err("Expected: #[logos(lifetime = 'some_lifetime)]", span);
                     }
                 },
                 name => {
@@ -398,7 +418,7 @@ impl Parser {
     /// with a concrete type defined using #[logos(type T = Type)]
     ///
     /// If no matching generic param is found, all lifetimes are fixed
-    /// to the source lifetime
+    /// to the source lifetime (only when implicit)
     pub fn get_type(&self, ty: &mut Type) -> TokenStream {
         traverse_type(ty, &mut |ty| {
             if let Type::Path(tp) = ty {
@@ -411,8 +431,8 @@ impl Parser {
                     }
                 }
             }
-            // If `ty` is a concrete type, fix its lifetimes to 'source
-            replace_lifetime(ty);
+            // If `ty` is a concrete type, fix its lifetimes to 'source (when 'source is implicit)
+            self.types.fix_source_lifetime_implicit(ty);
         });
 
         quote!(#ty)

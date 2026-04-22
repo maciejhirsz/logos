@@ -25,6 +25,10 @@ pub struct Generator<'a> {
     name: &'a Ident,
     /// Name of the type with any generics it might need
     this: &'a TokenStream,
+    /// Lifetime of the lexer source
+    source_lifetime: &'a TokenStream,
+    /// All lifetime bounds needed to create nested items
+    lifetime_bounds: &'a TokenStream,
     /// Reference to the graph with all the nodes
     graph: &'a Graph,
     /// Mapping of states to their identifiers.
@@ -43,6 +47,8 @@ impl<'a> Generator<'a> {
         config: Config,
         name: &'a Ident,
         this: &'a TokenStream,
+        source_lifetime: &'a TokenStream,
+        lifetime_bounds: &'a TokenStream,
         graph: &'a Graph,
         error_callback: &'a Option<Callback>,
     ) -> Self {
@@ -72,6 +78,8 @@ impl<'a> Generator<'a> {
             config,
             name,
             this,
+            source_lifetime,
+            lifetime_bounds,
             graph,
             state_idents,
             leaf_idents,
@@ -166,6 +174,8 @@ impl<'a> Generator<'a> {
     // Self instance (or an error if the context is zero).
     fn make_token_fn(&self) -> TokenStream {
         let this = self.this;
+        let src_lt = self.source_lifetime;
+        let lt_bounds = self.lifetime_bounds;
 
         let leaf_bodies = self
             .graph
@@ -190,7 +200,7 @@ impl<'a> Generator<'a> {
                 error.into()
             },
             None => quote! {
-                <<#this as Logos<'s>>::Error as ::core::default::Default>::default()
+                <<#this as Logos<#src_lt>>::Error as ::core::default::Default>::default()
             },
         };
 
@@ -206,12 +216,12 @@ impl<'a> Generator<'a> {
 
         quote! {
             #[inline]
-            fn _make_error<'s>(lex: &mut _Lexer<'s>) -> <#this as Logos<'s>>::Error {
+            fn _make_error #lt_bounds (lex: &mut _Lexer<#src_lt, #this>) -> <#this as Logos<#src_lt>>::Error {
                 #error_body
             }
             #[inline]
-            fn _get_action<'s>(lex: &mut _Lexer<'s>, offset: ::core::primitive::usize, context: _Option<LogosLeaf>)
-                -> CallbackResult<'s, #this>
+            fn _get_action #lt_bounds (lex: &mut _Lexer<#src_lt, #this>, offset: ::core::primitive::usize, context: _Option<LogosLeaf>)
+                -> CallbackResult<#src_lt, #this>
             {
                 match context {
                     _Option::None => {
@@ -301,9 +311,11 @@ impl<'a> Generator<'a> {
             }
         } else {
             let this = self.this;
+            let src_lt = self.source_lifetime;
+            let lt_bounds = self.lifetime_bounds;
             quote! {
-                fn #this_ident<'s>(lex: &mut _Lexer<'s>, mut offset: ::core::primitive::usize, mut context: _Option<LogosLeaf>)
-                    -> _Option<_Result<#this, <#this as Logos<'s>>::Error>> {
+                fn #this_ident #lt_bounds (lex: &mut _Lexer<#src_lt, #this>, mut offset: ::core::primitive::usize, mut context: _Option<LogosLeaf>)
+                    -> _Option<_Result<#this, <#this as Logos<#src_lt>>::Error>> {
                     #fast_loop
                     #setup
                     #fork
