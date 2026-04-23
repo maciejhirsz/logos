@@ -409,6 +409,10 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
                 }
                 offset -= 1;
             } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
                 if lex.offset() == offset {
                     return _Option::None;
                 }

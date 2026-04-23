@@ -1,4 +1,4 @@
-//! Variant of the JSON parser example, parsing from [`Read`] and allowing larger than memeory files.
+//! Variant of the JSON parser example, using the [`Read`] trait to avoid storing the complete file in memory.
 //!
 //! Usage:
 //!     cargo run --example json-reader <path/to/file>
@@ -8,8 +8,8 @@
 
 use logos::{Lexer, Logos, Span};
 
-use std::cmp::min;
 use ariadne::{ColorGenerator, Label, Report, ReportKind, Source};
+use std::cmp::min;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::{env, fs, str};
@@ -22,7 +22,7 @@ const READ_AT_LEAST_BYTES: usize = 4096; // Minimal number of bytes to read from
 /// > NOTE: regexes for [`Token::Number`] and [`Token::String`] may not
 /// > catch all possible values, especially for strings. If you find
 /// > errors, please report them so that we can improve the regex.
-#[expect(dead_code)]
+#[allow(dead_code)]
 #[derive(Debug, Logos)]
 #[logos(skip r"[ \t\r\n\f]+", utf8 = false)]
 enum Token<'source> {
@@ -171,6 +171,8 @@ fn main() {
             break; // We are done parsing
         }
         // We add extra data to the lexer buffer to keep running
-        lexer.fill_from_read(&mut file).expect("Failed to read file");
+        lexer
+            .fill_from_read(&mut file)
+            .expect("Failed to read file");
     }
 }
