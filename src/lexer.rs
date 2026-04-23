@@ -13,6 +13,9 @@ pub type Span = core::ops::Range<usize>;
 pub struct Lexer<'source, Token: Logos<'source>> {
     source: &'source Token::Source,
 
+    /// True if `source` is not the full input but a prefix of it
+    is_prefix: bool,
+
     token_start: usize,
     token_end: usize,
 
@@ -53,6 +56,30 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     pub fn with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
         Lexer {
             source,
+            is_prefix: false,
+            extras,
+            token_start: 0,
+            token_end: 0,
+        }
+    }
+
+    /// Create a new `Lexer` with only a prefix of the full input `source`.
+    ///
+    /// The [`Lexer::next`] method will return `None` if more data is needed to know which token to emit.
+    pub fn new_prefix(source: &'source Token::Source) -> Self
+    where
+        Token::Extras: Default,
+    {
+        Self::prefix_with_extras(source, Default::default())
+    }
+
+    /// Create a new `Lexer` with the provided `Extras` and only a prefix of the full input `source`.
+    ///
+    /// The [`Lexer::next`] method will return `None` if more data is needed to know which token to emit.
+    pub fn prefix_with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
+        Lexer {
+            source,
+            is_prefix: true,
             extras,
             token_start: 0,
             token_end: 0,
@@ -178,6 +205,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     {
         Lexer {
             source: self.source,
+            is_prefix: self.is_prefix,
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
@@ -320,5 +348,10 @@ where
     #[inline]
     fn offset(&self) -> usize {
         self.token_start
+    }
+
+    #[inline]
+    fn is_prefix(&self) -> bool {
+        self.is_prefix
     }
 }

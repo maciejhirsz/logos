@@ -402,6 +402,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                 }
                 offset -= 1;
             } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
                 if lex.offset() == offset {
                     return _Option::None;
                 }

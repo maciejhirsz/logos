@@ -103,3 +103,7 @@ path = "examples/json.rs"
 [[example]]
 name = "json-borrowed"
 path = "examples/json_borrowed.rs"
+
+[[example]]
+name = "json-reader"
+path = "examples/json_reader.rs"

@@ -16,6 +16,7 @@
 + [Migration Guide](./migrating.md)
 + [Debugging](./debugging.md)
 + [Unsafe Code](./unsafe.md)
++ [Prefix lexing](./prefix.md)
 + [Examples](./examples.md)
   + [Brainfuck interpreter](./examples/brainfuck.md)
   + [Simple calculator](./examples/calculator.md)

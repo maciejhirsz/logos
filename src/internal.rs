@@ -25,6 +25,9 @@ pub trait LexerInternal<'source> {
 
     /// Set `token_end` to an offset.
     fn end(&mut self, offset: usize);
+
+    /// Returns if the source is only a prefix of the full input.
+    fn is_prefix(&self) -> bool;
 }
 
 //TODO: Seems to me that we are missing a way to return Ok(Token::Uint) or skip matched input,
