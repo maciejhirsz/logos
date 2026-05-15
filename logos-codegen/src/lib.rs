@@ -33,10 +33,10 @@ use parser::Parser;
 use pattern::Pattern;
 use quote::ToTokens;
 
-use proc_macro2::{TokenStream, TokenTree};
+use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse_quote, LitBool};
+use syn::{parse_quote, Lifetime, LitBool};
 use syn::{Fields, ItemEnum};
 
 use crate::graph::Config;
@@ -287,17 +287,18 @@ pub fn generate(input: TokenStream) -> TokenStream {
     let this = quote!(#name #generics);
     let lt_bounds = parser.lifetime_bounds();
     let src_lt = parser.source_lifetime();
+    let ext_lt = Lifetime::new("'extras", Span::mixed_site());
 
     let impl_logos = |body| {
         quote! {
             impl #lt_bounds #logos_path::Logos<#src_lt> for #this {
                 type Error = #error_type;
 
-                type Extras = #extras;
+                type Extras<#ext_lt> = #extras;
 
                 type Source = #source;
 
-                fn lex(lex: &mut #logos_path::Lexer<#src_lt, Self>)
+                fn lex(lex: &mut #logos_path::Lexer<#src_lt, '_, Self>)
                     -> ::core::option::Option<::core::result::Result<Self, <Self as #logos_path::Logos<#src_lt>>::Error>> {
                     #body
                 }
@@ -404,6 +405,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
         name,
         &this,
         &src_lt,
+        &ext_lt,
         &lt_bounds,
         &graph,
         &error_callback,

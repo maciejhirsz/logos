@@ -4,7 +4,7 @@ use fast_loop::fast_loop_macro;
 use fnv::FnvHashMap as Map;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::Ident;
+use syn::{Ident, Lifetime};
 
 use crate::graph::{ByteClass, Graph, State, StateType};
 use crate::leaf::{Callback, InlineCallback};
@@ -26,7 +26,7 @@ pub struct Generator<'a> {
     /// Name of the type with any generics it might need
     this: &'a TokenStream,
     /// Lifetime of the lexer source
-    source_lifetime: &'a TokenStream,
+    source_lifetime: &'a Lifetime,
     /// All lifetime bounds needed to create nested items
     lifetime_bounds: &'a TokenStream,
     /// Reference to the graph with all the nodes
@@ -47,7 +47,8 @@ impl<'a> Generator<'a> {
         config: Config,
         name: &'a Ident,
         this: &'a TokenStream,
-        source_lifetime: &'a TokenStream,
+        source_lifetime: &'a Lifetime,
+        _extras_lifetime: &'a Lifetime,
         lifetime_bounds: &'a TokenStream,
         graph: &'a Graph,
         error_callback: &'a Option<Callback>,
@@ -216,11 +217,11 @@ impl<'a> Generator<'a> {
 
         quote! {
             #[inline]
-            fn _make_error #lt_bounds (lex: &mut _Lexer<#src_lt, #this>) -> <#this as Logos<#src_lt>>::Error {
+            fn _make_error #lt_bounds (lex: &mut _Lexer<#src_lt, '_, #this>) -> <#this as Logos<#src_lt>>::Error {
                 #error_body
             }
             #[inline]
-            fn _get_action #lt_bounds (lex: &mut _Lexer<#src_lt, #this>, offset: ::core::primitive::usize, context: _Option<LogosLeaf>)
+            fn _get_action #lt_bounds (lex: &mut _Lexer<#src_lt, '_, #this>, offset: ::core::primitive::usize, context: _Option<LogosLeaf>)
                 -> CallbackResult<#src_lt, #this>
             {
                 match context {
@@ -314,7 +315,7 @@ impl<'a> Generator<'a> {
             let src_lt = self.source_lifetime;
             let lt_bounds = self.lifetime_bounds;
             quote! {
-                fn #this_ident #lt_bounds (lex: &mut _Lexer<#src_lt, #this>, mut offset: ::core::primitive::usize, mut context: _Option<LogosLeaf>)
+                fn #this_ident #lt_bounds (lex: &mut _Lexer<#src_lt, '_, #this>, mut offset: ::core::primitive::usize, mut context: _Option<LogosLeaf>)
                     -> _Option<_Result<#this, <#this as Logos<#src_lt>>::Error>> {
                     #fast_loop
                     #setup

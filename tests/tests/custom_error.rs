@@ -22,7 +22,7 @@ impl From<ParseIntError> for LexingError {
 }
 
 impl LexingError {
-    fn unrecognised_character<'src>(lexer: &mut logos::Lexer<'src, Token<'src>>) -> Self {
+    fn unrecognised_character<'src>(lexer: &mut logos::Lexer<'src, '_, Token<'src>>) -> Self {
         Self::UnrecognisedCharacter(lexer.slice().chars().next().unwrap())
     }
 }
@@ -74,7 +74,7 @@ enum TokenA {}
 #[logos(error(&'static str, callback = callback_b))]
 enum TokenB {}
 
-fn callback_b(lexer: &mut Lexer<'_, TokenB>) -> &'static str {
+fn callback_b(lexer: &mut Lexer<'_, '_, TokenB>) -> &'static str {
     lexer.extras.push("b");
     "b"
 }
