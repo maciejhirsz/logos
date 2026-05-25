@@ -828,3 +828,26 @@ mod issue_461 {
         );
     }
 }
+
+// https://github.com/maciejhirsz/logos/issues/547
+// Source::read had integer overflow in the bounds check when offset is near usize::MAX,
+// which allowed the guard `offset + (Chunk::SIZE - 1) < self.len()` to evaluate to
+// true via wrapping, triggering UB in unsafe code.
+mod issue_547 {
+    use logos::Source;
+
+    #[test]
+    fn read_overflow_returns_none() {
+        let data = [0u8; 8];
+        let s: &[u8] = &data;
+        // usize::MAX wraps to 0 when added to any positive SIZE-1, so the old
+        // guard was spuriously true; the fixed guard uses checked_add and must
+        // return None here.
+        assert_eq!(<[u8] as Source>::read::<&[u8; 2]>(s, usize::MAX), None);
+        assert_eq!(<[u8] as Source>::read::<u8>(s, usize::MAX), None);
+
+        let text = "hello";
+        assert_eq!(<str as Source>::read::<&[u8; 2]>(text, usize::MAX), None);
+        assert_eq!(<str as Source>::read::<u8>(text, usize::MAX), None);
+    }
+}

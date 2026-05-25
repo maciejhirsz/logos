@@ -108,7 +108,10 @@ impl Source for str {
         Chunk: self::Chunk<'a>,
     {
         #[cfg(not(feature = "forbid_unsafe"))]
-        if offset + (Chunk::SIZE - 1) < self.len() {
+        if offset
+            .checked_add(Chunk::SIZE)
+            .map_or(false, |end| end <= self.len())
+        {
             // # Safety: we just performed a bound check.
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
@@ -166,7 +169,10 @@ impl Source for [u8] {
         Chunk: self::Chunk<'a>,
     {
         #[cfg(not(feature = "forbid_unsafe"))]
-        if offset + (Chunk::SIZE - 1) < self.len() {
+        if offset
+            .checked_add(Chunk::SIZE)
+            .map_or(false, |end| end <= self.len())
+        {
             Some(unsafe { Chunk::from_ptr(self.as_ptr().add(offset)) })
         } else {
             None
