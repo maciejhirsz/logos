@@ -705,6 +705,7 @@ version = "0.16.1"
 dependencies = [
  "ariadne",
  "chumsky",
+ "logos",
  "logos-derive",
 ]
 
