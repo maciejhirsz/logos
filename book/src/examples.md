@@ -13,3 +13,6 @@ The following examples are ordered by increasing level of complexity.
 **[JSON-borrowed parser](./examples/json_borrowed.md)**: A variant of the previous parser, but that does not own its data.
 
 **[String interpolation](./examples/string-interpolation.md)**: Example on using context-dependent lexing to parse a simple language with string interpolation.
+
+The [handling incomplete input](./incomplete-input.md) page also includes a
+small example for language-server and streaming-parser style use cases.

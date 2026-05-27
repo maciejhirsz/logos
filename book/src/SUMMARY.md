@@ -10,6 +10,7 @@
 + [Using `Extras`](./extras.md)
 + [Using callbacks](./callbacks.md)
 + [Context-dependent lexing](./context-dependent-lexing.md)
++ [Handling incomplete input](./incomplete-input.md)
 + [Common regular expressions](./common-regex.md)
 + [Unicode support](./unicode-support.md)
 + [State machine codegen](./state-machine-codegen.md)
