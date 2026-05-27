@@ -119,7 +119,10 @@ impl Source for str {
         }
 
         #[cfg(feature = "forbid_unsafe")]
-        Chunk::from_slice(self.as_bytes().slice(offset..Chunk::SIZE + offset)?)
+        Chunk::from_slice(
+            self.as_bytes()
+                .slice(offset..offset.checked_add(Chunk::SIZE)?)?,
+        )
     }
 
     #[inline]
@@ -179,7 +182,7 @@ impl Source for [u8] {
         }
 
         #[cfg(feature = "forbid_unsafe")]
-        Chunk::from_slice(self.slice(offset..Chunk::SIZE + offset)?)
+        Chunk::from_slice(self.slice(offset..offset.checked_add(Chunk::SIZE)?)?)
     }
 
     #[inline]
