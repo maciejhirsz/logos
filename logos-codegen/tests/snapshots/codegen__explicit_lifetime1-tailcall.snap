@@ -4,10 +4,10 @@ expression: formatted
 ---
 impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
     type Error = ();
-    type Extras = (&'a [String], &'c [bool]);
+    type Extras<'extras> = (&'a [String], &'c [bool]);
     type Source = ::core::primitive::str;
     fn lex(
-        lex: &mut ::logos::Lexer<'b, Self>,
+        lex: &mut ::logos::Lexer<'b, '_, Self>,
     ) -> ::core::option::Option<
         ::core::result::Result<Self, <Self as ::logos::Logos<'b>>::Error>,
     > {
@@ -47,7 +47,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
         }
         #[inline]
         fn _make_error<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
         ) -> <Token<'a, 'b, 'c, 'd> as Logos<'b>>::Error {
             <<Token<
                 'a,
@@ -58,7 +58,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
         }
         #[inline]
         fn _get_action<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
             offset: ::core::primitive::usize,
             context: _Option<LogosLeaf>,
         ) -> CallbackResult<'b, Token<'a, 'b, 'c, 'd>> {
@@ -114,7 +114,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
             Leaf3 = 3isize,
         }
         fn state0<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
             mut offset: ::core::primitive::usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<
@@ -416,7 +416,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
             _take_action!(lex, offset, context, state)
         }
         fn state1<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
             mut offset: ::core::primitive::usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<
@@ -429,7 +429,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
             _take_action!(lex, offset, context, state)
         }
         fn state2<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
             mut offset: ::core::primitive::usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<
@@ -442,7 +442,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
             _take_action!(lex, offset, context, state)
         }
         fn state3<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
             mut offset: ::core::primitive::usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<
@@ -455,7 +455,7 @@ impl<'a, 'b, 'c, 'd> ::logos::Logos<'b> for Token<'a, 'b, 'c, 'd> {
             _take_action!(lex, offset, context, state)
         }
         fn state4<'a, 'b, 'c, 'd>(
-            lex: &mut _Lexer<'b, Token<'a, 'b, 'c, 'd>>,
+            lex: &mut _Lexer<'b, '_, Token<'a, 'b, 'c, 'd>>,
             mut offset: ::core::primitive::usize,
             mut context: _Option<LogosLeaf>,
         ) -> _Option<

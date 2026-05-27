@@ -52,7 +52,7 @@ type Environment = HashMap<String, Vec<i128>>;
 
 /* ANCHOR: callbacks */
 /// Parse lexer slice as an i128
-fn number_callback<'s>(lex: &mut Lexer<'s, Token>) -> Result<i128, LexingError<'s>> {
+fn number_callback<'s>(lex: &mut Lexer<'s, '_, Token>) -> Result<i128, LexingError<'s>> {
     let source = lex.slice();
     let res = source.parse();
     res.map_err(|err| LexingError::InvalidInteger { err, source })
@@ -60,7 +60,7 @@ fn number_callback<'s>(lex: &mut Lexer<'s, Token>) -> Result<i128, LexingError<'
 
 /// Look up the lexer slice in the variable environment,
 /// yielding a borrow of the variable's value.
-fn var_callback<'s, 'a>(lex: &mut Lexer<'s, Token<'a>>) -> Result<&'a [i128], LexingError<'s>> {
+fn var_callback<'s, 'a>(lex: &mut Lexer<'s, '_, Token<'a>>) -> Result<&'a [i128], LexingError<'s>> {
     match lex.extras.get(lex.slice()) {
         Some(arr) => Ok(arr.as_slice()),
         None => Err(LexingError::UnknownVariable(lex.slice())),

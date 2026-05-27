@@ -10,21 +10,21 @@ pub type Span = core::ops::Range<usize>;
 
 /// `Lexer` is the main struct of the crate that allows you to read through a
 /// `Source` and produce tokens for enums implementing the `Logos` trait.
-pub struct Lexer<'source, Token: Logos<'source>> {
+pub struct Lexer<'source, 'extras, Token: Logos<'source>> {
     source: &'source Token::Source,
 
     token_start: usize,
     token_end: usize,
 
     /// Extras associated with the `Token`.
-    pub extras: Token::Extras,
+    pub extras: Token::Extras<'extras>,
 }
 
-impl<'source, Token> Debug for Lexer<'source, Token>
+impl<'source, 'extras, Token> Debug for Lexer<'source, 'extras, Token>
 where
     Token: Logos<'source>,
     Token::Source: Debug,
-    Token::Extras: Debug,
+    Token::Extras<'extras>: Debug,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Lexer")
@@ -34,14 +34,14 @@ where
     }
 }
 
-impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
+impl<'source, 'extras, Token: Logos<'source>> Lexer<'source, 'extras, Token> {
     /// Create a new `Lexer`.
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling [`Token::lexer`](./trait.Logos.html#method.lexer) on any `Token` with derived `Logos`.
     pub fn new(source: &'source Token::Source) -> Self
     where
-        Token::Extras: Default,
+        Token::Extras<'extras>: Default,
     {
         Self::with_extras(source, Default::default())
     }
@@ -50,7 +50,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// Due to type inference, it might be more ergonomic to construct
     /// it by calling [`Token::lexer_with_extras`](./trait.Logos.html#method.lexer_with_extras) on any `Token` with derived `Logos`.
-    pub fn with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
+    pub fn with_extras(source: &'source Token::Source, extras: Token::Extras<'extras>) -> Self {
         Lexer {
             source,
             extras,
@@ -118,7 +118,7 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// );
     /// ```
     #[inline]
-    pub fn spanned(self) -> SpannedIter<'source, Token> {
+    pub fn spanned(self) -> SpannedIter<'source, 'extras, Token> {
         SpannedIter { lexer: self }
     }
 
@@ -171,16 +171,52 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     ///
     /// The new lexer continues to point at the same span as the current lexer,
     /// and the current token becomes the error token of the new token type.
-    pub fn morph<Token2>(self) -> Lexer<'source, Token2>
+    pub fn morph<Token2>(self) -> Lexer<'source, 'extras, Token2>
     where
         Token2: Logos<'source, Source = Token::Source>,
-        Token::Extras: Into<Token2::Extras>,
+        Token::Extras<'extras>: Into<Token2::Extras<'extras>>,
     {
         Lexer {
             source: self.source,
             extras: self.extras.into(),
             token_start: self.token_start,
             token_end: self.token_end,
+        }
+    }
+
+    /// Creates a sublexer with a different token type.
+    ///
+    /// When the `Sublexer` is dropped it updates the current span.
+    pub fn sublexer<'sub, Token2>(&'sub mut self) -> Sublexer<'source, 'sub, Token2>
+    where
+        Token2: Logos<'source, Source = Token::Source>,
+        Token2::Extras<'sub>: Default,
+    {
+        self.sublexer_with(|_| Default::default())
+    }
+
+    /// Creates a sublexer with a different token type.
+    /// When the `Sublexer` is dropped it updates the current span.
+    ///
+    /// The sublexer's extras are created from the given closure, it is dropped with the `Sublexer`.
+    pub fn sublexer_with<'sub, Token2>(
+        &'sub mut self,
+        extras: impl FnOnce(
+            &'sub mut Token::Extras<'extras>,
+        ) -> <Token2 as Logos<'source>>::Extras<'sub>,
+    ) -> Sublexer<'source, 'sub, Token2>
+    where
+        Token2: Logos<'source, Source = Token::Source>,
+    {
+        Sublexer {
+            lexer: Lexer {
+                source: self.source,
+                token_start: self.token_start,
+                token_end: self.token_end,
+                extras: extras(&mut self.extras),
+            },
+            token_start_mut: &mut self.token_start,
+            token_end_mut: &mut self.token_end,
         }
     }
 
@@ -200,10 +236,10 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     }
 }
 
-impl<'source, Token> Clone for Lexer<'source, Token>
+impl<'source, 'extras, Token> Clone for Lexer<'source, 'extras, Token>
 where
     Token: Logos<'source> + Clone,
-    Token::Extras: Clone,
+    Token::Extras<'extras>: Clone,
 {
     fn clone(&self) -> Self {
         Lexer {
@@ -213,7 +249,7 @@ where
     }
 }
 
-impl<'source, Token> Iterator for Lexer<'source, Token>
+impl<'source, 'extras, Token> Iterator for Lexer<'source, 'extras, Token>
 where
     Token: Logos<'source>,
 {
@@ -230,15 +266,15 @@ where
 /// Iterator that pairs tokens with their position in the source.
 ///
 /// Look at [`Lexer::spanned`](./struct.Lexer.html#method.spanned) for documentation.
-pub struct SpannedIter<'source, Token: Logos<'source>> {
-    lexer: Lexer<'source, Token>,
+pub struct SpannedIter<'source, 'extras, Token: Logos<'source>> {
+    lexer: Lexer<'source, 'extras, Token>,
 }
 
-// deriving Clone doesn't infer the necessary `Token::Extras: Clone` bound
-impl<'source, Token> Clone for SpannedIter<'source, Token>
+// deriving Clone doesn't infer the necessary `Token::Extras<'extras>: Clone` bound
+impl<'source, 'extras, Token> Clone for SpannedIter<'source, 'extras, Token>
 where
     Token: Logos<'source> + Clone,
-    Token::Extras: Clone,
+    Token::Extras<'extras>: Clone,
 {
     fn clone(&self) -> Self {
         SpannedIter {
@@ -247,7 +283,7 @@ where
     }
 }
 
-impl<'source, Token> Iterator for SpannedIter<'source, Token>
+impl<'source, 'extras, Token> Iterator for SpannedIter<'source, 'extras, Token>
 where
     Token: Logos<'source>,
 {
@@ -258,22 +294,48 @@ where
     }
 }
 
-impl<'source, Token> Deref for SpannedIter<'source, Token>
+impl<'source, 'extras, Token> Deref for SpannedIter<'source, 'extras, Token>
 where
     Token: Logos<'source>,
 {
-    type Target = Lexer<'source, Token>;
+    type Target = Lexer<'source, 'extras, Token>;
 
-    fn deref(&self) -> &Lexer<'source, Token> {
+    fn deref(&self) -> &Lexer<'source, 'extras, Token> {
         &self.lexer
     }
 }
 
-impl<'source, Token> DerefMut for SpannedIter<'source, Token>
+impl<'source, 'extras, Token> DerefMut for SpannedIter<'source, 'extras, Token>
 where
     Token: Logos<'source>,
 {
-    fn deref_mut(&mut self) -> &mut Lexer<'source, Token> {
+    fn deref_mut(&mut self) -> &mut Lexer<'source, 'extras, Token> {
+        &mut self.lexer
+    }
+}
+
+/// A `Sublexer` to change token type in different lexer modes.
+///
+/// The parent `Lexer`'s span is updated when this is dropped.
+pub struct Sublexer<'source, 'extras, Token: Logos<'source>> {
+    token_start_mut: &'extras mut usize,
+    token_end_mut: &'extras mut usize,
+    lexer: Lexer<'source, 'extras, Token>,
+}
+impl<'source, 'extras, Token: Logos<'source>> Drop for Sublexer<'source, 'extras, Token> {
+    fn drop(&mut self) {
+        *self.token_start_mut = self.lexer.token_start;
+        *self.token_end_mut = self.lexer.token_end;
+    }
+}
+impl<'source, 'extras, Token: Logos<'source>> Deref for Sublexer<'source, 'extras, Token> {
+    type Target = Lexer<'source, 'extras, Token>;
+    fn deref(&self) -> &Self::Target {
+        &self.lexer
+    }
+}
+impl<'source, 'extras, Token: Logos<'source>> DerefMut for Sublexer<'source, 'extras, Token> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.lexer
     }
 }
@@ -283,7 +345,7 @@ where
 ///
 /// **This trait, and its methods, are not meant to be used outside of the
 /// code produced by `#[derive(Logos)]` macro.**
-impl<'source, Token> LexerInternal<'source> for Lexer<'source, Token>
+impl<'source, 'extras, Token> LexerInternal<'source> for Lexer<'source, 'extras, Token>
 where
     Token: Logos<'source>,
 {

@@ -81,7 +81,7 @@ mod extras_non_source_lifetime {
         Index(&'a str),
     }
 
-    fn lexer<'s, 'a>(source: &'s str, data: &'a [String]) -> Lexer<'s, Token<'a>> {
+    fn lexer<'s, 'a>(source: &'s str, data: &'a [String]) -> Lexer<'s, 'a, Token<'a>> {
         Token::lexer_with_extras(source, (0, data))
     }
 
@@ -159,7 +159,7 @@ mod multiple_lifetimes_convoluted {
 
     fn lex<'e>(f: &'e mut dyn FnMut(u32) -> u32) -> &'e mut dyn FnMut(u32) -> u32 {
         let source = String::from("6 upper 1 (lower) (a) 0 17 b");
-        let mut lexer: Lexer<'_, Token<'static, '_, 'e>> = Token::lexer_with_extras(&source, f);
+        let mut lexer: Lexer<'_, '_, Token<'static, '_, 'e>> = Token::lexer_with_extras(&source, f);
 
         assert_eq!(lexer.next(), Some(Ok(Token::Num(6))));
         assert_eq!(lexer.next(), Some(Ok(Token::Capital("UPPER"))));

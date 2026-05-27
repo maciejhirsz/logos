@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use std::borrow::Cow;
 use syn::spanned::Spanned;
-use syn::{Attribute, GenericParam, Ident, Lit, LitBool, Meta, Type};
+use syn::{Attribute, GenericParam, Ident, Lifetime, Lit, LitBool, Meta, Type};
 
 use crate::error::Errors;
 use crate::leaf::{Callback, InlineCallback};
@@ -59,7 +59,7 @@ impl Parser {
         self.types.lifetime_bounds()
     }
 
-    pub fn source_lifetime(&mut self) -> TokenStream {
+    pub fn source_lifetime(&mut self) -> Lifetime {
         self.types.source_lifetime(Some(&mut self.errors))
     }
 
@@ -299,6 +299,24 @@ impl Parser {
                     }
                     _ => {
                         self.err("Expected: #[logos(lifetime = 'some_lifetime)]", span);
+                    }
+                },
+                "extras_lifetime" => match value {
+                    NestedValue::Assign(value) => {
+                        if let Some(span) = self.types.extras_lifetime_span() {
+                            self.err("Extras lifetime can be defined only once", value.span())
+                                .err("Previous definition here", span);
+                        }
+                        let value_span = value.span();
+                        match syn::parse2::<Lifetime>(value) {
+                            Ok(lt) => self.types.set_extras_lifetime(lt),
+                            Err(e) => {
+                                self.err(e.to_string(), value_span);
+                            }
+                        }
+                    }
+                    _ => {
+                        self.err("Expected: #[logos(extras_lifetime = 'some_lifetime)]", span);
                     }
                 },
                 name => {

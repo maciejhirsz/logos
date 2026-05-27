@@ -29,24 +29,24 @@ pub trait LexerInternal<'source> {
 
 //TODO: Seems to me that we are missing a way to return Ok(Token::Uint) or skip matched input,
 // similar to Filter<T> but for unit variants.
-pub enum CallbackResult<'a, L: Logos<'a>> {
+pub enum CallbackResult<'source, L: Logos<'source>> {
     Emit(L),
     Error(L::Error),
     DefaultError,
     Skip,
 }
 
-pub trait CallbackRetVal<'a, P, L: Logos<'a>> {
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+pub trait CallbackRetVal<'source, P, L: Logos<'source>> {
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(P) -> L;
 }
 
 // Field variant implementations
 
-impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for T {
+impl<'source, L: Logos<'source>, T> CallbackRetVal<'source, T, L> for T {
     #[inline]
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(T) -> L,
     {
@@ -54,9 +54,11 @@ impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for T {
     }
 }
 
-impl<'a, L: Logos<'a>, T, E: Into<L::Error>> CallbackRetVal<'a, T, L> for Result<T, E> {
+impl<'source, L: Logos<'source>, T, E: Into<L::Error>> CallbackRetVal<'source, T, L>
+    for Result<T, E>
+{
     #[inline]
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(T) -> L,
     {
@@ -67,9 +69,9 @@ impl<'a, L: Logos<'a>, T, E: Into<L::Error>> CallbackRetVal<'a, T, L> for Result
     }
 }
 
-impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for Option<T> {
+impl<'source, L: Logos<'source>, T> CallbackRetVal<'source, T, L> for Option<T> {
     #[inline]
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(T) -> L,
     {
@@ -80,9 +82,9 @@ impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for Option<T> {
     }
 }
 
-impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for Filter<T> {
+impl<'source, L: Logos<'source>, T> CallbackRetVal<'source, T, L> for Filter<T> {
     #[inline]
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(T) -> L,
     {
@@ -93,9 +95,11 @@ impl<'a, L: Logos<'a>, T> CallbackRetVal<'a, T, L> for Filter<T> {
     }
 }
 
-impl<'a, L: Logos<'a>, T, E: Into<L::Error>> CallbackRetVal<'a, T, L> for FilterResult<T, E> {
+impl<'source, L: Logos<'source>, T, E: Into<L::Error>> CallbackRetVal<'source, T, L>
+    for FilterResult<T, E>
+{
     #[inline]
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(T) -> L,
     {
@@ -109,9 +113,9 @@ impl<'a, L: Logos<'a>, T, E: Into<L::Error>> CallbackRetVal<'a, T, L> for Filter
 
 // Unit variant implementations
 
-impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for bool {
+impl<'source, L: Logos<'source>> CallbackRetVal<'source, (), L> for bool {
     #[inline]
-    fn construct<C>(self, con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -122,9 +126,9 @@ impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for bool {
     }
 }
 
-impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for Skip {
+impl<'source, L: Logos<'source>> CallbackRetVal<'source, (), L> for Skip {
     #[inline]
-    fn construct<C>(self, _con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, _con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -132,9 +136,11 @@ impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for Skip {
     }
 }
 
-impl<'a, L: Logos<'a>, E: Into<L::Error>> CallbackRetVal<'a, (), L> for Result<Skip, E> {
+impl<'source, L: Logos<'source>, E: Into<L::Error>> CallbackRetVal<'source, (), L>
+    for Result<Skip, E>
+{
     #[inline]
-    fn construct<C>(self, _con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, _con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -147,9 +153,9 @@ impl<'a, L: Logos<'a>, E: Into<L::Error>> CallbackRetVal<'a, (), L> for Result<S
 
 // Any token callbacks (only for unit variants due to impl coherency rules)
 
-impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for L {
+impl<'source, L: Logos<'source>> CallbackRetVal<'source, (), L> for L {
     #[inline]
-    fn construct<C>(self, _con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, _con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -157,9 +163,11 @@ impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for L {
     }
 }
 
-impl<'a, L: Logos<'a>, E: Into<L::Error>> CallbackRetVal<'a, (), L> for Result<L, E> {
+impl<'source, L: Logos<'source>, E: Into<L::Error>> CallbackRetVal<'source, (), L>
+    for Result<L, E>
+{
     #[inline]
-    fn construct<C>(self, _con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, _con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -170,9 +178,9 @@ impl<'a, L: Logos<'a>, E: Into<L::Error>> CallbackRetVal<'a, (), L> for Result<L
     }
 }
 
-impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for Filter<L> {
+impl<'source, L: Logos<'source>> CallbackRetVal<'source, (), L> for Filter<L> {
     #[inline]
-    fn construct<C>(self, _con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, _con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -183,9 +191,11 @@ impl<'a, L: Logos<'a>> CallbackRetVal<'a, (), L> for Filter<L> {
     }
 }
 
-impl<'a, L: Logos<'a>, E: Into<L::Error>> CallbackRetVal<'a, (), L> for FilterResult<L, E> {
+impl<'source, L: Logos<'source>, E: Into<L::Error>> CallbackRetVal<'source, (), L>
+    for FilterResult<L, E>
+{
     #[inline]
-    fn construct<C>(self, _con: C) -> CallbackResult<'a, L>
+    fn construct<C>(self, _con: C) -> CallbackResult<'source, L>
     where
         C: Fn(()) -> L,
     {
@@ -197,13 +207,13 @@ impl<'a, L: Logos<'a>, E: Into<L::Error>> CallbackRetVal<'a, (), L> for FilterRe
     }
 }
 
-pub enum SkipResult<'a, L: Logos<'a>> {
+pub enum SkipResult<'source, L: Logos<'source>> {
     Skip,
     Error(L::Error),
 }
 
-impl<'a, L: Logos<'a>> From<SkipResult<'a, L>> for CallbackResult<'a, L> {
-    fn from(value: SkipResult<'a, L>) -> Self {
+impl<'source, L: Logos<'source>> From<SkipResult<'source, L>> for CallbackResult<'source, L> {
+    fn from(value: SkipResult<'source, L>) -> Self {
         match value {
             SkipResult::Skip => CallbackResult::Skip,
             SkipResult::Error(e) => CallbackResult::Error(e),
@@ -211,27 +221,27 @@ impl<'a, L: Logos<'a>> From<SkipResult<'a, L>> for CallbackResult<'a, L> {
     }
 }
 
-pub trait SkipRetVal<'a, L: Logos<'a>> {
-    fn construct(self) -> SkipResult<'a, L>;
+pub trait SkipRetVal<'source, L: Logos<'source>> {
+    fn construct(self) -> SkipResult<'source, L>;
 }
 
-impl<'a, L: Logos<'a>> SkipRetVal<'a, L> for () {
+impl<'source, L: Logos<'source>> SkipRetVal<'source, L> for () {
     #[inline]
-    fn construct(self) -> SkipResult<'a, L> {
+    fn construct(self) -> SkipResult<'source, L> {
         SkipResult::Skip
     }
 }
 
-impl<'a, L: Logos<'a>> SkipRetVal<'a, L> for Skip {
+impl<'source, L: Logos<'source>> SkipRetVal<'source, L> for Skip {
     #[inline]
-    fn construct(self) -> SkipResult<'a, L> {
+    fn construct(self) -> SkipResult<'source, L> {
         SkipResult::Skip
     }
 }
 
-impl<'a, L: Logos<'a>, E: Into<L::Error>> SkipRetVal<'a, L> for Result<(), E> {
+impl<'source, L: Logos<'source>, E: Into<L::Error>> SkipRetVal<'source, L> for Result<(), E> {
     #[inline]
-    fn construct(self) -> SkipResult<'a, L> {
+    fn construct(self) -> SkipResult<'source, L> {
         match self {
             Ok(()) => SkipResult::Skip,
             Err(err) => SkipResult::Error(err.into()),
@@ -239,9 +249,9 @@ impl<'a, L: Logos<'a>, E: Into<L::Error>> SkipRetVal<'a, L> for Result<(), E> {
     }
 }
 
-impl<'a, L: Logos<'a>, E: Into<L::Error>> SkipRetVal<'a, L> for Result<Skip, E> {
+impl<'source, L: Logos<'source>, E: Into<L::Error>> SkipRetVal<'source, L> for Result<Skip, E> {
     #[inline]
-    fn construct(self) -> SkipResult<'a, L> {
+    fn construct(self) -> SkipResult<'source, L> {
         match self {
             Ok(Skip) => SkipResult::Skip,
             Err(err) => SkipResult::Error(err.into()),

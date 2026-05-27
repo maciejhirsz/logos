@@ -5,16 +5,16 @@ use std::fmt;
 use std::ops::Range;
 
 #[allow(clippy::type_complexity)]
-pub fn assert_lex<'a, Token>(
-    source: &'a Token::Source,
+pub fn assert_lex<'source, 'extras, Token>(
+    source: &'source Token::Source,
     tokens: &[(
         Result<Token, Token::Error>,
-        <Token::Source as Source>::Slice<'a>,
+        <Token::Source as Source>::Slice<'source>,
         Range<usize>,
     )],
 ) where
-    Token: Logos<'a> + fmt::Debug + PartialEq,
-    Token::Extras: Default,
+    Token: Logos<'source> + fmt::Debug + PartialEq,
+    Token::Extras<'extras>: Default,
 {
     let mut lex = Token::lexer(source);
 
