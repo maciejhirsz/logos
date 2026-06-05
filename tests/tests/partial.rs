@@ -13,7 +13,7 @@ enum Token {
 
 #[test]
 fn single_dot() {
-    let mut lex = Lexer::<Token>::new_prefix(".");
+    let mut lex = Lexer::<Token>::new_partial(".");
 
     assert_eq!(lex.next(), None);
     assert_eq!(lex.span(), 0..0);
@@ -21,7 +21,7 @@ fn single_dot() {
 
 #[test]
 fn single_dot_with_space() {
-    let mut lex = Lexer::<Token>::new_prefix(". ");
+    let mut lex = Lexer::<Token>::new_partial(". ");
 
     assert_eq!(lex.next(), Some(Ok(Token::Accessor)));
     assert_eq!(lex.next(), None);
@@ -30,7 +30,7 @@ fn single_dot_with_space() {
 
 #[test]
 fn three_dots() {
-    let mut lex = Lexer::<Token>::new_prefix("...");
+    let mut lex = Lexer::<Token>::new_partial("...");
 
     assert_eq!(lex.next(), Some(Ok(Token::Ellipsis)));
 }

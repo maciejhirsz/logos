@@ -66,17 +66,17 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Create a new `Lexer` with only a prefix of the full input `source`.
     ///
     /// The [`Lexer::next`] method will return `None` if more data is needed to know which token to emit.
-    pub fn new_prefix(source: &'source Token::Source) -> Self
+    pub fn new_partial(source: &'source Token::Source) -> Self
     where
         Token::Extras: Default,
     {
-        Self::prefix_with_extras(source, Default::default())
+        Self::partial_with_extras(source, Default::default())
     }
 
     /// Create a new `Lexer` with the provided `Extras` and only a prefix of the full input `source`.
     ///
     /// The [`Lexer::next`] method will return `None` if more data is needed to know which token to emit.
-    pub fn prefix_with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
+    pub fn partial_with_extras(source: &'source Token::Source, extras: Token::Extras) -> Self {
         Lexer {
             source,
             is_prefix: true,

@@ -87,7 +87,7 @@ impl BufferedLexer {
         let mut lexer = if self.is_end {
             Lexer::new(valid_buffer_slice)
         } else {
-            Lexer::new_prefix(valid_buffer_slice)
+            Lexer::new_partial(valid_buffer_slice)
         };
 
         // We lex the next token

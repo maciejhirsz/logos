@@ -1,14 +1,14 @@
-# Prefix lexing
+# Partial lexing
 
 It is sometimes useful to give to the lexer not the full input buffer, but only a prefix of it.
 For example, when lexing files that do not fit into memory.
 
-For that Logos exposes the `Lexer::new_prefix` function that is a variant of `Lexer::new` but return `None` if more data should be given to unambgiously recognize the next token.
+For that Logos exposes the `Lexer::new_partial` function that is a variant of `Lexer::new` but return `None` if more data should be given to unambgiously recognize the next token.
 
 Usage example
 ```rust,no_run,no_playground
 while !is_eof { // We run while we still have unread data
-    let mut lexer = Lexer::new_prefix(buffer);
+    let mut lexer = Lexer::new_partial(buffer);
     while let Some(token) = lexer.next() {
         // Do something with the token
     }
