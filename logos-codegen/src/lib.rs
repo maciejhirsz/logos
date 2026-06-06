@@ -290,6 +290,7 @@ pub fn generate(input: TokenStream) -> TokenStream {
 
     let impl_logos = |body| {
         quote! {
+            #[automatically_derived]
             impl #lt_bounds #logos_path::Logos<#src_lt> for #this {
                 type Error = #error_type;
 
