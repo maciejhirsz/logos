@@ -115,6 +115,10 @@ impl<'s, 'a> ::logos::Logos<'s> for Token<'a, &'static str> {
                     return state2(lex, offset, context);
                 }
             } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
                 if lex.offset() == offset {
                     return _Option::None;
                 }

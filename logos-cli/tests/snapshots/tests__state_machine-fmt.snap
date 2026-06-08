@@ -136,6 +136,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
                         if lex.offset() == offset {
                             return _Option::None;
                         }
@@ -151,6 +155,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
                     }
                     _take_action!(lex, offset, context, state)
                 }
@@ -172,6 +180,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
                     }
                     _take_action!(lex, offset, context, state)
                 }
