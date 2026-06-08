@@ -13,7 +13,7 @@ while !is_eof { // We run while we still have unread data
         // Do something with the token
     }
     // We add more data to the buffer
-    let extend_buffer_with_more_data(&mut buffer);
+    extend_buffer_with_more_data(&mut buffer);
 }
 // We lex the last tokens with the usual lexer because the buffer is now filled to the end
 let mut lexer = Lexer::new(buffer);
