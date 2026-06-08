@@ -103,7 +103,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State1;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State1 => {
@@ -114,7 +119,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State2;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State2 => {
@@ -392,6 +402,10 @@ impl<'s> ::logos::Logos<'s> for Token {
                             continue;
                         }
                     } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
                         if lex.offset() == offset {
                             return _Option::None;
                         }
@@ -408,7 +422,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State0;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State5 => {
@@ -421,7 +440,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State0;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State6 => {
@@ -434,7 +458,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State0;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State7 => {
@@ -447,7 +476,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State1;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State8 => {
@@ -474,7 +508,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State2;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State11 => {
@@ -487,7 +526,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State1;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
                 LogosState::State12 => {
@@ -500,7 +544,12 @@ impl<'s> ::logos::Logos<'s> for Token {
                             state = LogosState::State1;
                             continue;
                         }
-                    } else {}
+                    } else {
+                        if lex.is_prefix() {
+                            lex.end(lex.offset());
+                            return _Option::None;
+                        }
+                    }
                     _take_action!(lex, offset, context, state)
                 }
             }
