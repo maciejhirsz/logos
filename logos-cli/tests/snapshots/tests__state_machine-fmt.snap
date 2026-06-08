@@ -6,6 +6,7 @@ expression: output
 enum Token {
     Letter,
 }
+#[automatically_derived]
 impl<'s> ::logos::Logos<'s> for Token {
     type Error = ();
     type Extras = ();

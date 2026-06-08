@@ -2,6 +2,7 @@
 source: logos-codegen/tests/codegen.rs
 expression: formatted
 ---
+#[automatically_derived]
 impl<'a, 'b> ::logos::Logos<'lt> for Token<'a, 'b> {
     type Error = ();
     type Extras = ();
