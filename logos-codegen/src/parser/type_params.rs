@@ -266,11 +266,11 @@ pub fn traverse_type(ty: &mut Type, f: &mut impl FnMut(&mut Type)) {
     f(ty);
     match ty {
         Type::Array(array) => traverse_type(&mut array.elem, f),
-        Type::BareFn(bare_fn) => {
-            for input in &mut bare_fn.inputs {
+        Type::FnPtr(fn_ptr) => {
+            for input in &mut fn_ptr.inputs {
                 traverse_type(&mut input.ty, f);
             }
-            if let syn::ReturnType::Type(_, ty) = &mut bare_fn.output {
+            if let syn::ReturnType::Type(_, ty) = &mut fn_ptr.output {
                 traverse_type(ty, f);
             }
         }
@@ -312,7 +312,7 @@ fn traverse_path(path: &mut Path, f: &mut impl FnMut(&mut Type)) {
             }
             syn::PathArguments::Parenthesized(args) => {
                 for arg in &mut args.inputs {
-                    traverse_type(arg, f);
+                    traverse_type(&mut arg.ty, f);
                 }
                 if let syn::ReturnType::Type(_, ty) = &mut args.output {
                     traverse_type(ty, f);

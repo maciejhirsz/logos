@@ -4,12 +4,12 @@ proc-macro2 = "1.0.9"
 quote = "1.0.3"
 regex-automata = "0.4.9"
 regex-syntax = "0.8.5"
-syn = { version = "2.0.13", features = ["full"] }
+syn = { version = "3", features = ["full"] }
 
 [dev-dependencies]
 rstest = "0.26.1"
 insta = "1.41.1"
-prettyplease = "0.2.36"
+prettyplease = "0.3"
 
 [features]
 # Enables debug messages
