@@ -4,7 +4,7 @@
 //!     cargo run --example brainfuck <path/to/file>
 //!
 //! Example:
-//!     cargo run --example brainfuck examples/hello_word.bf
+//!     cargo run --example brainfuck examples/hello_world.bf
 //!
 //! Brainfuck is an esoteric programming language that only
 //! uses 8 single-character commands:
