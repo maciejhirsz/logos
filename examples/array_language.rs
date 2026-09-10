@@ -20,16 +20,10 @@ use std::path::Path;
 
 /* ANCHOR: error_type */
 /// Token error type, tied to the lifetime of the source.
-#[derive(Default, Debug, Clone, PartialEq)]
 enum LexingError<'s> {
     UnknownSymbol(&'s str),
-    InvalidInteger {
-        err: ParseIntError,
-        source: &'s str,
-    },
+    InvalidInteger { err: ParseIntError, source: &'s str },
     UnknownVariable(&'s str),
-    #[default]
-    Other,
 }
 /* ANCHOR_END: error_type */
 
@@ -41,7 +35,6 @@ impl Display for LexingError<'_> {
                 write!(f, "int error in source `{source}`: {err}")
             }
             Self::UnknownVariable(s) => write!(f, "unknown variable `{s}`"),
-            Self::Other => write!(f, "unknown error"),
         }
     }
 }
@@ -51,7 +44,7 @@ type Environment = HashMap<String, Vec<i128>>;
 /* ANCHOR_END: environment */
 
 /* ANCHOR: callbacks */
-/// Parse lexer slice as an i128
+/// Parse lexer slice as an `i128`
 fn number_callback<'s>(lex: &mut Lexer<'s, Token>) -> Result<i128, LexingError<'s>> {
     let source = lex.slice();
     let res = source.parse();
