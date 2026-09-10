@@ -21,7 +21,7 @@ Now, creating an interpreter becomes straightforward[^1]:
 
 Finally, we provide you the full code that you should be able to run with[^2]:
 ```bash
-cargo run --example brainfuck examples/hello_word.bf
+cargo run --example brainfuck examples/hello_world.bf
 ```
 
 [^2]: You first need to clone [this repository](https://github.com/maciejhirsz/logos).
