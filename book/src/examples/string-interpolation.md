@@ -37,7 +37,7 @@ To address this, many lexer generators offer the ability to have separate lexers
 For our example we'll use three lexers, one will handle the general syntax (variable definitions), another will handle the strings, and the third one will handle the interpolations:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs:lexers}}
+{{#include ../../../examples/src/string-interpolation.rs:lexers}}
 ```
 
 The idea for our parser will be the following:
@@ -68,7 +68,7 @@ Additionally, we incorporated some [callbacks](../callbacks.md) to handle the he
 Below is an example of how the main function of our parser would look like:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs:main}}
+{{#include ../../../examples/src/string-interpolation.rs:main}}
 ```
 
 Now, let’s define the callbacks that make this functionality possible. In Logos, context switching is handled using the [`morph`](https://docs.rs/logos/latest/logos/struct.Lexer.html#method.morph) method. This method takes ownership of the current Lexer and transforms it into a lexer for a new token type.
@@ -76,7 +76,7 @@ Now, let’s define the callbacks that make this functionality possible. In Logo
 ### `variable_definition`
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs:variable_definition}}
+{{#include ../../../examples/src/string-interpolation.rs:variable_definition}}
 ```
 
 This callback is triggered when the `VariableDefinitionContext` lexer finds an `Id` token.
@@ -93,7 +93,7 @@ This callback is triggered when the `VariableDefinitionContext` lexer finds an `
 The `variable_definition` callback expects the `InterpolationStart` token to have the evaluated value already assigned to it. This is where the `evaluate_interpolation` callback comes in:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs:evaluate_interpolation}}
+{{#include ../../../examples/src/string-interpolation.rs:evaluate_interpolation}}
 ```
 
 This callback is triggered when the `StringContext` lexer finds an `InterpolationStart` (`${`) token, signaling that an interpolation expression is beginning.
@@ -109,13 +109,13 @@ This callback is triggered when the `StringContext` lexer finds an `Interpolatio
 Lastly we have the `get_variable_value` callback. This callback's only job is to assign `Id` tokens in the `StringInterpolationContext` the value of the appropriate variable found in the symbol table.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs:get_variable_value}}
+{{#include ../../../examples/src/string-interpolation.rs:get_variable_value}}
 ```
 
 ## Putting it all together
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/string-interpolation.rs:all}}
+{{#include ../../../examples/src/string-interpolation.rs:all}}
 ```
 
 As with the other examples you may run it by cloning the [logos repository](https://github.com/maciejhirsz/logos) and executing this command:

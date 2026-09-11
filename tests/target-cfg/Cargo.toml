@@ -7,7 +7,7 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-logos = { path = "../..", default-features = false, features = ["export_derive"] }
+logos = { path = "../../logos", default-features = false, features = ["export_derive"] }
 
 [features]
 forbid_unsafe = [

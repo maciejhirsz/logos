@@ -26,20 +26,20 @@ cargo run --example array_language examples/array_program.txt
 The variable environment maps variable names to values.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:environment}}
+{{#include ../../../examples/src/array_language.rs:environment}}
 ```
 
 The token type is parameterized by the lifetime `'a`, which is used in the lexer extras
 as the lifetime of the borrow of the variable environment.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:tokens}}
+{{#include ../../../examples/src/array_language.rs:tokens}}
 ```
 
 The lexer uses two callbacks:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:callbacks}}
+{{#include ../../../examples/src/array_language.rs:callbacks}}
 ```
 
 The `#[logos(lifetime = none)]` attribute explicitly specifies that `'a` is **not** the
@@ -50,14 +50,14 @@ source instead, which is used in the error type to store the slice causing the e
 [^3]: Without the attribute, Logos will assume that `'a` is the source lifetime.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:error_type}}
+{{#include ../../../examples/src/array_language.rs:error_type}}
 ```
 
 A file is lexed by creating a separate lexer for each line of the file and combining the
 results.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:lex_file}}
+{{#include ../../../examples/src/array_language.rs:lex_file}}
 ```
 
 Scoped threads allow non-static borrows of variables outside the thread. Here, we use
@@ -80,7 +80,7 @@ and product operators combine all the numbers in the accumulator into a singleto
 Once all tokens have been evaluated sequentially, the final accumulator is returned.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:evaluate}}
+{{#include ../../../examples/src/array_language.rs:evaluate}}
 ```
 
 The lines in the input file are evaluated sequentially, printing the returned accumulator.
@@ -88,5 +88,5 @@ The lines in the input file are evaluated sequentially, printing the returned ac
 ## Full code
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/array_language.rs:all}}
+{{#include ../../../examples/src/array_language.rs:all}}
 ```

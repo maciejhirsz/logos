@@ -5,7 +5,7 @@ In most programming languages, commands can be made of multiple program tokens, 
 However, there exists programming languages that are so simple, such as Brainfuck, that each token can be mapped to a single instruction. There are actually 8 single-characters tokens:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/brainfuck.rs:tokens}}
+{{#include ../../../examples/src/brainfuck.rs:tokens}}
 ```
 
 All other characters must be ignored.
@@ -14,7 +14,7 @@ Once the tokens are obtained, a Brainfuck interpreter can be easily created usin
 
 Now, creating an interpreter becomes straightforward[^1]:
 ```rust,no_run,noplayground
-{{#include ../../../examples/brainfuck.rs:fsm}}
+{{#include ../../../examples/src/brainfuck.rs:fsm}}
 ```
 
 [^1]: There is a small trick to make it easy. As it can be seen in the full code, we first perform a check that all beginning loops (`'['`) have a matching end (`']'`). This way, we can create two maps, `pairs` and `pairs_reverse`, to easily jump back and forth between them.
@@ -27,5 +27,5 @@ cargo run --example brainfuck examples/hello_world.bf
 [^2]: You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/brainfuck.rs:all}}
+{{#include ../../../examples/src/brainfuck.rs:all}}
 ```

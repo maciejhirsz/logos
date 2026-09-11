@@ -62,7 +62,7 @@ Add(
 <summary><strong>Full source code</strong></summary>
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/calculator.rs:all}}
+{{#include ../../../examples/src/calculator.rs:all}}
 ```
 
 </details>
@@ -80,7 +80,7 @@ Our calculator supports the following tokens:
 - Parenthesized expressions: `(3 + 5) * 2`, `((1 + 2) * 3 + 4) * 2 + 3 / 2`, etc.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/calculator.rs:tokens}}
+{{#include ../../../examples/src/calculator.rs:tokens}}
 ```
 
 ## 3. Parser
@@ -92,7 +92,7 @@ While it is easy enough to manually implement a parser in this case (e.g., [Prat
 First, we define the AST.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/calculator.rs:ast}}
+{{#include ../../../examples/src/calculator.rs:ast}}
 ```
 
 Note that
@@ -108,7 +108,7 @@ Note that
 Next, we define the parser. The code may look a bit complicated if you are not familiar with parser combinator libraries, but it is actually quite simple. See [Chumsky's official tutorial](https://github.com/zesterer/chumsky/blob/main/tutorial.md) for the details.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/calculator.rs:parser}}
+{{#include ../../../examples/src/calculator.rs:parser}}
 ```
 
 ## 4. Evaluator
@@ -116,7 +116,7 @@ Next, we define the parser. The code may look a bit complicated if you are not f
 Evaluating the AST is straightforward. We just implement it using [depth-first search (DFS)](https://en.wikipedia.org/wiki/Depth-first_search) such that the mathematical operations are processed in the correct order.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/calculator.rs:evaluator}}
+{{#include ../../../examples/src/calculator.rs:evaluator}}
 ```
 
 **Example**
@@ -130,7 +130,7 @@ Evaluating `1 + 3 * 12` will proceed as below.
 Finally, we put everything together in the `main()` function.
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/calculator.rs:main}}
+{{#include ../../../examples/src/calculator.rs:main}}
 ```
 
 ## 6. Extend the Calculator

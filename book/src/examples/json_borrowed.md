@@ -51,5 +51,5 @@ cargo run --example json-borrowed examples/example.json
 [^1] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/json_borrowed.rs:all}}
+{{#include ../../../examples/src/json_borrowed.rs:all}}
 ```

@@ -1,5 +1,5 @@
 [workspace]
-members = ["logos-cli", "logos-codegen", "logos-derive", "tests"]
+members = ["examples", "logos", "logos-cli", "logos-codegen", "logos-derive", "tests"]
 exclude = ["fuzz", "tests/target-cfg"]
 resolver = "2"
 
@@ -18,93 +18,8 @@ readme = "README.md"
 repository = "https://github.com/maciejhirsz/logos"
 rust-version = "1.80.0"
 version = "0.16.1"
-include = ["build.rs", "/src/", "/examples/", "/tests/", "LICENSE-MIT", "LICENSE-APACHE"]
-
-[package]
-name = "logos"
-authors.workspace = true
-categories.workspace = true
-description.workspace = true
-edition.workspace = true
-homepage.workspace = true
-keywords.workspace = true
-license.workspace = true
-readme.workspace = true
-repository.workspace = true
-rust-version.workspace = true
-version.workspace = true
-include.workspace = true
-
-[package.metadata.release]
-pre-release-replacements = [
-  {file="book/src/getting-started.md", search="logos = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="logos = \"{{version}}\"", exactly=1},
-]
-shared-version = true
-
-[lib]
-bench = false
-
-[features]
-# Enables debug messages
-debug = ["logos-derive?/debug"]
-default = ["export_derive", "std"]
-# Re-exports the `Logos` derive macro, so that end user only needs to
-# import this crate and `use logos::Logos` to get both the trait and
-# derive proc macro.
-export_derive = ["logos-derive"]
-# Should the crate use the standard library?
-std = []
-# Use safe alternatives for unsafe code (may impact performance)?
-forbid_unsafe = ["logos-derive?/forbid_unsafe"]
-# Use the state machine codegen instead of the tailcall codegen
-state_machine_codegen = ["logos-derive?/state_machine_codegen"]
-
-[package.metadata.docs.rs]
-features = ["debug"]
-cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
-rustdoc-args = ["--cfg", "docsrs"]
+include = ["build.rs", "/src/", "/benches/", "/tests/", "LICENSE-MIT", "LICENSE-APACHE"]
 
 [profile]
 bench = {lto = true}
 release = {lto = true}
-
-[dependencies]
-logos-derive = {version = "0.16.1", path = "./logos-derive", optional = true}
-
-[dev-dependencies]
-ariadne = {version = "0.4", features = ["auto-color"]}
-chumsky = {version = "0.10.0" }
-logos = { path = ".", features = ["export_derive"] }
-
-[[example]]
-doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
-name = "brainfuck"
-path = "examples/brainfuck.rs"
-
-[[example]]
-name = "calculator"
-path = "examples/calculator.rs"
-
-[[example]]
-name = "string-interpolation"
-path = "examples/string-interpolation.rs"
-
-[[example]]
-name = "custom_error"
-path = "examples/custom_error.rs"
-
-[[example]]
-name = "extras"
-path = "examples/extras.rs"
-
-[[example]]
-name = "json"
-path = "examples/json.rs"
-
-[[example]]
-name = "json-borrowed"
-path = "examples/json_borrowed.rs"
-
-[[example]]
-name = "json-reader"
-path = "examples/json_reader.rs"

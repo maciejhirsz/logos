@@ -1,0 +1,9 @@
+[coverage]
+workspace = true
+features = "debug"
+timeout = "120s"
+engine = "Llvm"
+exclude-files = [
+    "target/*",
+    "tests/target-cfg/*",
+]

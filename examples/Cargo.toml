@@ -1,0 +1,53 @@
+[package]
+name = "examples"
+edition.workspace = true
+publish = false
+rust-version.workspace = true
+version = "0.0.0"
+
+[package.metadata.release]
+release = false
+
+[dependencies]
+logos = { path = "../logos" }
+
+[dev-dependencies]
+ariadne = {version = "0.4", features = ["auto-color"]}
+chumsky = {version = "0.10.0" }
+
+[[example]]
+doc-scrape-examples = true  # Only needed once, because requires dev-dependencies
+name = "brainfuck"
+path = "src/brainfuck.rs"
+
+[[example]]
+name = "array_language"
+path = "src/array_language.rs"
+
+[[example]]
+name = "calculator"
+path = "src/calculator.rs"
+
+[[example]]
+name = "string-interpolation"
+path = "src/string-interpolation.rs"
+
+[[example]]
+name = "custom_error"
+path = "src/custom_error.rs"
+
+[[example]]
+name = "extras"
+path = "src/extras.rs"
+
+[[example]]
+name = "json"
+path = "src/json.rs"
+
+[[example]]
+name = "json-borrowed"
+path = "src/json_borrowed.rs"
+
+[[example]]
+name = "json-reader"
+path = "src/json_reader.rs"

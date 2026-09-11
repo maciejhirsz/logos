@@ -34,9 +34,7 @@ jobs:
     - uses: taiki-e/install-action@cargo-hack
     - uses: Swatinem/rust-cache@v2
 
-    - name: Top level crate tests
-      # Excluding the run from cargo-hack as building logos without
-      # export_derive breaks all the examples
+    - name: Workspace tests
       run: cargo test --verbose
 
     - name: Codegen Tests

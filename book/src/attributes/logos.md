@@ -39,7 +39,7 @@ The type `ErrorType` can be any type that implements `Clone`, `PartialEq`,
 Here is an example using a custom error type:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/custom_error.rs:all}}
+{{#include ../../../examples/src/custom_error.rs:all}}
 ```
 
 You can add error variants to `LexingError`,

@@ -6,6 +6,7 @@ on:
     - '**.rs'
     - .github/workflows/coverage.yml
     - '**/Cargo.toml'
+    - tarpaulin.toml
   push:
     branches: [master]
   workflow_dispatch:
@@ -27,7 +28,8 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Generate code coverage
-      run: cargo +nightly tarpaulin --verbose --features debug --workspace --timeout 120 --out Xml
+      run: >-
+        cargo +nightly tarpaulin --verbose --out Xml
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v5

@@ -13,7 +13,7 @@ of each token. This is especially useful when one needs to report an erroneous
 token to the user, in a user-friendly manner.
 
 ```rust,no_run,noplayground
-{{#include ../../examples/extras.rs:tokens}}
+{{#include ../../examples/src/extras.rs:tokens}}
 ```
 
 The above token definition will hold two tokens: `Newline` and `Word`.
@@ -29,7 +29,7 @@ To make it easy, the lexer will contain the following two extras:
 We now have to define the two callback functions:
 
 ```rust,no_run,noplayground
-{{#include ../../examples/extras.rs:callbacks}}
+{{#include ../../examples/src/extras.rs:callbacks}}
 ```
 
 Extras can of course be used for more complicate logic, and there is no limit
@@ -43,5 +43,5 @@ cargo run --example extras Cargo.toml
 [^1] You first need to clone [this repository](https://github.com/maciejhirsz/logos).
 
 ```rust,no_run,noplayground
-{{#include ../../examples/extras.rs:all}}
+{{#include ../../examples/src/extras.rs:all}}
 ```

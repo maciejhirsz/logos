@@ -11,6 +11,7 @@ use syn::parse_file;
 #[case("error_callback1")]
 #[case("error_callback_failure")]
 #[case("prio_conflict")]
+#[case("empty_match")]
 #[case("illegal_utf8")]
 #[case("explicit_lifetime0")]
 #[case("explicit_lifetime1")]

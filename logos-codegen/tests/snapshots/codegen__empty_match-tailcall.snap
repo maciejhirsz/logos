@@ -1,0 +1,24 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+#[automatically_derived]
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = ::core::primitive::str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> ::core::option::Option<
+        ::core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    > {
+        fn _logos_derive_compile_errors() {
+            {
+                ::core::compile_error!(
+                    "The pattern #[regex(\"a*\")] ::A can match the empty string, which is unsupported by logos."
+                )
+            }
+        }
+        ::core::unimplemented!()
+    }
+}

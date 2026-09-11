@@ -424,6 +424,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "examples"
+version = "0.0.0"
+dependencies = [
+ "ariadne",
+ "chumsky",
+ "logos",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -703,9 +712,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 name = "logos"
 version = "0.16.1"
 dependencies = [
- "ariadne",
- "chumsky",
- "logos",
+ "codspeed-criterion-compat",
  "logos-derive",
 ]
 
@@ -1254,7 +1261,6 @@ checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 name = "tests"
 version = "0.0.0"
 dependencies = [
- "codspeed-criterion-compat",
  "logos",
  "trybuild",
 ]
