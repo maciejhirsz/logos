@@ -1,5 +1,6 @@
 ---
 source: logos-codegen/tests/codegen.rs
+assertion_line: 40
 expression: formatted
 ---
 #[automatically_derived]
@@ -19,7 +20,7 @@ impl<'s> ::logos::Logos<'s> for TokenA {
             { ::core::compile_error!("Previous definition here") }
             {
                 ::core::compile_error!(
-                    "expected one of: `for`, parentheses, `fn`, `unsafe`, `extern`, identifier, `::`, `<`, `dyn`, square brackets, `*`, `&`, `!`, `impl`, `_`, lifetime"
+                    "expected one of: `for`, parentheses, `unsafe`, `fn`, `extern`, identifier, `::`, `<`, `dyn`, square brackets, `*`, `&`, `!`, `impl`, `_`, lifetime"
                 )
             }
             { ::core::compile_error!("Error type can be defined only once") }
