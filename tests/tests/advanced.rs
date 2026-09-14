@@ -242,4 +242,38 @@ mod advanced {
             ],
         );
     }
+
+    #[test]
+    fn subpattern_inside_character_class() {
+        // https://github.com/maciejhirsz/logos/issues/580
+        //
+        // A subpattern referenced inside a character class used to be
+        // substituted with its flag-wrapped body, i.e. `(?u:...)`. Flag-setting
+        // groups are not valid inside a class, so the regex parser treated the
+        // characters literally: `u` (and `?`, `(`, `:`) became class members,
+        // and a negated class would then exclude them. This broke matching of
+        // the letter `u` and nothing else.
+        assert_lex(
+            "u a U w _ ; 0",
+            &[
+                (Ok(Token580::LetterOrUnderscore), "u", 0..1),
+                (Ok(Token580::LetterOrUnderscore), "a", 2..3),
+                (Ok(Token580::LetterOrUnderscore), "U", 4..5),
+                (Ok(Token580::LetterOrUnderscore), "w", 6..7),
+                (Ok(Token580::LetterOrUnderscore), "_", 8..9),
+                (Err(()), ";", 10..11),
+                (Err(()), "0", 12..13),
+            ],
+        );
+    }
+}
+
+#[derive(Logos, Debug, Clone, Copy, PartialEq)]
+#[logos(subpattern not_unicode_letter = r"\s\d")]
+#[logos(subpattern invalid_symbols = r"#:=;\(\),\{\}\.\|")]
+#[logos(subpattern start_of_symbol = r"[^(?&not_unicode_letter)(?&invalid_symbols)]")]
+#[logos(skip r"\s+")]
+enum Token580 {
+    #[regex("(?&start_of_symbol)")]
+    LetterOrUnderscore,
 }

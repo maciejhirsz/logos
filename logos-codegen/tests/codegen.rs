@@ -15,6 +15,7 @@ use syn::parse_file;
 #[case("explicit_lifetime0")]
 #[case("explicit_lifetime1")]
 #[case("multiple_lifetime_failure")]
+#[case("subpattern_in_class")]
 #[case("explicit_lifetime_not_found")]
 pub fn test_codegen(#[case] fixture: &str) -> Result<(), Box<dyn Error>> {
     let codegen_alg = if cfg!(feature = "state_machine_codegen") {

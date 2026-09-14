@@ -1,0 +1,3761 @@
+---
+source: logos-codegen/tests/codegen.rs
+expression: formatted
+---
+#[automatically_derived]
+impl<'s> ::logos::Logos<'s> for Token {
+    type Error = ();
+    type Extras = ();
+    type Source = ::core::primitive::str;
+    fn lex(
+        lex: &mut ::logos::Lexer<'s, Self>,
+    ) -> ::core::option::Option<
+        ::core::result::Result<Self, <Self as ::logos::Logos<'s>>::Error>,
+    > {
+        use ::logos::internal::{
+            LexerInternal, CallbackRetVal, CallbackResult, SkipRetVal, SkipResult,
+        };
+        use ::core::result::Result as _Result;
+        use ::core::option::Option as _Option;
+        use ::logos::Lexer as _Lexer;
+        use ::logos::Logos;
+        macro_rules! _fast_loop {
+            ($lex:ident, $test:ident, $offset:ident) => {
+                'fast_loop : { while let _Option::Some(arr) = $lex .read:: < &
+                [::core::primitive::u8; 8usize] > ($offset) { if $test (arr[0usize]) {
+                $offset += 0usize; break 'fast_loop; } if $test (arr[1usize]) { $offset
+                += 1usize; break 'fast_loop; } if $test (arr[2usize]) { $offset +=
+                2usize; break 'fast_loop; } if $test (arr[3usize]) { $offset += 3usize;
+                break 'fast_loop; } if $test (arr[4usize]) { $offset += 4usize; break
+                'fast_loop; } if $test (arr[5usize]) { $offset += 5usize; break
+                'fast_loop; } if $test (arr[6usize]) { $offset += 6usize; break
+                'fast_loop; } if $test (arr[7usize]) { $offset += 7usize; break
+                'fast_loop; } $offset += 8usize; } while let _Option::Some(byte) = $lex
+                .read:: < ::core::primitive::u8 > ($offset) { if $test (byte) { break
+                'fast_loop; } $offset += 1; } }
+            };
+        }
+        macro_rules! _take_action {
+            ($lex:ident, $offset:ident, $context:ident, $state:ident) => {
+                { let action = _get_action($lex, $offset, $context); match action {
+                CallbackResult::Emit(tok) => { return _Option::Some(_Result::Ok(tok)); },
+                CallbackResult::Skip => { $lex .trivia(); $offset = $lex .offset();
+                $context = _Option::None; return state0($lex, $offset, $context); },
+                CallbackResult::Error(err) => { return _Option::Some(_Result::Err(err));
+                }, CallbackResult::DefaultError => { return
+                _Option::Some(_Result::Err(_make_error($lex))); }, } }
+            };
+        }
+        const _TABLE_0: [::core::primitive::u8; 256] = [
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+            254u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+            255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+            255u8, 255u8, 255u8, 255u8, 223u8, 252u8, 253u8, 253u8, 253u8, 253u8, 253u8,
+            253u8, 253u8, 253u8, 253u8, 255u8, 255u8, 255u8, 255u8, 255u8, 191u8, 251u8,
+            123u8, 123u8, 107u8, 123u8, 123u8, 123u8, 123u8, 123u8, 123u8, 127u8, 255u8,
+            247u8, 255u8, 255u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        ];
+        const _TABLE_1: [::core::primitive::u8; 256] = [
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 43u8, 43u8, 43u8, 43u8, 43u8, 43u8,
+            11u8, 11u8, 11u8, 11u8, 79u8, 95u8, 95u8, 95u8, 95u8, 95u8, 50u8, 50u8, 50u8,
+            50u8, 50u8, 50u8, 50u8, 50u8, 50u8, 50u8, 123u8, 123u8, 123u8, 123u8, 123u8,
+            123u8, 123u8, 123u8, 123u8, 123u8, 127u8, 127u8, 125u8, 125u8, 109u8, 109u8,
+            125u8, 125u8, 125u8, 125u8, 125u8, 109u8, 119u8, 119u8, 119u8, 119u8, 119u8,
+            119u8, 119u8, 119u8, 119u8, 119u8, 127u8, 127u8, 127u8, 127u8, 127u8, 127u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8,
+        ];
+        #[inline]
+        fn _make_error<'s>(lex: &mut _Lexer<'s, Token>) -> <Token as Logos<'s>>::Error {
+            <<Token as Logos<'s>>::Error as ::core::default::Default>::default()
+        }
+        #[inline]
+        fn _get_action<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            offset: ::core::primitive::usize,
+            context: _Option<LogosLeaf>,
+        ) -> CallbackResult<'s, Token> {
+            match context {
+                _Option::None => {
+                    lex.end_to_boundary(offset.max(lex.offset() + 1));
+                    CallbackResult::Error(_make_error(lex))
+                }
+                _Option::Some(LogosLeaf::Leaf0) => CallbackResult::Emit(Token::Symbol),
+            }
+        }
+        #[derive(::core::clone::Clone, ::core::marker::Copy)]
+        enum LogosLeaf {
+            Leaf0 = 0isize,
+        }
+        fn state0<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State1,
+                    State2,
+                    State3,
+                    State4,
+                    State5,
+                    State6,
+                    State7,
+                    State8,
+                    State9,
+                    State10,
+                    State11,
+                    State12,
+                    State13,
+                    State14,
+                    State15,
+                    State16,
+                    State36,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        ___,
+                        State36,
+                        State36,
+                        ___,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        ___,
+                        ___,
+                        State36,
+                        State36,
+                        ___,
+                        State36,
+                        ___,
+                        State36,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State36,
+                        ___,
+                        State36,
+                        ___,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        ___,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        State36,
+                        ___,
+                        ___,
+                        ___,
+                        State36,
+                        State36,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State1,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State3,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State5,
+                        State6,
+                        State7,
+                        State8,
+                        State9,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State11,
+                        State10,
+                        State10,
+                        State12,
+                        State10,
+                        State13,
+                        State14,
+                        State15,
+                        State15,
+                        State15,
+                        State16,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State1 => {
+                        return state1(lex, offset, context);
+                    }
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State5 => {
+                        return state5(lex, offset, context);
+                    }
+                    LogosNextState::State6 => {
+                        return state6(lex, offset, context);
+                    }
+                    LogosNextState::State7 => {
+                        return state7(lex, offset, context);
+                    }
+                    LogosNextState::State8 => {
+                        return state8(lex, offset, context);
+                    }
+                    LogosNextState::State9 => {
+                        return state9(lex, offset, context);
+                    }
+                    LogosNextState::State10 => {
+                        return state10(lex, offset, context);
+                    }
+                    LogosNextState::State11 => {
+                        return state11(lex, offset, context);
+                    }
+                    LogosNextState::State12 => {
+                        return state12(lex, offset, context);
+                    }
+                    LogosNextState::State13 => {
+                        return state13(lex, offset, context);
+                    }
+                    LogosNextState::State14 => {
+                        return state14(lex, offset, context);
+                    }
+                    LogosNextState::State15 => {
+                        return state15(lex, offset, context);
+                    }
+                    LogosNextState::State16 => {
+                        return state16(lex, offset, context);
+                    }
+                    LogosNextState::State36 => {
+                        return state36(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+                if lex.offset() == offset {
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state1<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 1u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state2<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state3<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 2u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state4<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 4u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state5<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 138u8..= 191u8)) {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state6<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State3,
+                    State25,
+                    State27,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State27,
+                        State2,
+                        State25,
+                        State2,
+                        State25,
+                        State3,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State25 => {
+                        return state25(lex, offset, context);
+                    }
+                    LogosNextState::State27 => {
+                        return state27(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state7<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State3,
+                    State4,
+                    State5,
+                    State25,
+                    State31,
+                    State34,
+                    State35,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State5,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State31,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State3,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State34,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State35,
+                        State2,
+                        State2,
+                        State25,
+                        State4,
+                        State2,
+                        State2,
+                        State35,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State5 => {
+                        return state5(lex, offset, context);
+                    }
+                    LogosNextState::State25 => {
+                        return state25(lex, offset, context);
+                    }
+                    LogosNextState::State31 => {
+                        return state31(lex, offset, context);
+                    }
+                    LogosNextState::State34 => {
+                        return state34(lex, offset, context);
+                    }
+                    LogosNextState::State35 => {
+                        return state35(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state8<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State32,
+                    State33,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State32,
+                        State33,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State32 => {
+                        return state32(lex, offset, context);
+                    }
+                    LogosNextState::State33 => {
+                        return state33(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state9<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 129u8..= 191u8)) {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+                if (byte == 128u8) {
+                    offset += 1;
+                    return state31(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state10<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state11<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State3,
+                    State4,
+                    State5,
+                    State25,
+                    State30,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State3,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State25,
+                        State5,
+                        State2,
+                        State2,
+                        State30,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State5 => {
+                        return state5(lex, offset, context);
+                    }
+                    LogosNextState::State25 => {
+                        return state25(lex, offset, context);
+                    }
+                    LogosNextState::State30 => {
+                        return state30(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state12<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 159u8)) {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state13<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 8u8 != 0 {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+                if (byte == 188u8) {
+                    offset += 1;
+                    return state25(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state14<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State10,
+                    State17,
+                    State18,
+                    State19,
+                    State20,
+                    State21,
+                    State22,
+                    State23,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State17,
+                        State18,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State19,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State20,
+                        State21,
+                        State22,
+                        State23,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        State10,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State10 => {
+                        return state10(lex, offset, context);
+                    }
+                    LogosNextState::State17 => {
+                        return state17(lex, offset, context);
+                    }
+                    LogosNextState::State18 => {
+                        return state18(lex, offset, context);
+                    }
+                    LogosNextState::State19 => {
+                        return state19(lex, offset, context);
+                    }
+                    LogosNextState::State20 => {
+                        return state20(lex, offset, context);
+                    }
+                    LogosNextState::State21 => {
+                        return state21(lex, offset, context);
+                    }
+                    LogosNextState::State22 => {
+                        return state22(lex, offset, context);
+                    }
+                    LogosNextState::State23 => {
+                        return state23(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state15<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 191u8)) {
+                    offset += 1;
+                    return state10(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state16<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 143u8)) {
+                    offset += 1;
+                    return state10(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state17<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State3,
+                    State4,
+                    State5,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State3,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State5,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State5 => {
+                        return state5(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state18<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State3,
+                    State4,
+                    State25,
+                    State27,
+                    State28,
+                    State29,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State27,
+                        State2,
+                        State4,
+                        State28,
+                        State2,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State25,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State25,
+                        State2,
+                        State29,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State3,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State25,
+                        State3,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State25 => {
+                        return state25(lex, offset, context);
+                    }
+                    LogosNextState::State27 => {
+                        return state27(lex, offset, context);
+                    }
+                    LogosNextState::State28 => {
+                        return state28(lex, offset, context);
+                    }
+                    LogosNextState::State29 => {
+                        return state29(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state19<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State3,
+                    State4,
+                    State5,
+                    State25,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State3,
+                        State2,
+                        State5,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State3 => {
+                        return state3(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State5 => {
+                        return state5(lex, offset, context);
+                    }
+                    LogosNextState::State25 => {
+                        return state25(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state20<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 16u8 != 0 {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+                if (byte == 179u8) {
+                    offset += 1;
+                    return state4(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state21<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 32u8 != 0 {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+                if (byte == 159u8) {
+                    offset += 1;
+                    return state26(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state22<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                #[derive(::core::marker::Copy, ::core::clone::Clone)]
+                enum LogosNextState {
+                    ___,
+                    State2,
+                    State4,
+                    State5,
+                    State24,
+                    State25,
+                }
+                const TABLE: [LogosNextState; 256] = {
+                    use LogosNextState::*;
+                    [
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State5,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State4,
+                        State2,
+                        State2,
+                        State2,
+                        State24,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State25,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        State2,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                        ___,
+                    ]
+                };
+                offset += 1;
+                match TABLE[byte as ::core::primitive::usize] {
+                    LogosNextState::State2 => {
+                        return state2(lex, offset, context);
+                    }
+                    LogosNextState::State4 => {
+                        return state4(lex, offset, context);
+                    }
+                    LogosNextState::State5 => {
+                        return state5(lex, offset, context);
+                    }
+                    LogosNextState::State24 => {
+                        return state24(lex, offset, context);
+                    }
+                    LogosNextState::State25 => {
+                        return state25(lex, offset, context);
+                    }
+                    LogosNextState::___ => {}
+                }
+                offset -= 1;
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state23<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 64u8 != 0 {
+                    offset += 1;
+                    return state2(lex, offset, context);
+                }
+                if (byte == 175u8) {
+                    offset += 1;
+                    return state4(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state24<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 128u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state25<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 1u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state26<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 141u8)) {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state27<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 2u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state28<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 128u8..= 181u8)) {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state29<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 4u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state30<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 8u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state31<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if (::core::matches!(byte, 129u8..= 191u8)) {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state32<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 16u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state33<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_0[byte as ::core::primitive::usize] & 32u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state34<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 32u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state35<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {
+                if _TABLE_1[byte as ::core::primitive::usize] & 64u8 != 0 {
+                    offset += 1;
+                    return state36(lex, offset, context);
+                }
+            } else {
+                if lex.is_prefix() {
+                    lex.end(lex.offset());
+                    return _Option::None;
+                }
+            }
+            _take_action!(lex, offset, context, state)
+        }
+        fn state36<'s>(
+            lex: &mut _Lexer<'s, Token>,
+            mut offset: ::core::primitive::usize,
+            mut context: _Option<LogosLeaf>,
+        ) -> _Option<_Result<Token, <Token as Logos<'s>>::Error>> {
+            lex.end(offset);
+            context = _Option::Some(LogosLeaf::Leaf0);
+            let other = lex.read::<::core::primitive::u8>(offset);
+            if let _Option::Some(byte) = other {} else {}
+            _take_action!(lex, offset, context, state)
+        }
+        state0(lex, lex.offset(), _Option::None)
+    }
+}
