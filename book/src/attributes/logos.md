@@ -32,9 +32,9 @@ For more details about extras, read the [eponym section](../extras.md).
 
 By default, **Logos** uses `()` as the error type, which means that it
 doesn't store any information about the error.
-This can be changed by using `#[logos(error = ErrorType)]` attribute on the enum.
-The type `ErrorType` can be any type that implements `Clone`, `PartialEq`,
-`Default` and `From<E>` for each callback's error type.
+This can be changed by using the `#[logos(error = ErrorType)]` attribute on the enum.
+The type `ErrorType` can be any type that implements `From<E>` for each callback's error type.
+If no error callback is provided, `ErrorType` must implement `Default` as well.
 
 Here is an example using a custom error type:
 
@@ -46,10 +46,7 @@ You can add error variants to `LexingError`,
 and implement `From<E>` for each error type `E` that could
 be returned by a callback. See [callbacks](../callbacks.md).
 
-`ErrorType` must implement the `Default` trait because invalid tokens, i.e.,
-literals that do not match any variant, will produce `Err(ErrorType::default())`.
-
-Alternatively, you can provide a callback with the alternate syntax
+You can provide a callback with the syntax
 `#[logos(error(ErrorType, callback = ...))]`, which allows you to include information
 from the lexer such as the span where the error occurred:
 
@@ -63,6 +60,10 @@ enum Token {
     B,
 }
 ```
+
+If you do not provide a callback, then invalid tokens, i.e.,
+literals that do not match any variant, will produce `Err(ErrorType::default())`.
+This requires `ErrorType` to implement the `Default` trait.
 
 ## Specifying path to logos
 

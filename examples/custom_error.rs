@@ -11,12 +11,10 @@ use logos::Logos;
 
 use std::num::ParseIntError;
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 enum LexingError {
     InvalidInteger(String),
     NonAsciiCharacter(char),
-    #[default]
-    Other,
 }
 
 /// Error type returned by calling `lex.slice().parse()` to u8.
