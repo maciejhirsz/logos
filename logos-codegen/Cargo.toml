@@ -10,6 +10,7 @@ syn = { version = "3", features = ["full"] }
 rstest = "0.26.1"
 insta = "1.41.1"
 prettyplease = "0.3"
+tempfile = "3"
 
 [features]
 # Enables debug messages

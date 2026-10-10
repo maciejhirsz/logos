@@ -737,6 +737,7 @@ dependencies = [
  "regex-syntax 0.8.5",
  "rstest",
  "syn 3.0.4",
+ "tempfile",
 ]
 
 [[package]]
