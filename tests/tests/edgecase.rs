@@ -569,3 +569,24 @@ mod implicit_source_lifetime_collision {
         let Token::A((..)) = Token::A((&5, &true, &-2, &()));
     }
 }
+
+mod bump_overflow {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    enum Token {
+        #[token("ab")]
+        Ab,
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid Lexer bump")]
+    fn bump_past_usize_max_panics() {
+        let mut lex = Token::lexer("abab");
+        assert_eq!(lex.next(), Some(Ok(Token::Ab)));
+        assert_eq!(lex.next(), Some(Ok(Token::Ab)));
+
+        // `4 + (usize::MAX - 2)` must not wrap around to a valid offset.
+        lex.bump(usize::MAX - 2);
+    }
+}
