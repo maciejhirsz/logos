@@ -281,12 +281,11 @@ impl<'source, Token: Logos<'source>> Lexer<'source, Token> {
     /// Panics if adding `n` to current offset would place the `Lexer` beyond the last byte,
     /// or in the middle of an UTF-8 code point (does not apply when lexing raw `&[u8]`).
     pub fn bump(&mut self, n: usize) {
-        self.token_end += n;
-
-        assert!(
-            self.source.is_boundary(self.token_end),
-            "Invalid Lexer bump",
-        )
+        self.token_end = self
+            .token_end
+            .checked_add(n)
+            .filter(|&end| self.source.is_boundary(end))
+            .expect("Invalid Lexer bump");
     }
 }
 
